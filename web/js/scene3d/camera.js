@@ -153,17 +153,19 @@ export class Cameras {
     const tanH = s.w[0] / 2 / dist;
     cam.fov = 2 * Math.atan(tanH / aspect);
     cam.setTarget(target);
-    // hard limit: pan until the ball (as drawn, not smoothed) is inside the safe area
+    // hard limit: pan until the ball (as drawn, not smoothed) is inside the safe area; a lofted
+    // ball counts at 3 m at most, as an operator lets a clearance leave the top of the frame
     const b = this.match.at(0, Math.min(ts, this.match.duration));
     if (b) {
       for (let pass = 0; pass < 2; pass++) {
-        const v = B.Vector3.TransformCoordinates(new B.Vector3(b[0] - HALF_L, Math.max(0, b[2]), b[1] - HALF_W), cam.getViewMatrix(true));
+        const v = B.Vector3.TransformCoordinates(new B.Vector3(b[0] - HALF_L, Math.min(Math.max(0, b[2]), 3), b[1] - HALF_W), cam.getViewMatrix(true));
         if (v.z <= 0) break;
         const nx = v.x / v.z / tanH, ny = v.y / v.z / Math.tan(cam.fov / 2);
         const ox = Math.abs(nx) > SAFE ? (nx - Math.sign(nx) * SAFE) * tanH * dist : 0;
         const oy = Math.abs(ny) > SAFE ? (ny - Math.sign(ny) * SAFE) * Math.tan(cam.fov / 2) * dist * 1.6 : 0;
         if (!ox && !oy) break;
-        s.x[0] += ox; s.z[0] += oy;
+        // the aim never leaves the pitch for the stands
+        s.x[0] = Math.max(-HALF_L, Math.min(HALF_L, s.x[0] + ox)); s.z[0] = Math.max(-HALF_W, Math.min(HALF_W, s.z[0] + oy));
         target.set(s.x[0], 0, s.z[0]);
         cam.setTarget(target);
       }

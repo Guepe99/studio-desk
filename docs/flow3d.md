@@ -6,7 +6,7 @@ numbers before and after each fix, measured on M001.
 
 Code: `web/js/scene3d/track.js` (smooth paths), `web/js/keeper3d.js` (keeper plan, pure),
 `web/js/keeper3d-rig.js` (keeper in the scene), small changes in `web/js/scene3d.js`,
-`web/js/scene3d/players.js` and `web/js/sample3d.js`.
+`web/js/scene3d/players.js`, `web/js/scene3d/camera.js` and `web/js/sample3d.js`.
 Tests: `node --test tests/web/flow3d.test.mjs`, the new checks in `tests/web/sample3d-shots.mjs`,
 and the measurement script `tests/web/flow3d-measure.mjs`.
 
@@ -74,16 +74,28 @@ Body: the feet leave the tracked spot by 2 m at most, the body lifts, lands, sta
 moment and blends back onto the tracking in 0.8 s. Each reaction is cut short by the keeper's next
 one.
 
+### In the data
+
+M001 has 8 shots that get a reaction: 3 catches and 1 low dive that are saves, 3 low dives and
+1 full dive that are goals. DEMO has 3: a low save at 240.9 s and two beaten dives (100.6 s and
+310.6 s). Neither match has a full-stretch save, so `GK_Dive_L` and `GK_Dive_R` are only seen
+beaten, and `GK_Tip` is never picked (no saved shot above 2 m).
+
 ### Real clips and the procedural stand-ins
 
 When `web/vendor/motion/clips.glb` and `clips.json` are loaded (feat/motion3d), the reactions play
 `GK_Dive_L`, `GK_Dive_R`, `GK_Low_L`, `GK_Low_R`, `GK_Catch` and `GK_Tip` on their root curve:
 
 - On load the rig plays each clip on a probe scaled like the players and measures the hands frame
-  by frame. Contact frame: for dives the first frame the hands are at 85% of their widest, for the
-  catch the first at 90% of their furthest forward in the first 1.2 s, for the tip the highest.
-- The run-up is time-warped so the contact frame lands on the contact time; after it the clip
-  plays at 1x for 0.9 s (the landing), holds, and blends back.
+  by frame. Contact frame: for the catch the first frame at 90% of the hands' furthest forward in
+  the first 1.2 s, for the tip the highest. For dives it depends on the shot: on the way down from
+  the hands' highest point (after the first 0.3 s, the set position) to their widest, the first
+  frame where the hands are no higher than the ball. A ball at knee height is met mid-flight, a
+  ball on the grass when the keeper is down.
+- The run-up is time-warped so the contact frame lands on the contact time, at most 2.5 times
+  faster. When even that does not fit (a shot from close range), the clip starts part way in and
+  its first frames blend in from the stance: the keeper still never moves before the shot. After
+  contact the clip plays at 1x for 0.9 s (the landing), holds, and blends back.
 - The root curve's sideways travel is scaled (0.4 to 1.5 times) so the hands reach the ball
   sideways; height and depth get a shift of at most 0.4 m and 0.6 m around contact.
 - After the animation step the arms are aimed at the contact point (two-bone aim, weighted in
@@ -134,6 +146,8 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
   5.0 and 5.5 m the code had from the unscaled file. Speeds were rescaled to match.
 - **Clip blending**: the locomotion weights ease towards their target with a 0.08 s time
   constant instead of jumping when the speed or the mode changes.
+- **Camera**: the broadcast camera's safe-area limit counts a lofted ball at 3 m at most and
+  never aims off the pitch (`web/js/scene3d/camera.js`, two lines).
 - **Frame pacing**: the clock now advances by the real time between frames, capped at 0.5 s (a
   hidden tab). Before it was capped at 0.1 s, so below 10 frames per second the match ran slow.
 
@@ -141,6 +155,63 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
 
 Measured by `tests/web/flow3d-measure.mjs` on the default clip of M001 (from 582.99 s, 12 s of
 the live part, 22 players, stepped at 60 Hz without drawing), then the live page for 15 s for
-the frame pacing. Software WebGL 1 on this server, low profile.
+the frame pacing. Software WebGL 1 on this server, low profile. Before is origin/main at 881caa9
+(feat/motion3d merged), after is this branch on top of it; same window, same script.
 
-NUMBERS
+| What | Before | After |
+|---|---|---|
+| Velocity jump between frames, p95 / p99 | 0.20 / 0.30 m/s | 0.084 / 0.148 m/s |
+| Acceleration of the drawn players, p50 / p95 / p99 | 0 / 12.0 / 18.0 m/s² | 1.0 / 5.0 / 8.9 m/s² |
+| Acceleration, max (driver offsets: kicks, tackles) | 68.9 m/s² | 63.4 m/s² |
+| Facing turn rate, max | 9935 °/s | 811 °/s |
+| Facing snaps over 15° in one frame | 15 | 0 |
+| Clip weight changes over 0.2 in one frame | 54 | 10 |
+| Planted foot slide per step, walk, median | 0.125 m | 0.119 m |
+| Planted foot slide per step, jog, median | 0.078 m | 0.042 m |
+| Planted foot slide per step, sprint, median | 0.065 m | 0.027 m |
+| Clock seconds per real second (live page) | 0.53 | 0.99 |
+| Camera acceleration, p99 | 12.7 m/s² | 12.7 m/s² |
+| LOD switches per player per minute | 0 | 0 |
+
+Read the table this way:
+
+- A median acceleration of 0 before is the straight-line interpolation: speed constant for 0.1 s,
+  then a jump. The p95 of 12 m/s² is those jumps. After, the speed changes a little every frame.
+- The p95 facing turn rate went up (173 to 202 °/s) because the body now turns through the angle
+  instead of jumping it; the maximum dropped from 9935 to 811 °/s.
+- The clock ran at half speed before: at about 6 frames per second on this server each frame is
+  167 ms, and the old cap of 0.1 s per frame threw the rest away. This is the biggest visible change
+  on a slow machine. The optimizer applied no steps in either run.
+- Not fixed: the foot slide p95 at a walk and in sprints (0.6 to 0.9 m) comes from starts, stops
+  and the stand-in modes (backpedal, side-step, jockey loops from feat/motion3d), where the clip's
+  stride does not match the ground speed. The remaining weight pops are those motion loops cutting
+  in when the mode changes. On this window the camera and the LOD were already smooth: the camera
+  follows a spring, and every player stays on the far mesh at broadcast distance. The camera was
+  not smooth on a lofted ball, below.
+
+The video window (M001 from 3350 s, 20 s, the low save at 3362.9 s) has a clearance that the
+tracking puts 16 m in the air at 3358 s. The broadcast camera's hard limit chased it into the
+safe area by panning its aim to the far side and beyond, so for 3.3 s the view showed only the
+stands. The limit now counts a lofted ball at 3 m at most and keeps the aim on the pitch:
+
+| What, video window | Before | After |
+|---|---|---|
+| Frames with the camera aimed off the pitch | 196 (3.3 s) | 0 |
+| Camera acceleration p95 / p99 | 664 / 3578 m/s² | 9.8 / 12.1 m/s² |
+| Camera acceleration max | 4412 m/s² | 521 m/s² |
+| Player acceleration p95 | 12.8 m/s² | 5.0 m/s² |
+| Facing snaps over 15° in one frame | 28 | 0 |
+| Clip weight changes over 0.2 in one frame | 52 | 12 |
+| Foot slide median, walk / jog / sprint | 0.155 / 0.115 / 0.040 m | 0.144 / 0.083 / 0.019 m |
+| Foot slide p95, jog / sprint | 0.37 / 0.14 m | 0.46 / 0.96 m |
+
+The worse sprint p95 in this window is the same open problem as above: in a start or a stop the
+sprint loop's stride and the ground speed disagree, and the faster distance-matched cycle makes
+those few steps slide further.
+
+The same checks run in `tests/web/sample3d-shots.mjs` on the DEMO window it opens (from 88 s).
+Their limits sit between origin/main and this branch there: acceleration p95 24.2 before, 12.9
+after (limit 16); jog slide median 0.111 before, 0.086 after (limit 0.1); facing snaps 35
+before, 0 after (limit 0); ball radius 0.17 before, 0.11 after; keeper reactions 0 of 1 before,
+1 of 1 after; hands to ball at the DEMO save 0.85 m with the keeper layer off, 0.22 m with it on
+(limit 0.5).

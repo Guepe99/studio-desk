@@ -46,7 +46,7 @@ export async function measure(seconds) {
   const stat = (arr) => ({ n: arr.length, p50: q(arr, 0.5), p95: q(arr, 0.95), p99: q(arr, 0.99), max: q(arr, 1) });
   const P = sc.players.map((p) => ({ p, prev: null, v: null, yaw: null, base: null, yr: null, feet: {}, lod: null, w: null }));
   const dv = [], dvRaw = [], acc = [], yawRate = [], yawJerk = [], snaps = [], camAcc = [], pops = [], popKeys = {}, slides = { walk: [], jog: [], sprint: [] }, slideSpeed = { walk: [], jog: [], sprint: [] };
-  let lodSwitches = 0, lodN = 0, lodFar = 0, cam = null, camV = null;
+  let lodSwitches = 0, lodN = 0, lodFar = 0, cam = null, camV = null, camOff = 0;
   const meshes = new Map(sc.players.map((p) => [p.i, p.holder.getChildMeshes(false).find((x) => x.hasLODLevels)]));
   for (let k = 0; k * dt < stop; k++) {
     const c = k * dt, ts = s.tl.at(c).ts;
@@ -55,6 +55,7 @@ export async function measure(seconds) {
     const camT = sc.cams.tv.getTarget().clone();
     if (cam) { const v = camT.subtract(cam).scale(HZ); if (camV) camAcc.push(v.subtract(camV).length() * HZ); camV = v; }
     cam = camT;
+    if (Math.abs(camT.x) > 52.6 || Math.abs(camT.z) > 34.1) camOff++;   // aiming at the stands
     sc.scene.activeCamera.getViewMatrix(true);
     for (const r of P) {
       const h = r.p.holder;
@@ -139,7 +140,7 @@ export async function measure(seconds) {
     yawRateDeg: stat(yawRate),
     yawAccelDeg: stat(yawJerk),
     yawSnaps: snaps.length, snapList: snaps.slice(0, 12),
-    cameraAccel: stat(camAcc),
+    cameraAccel: stat(camAcc), cameraOffPitchFrames: camOff,
     clipWeightPop: stat(pops), popsOver02: popKeys,
     lodSwitchesPerPlayerMinute: +(lodSwitches / players / (stop / 60)).toFixed(2),
     footSlide: Object.fromEntries(Object.entries(slides).map(([k, v]) => [k, stat(v)])),
