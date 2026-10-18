@@ -9,6 +9,8 @@ const STRINGS = {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "2nd half",
     audience: "Audience", analyst: "Analyst", casual: "Casual fan", language: "Language",
     p1: "1H", p2: "2H", loading: "Loading match", error: "Could not load match {m}. {e}",
+    minute: "Minute {n}, {p}", h1: "first half", h2: "second half", goal: "Goal",
+    nographic: "Some graphics could not load: {g}.",
   },
 };
 
@@ -18,19 +20,32 @@ const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
-const frame = $("#frame"), stage = $("#stage"), controls = $("#controls");
+const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, end = 0;
+// Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
+let portrait = false, scale = 1;
 
 function layout() {
+  // controls wrap: size them first, then give the frame the height that is left
+  const cw = Math.min(window.innerWidth - 32, 860);
+  controls.style.width = `${cw}px`;
   const ch = controls.offsetHeight + 24;
   const w = Math.max(160, window.innerWidth - 32), h = Math.max(90, window.innerHeight - ch);
   const s = Math.min(w / STAGE_W, h / STAGE_H);
   frame.style.width = `${Math.round(STAGE_W * s)}px`;
   frame.style.height = `${Math.round(STAGE_H * s)}px`;
   stage.style.transform = `scale(${s})`;
-  controls.style.width = `${Math.max(Math.round(STAGE_W * s), Math.min(window.innerWidth - 32, 860))}px`;
+  controls.style.width = `${Math.max(Math.round(STAGE_W * s), cw)}px`;
   pitch.resize(s * Math.min(window.devicePixelRatio || 1, 2));
+  scale = s;
+  portrait = window.innerHeight > window.innerWidth;
+  document.body.classList.toggle("portrait", portrait);
+  if (portrait) {
+    deck.style.width = frame.style.width;
+    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s) - controls.offsetHeight - 36)}px`;
+  }
+  state.seeked = true; // graphics are rebuilt for the new size
 }
 
 function applyStrings() {
@@ -79,6 +94,7 @@ function drawScorebug() {
   $(".sb-min").textContent = `${c.minute}'`;
   $(".sb-period").textContent = t(c.period === 1 ? "p1" : "p2");
   $("#time").textContent = `${c.minute}'`;
+  $("#seek-range").setAttribute("aria-valuetext", t("minute").replace("{n}", c.minute).replace("{p}", t(c.period === 1 ? "h1" : "h2")));
 }
 
 function buildSeekMarks() {
@@ -92,10 +108,16 @@ function buildSeekMarks() {
     }
   }
   html += `<div class="half" style="left:${pct(match.meta.period1_s)}"></div>`;
-  for (const [ts, team] of match.goals) {
-    html += `<div class="goal" title="Goal" style="left:${pct(ts)};background:${match.teams[team].color_primary}"></div>`;
-  }
   marks.innerHTML = html;
+  // team data goes through the DOM, never into markup; a goal of an unknown team gets no colour
+  for (const f of match.goals) {
+    const g = document.createElement("div");
+    g.className = "goal";
+    g.title = t("goal");
+    g.style.left = pct(f.ts);
+    g.style.background = match.teams[f.team_id]?.color_primary ?? "";
+    marks.append(g);
+  }
   const range = $("#seek-range");
   range.max = String(end);
 }
@@ -111,7 +133,7 @@ function tick(now) {
   // past the last tracking frame (full-time recap) the picture holds the last frame
   pitch.draw(match, Math.min(state.ts, match.duration));
   drawScorebug();
-  host.sync(state.ts, state.seeked);
+  host.sync(state.ts, state.seeked, state.speed);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -133,6 +155,15 @@ function wireControls() {
   }
   $("#half2").addEventListener("click", () => seek(match.meta.period1_s));
   $("#seek-range").addEventListener("input", (e) => seek(Number(e.target.value)));
+  // the range keeps a fine step for dragging; keys move by useful match time instead
+  const KEY_STEP = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 60, PageDown: -60 };
+  $("#seek-range").addEventListener("keydown", (e) => {
+    const d = KEY_STEP[e.key];
+    if (d === undefined && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    seek(e.key === "Home" ? 0 : e.key === "End" ? end : state.ts + d);
+    e.target.value = String(state.ts);
+  });
   $("#lang").addEventListener("change", (e) => { state.lang = e.target.value; applyStrings(); lastBug = ""; refreshCues(); });
   // Space toggles play anywhere; keyup is swallowed too so a focused button does not click as well.
   window.addEventListener("keydown", (e) => {
@@ -170,9 +201,18 @@ async function main() {
       const [x, y] = toStage(p[0], p[1]);
       return { x, y, visible: true };
     },
-    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams }),
+    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams, v_compact: portrait }),
+    // the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
+    compact: () => (portrait ? { deck, magnify: Math.max(1, 11.5 / (26 * scale)) } : null),
   });
-  await Promise.all(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
+  // a graphic that fails to register is left out (its cues are skipped) and named on screen
+  const reg = await Promise.allSettled(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
+  const missing = GRAPHICS.filter((g, i) => reg[i].status === "rejected");
+  if (missing.length) {
+    $("#notice").textContent = t("nographic").replace("{g}", missing.join(", "));
+    $("#notice").hidden = false;
+    layout();
+  }
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();

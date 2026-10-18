@@ -15,7 +15,12 @@ function luminance(hex) {
   });
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
-export const textOn = (hex) => (luminance(hex) > 0.35 ? "#0e1a3d" : "#ffffff");
+// Text colour for a fill: white or the house ink, whichever has the higher WCAG contrast ratio.
+const INK = "#0e1a3d", L_INK = luminance(INK);
+export const textOn = (hex) => {
+  const l = luminance(hex);
+  return (l + 0.05) / (L_INK + 0.05) > 1.05 / (l + 0.05) ? INK : "#ffffff";
+};
 
 export class Pitch {
   constructor(canvas) {

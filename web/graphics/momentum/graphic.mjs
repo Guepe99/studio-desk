@@ -18,7 +18,8 @@ export default class Momentum extends SdGraphic {
 .away .bar { border-radius: 0 0 3px 3px; transform-origin: 50% 0; }
 .bar.now { opacity: 1; box-shadow: 0 0 0 2px #fff; }
 .mid { height: 3px; background: #fff; margin-left: 112px; opacity: .85; }
-.foot { display: flex; justify-content: space-between; margin: 12px 0 0 112px; font-weight: 500; font-size: 22px; color: #a8b6d8; }`;
+.foot { display: flex; justify-content: space-between; margin: 12px 0 0 112px; font-weight: 500; font-size: 22px; color: #a8b6d8; }
+.compact .foot { font-size: 28px; }`;
   }
 
   html() {

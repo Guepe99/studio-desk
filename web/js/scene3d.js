@@ -2,6 +2,7 @@
 // A daylight stadium lit by a stadium HDRI and one sun, the broadcast camera of camera.js,
 // Quaternius mannequins driven by tracking.f32 with locomotion and event-driven actions.
 // The parts live in web/js/scene3d/; docs/scene3d-research.md explains the choices.
+// Ball handling (touches, first touch, kicks, ball speed and spin) comes from ball3d-rig.js.
 //
 // World axes: X = contract x - 52.5 (along the pitch), Z = contract y - 34 (across), Y up.
 // The TV camera stands on the y < 0 side, so x grows to the right as on the 2D pitch.
@@ -11,8 +12,9 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, resolveRoot } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
+import { BallRig, ballTexture } from "./ball3d-rig.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -45,8 +47,9 @@ export class Scene3D {
     return s;
   }
 
-  constructor(canvas, match, { capture = false, entities, goalEnd = 1 }) {
+  constructor(canvas, match, { capture = false, entities, goalEnd = 1, span = [0, match.duration] }) {
     this.canvas = canvas;
+    this.span = span;   // match time the clip shows, for the ball plan
     this.match = match;
     this.goalEnd = goalEnd;
     this.entities = entities;
@@ -147,7 +150,9 @@ export class Scene3D {
     this.ball = B.MeshBuilder.CreateSphere("ball", { diameter: BALL_R * 2, segments: 12 }, scene);
     const m = flatMat(scene, "ballMat", new B.Color3(1, 1, 1), new B.Color3(0.1, 0.1, 0.1));
     m.roughness = 0.45;
+    m.albedoTexture = ballTexture(scene);
     this.ball.material = m;
+    this.ball.rotationQuaternion = B.Quaternion.Identity();
     this.light.addCaster(this.ball);
     this.ballShadow = B.MeshBuilder.CreateGround("ballShadow", { width: BALL_R * 3, height: BALL_R * 3 }, scene);
     this.ballShadow.material = this._blobMat("ballShadowMat");
@@ -187,6 +192,7 @@ export class Scene3D {
     const probe = container.instantiateModelsToScene((n) => `probe-${n}`, false, { doNotInstantiate: true });
     const { min, max } = probe.rootNodes[0].getHierarchyBoundingVectors(true);
     const scale = PLAYER_H / (max.y - min.y);
+    this.rig = new BallRig(scene, this.match, this.span, probe.rootNodes[0], scale, BALL_R);
     probe.rootNodes.forEach((n) => n.dispose());
     probe.animationGroups.forEach((g) => g.dispose());
     probe.skeletons.forEach((s) => s.dispose());
@@ -207,6 +213,7 @@ export class Scene3D {
         this.light.addCaster(m);
       }
       const anim = setupAnimations(inst);
+      this.rig.addPlayer(i, root);
       this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {} });
     }
     // the container is not disposed: the clones share its geometry
@@ -225,10 +232,11 @@ export class Scene3D {
   update(view, dt) {
     const { match } = this;
     const ts = Math.min(view.ts, match.duration);
-    const b = match.at(0, ts);
+    const bp = this.rig.ball(ts), b = bp && [bp.x, bp.y, bp.h];
     if (b) {
-      const z = Math.max(0, b[2]);
+      const z = b[2];
       this.ball.position.copyFrom(P(b[0], b[1], z + BALL_R));
+      this.ball.rotationQuaternion.set(...bp.q);
       this.ballShadow.position.copyFrom(P(b[0], b[1], 0.03));
       this.ballShadow.material.alpha = 1 / (1 + z * 0.6);
     }
@@ -240,26 +248,25 @@ export class Scene3D {
       const now = match.at(p.i, ts);
       if (!now) { p.holder.setEnabled(false); B.Matrix.ScalingToRef(0, 0, 0, m); m.copyToArray(this.shadowBuf, k * 16); return; }
       p.holder.setEnabled(true);
+      // shown position: tracking plus the ball-handling offset that puts the foot on the ball
+      const at = (t) => { const q = match.at(p.i, t), o = this.rig.pose(p.i, t); return q && o ? [q[0] + o.dx, q[1] + o.dy] : q; };
+      const pose = this.rig.pose(p.i, ts), shown = at(ts);
       // velocity over +-0.2 s, which smooths the 10 fps steps of the tracking data
-      const a = match.at(p.i, Math.max(0, ts - 0.2)) ?? now, c = match.at(p.i, Math.min(match.duration, ts + 0.2)) ?? now;
+      const a = at(Math.max(0, ts - 0.2)) ?? shown, c = at(Math.min(match.duration, ts + 0.2)) ?? shown;
       const vx = (c[0] - a[0]) / 0.4, vy = (c[1] - a[1]) / 0.4, v = Math.hypot(vx, vy);
-      p.holder.position.copyFrom(P(now[0], now[1], 0));
+      p.holder.position.copyFrom(P(shown[0], shown[1], 0));
       // face the run; when nearly still, face the ball
       let want = p.yaw;
       if (v > 0.7) want = Math.atan2(vx, vy);
-      else if (b) want = Math.atan2(b[0] - now[0], b[1] - now[1]);
+      else if (b) want = Math.atan2(b[0] - shown[0], b[1] - shown[1]);
       if (p.yaw === null || dt === 0) p.yaw = want;
       else p.yaw += angleDiff(p.yaw, want) * (1 - Math.exp(-dt * 7));
-      p.holder.rotation.y = p.yaw;
-      // locomotion and actions; a slide or a dive goes towards the point of the event
+      // one place decides facing and legs: run or ball facing, the ball rig around touches,
+      // a full-body action (slide, dive) over both
       const act = animatePlayer(p, v, ts, dt, this.schedule);
-      if (act && (act.act.kind === "slide" || act.act.kind === "dive")) {
-        const [ex, ey] = act.act.at;
-        if (Math.hypot(ex - now[0], ey - now[1]) > 0.5) {
-          const turn = angleDiff(p.yaw, Math.atan2(ex - now[0], ey - now[1]));
-          p.holder.rotation.y = p.yaw + turn * act.weight;
-        }
-      }
+      const root = resolveRoot(p.yaw, pose, act, shown);
+      p.holder.rotation.y = root.yaw;
+      this.rig.setLeg(p.i, root.leg);
       B.Matrix.TranslationToRef(p.holder.position.x, 0.02, p.holder.position.z, m);
       m.copyToArray(this.shadowBuf, k * 16);
     });
@@ -275,8 +282,9 @@ export class Scene3D {
   project(entityIndex, ts) {
     const p = this.match.at(entityIndex, Math.min(ts, this.match.duration));
     if (!p) return { x: 0, y: 0, visible: false };
+    const o = this.rig.pose(entityIndex, Math.min(ts, this.match.duration));
     const cam = this.scene.activeCamera;
-    const world = P(p[0], p[1], 0);
+    const world = P(p[0] + (o?.dx ?? 0), p[1] + (o?.dy ?? 0), 0);
     const w = this.engine.getRenderWidth(), h = this.engine.getRenderHeight();
     const view = cam.getViewMatrix();
     if (B.Vector3.TransformCoordinates(world, view).z <= 0) return { x: 0, y: 0, visible: false };

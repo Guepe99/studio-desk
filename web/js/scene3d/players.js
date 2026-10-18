@@ -40,8 +40,9 @@ const length = (a) => a.phases.reduce((s, [, f, t]) => s + t - f, 0);
 
 // Per player, the actions the events call for: [{kind, start, end, at}], sorted, never
 // overlapping (a later action cuts the earlier one short). `at` is the event's pitch point.
+// goals: the `score` facts ({ts, team_id}); the scorer is the shooter of that team at that time.
 export function scheduleActions(events, goals) {
-  const goalTs = new Set(goals.map((g) => g[0]));
+  const scored = (e) => goals.some((g) => g.team_id === e.team_id && Math.abs(g.ts - e.ts) < 0.5);
   const out = {};
   const add = (pid, kind, ts, at) => {
     const a = ACTIONS[kind], start = ts - a.contact;
@@ -53,7 +54,7 @@ export function scheduleActions(events, goals) {
     if (e.type_name === "tackle" || e.type_name === "foul") add(e.player_id, "slide", e.ts, at);
     else if (e.type_name === "keeper_save") add(e.player_id, "dive", e.ts, at);
     else if (e.bodypart_name === "head") add(e.player_id, "header", e.ts, at);
-    if (goalTs.has(e.ts) && e.result_name === "success" && e.type_name !== "keeper_save") add(e.player_id, "celebrate", e.ts, at);
+    if (e.type_name.startsWith("shot") && e.result_name === "success" && scored(e)) add(e.player_id, "celebrate", e.ts, at);
   }
   for (const list of Object.values(out)) {
     list.sort((a, b) => a.start - b.start);
@@ -127,4 +128,21 @@ export function animatePlayer(p, v, ts, dt, schedule) {
     p.aw[name] = wa;
   }
   return act;
+}
+
+const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+
+// The one place that decides a player's facing and leg pose, so the clips and the ball rig of
+// ball3d-rig.js never fight over the root. Position is always tracking + rig offset (`shown`).
+// yaw: the smoothed run or ball facing; around a touch the rig turns the body (pose.yaw with
+// weight pose.yawW); a full-body action (slide, dive) turns it towards its event point and
+// switches the rig's leg pose off while it plays, since the clip moves the legs itself.
+export function resolveRoot(yaw, pose, act, shown) {
+  let out = pose?.yawW > 0 ? yaw + angleDiff(yaw, pose.yaw) * pose.yawW : yaw;
+  const full = act && !act.upper ? act.weight : 0;
+  if (full > 0 && (act.act.kind === "slide" || act.act.kind === "dive")) {
+    const dx = act.act.at[0] - shown[0], dy = act.act.at[1] - shown[1];
+    if (Math.hypot(dx, dy) > 0.5) out += angleDiff(out, Math.atan2(dx, dy)) * full;
+  }
+  return { yaw: out, leg: full > 0 ? null : pose?.leg ?? null };
 }

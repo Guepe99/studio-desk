@@ -8,9 +8,11 @@
 //
 // Vendor load() params (OGraf "v_" fields): v_showFactIds (show the evidence fact ids),
 // v_players {player_id: {name, shirt, team_short, team_name, color, text}},
-// v_teams {home: {short, name, color}, away: {...}}.
+// v_teams {home: {short, name, color}, away: {...}}, v_compact (a phone in portrait: the graphic is
+// drawn small, so the smallest type is raised to 28 px).
 
 export const EASE = "cubic-bezier(.2,.8,.2,1)";
+const REDUCED = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
 
 const BASE_CSS = `
 :host { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -22,6 +24,7 @@ const BASE_CSS = `
 .facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .facts span { font-weight: 500; font-size: 18px; letter-spacing: .03em; color: #d6e2ff;
   background: rgba(14,26,61,.88); border: 1px solid #3d5296; border-radius: 3px; padding: 4px 7px 3px; }
+.compact .kicker, .compact .facts span { font-size: 28px; }
 `;
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -61,8 +64,10 @@ export class SdGraphic extends HTMLElement {
     this.showFacts = !!params.v_showFactIds;
     this.players = params.v_players ?? {};
     this.teams = params.v_teams ?? {};
+    this.resolution = params.renderCharacteristics?.resolution ?? { width: 1920, height: 1080 };
     this.shadowRoot.innerHTML = `<style>${BASE_CSS}${this.css()}</style><div class="stage">${this.html()}</div>`;
     this.stage = this.shadowRoot.querySelector(".stage");
+    this.stage.classList.toggle("compact", !!params.v_compact);
     const w = this.clientWidth || params.renderCharacteristics?.resolution?.width || 1920;
     this.stage.style.transform = `scale(${w / 1920})`;
     this.render();
@@ -149,7 +154,8 @@ export class SdGraphic extends HTMLElement {
       this._anims = list.map(([el, kf, t]) => el.animate(kf, { fill: "both", easing: EASE, ...t }));
       this._phase = phase;
     }
-    if (skip) this._anims.forEach((a) => a.finish());
+    // reduced motion: jump to the end state (at = 0 is the hidden start of a graphic, kept as is)
+    if (skip || (REDUCED?.matches && at !== 0)) this._anims.forEach((a) => a.finish());
     else if (at !== null) this._anims.forEach((a) => { a.pause(); a.currentTime = Math.max(0, at); });
     else return Promise.all(this._anims.map((a) => a.finished.catch(() => {})));
     return Promise.resolve();

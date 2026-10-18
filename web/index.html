@@ -12,7 +12,7 @@
 </head>
 <body>
   <main id="app">
-    <div id="frame" aria-label="Match broadcast">
+    <div id="frame" role="region" aria-label="Match broadcast">
       <div id="stage">
         <canvas id="pitch"></canvas>
         <div id="scorebug" aria-live="off">
@@ -25,6 +25,7 @@
         <div id="status" role="status"></div>
       </div>
     </div>
+    <div id="deck"></div>
 
     <div id="controls">
       <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play">
@@ -49,6 +50,7 @@
       <label class="lang"><span class="sr" data-i18n="language">Language</span>
         <select id="lang"><option value="en">EN</option></select>
       </label>
+      <p id="notice" role="alert" hidden></p>
     </div>
   </main>
 </body>

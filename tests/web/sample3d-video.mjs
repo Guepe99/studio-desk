@@ -1,8 +1,8 @@
-// Renders the 20 s 3D sample to out/shots/sample3d.mp4: the page clock is driven frame by frame
+// Renders the 20 s 3D sample to out/shots/<name>.mp4 (default sample3d, on DEMO): the page clock is driven frame by frame
 // (window.__setTime, 25 fps), one screenshot per frame, then ffmpeg (libx264, yuv420p, crf 23).
 // The frames are deleted afterwards. About 5 minutes with software WebGL, so run it detached:
 //
-//   scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-video.mjs
+//   scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-video.mjs [match] [name]
 import { createRequire } from "node:module";
 import { mkdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -15,9 +15,10 @@ const { chromium } = require("playwright");
 
 const FPS = 25, SECONDS = 20;
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
-const url = new URL("sample3d.html?match=DEMO&capture=1&view=3d", base).href;
+const match = process.argv[3] ?? "DEMO", name = process.argv[4] ?? "sample3d";   // [match] [output name]
+const url = new URL(`sample3d.html?match=${match}&capture=1&view=3d`, base).href;
 const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out");
-const frames = `${out}/sample3d-frames`;
+const frames = `${out}/${name}-frames`;
 mkdirSync(frames, { recursive: true });
 mkdirSync(`${out}/shots`, { recursive: true });
 
@@ -41,6 +42,6 @@ try {
 }
 if (errors.length) { console.log(errors.join("\n")); process.exit(1); }
 execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", `${frames}/frame%04d.jpg`,
-  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", "-s", "1280x720", `${out}/shots/sample3d.mp4`], { stdio: "inherit" });
+  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", "-s", "1280x720", `${out}/shots/${name}.mp4`], { stdio: "inherit" });
 rmSync(frames, { recursive: true, force: true });
-console.log(`sample3d.mp4 written (${FPS * SECONDS} frames)`);
+console.log(`${name}.mp4 written (${FPS * SECONDS} frames)`);

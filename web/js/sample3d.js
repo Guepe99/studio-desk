@@ -1,5 +1,5 @@
 // 3D sample page: 20 seconds of the match on one clock, as a 3D broadcast and on the 2D pitch.
-// ?match=<id> (default DEMO), ?from=<ts> start of the 20 s (default: 12 s before the first goal).
+// ?match=<id> (default M001, the match shipped in the image), ?from=<ts> start of the 20 s (default: 12 s before the first goal).
 // If a goal falls in the stretch, the last seconds are its replay from behind the goal.
 import { loadMatch } from "./match.js";
 import { Pitch, STAGE_W, STAGE_H, textOn } from "./pitch.js";
@@ -15,7 +15,7 @@ const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
-const matchId = (params.get("match") || "DEMO").replace(/[^A-Za-z0-9_-]/g, "");
+const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 const capture = params.has("capture");
 const solo = params.get("view") === "3d";   // the 3D frame alone, filling the window (video capture)
 
@@ -33,6 +33,12 @@ export function makeTimeline(goals, duration, fromParam) {
     from, goal, cuts: [0, cut],
     at: (c) => (c < cut ? { ts: from + c, replay: false, live: from + c } : { ts: r0 + (c - cut), replay: true, live: from + cut }),
   };
+}
+
+// Match time [first, last] the clip shows: the live stretch and the replay, which starts before it.
+export function clipSpan(tl) {
+  const starts = tl.cuts.map((c) => tl.at(c).ts);
+  return [Math.min(...starts), Math.max(tl.from + LOOP_S, tl.at(LOOP_S - 0.001).ts)];
 }
 
 const frame = $("#frame"), stage = $("#stage"), side = $("#side"), frame2d = $("#frame2d");
@@ -130,10 +136,11 @@ async function main() {
     return;
   }
   const fromParam = params.has("from") ? Number(params.get("from")) : NaN;
-  tl = makeTimeline(match.goals.map((g) => g[0]), match.duration, fromParam);
+  tl = makeTimeline(match.goals.map((g) => g.ts), match.duration, fromParam);
   // players who are on the pitch at some point of the stretch (live part and replay)
-  const f0 = Math.max(0, Math.floor((Math.min(tl.from, tl.at(LOOP_S - 0.01).ts) - 1) * match.meta.fps));
-  const f1 = Math.min(match.meta.frames - 1, Math.ceil((tl.from + LOOP_S + 1) * match.meta.fps));
+  const [s0, s1] = clipSpan(tl);
+  const f0 = Math.max(0, Math.floor((s0 - 1) * match.meta.fps));
+  const f1 = Math.min(match.meta.frames - 1, Math.ceil((s1 + 1) * match.meta.fps));
   const entities = [];
   for (let i = 1; i < match.n; i++) {
     for (let f = f0; f <= f1; f += 5) if (!Number.isNaN(match.pos[(f * match.n + i) * 3])) { entities.push(i); break; }
@@ -142,7 +149,7 @@ async function main() {
   const gb = tl.goal !== null ? match.at(0, tl.goal + 0.7) : null;
   const goalEnd = gb && gb[0] < 52.5 ? -1 : 1;
   try {
-    scene = await Scene3D.create($("#view3d"), match, { capture, entities, goalEnd });
+    scene = await Scene3D.create($("#view3d"), match, { capture, entities, goalEnd, span: [s0, s1] });
   } catch (err) {
     $("#status").textContent = `3D view could not start. ${err.message}`;
     throw err;
@@ -166,7 +173,9 @@ async function main() {
 
   $("#play").addEventListener("click", () => setPlaying(!state.playing));
   window.addEventListener("resize", layout);
-  window.addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); if (!e.repeat) setPlaying(!state.playing); } });
+  // Space toggles play anywhere; keyup is swallowed too so a focused button does not click as well.
+  window.addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); if (!e.repeat) setPlaying(!state.playing); } }, true);
+  window.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); }, true);
 
   // Deterministic hook for screenshots and the video: draw clock second c and wait until the
   // graphics have caught up.
