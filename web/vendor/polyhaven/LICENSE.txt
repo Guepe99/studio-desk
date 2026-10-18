@@ -1,0 +1,12 @@
+orlando_stadium_256.env is derived from the HDRI "Orlando Stadium" by Poly Haven
+(photography Dimitrios Savva, processing Greg Zaal), https://polyhaven.com/a/orlando_stadium,
+1k .hdr downloaded on 18 Oct 2026 from
+https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/orlando_stadium_1k.hdr
+
+Converted to a prefiltered Babylon .env (256 px cube, spherical harmonics, PNG faces) with
+tests/web/hdr-to-env.mjs (Babylon.js 9.29.0 HDRCubeTexture and EnvironmentTextureTools).
+
+Licence: CC0 1.0 Universal (public domain dedication), https://polyhaven.com/license
+"Our assets are all licensed as CC0, which is effectively Public Domain even in jurisdictions
+that do not support the Public Domain. [...] You can use our assets for any purpose [...]
+You can redistribute them" (polyhaven.com/license, read on 18 Oct 2026).

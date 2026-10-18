@@ -1,0 +1,12 @@
+grass005_detail.jpg is derived from "Grass 005" by ambientCG, https://ambientcg.com/view?id=Grass005
+(Grass005_1K-JPG.zip, downloaded on 18 Oct 2026). Only the colour map was used: converted to
+grey, scaled to 512 x 512, low frequencies removed (Gaussian high-pass, sigma about 20 px, with
+wrap-around so it still tiles) and stretched to mean 0.5, standard deviation 0.12.
+
+Licence: CC0 1.0 Universal, https://docs.ambientcg.com/license/
+"All ambientCG assets are provided under the Creative Commons CC0 1.0 Universal License. [...]
+You can copy, modify, distribute and perform the assets, even for commercial purposes, all
+without asking permission." (read on 18 Oct 2026)
+
+Created using Grass 005 from ambientCG.com, licensed under the Creative Commons CC0 1.0
+Universal License.

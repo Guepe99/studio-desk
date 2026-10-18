@@ -8,6 +8,8 @@
 #
 # The optional script (default smoke.mjs, in tests/web/) gets the page base URL as its first
 # argument. Those scripts get WebGL 1 from Mesa's software Vulkan driver (tests/web/webgl).
+# WEBGL=2 runs Playwright's own Chromium inside the official Playwright image instead, where
+# SwiftShader gives WebGL 2 with 4x MSAA: the 3D scene's high quality profile is tested there.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
@@ -33,13 +35,18 @@ if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
   IMAGE=foto-chromium:1
   GL=(--disable-gpu)
+  BIN=chromium-browser
   if [ "$WEBGL" = 1 ]; then
     IMAGE=sd-chromium-webgl:1
     docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -q -t "$IMAGE" "$ROOT/tests/web/webgl" >/dev/null
     GL=(--use-gl=angle --use-angle=vulkan --enable-unsafe-swiftshader --ignore-gpu-blocklist)
+  elif [ "$WEBGL" = 2 ]; then
+    IMAGE=mcr.microsoft.com/playwright:v1.48.0-jammy
+    BIN=/ms-playwright/chromium-1140/chrome-linux/chrome
+    GL=(--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist)
   fi
   docker run -d --rm --name "$CONT" --shm-size=1g --network host "$IMAGE" \
-    chromium-browser --headless --no-sandbox --hide-scrollbars "${GL[@]}" \
+    "$BIN" --headless --no-sandbox --hide-scrollbars "${GL[@]}" \
     --remote-debugging-address=127.0.0.1 --remote-debugging-port="$CDPPORT" about:blank >/dev/null
   for _ in $(seq 60); do curl -sf -o /dev/null "http://127.0.0.1:$CDPPORT/json/version" && break; sleep 0.5; done
   export CDP_URL="http://127.0.0.1:$CDPPORT"
