@@ -21,13 +21,20 @@ const PALETTE = 8;     // texels of the body's region palette (scripts/build_foo
 // the parts added here: 4 hair, 5 face lines, 6 scarf, 7 scarf stripe
 const REGION = [0, 1, 2, 2, 3, 0, 0, 5];   // skin, shirt, shorts, socks, boots, forearms, hands, eyes
 export const HEAD_SCALE = 1.3;   // anime proportions: a bigger head (and hair) on the same body
-// anime hair colours: black, dark brown, chestnut, blonde, silver, pink, sky blue, teal, violet, orange, green, red
-export const HAIR = ["#1d1a26", "#4a2c1d", "#8a4a26", "#f2d36b", "#d9dde8", "#ff8fbf", "#5fb6ff",
-  "#27c2b0", "#9b6bff", "#ff9a3c", "#66d05a", "#e8443a"];
+// anime hair colours, as football anime crowds have them: mostly black, brown, blonde and red,
+// one head in ten a vivid colour. HAIR_SHARE: the share of each, in the order of HAIR.
+export const HAIR = ["#1d1a26", "#3d2619", "#6e3d22", "#ecc766", "#b8452c",
+  "#ff8fbf", "#5fb6ff", "#27c2b0", "#9b6bff", "#d9dde8"];
+export const HAIR_SHARE = [0.34, 0.24, 0.14, 0.12, 0.06, 0.02, 0.02, 0.02, 0.02, 0.02];
+export function pickHair(r) {
+  let k = 0;
+  for (let acc = HAIR_SHARE[0]; r >= acc && k < HAIR.length - 1; acc += HAIR_SHARE[++k]);
+  return k;
+}
 
 // Reaction to one goal, seconds from the goal: rise after `delay`, cheer, sit after `stay`.
 export const RISE_S = 0.5, SIT_S = 0.7;
-export const REACT = { delay: [0.2, 1.6], stay: [7, 9.3] };   // seated again by goal + 10 s
+export const REACT = { delay: [0.2, 1.6], stay: [6.3, 7.7] };   // seated again by goal + 10 s at the latest (1.6 + 7.7 + SIT_S)
 
 // Pose of a spectator at ts. person: {fan, end, delay, stay, cheer}; goals: [{ts, side}].
 // Returns {clip, t} (t: seconds into the clip, or a 0..1 blend for "rise"), or null when seated.
@@ -190,7 +197,8 @@ function animeParts(mesh, skeleton, rnd) {
   for (let i = 0; i < sp.length / 3; i++) {
     const x = sp[3 * i], y = sp[3 * i + 1], z = sp[3 * i + 2];
     const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-    if (!spike.has(key)) spike.set(key, 1 + (rnd() < 0.5 ? 0.45 * rnd() : 0));
+    // anime hair: sharp spikes on the crown, a tighter mass lower down
+    if (!spike.has(key)) spike.set(key, 1 + (y > -0.2 ? (rnd() < 0.55 ? 0.3 + 0.4 * rnd() : 0) : 0.15 * rnd()));
     let k = spike.get(key);
     // sphere axes: x to the side, z to the front, y up; the face stays free under the fringe
     let f = z * 1.12, u = y * 1.05 + 0.1, sd = x * 1.18;
@@ -202,7 +210,13 @@ function animeParts(mesh, skeleton, rnd) {
   for (const i of si) idx.push(base + i);
   sph.dispose();
 
-  // face: two tall eyes and a mouth, a hair's breadth in front of the face
+  // face: a round anime face plate over the body's narrow one, curved back at the sides, then two
+  // tall eyes and a mouth a hair's breadth in front of it
+  const plate = [], fu = -r * 0.18;
+  const pv = (x, y) => { plate.push([pos.length / 3, x]); return add(at(H.c, r * (1 - 0.3 * x * x), x * r * 0.72, fu + y * r * 0.72), head, head, 0, 0); };
+  const fc = pv(0, 0), ring = [];
+  for (let j = 0; j < 12; j++) ring.push(pv(Math.cos(j * Math.PI / 6), Math.sin(j * Math.PI / 6)));
+  for (let j = 0; j < 12; j++) idx.push(fc, ring[j], ring[(j + 1) % 12]);
   const quad = (cs, cu, w, h, reg) => {
     const fz = r * 1.04;
     const a = add(at(H.c, fz, cs - w / 2, cu - h / 2), head, head, 0, reg);
@@ -235,6 +249,10 @@ function animeParts(mesh, skeleton, rnd) {
   for (let i = 0; i < 3 * nv0; i++) agree += n0[i] * normals[i];
   if (agree < 0) for (let i = 0; i < normals.length; i++) normals[i] = -normals[i];
   for (let i = 0; i < 3 * nv0; i++) normals[i] = n0[i];
+  for (const [i, x] of plate) {   // the plate faces forward whatever its winding
+    const n = [front[0] + side[0] * x * 0.6, 0.15, front[2] + side[2] * x * 0.6], l = Math.hypot(...n);
+    for (let a = 0; a < 3; a++) normals[3 * i + a] = n[a] / l;
+  }
   for (const kind of mesh.getVerticesDataKinds()) {
     if ([K.PositionKind, K.NormalKind, K.MatricesIndicesKind, K.MatricesWeightsKind].includes(kind)) continue;
     const d = mesh.getVerticesData(kind), out = new Float32Array(nv * (d.length / nv0));
