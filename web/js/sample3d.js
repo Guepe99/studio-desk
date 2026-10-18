@@ -6,6 +6,7 @@ import { Pitch, STAGE_W, STAGE_H, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Scene3D } from "./scene3d.js";
 import { AwarenessRig } from "./awareness-rig.js";
+import { loadMotion } from "./scene3d/players.js";
 
 const LOOP_S = 20;          // clock seconds before the loop restarts
 const REPLAY_MIN_S = 5.5;   // replay length when the goal sits at the default place
@@ -151,6 +152,8 @@ async function main() {
   const goalEnd = gb && gb[0] < 52.5 ? -1 : 1;
   try {
     scene = await Scene3D.create($("#view3d"), match, { capture, entities, goalEnd, span: [s0, s1] });
+    // retargeted motion clips (docs/motion3d.md); ?motion=procedural keeps the built stand-ins
+    if (params.get("motion") !== "procedural") await loadMotion(scene).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
     // players who watch the ball and react to goals, near misses and fouls; ?aware=0 turns it off
     new AwarenessRig(scene).enabled = params.get("aware") !== "0";
   } catch (err) {

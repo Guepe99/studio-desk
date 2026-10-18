@@ -1,0 +1,176 @@
+{
+ "model": "Kimodo-SOMA-RP-v1, huggingface.co/spaces/nvidia/Kimodo, generated 18 Oct 2026",
+ "licence": "NVIDIA Open Model License; NVIDIA claims no ownership of outputs (docs/motion3d.md)",
+ "clips": {
+  "M_celeb_arms_wide": {
+   "source": "celeb_arms_wide",
+   "prompt": "A person celebrates a goal by running forward with both arms spread wide out to the sides like wings.",
+   "seconds": 4.0,
+   "seed": 42
+  },
+  "M_celeb_jump_fist": {
+   "source": "celeb_jump_fist",
+   "prompt": "A person jumps up in the air and pumps their right fist in celebration.",
+   "seconds": 3.0,
+   "seed": 42,
+   "full": true
+  },
+  "M_celeb_knee_slide": {
+   "source": "celeb_knee_slide",
+   "prompt": "A person runs forward, drops onto both knees and slides forward with both arms raised in celebration.",
+   "seconds": 4.0,
+   "seed": 42,
+   "full": true
+  },
+  "M_celeb_arms_up": {
+   "source": "celeb_arms_up",
+   "prompt": "A person stands and raises both arms high above their head in triumph, celebrating.",
+   "seconds": 3.0,
+   "seed": 7
+  },
+  "M_join_hug": {
+   "source": "join_hug",
+   "prompt": "A person walks forward and hugs someone in front of them, patting their back.",
+   "seconds": 3.0,
+   "seed": 42
+  },
+  "M_join_high_five": {
+   "source": "join_high_five",
+   "prompt": "A person raises their right hand and gives a high five to someone in front of them.",
+   "seconds": 2.0,
+   "seed": 42
+  },
+  "M_dejected_hips": {
+   "source": "dejected_hips",
+   "prompt": "A tired person stands with both hands on their hips, head down, shaking their head slowly.",
+   "seconds": 4.0,
+   "seed": 42
+  },
+  "M_crouch_head_down": {
+   "source": "crouch_head_down",
+   "prompt": "A disappointed person crouches down with their head lowered and their hands on their knees.",
+   "seconds": 3.0,
+   "seed": 42,
+   "full": true
+  },
+  "M_hands_on_head": {
+   "source": "hands_on_head",
+   "prompt": "A person puts both hands on top of their head in disbelief.",
+   "seconds": 3.0,
+   "seed": 42
+  },
+  "M_appeal_arms_out": {
+   "source": "appeal_arms_out",
+   "prompt": "A person spreads both arms out wide to the sides with palms up, appealing and protesting.",
+   "seconds": 3.0,
+   "seed": 42
+  },
+  "M_palms_shrug": {
+   "source": "palms_shrug",
+   "prompt": "A person raises both open palms in front of their chest and shrugs innocently.",
+   "seconds": 2.0,
+   "seed": 42
+  },
+  "M_clap": {
+   "source": "clap",
+   "prompt": "A person stands and claps their hands several times.",
+   "seconds": 2.0,
+   "seed": 42,
+   "repeat": true
+  },
+  "M_point_forward": {
+   "source": "point_forward",
+   "prompt": "A person points forward with their right arm, directing someone.",
+   "seconds": 2.0,
+   "seed": 42
+  },
+  "M_call_ball": {
+   "source": "call_ball",
+   "prompt": "A person raises their right arm high above their head and waves it, calling for a pass.",
+   "seconds": 2.0,
+   "seed": 42
+  },
+  "M_keeper_organise": {
+   "source": "keeper_organise",
+   "prompt": "A person waves both arms and points left and right, giving directions to others.",
+   "seconds": 3.0,
+   "seed": 42
+  },
+  "M_jog_backward": {
+   "source": "jog_backward",
+   "prompt": "A person jogs backwards.",
+   "seconds": 3.0,
+   "seed": 42,
+   "loop": true
+  },
+  "M_sidestep_left": {
+   "source": "sidestep_left",
+   "prompt": "A person side-steps quickly to their left, shuffling their feet, facing forward.",
+   "seconds": 3.0,
+   "seed": 42,
+   "loop": true
+  },
+  "M_sidestep_right": {
+   "source": "sidestep_right",
+   "prompt": "A person side-steps quickly to their right, shuffling their feet, facing forward.",
+   "seconds": 3.0,
+   "seed": 42,
+   "loop": true
+  },
+  "M_jockey_shuffle": {
+   "source": "jockey_shuffle",
+   "prompt": "A defender in a low crouched stance takes small quick shuffling steps to the left and then to the right, facing forward, arms out for balance.",
+   "seconds": 3.0,
+   "seed": 11,
+   "loop": true
+  },
+  "GK_Dive_L": {
+   "source": "gk_dive_l",
+   "prompt": "A person standing facing forward jumps sideways far to their left, pushing off the right foot, the body flies horizontally through the air with both arms stretched out above the head, then falls onto the ground on their left side.",
+   "seconds": 2.5,
+   "seed": 1,
+   "full": true,
+   "root": true
+  },
+  "GK_Dive_R": {
+   "source": "gk_dive_r",
+   "prompt": "A person standing facing forward jumps sideways far to their right, pushing off the left foot, the body flies horizontally through the air with both arms stretched out above the head, then falls onto the ground on their right side.",
+   "seconds": 2.5,
+   "seed": 1,
+   "full": true,
+   "root": true
+  },
+  "GK_Low_L": {
+   "source": "gk_low_l",
+   "prompt": "A person standing facing forward in a crouch quickly drops sideways to their left onto the ground, reaching both hands low to the left, and lies on their left side.",
+   "seconds": 2.0,
+   "seed": 3,
+   "full": true,
+   "root": true
+  },
+  "GK_Low_R": {
+   "source": "gk_low_r",
+   "prompt": "A person standing facing forward in a crouch quickly drops sideways to their right onto the ground, reaching both hands low to the right, and lies on their right side.",
+   "seconds": 2.0,
+   "seed": 2,
+   "full": true,
+   "root": true
+  },
+  "GK_Catch": {
+   "source": "gk_catch",
+   "prompt": "A person standing facing forward catches a ball in front of their chest with both hands and hugs it to their chest.",
+   "seconds": 2.0,
+   "seed": 3,
+   "full": true,
+   "root": true
+  },
+  "GK_Tip": {
+   "source": "gk_tip",
+   "prompt": "A person standing facing forward jumps straight up as high as possible, reaching up with the right hand far above the head, and lands on both feet.",
+   "seconds": 2.5,
+   "seed": 1,
+   "full": true,
+   "root": true
+  }
+ }
+}

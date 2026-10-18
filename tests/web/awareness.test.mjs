@@ -141,6 +141,26 @@ test("pose and look are pure functions of time and stay in the neck range", { sk
   assert.equal(STEP, 0.05);
 });
 
+// web/vendor/motion (docs/motion3d.md): the same events and facts, played with the real clips
+const MOTION = path.resolve(DATA, "../vendor/motion/clips.json");
+test("with the motion clips: same sources, real clips, one-shots never outlast their clip", { skip: !(demo && existsSync(MOTION)) && "no DEMO or clips.json" }, () => {
+  const motion = JSON.parse(readFileSync(MOTION, "utf8"));
+  const plain = new Awareness(demo, [0, 1]), aw = new Awareness(demo, [0, demo.duration], { motion });
+  assert.deepEqual(new Set(aw.emotions.map((e) => e.src)), new Set(plain.emotions.map((e) => e.src)));
+  let real = 0;
+  for (const e of aw.emotions) {
+    const mc = motion.clips[e.clip];
+    assert.ok(mc || e.clip in CLIPS, e.clip);
+    if (!mc) continue;
+    real++;
+    if (!mc.loop) assert.ok(e.dur <= mc.len + 1e-9, `${e.clip} ${e.dur} > ${mc.len}`);
+    const q = aw.emotion(e.i, e.t0 + Math.min(e.dur, mc.len) / 2);
+    if (q?.clip === e.clip) assert.ok(q.t >= 0 && q.t <= mc.len && q.full === mc.full, JSON.stringify(q));
+  }
+  assert.ok(real > aw.emotions.length / 2, `${real} of ${aw.emotions.length} on real clips`);
+  for (const g of emotionsAfterGoals(demo, aw)) assert.equal(g.scorer, 1, JSON.stringify(g));
+});
+
 const m001 = load("M001");
 test("M001: defenders face and watch the ball", { skip: !m001 && "no web/data/M001 (studiodesk.export M001)" }, () => {
   const aw = new Awareness(m001, [0, m001.duration]);
