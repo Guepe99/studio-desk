@@ -136,7 +136,7 @@ async function main() {
     return;
   }
   const fromParam = params.has("from") ? Number(params.get("from")) : NaN;
-  tl = makeTimeline(match.goals.map((g) => g[0]), match.duration, fromParam);
+  tl = makeTimeline(match.goals.map((g) => g.ts), match.duration, fromParam);
   // players who are on the pitch at some point of the stretch (live part and replay)
   const [s0, s1] = clipSpan(tl);
   const f0 = Math.max(0, Math.floor((s0 - 1) * match.meta.fps));
