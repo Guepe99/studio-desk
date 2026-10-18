@@ -17,13 +17,17 @@ import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve,
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
+import { smoothMatch } from "./scene3d/track.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
 const P = (x, y, h = 0) => new B.Vector3(x - HALF_L, h, y - HALF_W);
 
 const PLAYER_H = 1.82;      // metres
-const BALL_R = 0.17;        // drawn about 1.5x real size so it reads on a phone
+export const BALL_R = 0.11; // real size: a size 5 ball is 68-70 cm round (docs/flow3d.md)
+const YAW_OMEGA = 12;       // rad/s, the facing spring: critically damped, half a step in 0.14 s
+const YAW_RATE_MAX = 8;     // rad/s, cap on the target's own turn rate fed forward to the spring
+const VEL_H = 0.05;         // s, half-window of the speed estimate on the smooth path
 
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
@@ -53,7 +57,9 @@ export class Scene3D {
   constructor(canvas, match, { capture = false, entities, goalEnd = 1, span = [0, match.duration] }) {
     this.canvas = canvas;
     this.span = span;   // match time the clip shows, for the ball plan
-    this.match = match;
+    // players on smooth paths through the tracking samples; the 2D page keeps the straight lines
+    this.match = match = smoothMatch(match);
+    this.ballR = BALL_R;
     this.goalEnd = goalEnd;
     this.entities = entities;
     const engine = this.engine = new B.Engine(canvas, true, { preserveDrawingBuffer: capture, stencil: false, powerPreference: "high-performance" }, true);
@@ -267,18 +273,32 @@ export class Scene3D {
       const r = resolve(this.drivers, p.i, ts);
       const at = (t) => { const q = match.at(p.i, t); if (!q) return q; const o = offset(this.drivers, p.i, t); return [q[0] + o[0], q[1] + o[1]]; };
       const shown = [now[0] + r.dx, now[1] + r.dy];
-      // velocity over +-0.2 s, which smooths the 10 fps steps of the tracking data
-      const a = at(Math.max(0, ts - 0.2)) ?? shown, c = at(Math.min(match.duration, ts + 0.2)) ?? shown;
-      const vx = (c[0] - a[0]) / 0.4, vy = (c[1] - a[1]) / 0.4, v = Math.hypot(vx, vy);
-      p.holder.position.copyFrom(P(shown[0], shown[1], 0));
-      // face the run (away from it when backpedalling); when nearly still, face the ball
-      let want = p.yaw;
+      // velocity of the shown point (the path is smooth, so a short window is enough)
+      const a = at(Math.max(0, ts - VEL_H)) ?? shown, c = at(Math.min(match.duration, ts + VEL_H)) ?? shown;
+      const vx = (c[0] - a[0]) / (2 * VEL_H), vy = (c[1] - a[1]) / (2 * VEL_H), v = Math.hypot(vx, vy);
+      p.holder.position.copyFrom(P(shown[0], shown[1], r.dz));
+      p.holder.rotation.z = r.roll;
+      // face the run (away from it when backpedalling); when nearly still, face the ball unless it
+      // is at his feet, where its bearing swings at random
+      let want = p.want ?? p.yaw;
       if (v > 0.7) want = Math.atan2(vx, vy) + (r.mode === "backpedal" ? Math.PI : 0);
-      else if (b) want = Math.atan2(b[0] - shown[0], b[1] - shown[1]);
-      if (p.yaw === null || dt === 0) p.yaw = want;
-      else p.yaw += angleDiff(p.yaw, want) * (1 - Math.exp(-dt * 7));
-      // the drivers turn the body over that facing, in priority order (players.js)
-      p.holder.rotation.y = facing(p.yaw, r.turns);
+      else if (b && Math.hypot(b[0] - shown[0], b[1] - shown[1]) > 1) want = Math.atan2(b[0] - shown[0], b[1] - shown[1]);
+      p.want = want;
+      // the drivers turn the body over that facing, in priority order (players.js); the result goes
+      // through a critically damped spring that also follows the target's own turn rate, so it
+      // never snaps and does not lag a steady turn
+      const target = facing(want ?? 0, r.turns);
+      if (p.yaw === null || dt === 0) { p.yaw = target; p.yawV = 0; }
+      else {
+        const tv = Math.max(-YAW_RATE_MAX, Math.min(YAW_RATE_MAX, angleDiff(p.target, target) / dt));
+        for (let left = dt; left > 1e-6; left -= 0.01) {
+          const h = Math.min(0.01, left);
+          p.yawV += (YAW_OMEGA * YAW_OMEGA * angleDiff(p.yaw, target) + 2 * YAW_OMEGA * (tv - p.yawV)) * h;
+          p.yaw += p.yawV * h;
+        }
+      }
+      p.target = target;
+      p.holder.rotation.y = p.yaw;
       this.rig.setLeg(p.i, r.leg);
       // run direction in the character's frame [left, forward] (the motion loops pick by it);
       // the glTF character's left is local -X in Babylon, so left = (-cos yaw, sin yaw) in x/z
