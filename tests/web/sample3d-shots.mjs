@@ -427,6 +427,120 @@ try {
   const fpsOff = Math.max(r[0], r[2]), fps = Math.max(r[1], r[3]);
   console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics (${fpsOff.toFixed(2)} without awareness)`);
 
+  // pitch and crowd (docs/scene3d-research.md, section F), measured on rendered frames with the
+  // players and the ball hidden. view(c, cam, pts) renders clock c from cam {pos, target, fov} and
+  // returns the mean luminance (0..255) of a 9x9 patch round each world point, and the share of
+  // that patch that is sky (bright and clearly blue).
+  const view = (c, cam, pts, ts) => page.evaluate(async ({ c, cam, pts, ts }) => {
+    const s = window.sample3d, sc = s.scene, B = window.BABYLON;
+    await window.__setTime(c - 0.04);
+    await window.__setTime(c);
+    if (ts !== undefined) sc.update({ ...s.tl.at(c), ts }, 0);
+    for (const p of sc.players) p.holder.setEnabled(false);
+    sc.ball.setEnabled(false);
+    const cm = sc.cams.replay;
+    cm.position.set(...cam.pos); cm.setTarget(new B.Vector3(...cam.target)); cm.fov = cam.fov ?? 0.8;
+    sc.scene.activeCamera = cm;
+    sc.render();
+    const cv = sc.engine.getRenderingCanvas();
+    const img = new Image();
+    img.src = cv.toDataURL();
+    await img.decode();
+    const g = Object.assign(document.createElement("canvas"), { width: img.width, height: img.height }).getContext("2d");
+    g.drawImage(img, 0, 0);
+    const vp = cm.viewport.toGlobal(img.width, img.height);
+    const wvp = cm.getViewMatrix().multiply(cm.getProjectionMatrix());
+    const sky = [];
+    const lum = pts.map((p) => {
+      const q = B.Vector3.Project(new B.Vector3(...p), B.Matrix.Identity(), wvp, vp);
+      const d = g.getImageData(Math.round(q.x) - 4, Math.round(q.y) - 4, 9, 9).data;
+      let sum = 0, blue = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        sum += l;
+        if (l > 110 && d[i + 2] > d[i] + 35) blue++;
+      }
+      sky.push(blue / (d.length / 4));
+      return sum / (d.length / 4);
+    });
+    for (const p of sc.players) p.holder.setEnabled(true);
+    sc.ball.setEnabled(true);
+    return { lum, sky, frame: g.getImageData(0, 0, img.width, img.height).data.filter((_, i) => i % 64 === 0) };
+  }, { c, cam, pts, ts });
+
+  // 1. mowing stripes: stripes 8 and 9 (contract x 46.7..52.5 and 52.5..58.3) sampled at 8 points
+  // each down y = 4..22. Relative contrast (L8 - L9) / (L8 + L9) from the TV side looking +Z (A),
+  // from the far side looking -Z (B) and along the length looking +X (C). Grass patches add the
+  // same contrast to every view, so the stripe part is (A - B) / 2 and their part (A + B) / 2.
+  const sp = [];
+  for (const x of [49.58, 55.42]) for (let y = 4; y <= 22; y += 18 / 7) sp.push([x - 52.5, 0, y - 34]);
+  const contrast = (r) => { const h = r.lum.length / 2, a = r.lum.slice(0, h).reduce((x, y) => x + y) / h, b = r.lum.slice(h).reduce((x, y) => x + y) / h; return (a - b) / (a + b); };
+  const cA = contrast(await view(4, { pos: [0, 12, -52], target: [0, 0, -21], fov: 0.7 }, sp));
+  const cB = contrast(await view(4, { pos: [0, 12, 10], target: [0, 0, -21], fov: 0.7 }, sp));
+  const cC = contrast(await view(4, { pos: [-40, 12, -21], target: [0, 0, -21], fov: 0.7 }, sp));
+  const stripeAB = (cA - cB) / 2, patches = (cA + cB) / 2, stripeC = cC - patches;
+  console.log(`stripes: contrast from the TV side ${cA.toFixed(3)}, from the far side ${cB.toFixed(3)}, along the length ${cC.toFixed(3)}; stripe part ${stripeAB.toFixed(3)} vs ${stripeC.toFixed(3)} along the length`);
+  if (Math.sign(cA) === Math.sign(cB) || Math.abs(stripeAB) < 0.02) fail(`stripes do not swap between opposite views: ${cA}, ${cB}`);
+  if (Math.abs(stripeC) > 0.12 * Math.abs(stripeAB)) fail(`stripes still show looking along their length: ${stripeC} vs ${stripeAB}`);
+
+  // 3. one bowl: from the centre spot, the four corners just above the stands' back wall (27 m) show
+  // roof, not sky (before, the near corners were open and the side stands ended in blank walls)
+  const gaps = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const pt = [sx * (52.5 + 9 + 11), 27.5, sz * (34 + 9 + 11)];
+    const r = await view(4, { pos: [0, 5, 0], target: pt, fov: 0.8 }, [pt]);
+    gaps.push(+r.sky[0].toFixed(2));
+  }
+  console.log(`stadium corners: sky share above the back wall ${gaps.join(", ")} (x-z-, x-z+, x+z-, x+z+)`);
+  if (gaps.some((v) => v > 0.2)) fail(`sky shows through a corner of the stadium: ${gaps}`);
+
+  // 2. the crowd behind the goal: the home end (x < 0) celebrates the DEMO home goal at 100 s
+  // and is seated again 10.5 s later; the 3D spectators change clip and the frame changes
+  const crowd = await page.evaluate(() => {
+    const st = window.sample3d.scene.crowd, c3 = st.crowd3d, m = window.sample3d.match;
+    const g = st.goals?.find((x) => x.side === "home");
+    if (!c3 && st.cheer && g) {   // low profile: cards only, every card of the scoring team follows st.cheer
+      const up = (ts, side) => { st.update(ts); return st.cheer.side === side && st.cheer.since < 10 ? 1 : 0; };
+      return { cards: true, goal: g.ts, goals: st.goals.length, facts: m.goals.filter((f) => f.value > 0).length, n: st.cards,
+        before: up(g.ts - 2, 1), during: up(g.ts + 4, 1), after: up(g.ts + 10.5, 1), awayEnd: up(g.ts + 4, -1) };
+    }
+    if (!c3) return null;
+    const cheering = (ts, end) => {
+      const ids = c3.people.map((p, i) => [p, i]).filter(([p]) => p.end === end);
+      return ids.filter(([, i]) => !["sit", "sitClap", "stand"].includes(c3.clipAt(i, ts))).length / ids.length;
+    };
+    return { goal: g?.ts, goals: st.goals.length, facts: m.goals.filter((f) => f.value > 0).length, n: c3.people.length,
+      before: g && cheering(g.ts - 2, "home"), during: g && cheering(g.ts + 4, "home"), after: g && cheering(g.ts + 10.5, "home"),
+      awayEnd: g && cheering(g.ts + 4, "away") };
+  });
+  console.log(`crowd: ${JSON.stringify(crowd)}`);
+  if (!crowd) fail("no crowd reacting to goals");
+  else {
+    if (crowd.goals !== crowd.facts) fail(`crowd goals ${crowd.goals} != score facts ${crowd.facts}`);
+    if (!(crowd.before === 0 && crowd.during > 0.9 && crowd.after === 0)) fail(`home end does not rise and sit back: ${JSON.stringify(crowd)}`);
+    if (!(crowd.awayEnd < 0.3)) fail(`away end celebrates the home goal: ${crowd.awayEnd}`);
+    const endCam = { pos: [-45, 5, 0], target: [-65, 6, 0], fov: 0.6 };
+    const f0 = (await view(4, endCam, [], crowd.goal - 2)).frame, f1 = (await view(4, endCam, [], crowd.goal + 4)).frame;
+    let diff = 0;
+    for (let i = 0; i < f0.length; i++) diff += Math.abs(f0[i] - f1[i]);
+    diff /= f0.length;
+    console.log(`crowd behind the goal: mean pixel change ${diff.toFixed(1)} from 2 s before to 4 s after the goal`);
+    if (diff < 8) fail(`the celebrating end looks the same after the goal: ${diff}`);
+  }
+
+  // stills of the pitch and the crowd for docs/scene3d-research.md, section F
+  const pcShot = async (name, cam, ts) => {
+    await view(4, cam, [], ts);
+    await page.evaluate(() => { for (const p of window.sample3d.scene.players) p.holder.setEnabled(true); window.sample3d.scene.render(); });
+    await page.locator("#view3d").screenshot({ path: `${shots}/pitchcrowd3d-${look.debug.profile}-${name}.png` });
+  };
+  await page.evaluate((x) => window.__setTime(x), 4);
+  await page.locator("#view3d").screenshot({ path: `${shots}/pitchcrowd3d-${look.debug.profile}-wide.png` });
+  await pcShot("reverse", { pos: [0, 15, 42], target: [0, 0, -6], fov: 0.9 });
+  await pcShot("goalmouth", { pos: [-41, 2.6, -7], target: [-51, 0, -1], fov: 0.7 });
+  if (crowd) await pcShot("crowd-goal", { pos: [-45, 5, 0], target: [-65, 6, 0], fov: 0.6 }, crowd.goal + 4);
+  console.log(`pitchcrowd3d-${look.debug.profile}-*.png saved`);
+
   // scene3d stills, 3D frame only (graded against docs/scene3d-research.md). The low profile run
   // (WebGL 1) saves scene3d-low.png; the high one (WEBGL=2) the wide shot, a replay angle, the
   // tackle close-up and a phone in portrait, which picks the low profile by itself.

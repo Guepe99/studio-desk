@@ -1,23 +1,32 @@
 // The pitch: one PBR ground whose albedo is computed per pixel by a material plugin, so nothing
 // depends on texture resolution at broadcast distance.
-// - 18 straight mowing stripes along the length (105 / 18 = 5.83 m, UEFA asks 5.50 to 6.10 m);
-//   their contrast follows the view direction, as cut grass does.
+// - 18 straight mowing stripes along the length (105 / 18 = 5.83 m, UEFA asks 5.50 to 6.10 m),
+//   mown across the pitch in alternate directions (+Z, -Z). A stripe is lighter when its blades
+//   lean away from the viewer and darker when they lean towards him (docs/scene3d-research.md,
+//   section F): brightness = sign of the stripe x (horizontal view direction . mow direction) x an
+//   amplitude that grows towards grazing views. So the pattern changes as the camera pans, swaps
+//   in a reverse angle, and fades when looking along the stripes' length.
 // - the markings of Law 1 at the coordinates of docs/CONTRACT.md, 12 cm wide, as a distance field
 //   anti-aliased with screen derivatives: a line thinner than a pixel is drawn one pixel wide and
 //   dimmed in proportion, so it neither shimmers nor breaks up when the camera pans.
 // - a CC0 grass photo (ambientCG Grass005, luminance only) at two scales against tiling, slow
-//   world-space noise, and light wear in the goalmouths and on the spots.
+//   world-space noise at 2, 9 and 40 m (patches, then a broad yellow-green drift), and wear:
+//   lighter, thinner grass showing soil in the goalmouths, on the penalty marks and in the centre
+//   circle, where the stripes fade. Paint is off-white, softened over 2 cm and lets the grass
+//   texture through.
 const B = window.BABYLON;
 
 export const DETAIL_URL = "vendor/ambientcg/grass005_detail.jpg";
 export const LINE_W = 0.12;
 export const STRIPES = 18;
+export const STRIPE_AMP = [0.05, 0.13];   // relative brightness looking straight down, extra at grazing
 const MARGIN = 10;   // grass beyond the lines, metres
 
 const GLSL_DEFS = `
 #ifdef PITCH
 uniform sampler2D pitchDetailSampler;
-float pHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+// sin-free hash (Dave Hoskins, hash12): sin() of large arguments breaks on real GPUs and speckles the grass
+float pHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float pNoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
@@ -44,14 +53,24 @@ float pitchLineDist(vec2 p) {
 vec3 pitchAlbedo(vec3 posW, vec3 eye, vec4 prm) {
   vec2 p = vec2(posW.x + 52.5, posW.z + 34.0);
   vec3 viewDir = normalize(posW - eye);
-  // stripes: grass laid away from the viewer looks lighter; the pattern swaps sides with the view
-  float parity = mod(floor(p.x / (105.0 / ${STRIPES}.0)), 2.0) * 2.0 - 1.0;
-  float facing = viewDir.z / (abs(viewDir.z) + 0.25);
-  float stripe = parity * (0.035 + 0.085 * abs(viewDir.z)) * sign(facing + 1e-4) * mix(0.6, 1.0, abs(facing));
+  // wear first: worn grass is thin and does not stripe
+  vec2 q = vec2(min(p.x, 105.0 - p.x), p.y);
+  float e = length((q - vec2(2.6, 34.0)) / vec2(4.6, 6.5));
+  float wear = (1.0 - smoothstep(0.2, 1.0, e)) * (0.5 + 0.5 * pNoise(p * 1.7));
+  wear += (1.0 - smoothstep(0.25, 1.3, length(q - vec2(11.0, 34.0)))) * 0.6;
+  wear += (1.0 - smoothstep(1.0, 9.0, length(p - vec2(52.5, 34.0)))) * (0.25 + 0.25 * pNoise(p * 0.9));
+  wear = clamp(wear, 0.0, 1.0);
+  // stripes: mow direction +Z or -Z by stripe; blades leaning away from the viewer look lighter
+  float mowDir = mod(floor(p.x / (105.0 / ${STRIPES}.0)), 2.0) * 2.0 - 1.0;
+  vec2 vh = viewDir.xz / max(length(viewDir.xz), 1e-4);
+  float graze = 1.0 - abs(viewDir.y);
+  float stripe = mowDir * vh.y * (${STRIPE_AMP[0].toFixed(3)} + ${STRIPE_AMP[1].toFixed(3)} * graze) * (1.0 - 0.8 * wear);
   vec3 grass = vec3(0.052, 0.155, 0.040) * (1.0 + stripe);
-  // slow patches, then the photo detail at one or two scales
+  // patches at 9 and 2 m, a broad drift towards yellow-green at 40 m, then the photo detail
   float n = pNoise(p * 0.11) * 0.6 + pNoise(p * 0.47 + 7.3) * 0.4;
+  float macro = pNoise(p * 0.025 + 3.1);
   grass *= 0.9 + 0.2 * n;
+  grass *= mix(vec3(0.94, 0.97, 1.04), vec3(1.07, 1.03, 0.9), macro);
   float t1 = texture2D(pitchDetailSampler, p / 1.9).r;
   float detail = 0.55 + 0.9 * t1;
   if (prm.x > 1.5) {
@@ -59,20 +78,21 @@ vec3 pitchAlbedo(vec3 posW, vec3 eye, vec4 prm) {
     detail *= 0.8 + 0.4 * texture2D(pitchDetailSampler, pr / 8.3).r;
   }
   grass *= detail;
-  // wear: goalmouths, penalty marks and the centre spot
-  vec2 q = vec2(min(p.x, 105.0 - p.x), p.y);
-  float e = length((q - vec2(2.6, 34.0)) / vec2(4.2, 6.0));
-  float wear = (1.0 - smoothstep(0.25, 1.0, e)) * (0.45 + 0.55 * pNoise(p * 1.7));
-  wear += (1.0 - smoothstep(0.2, 1.1, length(q - vec2(11.0, 34.0)))) * 0.45;
-  wear += (1.0 - smoothstep(0.3, 1.6, length(p - vec2(52.5, 34.0)))) * 0.35;
-  grass = mix(grass, vec3(0.145, 0.125, 0.075) * (0.8 + 0.4 * n), clamp(wear, 0.0, 1.0) * 0.6);
-  // lines, 12 cm: widen to one pixel when thinner and dim in proportion (no shimmer, no gaps)
+  // worn: lighter, drier blades, and soil where the grass is thin (the dark texels of the photo)
+  vec3 dry = vec3(0.15, 0.19, 0.075) * (0.85 + 0.3 * n) * detail;
+  vec3 soil = vec3(0.21, 0.165, 0.10) * (0.8 + 0.4 * n);
+  vec3 worn = mix(dry, soil, smoothstep(0.55, 0.3, t1 + 0.35 * (1.0 - wear)));
+  grass = mix(grass, worn, wear * 0.85);
+  // lines, 12 cm: widen to one pixel when thinner and dim in proportion (no shimmer, no gaps);
+  // the edge is soft over 2 cm, as brushed paint on grass, and the grass shows through a little
   float d = pitchLineDist(p);
   float fw = max(fwidth(d), 1e-4);
   float halfW = ${(LINE_W / 2).toFixed(3)};
   float w = max(halfW, fw * 0.7);
-  float cov = (1.0 - smoothstep(w - fw * 0.5, w + fw * 0.5, d)) * (halfW / w);
-  return mix(grass, vec3(0.80, 0.81, 0.78), cov * prm.y);
+  float soft = 0.02 + fw * 0.5;
+  float cov = (1.0 - smoothstep(w - soft, w + soft, d)) * (halfW / w);
+  vec3 paint = vec3(0.80, 0.81, 0.77) * (0.9 + 0.1 * t1);
+  return mix(grass, paint, cov * prm.y * 0.94);
 }
 #endif
 `;

@@ -8,13 +8,15 @@ export const PROFILES = {
   // depth of field on tight shots and replays, SSAO2 at half resolution (docs/broadcast3d.md)
   high: { name: "high", shadows: "csm", shadowMap: 1024, cascades: 3, autoDepthBounds: true, shadowQuality: "medium",
     msaa: 4, fxaa: false, sharpen: true, bloom: true, bloomScale: 0.5, dof: true, ssao: true,
-    maxWidth: 1920, detailScales: 2, crowd: 1, aniso: 8 },
+    maxWidth: 1920, detailScales: 2, crowd: 1, aniso: 8,
+    crowd3dRows: 4, crowdOutline: true, crowdHair: true },
   // phone, WebGL 1 or a software renderer: blob shadows (two cascades on a WebGL 2 phone, see
   // pickProfile), FXAA, bloom at half the high profile's scale, no depth of field or SSAO, one
   // grass detail scale, sparser crowd
   low: { name: "low", shadows: "blob", shadowMap: 0, cascades: 2, autoDepthBounds: false, shadowQuality: "low",
     msaa: 1, fxaa: true, sharpen: true, bloom: true, bloomScale: 0.25, dof: false, ssao: false,
-    maxWidth: 1100, detailScales: 1, crowd: 0.3, aniso: 4 },
+    maxWidth: 1100, detailScales: 1, crowd: 0.3, aniso: 4,
+    crowd3dRows: 0, crowdOutline: false, crowdHair: false },   // cards only: in lavapipe the 3D row and the hair cards cost a quarter of the frame rate
 };
 
 // env: {webGLVersion, maxMSAA, coarsePointer, shortSide (CSS px)}; param: the ?quality= value.
