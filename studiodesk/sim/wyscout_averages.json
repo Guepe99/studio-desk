@@ -1,0 +1,182 @@
+{
+  "matches": {
+    "value": 1446,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "team_matches": {
+    "value": 2892,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "actions_per_team_match": {
+    "value": {
+      "mean": 635.038,
+      "std": 121.059,
+      "p10": 490.0,
+      "p50": 621.0,
+      "p90": 798.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "actions_by_type_per_team_match": {
+    "value": {
+      "bad_touch": 0.043,
+      "clearance": 14.287,
+      "corner_crossed": 3.851,
+      "corner_short": 1.083,
+      "cross": 16.038,
+      "dribble": 43.217,
+      "foul": 13.312,
+      "freekick_crossed": 2.227,
+      "freekick_short": 12.539,
+      "goalkick": 8.182,
+      "interception": 42.702,
+      "keeper_save": 3.261,
+      "pass": 421.941,
+      "shot": 11.068,
+      "shot_freekick": 0.584,
+      "shot_penalty": 0.159,
+      "tackle": 4.357,
+      "take_on": 14.484,
+      "throw_in": 21.704
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "passes_per_team_match": {
+    "value": {
+      "mean": 421.941,
+      "std": 117.199,
+      "p10": 280.0,
+      "p50": 408.0,
+      "p90": 576.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "pass_success_rate": {
+    "value": 0.8341,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "pass_length_mean_m": {
+    "value": 20.1,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "pass_length_median_m": {
+    "value": 16.9,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "pass_length_p90_m": {
+    "value": 36.81,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "forward_pass_share": {
+    "value": 0.6336,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "crosses_per_team_match": {
+    "value": {
+      "mean": 22.117,
+      "std": 9.123,
+      "p10": 12.0,
+      "p50": 21.0,
+      "p90": 34.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "open_play_crosses_per_team_match": {
+    "value": 16.038,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "shots_per_team_match": {
+    "value": {
+      "mean": 11.812,
+      "std": 4.841,
+      "p10": 6.0,
+      "p50": 11.0,
+      "p90": 18.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "goals_per_shot": {
+    "value": 0.1113,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "goals_per_team_match": {
+    "value": {
+      "mean": 1.358,
+      "std": 1.261,
+      "p10": 0.0,
+      "p50": 1.0,
+      "p90": 3.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "goals_per_match": {
+    "value": {
+      "mean": 2.715,
+      "std": 1.678,
+      "p10": 1.0,
+      "p50": 3.0,
+      "p90": 5.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "fouls_per_team_match": {
+    "value": {
+      "mean": 13.312,
+      "std": 4.198,
+      "p10": 8.0,
+      "p50": 13.0,
+      "p90": 19.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "yellow_cards_per_team_match": {
+    "value": 1.584,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "red_cards_per_team_match": {
+    "value": 0.0809,
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "possession_sequence_actions": {
+    "value": {
+      "mean": 3.56,
+      "median": 2.0,
+      "p90": 8.0
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "possession_sequence_seconds": {
+    "value": {
+      "mean": 7.37,
+      "median": 2.2
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "shot_zone_share": {
+    "value": {
+      "outside_box": 0.4339,
+      "penalty_area": 0.4977,
+      "penalty_spot": 0.0135,
+      "six_yard_box": 0.0549
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "goals_per_shot_by_zone": {
+    "value": {
+      "outside_box": 0.0372,
+      "penalty_area": 0.129,
+      "penalty_spot": 0.731,
+      "six_yard_box": 0.384
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  },
+  "matches_by_league": {
+    "value": {
+      "Italy": 380,
+      "Spain": 380,
+      "France": 380,
+      "Germany": 306
+    },
+    "source": "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, computed by scripts/calibrate.py"
+  }
+}
