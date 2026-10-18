@@ -46,6 +46,7 @@ export class Scene3D {
   static async create(canvas, match, opts) {
     const s = new Scene3D(canvas, match, opts);
     await s._loadPlayers();
+    await s.crowd.load();
     return s;
   }
 
@@ -289,6 +290,7 @@ export class Scene3D {
     });
     this.shadows.thinInstanceBufferUpdated("matrix");
 
+    this.crowd.update(ts);
     this.cams.update(view, ts, dt);
     this.debug.camera = this.cams.mode;
   }
