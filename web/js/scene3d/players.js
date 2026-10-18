@@ -17,7 +17,11 @@
 //
 // Clips are sampled with goToFrame from match time, never played, so a seek, a replay or a video
 // frame always shows the same pose. Action and emotion clips are cloned for a player the first
-// time they are needed: idle clips cost animation time every frame in Babylon.
+// time they are needed: idle clips cost animation time every frame in Babylon. Only clips with a
+// weight above 0 are sampled: when the first two blended values both weigh 0, Babylon divides by
+// zero and the bone turns NaN. Upper-body emotions are not clips at all but a pass after the
+// animation step (applyUpper): Babylon clamps an animatable's weight to 1, so a masked clip could
+// only blend half way over the locomotion.
 const B = window.BABYLON;
 
 // Locomotion clips of the Universal Animation Library: speed (m/s) at which the feet do not
@@ -59,7 +63,8 @@ export const ACTIONS = {
   dive: { phases: [["Roll", 0, 1.47]], contact: 0.4 },
 };
 const IN_S = 0.15, OUT_S = 0.25;
-const UPPER = /(spine_0[23]|neck_01|Head|clavicle|upperarm|lowerarm|hand|thumb|index|middle|ring|pinky)/;
+const TRACKS = new WeakMap();   // asset container -> {clip: upper-body tracks}
+const UPPER = /^(spine_0[23]|neck_01|Head|clavicle_[lr]|upperarm_[lr]|lowerarm_[lr]|hand_[lr])$/;
 const length = (a) => a.phases.reduce((s, [, f, t]) => s + t - f, 0);
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
@@ -162,22 +167,45 @@ export function setupAnimations(inst, container, prefix) {
   for (const root of inst.rootNodes) for (const n of [root, ...root.getDescendants(false)]) nodes.set(n.name, n);
   const cache = {};
   const fps = loco[0].targetedAnimations[0].animation.framePerSecond;
+  if (!TRACKS.has(container)) TRACKS.set(container, {});
+  const tracks = TRACKS.get(container);
   return {
     loco, fps, cache,
-    // the group for clip `name` (upper body only when upper), or null when the file lacks it
-    get(name, upper = false) {
-      const key = upper ? `${name}^` : name;
-      if (key in cache) return cache[key];
+    node: (name) => nodes.get(`${prefix}${name}`),
+    // the group for clip `name`, or null when the file lacks it
+    get(name) {
+      if (name in cache) return cache[name];
       const src = container.animationGroups.find((a) => a.name === name);
-      if (!src) return (cache[key] = null);
-      const g = src.clone(`${prefix}${key}`, (t) => nodes.get(`${prefix}${t.name}`) ?? t);
-      if (upper) {
-        g.mask = new B.AnimationGroupMask(g.targetedAnimations.map((t) => t.target.name).filter((n) => UPPER.test(n)));
-        g.removeUnmaskedAnimations();
-      }
-      return (cache[key] = prep(g));
+      if (!src) return (cache[name] = null);
+      return (cache[name] = prep(src.clone(`${prefix}${name}`, (t) => nodes.get(`${prefix}${t.name}`) ?? t)));
+    },
+    // the upper-body rotation tracks of clip `name` (shared by all players of the file)
+    upper(name) {
+      if (name in tracks) return tracks[name];
+      return (tracks[name] = upperTracks(container, name));
     },
   };
+}
+
+// {from, list: [[bone, animation]]} of a clip's upper-body rotations, or null without the clip.
+function upperTracks(container, name) {
+  const g = container.animationGroups.find((a) => a.name === name);
+  if (!g) return null;
+  const list = g.targetedAnimations.filter((t) => t.animation.targetProperty === "rotationQuaternion" && UPPER.test(t.target.name));
+  return { from: g.from, list: list.map((t) => [t.target.name, t.animation]) };
+}
+
+// After the animation step: the upper-body emotion of player p at its full weight.
+export function applyUpper(p) {
+  const e = p.upper;
+  if (!e || !p.holder.isEnabled()) return;
+  const T = p.anim.upper(e.clip);
+  if (!T) return;
+  const f = T.from + Math.max(0, e.t) * p.anim.fps;
+  for (const [bone, a] of T.list) {
+    const n = p.anim.node(bone);
+    if (n?.rotationQuaternion) B.Quaternion.SlerpToRef(n.rotationQuaternion, a.evaluate(f), e.weight, n.rotationQuaternion);
+  }
 }
 
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last
@@ -191,28 +219,25 @@ export function animatePlayer(p, v, dt, r) {
   p.idle = (p.idle + dt / LOCO[0].period) % 1;
   p.anim.loco.forEach((g, j) => {
     const wj = w[j] * (1 - full);
-    if (wj === 0 && p.w[j] === 0) return;
-    g.setWeightForAllAnimatables(wj);
-    const ph = j === 0 ? p.idle : p.phase;
-    g.goToFrame(g.from + ph * (g.to - g.from), true);
+    if (wj !== p.w[j]) g.setWeightForAllAnimatables(wj);
     p.w[j] = wj;
+    if (wj > 0) g.goToFrame(g.from + (j === 0 ? p.idle : p.phase) * (g.to - g.from), true);
   });
-  // clips other than locomotion: only the ones asked for this frame carry weight. An upper-body
-  // emotion is boosted so it wins over the locomotion there (weights over 1 are normalised).
+  // clips other than locomotion: only the ones asked for this frame carry weight
   const want = new Map();
   if (r.action) want.set(r.action.clip, [r.action.time, r.action.weight]);
   const e = r.emotion;
-  if (e) {
-    const g = p.anim.get(e.clip, !!e.upper);
-    if (g) want.set(e.upper ? `${e.clip}^` : e.clip, [e.t, e.upper ? e.weight * 6 : e.weight * (1 - full)]);
-  }
+  // an upper-body emotion waits for applyUpper; a full-body one is a clip like the actions
+  p.upper = e?.upper && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)) } : null;
+  if (e && !e.upper && p.anim.get(e.clip)) want.set(e.clip, [e.t, e.weight * (1 - full)]);
   if (r.action) p.anim.get(r.action.clip);
   for (const [key, g] of Object.entries(p.anim.cache)) {
     if (!g) continue;
     const [t, wa] = want.get(key) ?? [0, 0];
-    if (wa === 0 && !p.aw[key]) continue;
-    g.setWeightForAllAnimatables(wa);
-    if (wa > 0) g.goToFrame(Math.min(g.to, g.from + Math.max(0, t) * p.anim.fps), true);
+    if (wa !== (p.aw[key] ?? 0)) g.setWeightForAllAnimatables(wa);
     p.aw[key] = wa;
+    if (wa > 0) g.goToFrame(Math.min(g.to, g.from + Math.max(0, t) * p.anim.fps), true);
   }
+  if (p.upper) p.aw[`${p.upper.clip}^`] = p.upper.weight;   // what the tests read
+  for (const k of Object.keys(p.aw)) if (k.endsWith("^") && (!p.upper || k !== `${p.upper.clip}^`)) p.aw[k] = 0;
 }

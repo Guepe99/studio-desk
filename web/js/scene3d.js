@@ -13,7 +13,7 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset, applyUpper } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
@@ -226,9 +226,11 @@ export class Scene3D {
       this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {} });
     }
     // the container is not disposed: the clones share its geometry and lazy clips come from it
+    this.container = container;
     this.drivers = [];
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
+    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) applyUpper(p); });
 
     // blob shadows, one thin-instanced plane for all players (low profile)
     const sh = this.shadows = B.MeshBuilder.CreateGround("shadows", { width: 1.5, height: 1.5 }, scene);
@@ -243,7 +245,7 @@ export class Scene3D {
   // view: {ts, replay}; dt: seconds of match time since the last call (0 after a jump).
   update(view, dt) {
     const { match } = this;
-    const ts = Math.min(view.ts, match.duration);
+    const ts = this.ts = Math.min(view.ts, match.duration);
     const bp = this.rig.ball(ts), b = bp && [bp.x, bp.y, bp.h];
     if (b) {
       const z = b[2];

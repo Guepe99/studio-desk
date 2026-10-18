@@ -5,6 +5,7 @@ import { loadMatch } from "./match.js";
 import { Pitch, STAGE_W, STAGE_H, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Scene3D } from "./scene3d.js";
+import { AwarenessRig } from "./awareness-rig.js";
 
 const LOOP_S = 20;          // clock seconds before the loop restarts
 const REPLAY_MIN_S = 5.5;   // replay length when the goal sits at the default place
@@ -150,6 +151,8 @@ async function main() {
   const goalEnd = gb && gb[0] < 52.5 ? -1 : 1;
   try {
     scene = await Scene3D.create($("#view3d"), match, { capture, entities, goalEnd, span: [s0, s1] });
+    // players who watch the ball and react to goals, near misses and fouls; ?aware=0 turns it off
+    new AwarenessRig(scene).enabled = params.get("aware") !== "0";
   } catch (err) {
     $("#status").textContent = `3D view could not start. ${err.message}`;
     throw err;
