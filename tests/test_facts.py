@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from fixture_match import FPS, HOME, PASS_MS, write_fixture
 from studiodesk import db
 from studiodesk.facts import Match, build
@@ -42,6 +44,11 @@ def test_goal_shot_and_sprint(match_db):
     (score,) = facts(conn, "score")
     assert score["value"] == 1 and score["team_id"] == HOME and score["label_en"] == "Goal 1-0"
     assert json.loads(score["source_event_ids"]) == [info["goal_event_id"]]
+    # known when the ball is over the line, not at the kick
+    (kick_ts,) = conn.execute("SELECT ts FROM events WHERE event_id = ?", (info["goal_event_id"],)).fetchone()
+    f = json.loads(score["source_frames"])[1]
+    ball_x = conn.execute("SELECT pos FROM tracking_frames WHERE frame = ?", (f,)).fetchone()[0]
+    assert score["ts"] == f / FPS > kick_ts + 0.1 and np.frombuffer(ball_x, "<f4")[0] <= 0.5
     (shot,) = facts(conn, "shot_speed")
     assert abs(shot["value"] - info["shot_kmh"]) < 1.5 and shot["source_frames"]
     (sprint,) = facts(conn, "sprint_speed")

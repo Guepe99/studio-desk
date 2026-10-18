@@ -33,6 +33,7 @@ export class OGrafHost {
     this.graphics = {};    // name -> {manifest, tag}
     this.live = new Map(); // cue_id -> instance
     this.leaving = new Set(); // instances still animating out
+    this.taken = new Set(); // cue ids already taken off since the last rebuild: a speed change must not bring one back
     this.cues = [];
     this.last = null;
     this.speed = 1;
@@ -88,9 +89,11 @@ export class OGrafHost {
     }
     for (const c of this.cues) {
       if (c.ts > now || this._visible() >= MAX_ON_SCREEN) break;
-      if (this.live.has(c.cue_id) || now >= this._end(c) - this._lead(c)) continue;
-      const g = this.graphics[c.graphic];
-      this._add(c, now, "realtime", (g.inS + g.outS) * this.speed > c.duration_s);
+      if (this.live.has(c.cue_id) || this.taken.has(c.cue_id) || now >= this._end(c)) continue;
+      // a frame that lands inside the cue but past its stop time still shows it, without animation,
+      // until the next frame: with slow frames at 16x the window between start and stop can fall between two
+      const g = this.graphics[c.graphic], late = now >= this._end(c) - this._lead(c);
+      this._add(c, now, "realtime", late || (g.inS + g.outS) * this.speed > c.duration_s);
     }
   }
 
@@ -98,6 +101,7 @@ export class OGrafHost {
     for (const id of [...this.live.keys()]) this._remove(id, false);
     for (const inst of this.leaving) inst.node.remove();
     this.leaving.clear();
+    this.taken.clear();
     for (const c of this.cues) {
       if (c.ts > now || this._visible() >= MAX_ON_SCREEN) break;
       if (now >= this._end(c)) continue;
@@ -165,6 +169,7 @@ export class OGrafHost {
   _remove(id, animate) {
     const inst = this.live.get(id);
     this.live.delete(id);
+    this.taken.add(id);
     inst.gone = true;
     if (animate) this.leaving.add(inst);
     else inst.node.remove();

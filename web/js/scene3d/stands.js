@@ -7,6 +7,9 @@
 // Everything else here is static: world matrices and materials are frozen.
 import { buildCrowd3D, HAIR, pickHair } from "./crowd.js";
 import { toonMaterial } from "./toon.js";
+// match time goes to the shaders modulo a whole number of periods of sin(7 t) and sin(4.2 t): sin()
+// of a whole match (up to 6,000 s) loses precision on phone GPUs
+const WAVE_T = 200 * Math.PI / 7;
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -60,7 +63,7 @@ class CardJumpPlugin extends B.MaterialPluginBase {
   getUniforms() {
     return { ubo: [{ name: "crowdGoal", size: 4, type: "vec4" }], vertex: "#ifdef CARDJUMP\nuniform vec4 crowdGoal;\n#endif\n" };
   }
-  bindForSubMesh(ubo) { ubo.updateFloat4("crowdGoal", this.state.since, this.state.side, this.state.time, this.team); }
+  bindForSubMesh(ubo) { ubo.updateFloat4("crowdGoal", this.state.since, this.state.side, this.state.time % WAVE_T, this.team); }
   getCustomCode(shaderType, shaderLanguage) {
     if (shaderType !== "vertex" || (shaderLanguage ?? 0) !== B.ShaderLanguage.GLSL) return null;
     return {
@@ -69,7 +72,7 @@ class CardJumpPlugin extends B.MaterialPluginBase {
   vec3 o = finalWorld[3].xyz;
   float endSide = abs(o.x) > ${(HALF_L + 8).toFixed(1)} && abs(o.z) < ${(HALF_W + 8).toFixed(1)} ? -sign(o.x) : 0.0;   // +1 home end (x < 0)
   bool mine = crowdGoal.y != 0.0 && (endSide == crowdGoal.y || crowdGoal.w == crowdGoal.y);
-  float h = fract(sin(dot(o.xz, vec2(12.9898, 78.233))) * 43758.5453);
+  vec3 p3 = fract(o.xzx * 0.1031); p3 += dot(p3, p3.yzx + 33.33); float h = fract((p3.x + p3.y) * p3.z);   // sin-free hash, as pitch.js
   float t = crowdGoal.x - mix(0.2, 1.6, h);
   float stay = mix(6.3, 7.7, fract(h * 7.13));
   float env = mine ? smoothstep(0.0, 0.5, t) * (1.0 - smoothstep(stay, stay + 0.7, t)) : 0.0;
@@ -98,7 +101,7 @@ class FlagWavePlugin extends B.MaterialPluginBase {
   getUniforms() {
     return { ubo: [{ name: "flagWave", size: 3, type: "vec3" }], vertex: "#ifdef FLAGWAVE\nuniform vec3 flagWave;\n#endif\n" };
   }
-  bindForSubMesh(ubo) { ubo.updateFloat3("flagWave", this.state.time, this.drop, this.amp); }
+  bindForSubMesh(ubo) { ubo.updateFloat3("flagWave", this.state.time % WAVE_T, this.drop, this.amp); }
   getCustomCode(shaderType, shaderLanguage) {
     if (shaderType !== "vertex" || (shaderLanguage ?? 0) !== B.ShaderLanguage.GLSL) return null;
     const wave = `float a = clamp(position.x / flagWave.y + 0.5, 0.0, 1.0);

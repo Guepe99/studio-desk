@@ -33,6 +33,7 @@ PASS_TYPES = {"pass", "cross", "throw_in", "freekick_short", "freekick_crossed",
 SHOT_TYPES = {"shot", "shot_freekick", "shot_penalty"}
 MOVE_TYPES = PASS_TYPES | {"dribble"}
 LENGTH, WIDTH = 105.0, 68.0
+LINE_MARGIN = 0.5  # metres from a goal line at which a goal's ball counts as in
 WINDOW_S = 300.0
 SPRINT_KMH = 25.2
 SMOOTH = 5
@@ -213,8 +214,18 @@ class Match:
                 continue
             team = e["team_id"] if e["result_name"] != "owngoal" else self.other(e["team_id"])
             goals[team] += 1
+            f = self.line_frame(e["ts"]) if self.pos is not None else None
             self.add("score", e["ts"], goals[team], "goal", f"Goal {goals[self.home]}-{goals[self.away]}",
-                     team, e["player_id"], [e["event_id"]])
+                     team, e["player_id"], [e["event_id"]], frames=None if f is None else (f, f))
+
+    def line_frame(self, ts):
+        """First frame in the 3 s after a goal kick with the ball at a goal line, or None: the goal
+        is known when the ball is in, not when it is struck. The simulated ball stops in the net
+        about 0.2 m short of the line, hence the margin."""
+        f0 = self.frame(ts)
+        x = self.pos[f0:f0 + 3 * self.fps + 1, 0, 0].astype(float)
+        hit = np.flatnonzero((x <= LINE_MARGIN) | (x >= LENGTH - LINE_MARGIN))
+        return f0 + int(hit[0]) if len(hit) else None
 
     def player_speeds(self):
         """Smoothed speed (km/h) per frame and entity; NaN at gaps, jumps and the half-time switch."""

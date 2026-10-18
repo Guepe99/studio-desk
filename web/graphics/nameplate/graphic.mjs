@@ -53,7 +53,9 @@ export default class Nameplate extends SdGraphic {
         const sx = x * k, sy = y * k;
         this.anchor.classList.toggle("hidden", !visible || !Number.isFinite(sx));
         this.anchor.classList.toggle("flip-x", sx > this.resolution.width * k - 460);
-        this.anchor.classList.toggle("flip-y", sy < 330);
+        // below the player only where the top is short and the bottom has more room: drawn
+        // magnified on a phone the renderer is under 500 stage px tall, and neither side may fit
+        this.anchor.classList.toggle("flip-y", sy < 330 && this.resolution.height * k - sy > sy);
         this.anchor.style.transform = `translate(${sx}px, ${sy}px)`;
       },
     };

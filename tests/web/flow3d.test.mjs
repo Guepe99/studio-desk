@@ -28,7 +28,8 @@ function onTarget(m) {
   const ev = [...m.events].sort((a, b) => a.ts - b.ts), gk = new Set(m.meta.players.filter((p) => p.position === "GK").map((p) => p.player_id));
   return ev.filter((e, k) => {
     if (!/^shot/.test(e.type_name)) return false;
-    if (e.result_name === "success" && m.goals.some((g) => Math.abs(g.ts - e.ts) < 0.5)) return true;
+    // the score fact comes when the ball crosses the line, after the kick: matched by source event
+    if (e.result_name === "success" && m.goals.some((g) => (g.source_event_ids ?? []).includes(e.event_id))) return true;
     const n = ev.slice(k + 1).find((x) => x.period === e.period);
     return n && gk.has(n.player_id) && n.team_id !== e.team_id && n.ts - e.ts <= 3 && n.type_name !== "goalkick";
   });
@@ -103,8 +104,9 @@ test("solve: the body's reach lands on the ball for a full-stretch dive", () => 
   }
 });
 
-test("real clips: the contact frame lands on the crossing time and the hands on the ball", () => {
-  const m = load("M001") ?? load("DEMO");
+const clipMatch = load("M001") ?? load("DEMO");   // web/data is git-ignored: skip on a fresh clone
+test("real clips: the contact frame lands on the crossing time and the hands on the ball", { skip: !clipMatch }, () => {
+  const m = clipMatch;
   // made-up dives: 2 m across in 1.5 s, the body down to the ground, hands 0.5 m past the root at 0.6 s
   const clip = (sg) => ({ len: 2.5, fps: 30, contact: 0.6, hand: [sg * 1.3, 1.1, 0.2],
     root: Array.from({ length: 75 }, (_, f) => [sg * 2 * Math.min(1, f / 45), -0.75 * Math.min(1, f / 40), 0]) });

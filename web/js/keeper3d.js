@@ -47,13 +47,13 @@ function keeperOf(match, team, ts) {
 // is there plays it on its root curve (realRoot), the others the procedural poses (keeperRoot).
 export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45, arm: 0.62 }, span = [0, match.duration], real = {} } = {}) {
   const ev = [...match.events].sort((a, b) => a.ts - b.ts);
-  const goalTs = match.goals.map((g) => g.ts);
+  const goalEvents = new Set(match.goals.flatMap((g) => g.source_event_ids ?? []));   // the score fact comes when the ball is in, after the kick
   const out = [];
   for (let k = 0; k < ev.length; k++) {
     const e = ev[k];
     if (!/^shot/.test(e.type_name) || e.ts < span[0] - 3 || e.ts > span[1] + 1) continue;
     const next = ev.slice(k + 1).find((x) => x.period === e.period);
-    const goal = e.result_name === "success" && goalTs.some((t) => Math.abs(t - e.ts) < 0.5);
+    const goal = e.result_name === "success" && goalEvents.has(e.event_id);
     const i = keeperOf(match, e.team_id, e.ts);
     if (i === null) continue;
     const kpid = match.meta.entities[i];

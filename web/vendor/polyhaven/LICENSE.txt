@@ -1,4 +1,4 @@
-orlando_stadium_256.env is derived from the HDRI "Orlando Stadium" by Poly Haven
+stadium_noon_256.env is derived from the HDRI "Orlando Stadium" by Poly Haven
 (photography Dimitrios Savva, processing Greg Zaal), https://polyhaven.com/a/orlando_stadium,
 1k .hdr downloaded on 18 Oct 2026 from
 https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/orlando_stadium_1k.hdr

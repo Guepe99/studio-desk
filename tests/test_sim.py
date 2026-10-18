@@ -29,6 +29,13 @@ def test_same_seed_same_events_and_frames():
     assert runs[0]["storylines"] == runs[1]["storylines"]
 
 
+def test_no_ball_into_the_goal_without_a_goal(built):
+    _, conn = built
+    rows = conn.execute("SELECT end_x, end_y FROM events WHERE type_name NOT LIKE 'shot%' AND result_name != 'owngoal' "
+                        "AND (end_x <= 0 OR end_x >= 105)").fetchall()
+    assert rows and not [r for r in rows if abs(r[1] - 34) < 3.66 + 0.11]
+
+
 def test_coordinates_inside_the_pitch(built):
     _, conn = built
     for r in conn.execute("SELECT start_x, start_y, end_x, end_y FROM events"):

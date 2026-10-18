@@ -33,9 +33,15 @@ try {
     return `${runs[1].toFixed(2)} fps (runs ${runs.map((r) => r.toFixed(1)).join(", ")})`;
   };
   console.log(`profile ${await page.evaluate(() => JSON.stringify(window.sample3d.scene.debug ?? "before the overhaul"))}`);
+  console.log(`scene: ${await page.evaluate(() => { const sc = window.sample3d.scene.scene, c = sc.getMeshByName("crowd3d");
+    return JSON.stringify({ meshes: sc.meshes.length, active: sc.getActiveMeshes().length, vertices: sc.getTotalVertices(), crowd3d: c ? { verts: c.getTotalVertices(), instances: c.thinInstanceCount, outline: c.renderOutline } : null,
+      outlines: sc.meshes.filter((m) => m.material?.name === "anime-outline").length }); })}`);
   console.log(`all on: ${await median()}`);
   if (process.argv[4] === "all") {
     const steps = [
+      ["crowd outline off", (s) => s.scene.meshes.filter((m) => m.name === "crowd3d").forEach((m) => { m.renderOutline = false; })],
+      ["3D crowd rows off", (s) => s.scene.meshes.filter((m) => m.name === "crowd3d").forEach((m) => m.setEnabled(false))],
+      ["player outlines off", (s) => s.scene.meshes.filter((m) => m.material?.name === "anime-outline").forEach((m) => m.setEnabled(false))],
       ["sun shadows off", (s) => s.light?.dropShadows()],
       ["crowd off", (s) => s.scene.meshes.filter((m) => /^crowd/.test(m.name)).forEach((m) => m.setEnabled(false))],
       ["post effects to minimum", (s) => s.post?.drop()],

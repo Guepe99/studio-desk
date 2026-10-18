@@ -52,7 +52,7 @@ export class Scene3D {
   static async create(canvas, match, opts) {
     const s = new Scene3D(canvas, match, opts);
     await s._loadPlayers();
-    await s.crowd.load();
+    await s.crowd.load().catch((e) => console.warn(`3D crowd not loaded, cards only: ${e.message}`));
     return s;
   }
 
@@ -314,7 +314,9 @@ export class Scene3D {
     this.debug.camera = this.cams.mode;
   }
 
-  render() { this.scene.render(); }
+  // the page drives frames from its own requestAnimationFrame: beginFrame and endFrame let Babylon
+  // measure the real frame rate, which the SceneOptimizer and the fps readout read (else 60 forever)
+  render() { this.engine.beginFrame(); this.scene.render(); this.engine.endFrame(); }
 
   // Plug a driver in: {priority, pose(i, ts)}, see web/js/scene3d/players.js. Awareness modules
   // take priority 10, so the ball rig (20) and the event actions (30) win over them.

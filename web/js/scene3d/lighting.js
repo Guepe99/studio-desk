@@ -11,7 +11,7 @@
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
 
-export const ENV_URL = "vendor/polyhaven/orlando_stadium_256.env";
+export const ENV_URL = "vendor/polyhaven/stadium_noon_256.env";
 // Sun of the HDRI (52 degrees up). It shines from behind the main camera's left shoulder, so the
 // shadows fall away from the viewer, as the regulations ask for the main camera.
 export const SUN_DIR = new B.Vector3(0.38, -0.79, 0.48).normalize();

@@ -24,9 +24,10 @@ export const BOOT_COLOURS = ["#16161a", "#f2f2f2", "#ff5fa2", "#2f7bff", "#ffcf1
 const UV_PER_M = 0.8;
 // shortcut: two keeper kits picked by side, as the mannequin look did; upgrade when the export carries keeper colours
 const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
-// screen share (bounding sphere over viewport) under which the body switches to the far one:
-// about 120 px of player height in a 720 px frame
-const LOD_COVERAGE = 0.006;
+// screen share (bounding sphere area over viewport area) under which the body switches to the far
+// one, which has no shirt number: about 45 px of player height in a 720 px frame, so the wide
+// broadcast shot keeps the numbers (at 120 px it lost them)
+const LOD_COVERAGE = 0.0008;
 
 // FNV-1a: the same player gets the same look in every render.
 function hash(s) {
@@ -62,9 +63,12 @@ const readable = (bg, pref) => (contrast(bg, pref) >= 2.5 ? pref : luminance(bg)
 
 // Kit colours of one player: shirt and socks in the primary colour, shorts, sock band and the
 // number in the secondary; keepers in their own shirt with dark shorts and light gloves.
+// Team colours are muted on the 3D kits (a quarter less saturation, 12% darker): at full strength
+// flat toon shading under the broadcast grade reads as plastic. The 2D page keeps the team colours.
+const mute = (hex) => { const c = B.Color3.FromHexString(hex).toHSV(); return B.Color3.FromHSV(c.r, c.g * 0.75, c.b * 0.88).toHexString(); };
 export function kitColours(team, gk) {
-  const shirt = gk ? GK_KIT[team.side] ?? GK_KIT.home : team.color_primary;
-  const second = gk ? "#15171f" : team.color_secondary;
+  const shirt = mute(gk ? GK_KIT[team.side] ?? GK_KIT.home : team.color_primary);
+  const second = mute(gk ? "#15171f" : team.color_secondary);
   return {
     shirt, shorts: second, socks: shirt, band: second, number: readable(shirt, second), shortsNumber: readable(second, shirt),
     armband: readable(shirt, "#f2f2f2"), gloves: gk ? "#e9edf2" : null,
@@ -237,9 +241,13 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
 
 // --- anime footballers (?players=anime, docs/anime3d.md) ---------------------------------------------
 // Hair styles of anime.glb and anime colours. Original characters only: no style and colour pair
-// copies a known anime or game character (no gold spikes, no white or silver hair).
+// copies a known anime or game character (no gold spikes, no white or silver hair). Natural, muted
+// colours only: the owner found green, blue and bright red hair too loud (18/10/2026).
 export const ANIME_HAIR = ["hair_messy", "hair_spiky", "hair_swept", "hair_crop"];
-export const ANIME_HAIR_COLOURS = ["#1d1d33", "#5a3423", "#b8502a", "#2c4fa0", "#d9a940", "#2f6e4c", "#7b2a3a", "#8b6a4f"];
+// natural tones from black to platinum, any of them on any skin; no copper or auburn (under the
+// toon light auburn reads as copper), which the owner found unrealistic, and not only dark ones,
+// which read as too uniform (18/10/2026)
+export const ANIME_HAIR_COLOURS = ["#1d1d26", "#3a2a22", "#5e3a26", "#8a5a36", "#a8783f", "#c9a25e", "#e2c88e", "#d9d3c9"];
 export const EYE_COLOURS = ["#3a6fd8", "#2f9a6a", "#8a5a2b", "#6b4bb8", "#c07a1e", "#3d4a5c"];
 // dark or neutral boots: the face and the hair carry the colour, not the feet
 export const ANIME_BOOTS = ["#16171a", "#24262b", "#2e2a28", "#1c2433", "#d9d9d6"];
@@ -249,8 +257,7 @@ const EXPRESSIONS = ["joy", "sorrow", "determined", "blink"];
 export function animeLook(pid) {
   const h = hash(pid), base = playerLook(pid);
   const hair = ANIME_HAIR[(h >>> 4) % ANIME_HAIR.length];
-  let hairColour = ANIME_HAIR_COLOURS[(h >>> 8) % ANIME_HAIR_COLOURS.length];
-  if (hair === "hair_spiky" && hairColour === "#d9a940") hairColour = "#b8502a";   // gold spikes are a famous look
+  const hairColour = ANIME_HAIR_COLOURS[(h >>> 8) % ANIME_HAIR_COLOURS.length];
   return { ...base, hair, hairColour, eyes: EYE_COLOURS[(h >>> 20) % EYE_COLOURS.length], boots: ANIME_BOOTS[(h >>> 16) % ANIME_BOOTS.length],
     height: 0.95 + ((h >>> 24) % 11) / 100, blink: ((h >>> 12) % 97) / 97 };
 }

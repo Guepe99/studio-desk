@@ -1,6 +1,7 @@
 """Builds data/matches.sqlite: league, matches, lineups, events, tracking and the hidden storylines."""
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -202,9 +203,14 @@ def build(n_matches=4, seed=7, path: Path = config.MATCHES_DB, minutes=None):
     comebacks = set(rng.choice(n_matches, math.ceil(n_matches / 2), replace=False).tolist())
     results = [_simulate_with_comeback(m, seed * 1000 + m + 1, league, cal, m in comebacks, minutes)
                for m in range(n_matches)]
+    # written beside the old file and swapped in at the end: a failed write keeps the old database
+    tmp = Path(f"{path}.tmp")
     for suffix in ("", "-wal", "-shm"):
-        Path(f"{path}{suffix}").unlink(missing_ok=True)
-    conn = db.connect(Path(path))
+        Path(f"{tmp}{suffix}").unlink(missing_ok=True)
+    conn = db.connect(tmp)
     write(conn, league, results)
     conn.close()
+    for suffix in ("-wal", "-shm"):
+        Path(f"{path}{suffix}").unlink(missing_ok=True)
+    os.replace(tmp, path)
     return results

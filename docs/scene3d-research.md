@@ -212,17 +212,18 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 
 - Industry practice: instanced 3D spectators near the pitch, cheaper cards further out
   ([polycount, FIFA 10 crowd](https://polycount.com/discussion/71901/in-game-crowd-techniques-such-as-fifa-10)).
-  Here the front 4 rows are 3D on high; low keeps cards only (below).
+  Here the front 2 rows are 3D on high (4 until 18/10/2026, see quality.js); low keeps cards only (below).
 - 3D spectator: the CC0 mannequin body (about 360 triangles, `scripts/build_spectator.py`) with
   hair, a face and a scarf added at load time; 579 triangles in all. One thin-instanced mesh, one
   draw call.
 - Style: anime, to match the players. Head and hair at 1.3 times life size, two tall eyes and a
   mouth, flat colours, toon shading (below), and on high a thin dark outline (1.2 cm, Babylon's
   outline renderer). Low has no outline: in lavapipe it costs a second pass.
-- Hair: anime crowds are mostly ordinary colours with a few loud heads, so the palette is
-  weighted: black 34%, dark brown 24%, brown 14%, blonde 12%, red 6%, and pink, sky blue, teal,
-  violet and silver 2% each (10% vivid in all). A first version drew all 12 colours evenly and
-  the lead's review read the stands as confetti.
+- Hair: a weighted palette of natural colours, any of them on any skin: black 26%, dark brown
+  20%, brown 20%, dark blonde 12%, blonde 10%, platinum, grey and light brown 4% each.
+  A first version drew all 12 colours evenly and read as confetti; the next one kept 10% vivid
+  heads (pink, sky blue, teal, violet, silver), which the owner found too loud; one with only
+  dark tones read as too uniform; copper and auburn read as unrealistic (18/10/2026).
 - Face: a round face plate (12 segments, curved back at the sides) over the body's narrow head,
   with two tall eyes and a mouth; the crown of the hair is spiky, the lower part a tighter mass.
 - Low profile: cards only. In lavapipe one row of 3D spectators and the hair cards together cost

@@ -128,7 +128,9 @@ def template_cues(match, facts, events):
     cues = []
     for audience in ("analyst", "casual"):
         cands = [(0, p1, "why_card", recap(match, facts, p1, "Half-time")), (0, end, "why_card", recap(match, facts, end, "Full time"))]
-        cands += [(1, f["ts"], "pass_shot", shot(f)) for f in by_kind.get("shot_speed", [])]
+        # a goal's shot cue waits for the score fact: "Goal" only once the ball is in
+        cands += [(1, max(f["ts"], by_event.get(("score", f["source_event_ids"][0]), f)["ts"]), "pass_shot", shot(f))
+                  for f in by_kind.get("shot_speed", [])]
         sprints = sorted(by_kind.get("sprint_speed", []), key=lambda f: -f["value"])[:TOP_SPRINTS[audience]]
         cands += [(2, f["ts"], "nameplate", nameplate(f)) for f in sprints]
         if audience == "analyst":

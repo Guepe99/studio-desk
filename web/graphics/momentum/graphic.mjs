@@ -11,10 +11,10 @@ export default class Momentum extends SdGraphic {
 .row { display: grid; grid-template-columns: 112px 1fr; align-items: end; height: ${H + 6}px; }
 .row.away { align-items: start; }
 .team { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 32px; letter-spacing: .04em; align-self: center; }
-.chip { width: 10px; height: 30px; border-radius: 2px; }
+.chip { width: 10px; height: 30px; border-radius: 2px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
 .bars { display: flex; gap: 6px; height: 100%; align-items: flex-end; }
 .away .bars { align-items: flex-start; }
-.bar { flex: 0 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; }
+.bar { flex: 0 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.6); }
 .away .bar { border-radius: 0 0 3px 3px; transform-origin: 50% 0; }
 .bar.now { opacity: 1; box-shadow: 0 0 0 2px #fff; }
 .mid { height: 3px; background: #fff; margin-left: 112px; opacity: .85; }

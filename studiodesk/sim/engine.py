@@ -11,6 +11,12 @@ import math
 import numpy as np
 
 L, W = 105.0, 68.0
+GOAL_HALF = 3.66 + 0.4  # half the goal mouth plus a ball's margin
+
+
+def wide_of_goal(y):
+    """A ball going out over the byline without a goal must cross it outside the posts."""
+    return y if abs(y - W / 2) >= GOAL_HALF else W / 2 + math.copysign(GOAL_HALF, y - W / 2 or 1.0)
 FORMATIONS = {  # slot 0 is the goalkeeper; (depth 0..1 from back line to front line, width 0..1)
     "4-4-2": [(0, .5), (0, .12), (0, .38), (0, .62), (0, .88), (.5, .12), (.5, .38), (.5, .62),
               (.5, .88), (1, .38), (1, .62)],
@@ -269,7 +275,7 @@ class Engine:
             side = 0.0 if ey < W / 2 else W
             return self.out_of_play(typ, body, (float(np.clip(ax + 1.15 * (ex - ax), 1, L - 1)), side), r)
         if ex > 75 and rng.random() < self.paced("goalkick", self.targets["goalkick"], .2):
-            return self.out_of_play(typ, body, (L, ey), r)
+            return self.out_of_play(typ, body, (L, wide_of_goal(ey)), r)
         who, u = self.lane(D, ax, ay, ex, ey)
         ip = self.att(T, ax + u * (ex - ax), ay + u * (ey - ay))
         self.emit(T, c, typ, "fail", body, s_abs, ip, dur * u, r, z, int(loft))
@@ -424,7 +430,7 @@ class Engine:
             return
         if rng.random() < self.paced("corner", self.targets["corner"], .25):  # headed behind
             defender = self.nearest(D, *e_abs)
-            behind = self.att(T, L, float(np.clip(ey + rng.normal(0, 6), 1, W - 1)))
+            behind = self.att(T, L, wide_of_goal(float(np.clip(ey + rng.normal(0, 6), 1, W - 1))))
             hdur = math.dist(self.att(T, *behind), (ex, ey)) / (self.rng.uniform(45, 65) / 3.6)
             self.emit(D, defender, "clearance", "success", "head", e_abs, behind, hdur, z=1.0, loft=1)
             self.tg += hdur

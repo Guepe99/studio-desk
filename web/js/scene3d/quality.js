@@ -9,7 +9,8 @@ export const PROFILES = {
   high: { name: "high", shadows: "csm", shadowMap: 1024, cascades: 3, autoDepthBounds: true, shadowQuality: "medium",
     msaa: 4, fxaa: false, sharpen: true, bloom: true, bloomScale: 0.5, dof: true, ssao: true,
     maxWidth: 1920, detailScales: 2, crowd: 1, aniso: 8,
-    crowd3dRows: 4, crowdOutline: true, crowdHair: true },
+    // two 3D rows, no crowd outline: in SwiftShader four rows with outlines made the frame 3.6 times slower (18/10/2026)
+    crowd3dRows: 2, crowdOutline: false, crowdHair: true },
   // phone, WebGL 1 or a software renderer: blob shadows (two cascades on a WebGL 2 phone, see
   // pickProfile), FXAA, bloom at half the high profile's scale, no depth of field or SSAO, one
   // grass detail scale, sparser crowd

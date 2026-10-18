@@ -26,8 +26,6 @@ DB_PATH = Path(os.environ.get("STUDIODESK_MATCHES_DB", config.MATCHES_DB))
 # shortcut: one clock per process, so one live run per process; give each run its own clock when the
 # tappa 3 agents run two matches in the same process.
 _clock = float(os.environ["STUDIODESK_CLOCK"]) if os.environ.get("STUDIODESK_CLOCK") else None
-GOAL_SQL = ("((type_name IN ('shot', 'shot_freekick', 'shot_penalty') AND result_name = 'success') "
-            "OR result_name = 'owngoal')")
 
 
 def set_clock(ts):
@@ -67,10 +65,9 @@ def get_match_info(match_id: str) -> dict:
     teams = _rows("SELECT team_id, name, short_name, color_primary, color_secondary FROM teams "
                   "WHERE team_id IN (?, ?)", (m["home_team_id"], m["away_team_id"]))
     score = {"home": 0, "away": 0}
-    for g in _rows(f"SELECT team_id, result_name FROM events WHERE match_id = ? AND ts <= ? AND {GOAL_SQL}",
-                   (match_id, _now())):
-        side = sides[g["team_id"]]
-        score[side if g["result_name"] != "owngoal" else ("away" if side == "home" else "home")] += 1
+    # from the score facts (team = the side the goal counts for), stamped when the ball crosses the line
+    for g in _rows("SELECT team_id FROM facts WHERE match_id = ? AND kind = 'score' AND ts <= ?", (match_id, _now())):
+        score[sides[g["team_id"]]] += 1
     players = _rows("SELECT l.player_id, p.team_id, p.name, p.shirt, p.position, l.starter, l.on_ts, l.off_ts "
                     "FROM lineups l JOIN players p USING (player_id) WHERE l.match_id = ? AND l.on_ts <= ? "
                     "ORDER BY p.team_id, p.shirt", (match_id, _now()))

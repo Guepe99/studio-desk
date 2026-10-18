@@ -88,6 +88,8 @@ const onScreen = (page) => page.evaluate((sel) => {
 const seekTo = async (page, ts) => {
   await page.evaluate((x) => { window.studioDesk.setPlaying(false); window.studioDesk.seek(x); }, ts);
   await page.waitForTimeout(250);
+  // and at least one drawn frame after the seek: on a loaded machine 250 ms can pass without one
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 };
 const scorebug = (page) => page.evaluate(() => ({
   h: document.querySelector(".sb-h").textContent, a: document.querySelector(".sb-a").textContent,
