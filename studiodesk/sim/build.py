@@ -183,13 +183,23 @@ def write(conn, league, results):
     conn.commit()
 
 
+def _simulate_with_comeback(match_no, seed, league, cal, comeback, minutes):
+    # A planned goal only goes in if its team reaches a shooting position in time, which short
+    # matches do not always allow: replay with another seed until the planted comeback shows.
+    for attempt in range(8):
+        r = simulate(match_no, seed + attempt * 100_000, league, cal, comeback, minutes)
+        if not comeback or any("comeback" in row for row in r["storylines"]):
+            return r
+    raise RuntimeError(f"match {match_no}: planned comeback missing after 8 seeds")
+
+
 def build(n_matches=4, seed=7, path: Path = config.MATCHES_DB, minutes=None):
     """Rebuild the file from scratch. Facts (builder B) must be recomputed after a rebuild."""
     cal = load_calibration()
     rng = np.random.default_rng(seed)
     league = make_league(rng, cal)
     comebacks = set(rng.choice(n_matches, math.ceil(n_matches / 2), replace=False).tolist())
-    results = [simulate(m, seed * 1000 + m + 1, league, cal, m in comebacks, minutes)
+    results = [_simulate_with_comeback(m, seed * 1000 + m + 1, league, cal, m in comebacks, minutes)
                for m in range(n_matches)]
     for suffix in ("", "-wal", "-shm"):
         Path(f"{path}{suffix}").unlink(missing_ok=True)
