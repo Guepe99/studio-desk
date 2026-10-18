@@ -180,11 +180,58 @@ export function setupAnimations(inst, container, prefix) {
   };
 }
 
+// Retargeted motion clips (web/vendor/motion, docs/motion3d.md): added to the player container's
+// clips so the lazy cache and the awareness layer find them by name. s.motion = clips.json.
+export async function loadMotion(s, base = "vendor/motion/") {
+  const [meta, c] = await Promise.all([
+    fetch(`${base}clips.json`).then((r) => { if (!r.ok) throw new Error(`clips.json ${r.status}`); return r.json(); }),
+    B.LoadAssetContainerAsync(`${base}clips.glb`, s.scene),
+  ]);
+  for (const g of c.animationGroups) { g.stop(); s.container.animationGroups.push(g); }
+  s.motion = meta;
+  return meta;
+}
+
+// The motion loop for a non-forward mode, from the run direction in the character's frame
+// (runL: [left, forward] unit vector): backpedal and strafe take the loop whose travel matches
+// best, jockey its shuffle. null when the clips are not loaded (the stand-in gaits then play).
+const LOOPS = ["M_jog_backward", "M_sidestep_left", "M_sidestep_right"];
+export function motionLoop(motion, mode, runL) {
+  if (!motion || mode === "forward") return null;
+  if (mode === "jockey") return motion.clips.M_jockey_shuffle ? "M_jockey_shuffle" : null;
+  let best = null, bd = -Infinity;
+  for (const n of LOOPS) {
+    const c = motion.clips[n];
+    if (!c) continue;
+    const d = runL ? c.dir[0] * runL[0] + c.dir[1] * runL[1] : (n === "M_jog_backward") === (mode === "backpedal") ? 1 : 0;
+    if (d > bd) { bd = d; best = n; }
+  }
+  return best;
+}
+
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last
-// frame) from the resolved driver answers r.
-export function animatePlayer(p, v, dt, r) {
-  const full = r.action ? r.actionW : 0;
-  const { w, dir, v: vv } = gait(r.mode, v);
+// frame) from the resolved driver answers r. r.runL: the run direction in the character's frame
+// (motion loops). motion: the loaded clips.json, or null for the procedural stand-ins.
+export function animatePlayer(p, v, dt, r, motion = null) {
+  let full = r.action ? r.actionW : 0;
+  const e = r.emotion;
+  // a full-body clip (crouch, knee slide) only while the player is nearly still; running, it is
+  // upper body only so the legs keep the locomotion (the tracking owns the root)
+  const eFull = !!(e && e.full && !r.action && v < 1.5);
+  if (eFull) full = Math.max(full, e.weight);
+  const loop = motionLoop(motion, r.mode, r.runL);
+  const lm = loop && motion.clips[loop];
+  let wl = 0;
+  if (lm) {
+    // the loop's phase follows the ground speed (no foot slide at its own speed); the jockey
+    // shuffle keeps stepping when nearly still
+    const jockey = loop === "M_jockey_shuffle";
+    const rate = jockey ? Math.min(1.5, Math.max(0.6, v / Math.max(lm.speed, 0.3))) / lm.len : v / Math.max(lm.stride, 0.3);
+    p.lphase = ((p.lphase ?? 0) + rate * dt) % 1;
+    wl = jockey ? 1 : Math.min(1, v / 0.8);
+  }
+  const { w, dir, v: vv } = gait(lm ? "forward" : r.mode, v);
+  if (wl > 0) for (let j = 0; j < 4; j++) w[j] *= 1 - wl;
   const moving = w[1] + w[2] + w[3];
   const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
   p.phase = (((p.phase + dir * (vv / stride) * dt) % 1) + 1) % 1;
@@ -193,18 +240,21 @@ export function animatePlayer(p, v, dt, r) {
     const wj = w[j] * (1 - full);
     if (wj === 0 && p.w[j] === 0) return;
     g.setWeightForAllAnimatables(wj);
+    // goToFrame registers the bones even at weight 0, and Babylon's blend divides 0 by 0 when the
+    // first two registered weights are both 0 (the bones turn NaN and the player vanishes)
     const ph = j === 0 ? p.idle : p.phase;
-    g.goToFrame(g.from + ph * (g.to - g.from), true);
+    if (wj > 0) g.goToFrame(g.from + ph * (g.to - g.from), true);
     p.w[j] = wj;
   });
   // clips other than locomotion: only the ones asked for this frame carry weight. An upper-body
   // emotion is boosted so it wins over the locomotion there (weights over 1 are normalised).
   const want = new Map();
   if (r.action) want.set(r.action.clip, [r.action.time, r.action.weight]);
-  const e = r.emotion;
+  if (wl > 0 && p.anim.get(loop)) want.set(loop, [p.lphase * lm.len, wl * (1 - full)]);
   if (e) {
-    const g = p.anim.get(e.clip, !!e.upper);
-    if (g) want.set(e.upper ? `${e.clip}^` : e.clip, [e.t, e.upper ? e.weight * 6 : e.weight * (1 - full)]);
+    const up = !!e.upper && !eFull;
+    const g = p.anim.get(e.clip, up);
+    if (g) want.set(up ? `${e.clip}^` : e.clip, [e.t, up ? e.weight * 6 : eFull ? e.weight : e.weight * (1 - full)]);
   }
   if (r.action) p.anim.get(r.action.clip);
   for (const [key, g] of Object.entries(p.anim.cache)) {

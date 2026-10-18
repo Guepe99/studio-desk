@@ -30,6 +30,15 @@ const OPEN_MAX = 45 * D;                         // R9 receivers keep the ball w
 export const CLIPS = { SD_ArmsUp: 1.0, SD_Clap: 0.6, SD_HandsOnHead: 2.0, SD_HandsOnHips: 2.0, SD_Dejected: 2.0,
   SD_Appeal: 1.2, SD_Palms: 1.5, SD_ArmUp: 1.0, SD_Point: 2.0, Yes: 2.5, Idle_No_Loop: 2.5 };
 const ONCE = new Set(["Idle_No_Loop"]);
+// With the retargeted motion clips (docs/motion3d.md) each stand-in becomes a real clip, picked
+// per player and event among the variants the clip file has. Key: "<kind>:<clip>", then "<clip>".
+const MOTION = {
+  "celebrate:SD_ArmsUp": ["M_celeb_knee_slide", "M_celeb_arms_wide", "M_celeb_jump_fist", "M_celeb_arms_up"],
+  "join:SD_ArmsUp": ["M_join_hug", "M_join_high_five", "M_celeb_jump_fist", "M_celeb_arms_up"],
+  SD_Clap: ["M_clap"], SD_HandsOnHead: ["M_hands_on_head"], SD_HandsOnHips: ["M_dejected_hips"],
+  SD_Dejected: ["M_crouch_head_down"], SD_Appeal: ["M_appeal_arms_out"], SD_Palms: ["M_palms_shrug"],
+  "call:SD_ArmUp": ["M_call_ball"], "appeal:SD_ArmUp": ["M_point_forward", "M_call_ball"], SD_Point: ["M_keeper_organise"],
+};
 const PRIO = { celebrate: 6, join: 5, dejected: 5, near_miss: 4, appeal: 3, protest: 3, call: 2, organise: 1 };
 const MODES = ["forward", "backpedal", "strafe", "jockey"];
 const KICKS = new Set(["pass", "cross", "freekick_crossed", "freekick_short", "corner_crossed", "corner_short", "goalkick", "throw_in"]);
@@ -45,8 +54,10 @@ function hash(s, n = 0) {
 }
 
 export class Awareness {
-  constructor(match, span = [0, match.duration], { ball } = {}) {
+  // motion: the clips.json of web/vendor/motion (null keeps the procedural SD_ stand-ins)
+  constructor(match, span = [0, match.duration], { ball, motion = null } = {}) {
     this.match = match;
+    this.motion = motion;
     const m = match;
     this.ball = ball ?? ((ts) => { const b = m.at(0, ts); return b && { x: b[0], y: b[1], h: Math.max(0, b[2]) }; });
     this.ents = m.meta.entities;
@@ -76,6 +87,19 @@ export class Awareness {
     const add = (pid, kind, clip, t0, dur, src, extra = {}) => {
       const i = idx(pid);
       if (i === null || !m.at(i, t0)) return;
+      const opts = this.motion && (MOTION[`${kind}:${clip}`] ?? MOTION[clip])?.filter((c) => this.motion.clips[c]);
+      if (opts?.length) {
+        // a one-shot clip covers its own length; a longer window chains the next variants
+        let k = Math.floor(hash(pid, Math.round(t0 * 10)) * opts.length), t = t0;
+        while (t < t0 + dur - 0.5) {
+          const c = opts[k++ % opts.length], mc = this.motion.clips[c];
+          const d = mc.loop ? t0 + dur - t : Math.min(mc.len, t0 + dur - t);
+          out.push({ i, kind, clip: c, t0: t, dur: d, prio: PRIO[kind], src, ...extra });
+          t += d;
+          if (opts.length === 1 && !mc.loop) break;
+        }
+        return;
+      }
       out.push({ i, kind, clip, t0, dur, prio: PRIO[kind], src, ...extra });
     };
     const onPitch = (team, ts) => this.ents.map((p, i) => i).filter((i) => i > 0 && this.team[i] === team && m.at(i, ts));
@@ -171,9 +195,10 @@ export class Awareness {
   emotion(i, ts) {
     const e = this.emotionAt(i, ts);
     if (!e) return null;
-    const u = ts - e.t0, len = CLIPS[e.clip] ?? 1;
+    const mc = this.motion?.clips[e.clip];
+    const u = ts - e.t0, len = mc?.len ?? CLIPS[e.clip] ?? 1, once = mc ? !mc.loop : ONCE.has(e.clip);
     const weight = clamp(Math.min(u / 0.25, (e.dur - u) / 0.4), 0, 1);
-    return { clip: e.clip, t: ONCE.has(e.clip) ? Math.min(u, len) : u % len, weight, upper: true, kind: e.kind };
+    return { clip: e.clip, t: once ? Math.min(u, len) : u % len, weight, upper: true, full: !!mc?.full, kind: e.kind };
   }
 
   // per player: [from, to] windows while a pass travels to him (no scans then, R4)

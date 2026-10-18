@@ -26,7 +26,8 @@ export class AwarenessRig {
   constructor(s) {
     this.s = s;
     s.awareness = this;
-    this.aw = new Awareness(s.match, s.span, { ball: (t) => s.rig.ball(t) });
+    // s.motion: the retargeted clips (players.js loadMotion), or none for the SD_ stand-ins
+    this.aw = new Awareness(s.match, s.span, { ball: (t) => s.rig.ball(t), motion: s.motion ?? null });
     this.enabled = true;
     const probe = s.container.instantiateModelsToScene((n) => `aw-probe-${n}`, false, { doNotInstantiate: true });
     const P = nodesOf(probe.rootNodes[0], "aw-probe-");
@@ -37,7 +38,7 @@ export class AwarenessRig {
     // the upper-body tracks of every emotion clip, sampled by hand in _post
     const fps = s.container.animationGroups[0].targetedAnimations[0].animation.framePerSecond;
     this.tracks = {};
-    for (const name of Object.keys(CLIPS)) {
+    for (const name of [...Object.keys(CLIPS), ...Object.keys(s.motion?.clips ?? {})]) {
       const g = s.container.animationGroups.find((a) => a.name === name);
       if (g) this.tracks[name] = { from: g.from, fps, list: g.targetedAnimations.filter((t) => t.animation.targetProperty === "rotationQuaternion" && UPPER.test(t.target.name)).map((t) => [t.target.name, t.animation]) };
     }
@@ -66,7 +67,8 @@ export class AwarenessRig {
     const q = this.aw.pose(i, ts);
     if (!q) return null;
     const h = this._held(i, ts);
-    if (h.leg || h.action) { const { mode, ...rest } = q; return rest; }
+    // a ball action or a leg pose owns the legs: no mode, and the emotion stays upper body only
+    if (h.leg || h.action) { const { mode, ...rest } = q; if (rest.emotion) rest.emotion = { ...rest.emotion, full: false }; return rest; }
     return q;
   }
 
@@ -90,7 +92,7 @@ export class AwarenessRig {
       if (T) {
         const f = T.from + e.t * T.fps;
         for (const [b, a] of T.list) if (n[b]) B.Quaternion.SlerpToRef(n[b].rotationQuaternion, a.evaluate(f), e.weight, n[b].rotationQuaternion);
-        if (HEAD_CLIPS.has(e.clip)) continue;
+        if (HEAD_CLIPS.has(e.clip) || e.clip.startsWith("M_")) continue;   // the real clips move the head
       }
       const L = this.aw.look(p.i, ts);
       if (!L) continue;

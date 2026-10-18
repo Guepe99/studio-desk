@@ -1,0 +1,14 @@
+clips.glb holds motion generated on 18 Oct 2026 with NVIDIA Kimodo, model Kimodo-SOMA-RP-v1
+(https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1), through NVIDIA's public demo Space
+(https://huggingface.co/spaces/nvidia/Kimodo), from the text prompts listed in
+scripts/motion/clips.json. scripts/retarget_motion.py retargeted it onto the Quaternius Universal
+Animation Library skeleton (CC0, see ../quaternius/LICENSE.txt), removed the root motion and
+quantised the rotations. clips.json holds the clip lengths, loop speeds and flags.
+
+Licensed by NVIDIA Corporation under the NVIDIA Open Model License
+(https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/).
+
+The model is not redistributed here, only motion generated with it. The licence states:
+"NVIDIA does not claim ownership to any outputs generated using the Models or Derivative Models"
+and "An output is not a Derivative Model"; "Models are commercially usable". The model card states:
+"This model is ready for commercial use."
