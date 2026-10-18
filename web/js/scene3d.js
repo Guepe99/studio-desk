@@ -286,7 +286,7 @@ export class Scene3D {
     this.shadows.thinInstanceBufferUpdated("matrix");
 
     this.cams.update(view, ts, dt);
-    this.debug.camera = view.replay ? `replay-${view.angle ?? this.cams.replayAngle}` : "broadcast";
+    this.debug.camera = this.cams.mode;
   }
 
   render() { this.scene.render(); }

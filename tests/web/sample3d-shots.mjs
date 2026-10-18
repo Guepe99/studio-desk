@@ -132,19 +132,26 @@ try {
     fail(`drivers resolve to ${JSON.stringify(look.resolved)}`);
 
   // broadcast camera: fixed on the halfway line 18 m up, the ball always in the middle 90% of the
-  // frame through the live stretch, then the replay camera after the cut
+  // frame through the live stretch, except the close shot of the scorer after the goal (centred
+  // on him), then the replay camera after the cut
   const tv = await page.evaluate(async (cut) => {
-    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set() };
+    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [] };
+    const ndc = (cam, v) => window.BABYLON.Vector3.TransformCoordinates(v, cam.getViewMatrix().multiply(cam.getProjectionMatrix()));
     let first = null;
     for (let c = 0; c < cut; c += 0.2) {
       await window.__setTime(c);
       sc.engine._gl.readPixels(0, 0, 1, 1, 6408, 5121, new Uint8Array(4));   // let a software GPU keep up
       const cam = sc.scene.activeCamera;
+      if (sc.debug.camera === "celebration") {
+        const g = sc.cams.goals.find((x) => s.tl.at(c).ts >= x.ts);
+        const p = sc.players.find((q) => q.i === g.i).holder.position;
+        const q = ndc(cam, p.add(new window.BABYLON.Vector3(0, 1.2, 0)));
+        out.celebration.push(+Math.hypot(q.x, q.y).toFixed(2));
+        continue;
+      }
       out.cams.add(cam.name);
       if (Math.abs(cam.position.x) > 1e-6 || Math.abs(cam.position.y - 18) > 1e-6 || Math.abs(cam.position.z + 68) > 1e-6) out.pos = cam.position.asArray();
-      const b = sc.ball.getAbsolutePosition();
-      const m = cam.getViewMatrix().multiply(cam.getProjectionMatrix());
-      const p = window.BABYLON.Vector3.TransformCoordinates(b, m);
+      const p = ndc(cam, sc.ball.getAbsolutePosition());
       out.worst = Math.max(out.worst, Math.abs(p.x), Math.abs(p.y));
       const t = cam.getTarget().asArray().map((v) => +v.toFixed(1)).join();
       if (first === null) first = t; else if (t !== first) out.moved = true;
@@ -155,7 +162,8 @@ try {
     out.cams = [...out.cams];
     return out;
   }, cut);
-  console.log(`broadcast camera: ball within ${(tv.worst * 100).toFixed(0)}% of the half frame, cameras ${tv.cams}, then ${tv.after}`);
+  console.log(`broadcast camera: ball within ${(tv.worst * 100).toFixed(0)}% of the half frame, cameras ${tv.cams}, scorer close-up ${tv.celebration.length} frames (off centre ${Math.max(...tv.celebration)}), then ${tv.after}`);
+  if (tv.celebration.length < 5 || Math.max(...tv.celebration) > 0.35) fail(`no close shot of the scorer after the goal: ${JSON.stringify(tv.celebration)}`);
   if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on the gantry: ${JSON.stringify(tv)}`);
   if (!(tv.worst < 0.9) || !tv.moved) fail(`broadcast camera loses the ball or never pans: ${JSON.stringify(tv)}`);
   if (tv.replay === "tv" || !/^replay/.test(tv.after)) fail(`no replay camera after the cut: ${JSON.stringify(tv)}`);
@@ -289,6 +297,7 @@ try {
     await pg.evaluate(() => document.fonts.ready);
     return pg;
   };
+  await still(page, `celebration-${look.debug.profile}`, tl.goal - tl.from + 2.2);
   if (look.debug.profile === "low") await still(page, "low", 4);
   else {
     await still(page, "wide", 4);
