@@ -1,5 +1,5 @@
 // Procedural stadium: four raked stands with roofs, a seated crowd drawn as thin-instanced quads
-// (one draw call for all torsos, one for all heads), LED boards and four floodlight masts.
+// (one draw call per shirt or skin colour), LED boards and four floodlight masts.
 // Everything here is static: world matrices and materials are frozen.
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -38,7 +38,8 @@ function mat(scene, name, rgb, roughness = 0.85) {
 
 export function buildStadium(scene, match, profile, rnd) {
   const concrete = mat(scene, "concrete", [0.32, 0.33, 0.35]);
-  const seatMat = mat(scene, "seats", [0.05, 0.07, 0.12], 0.6);
+  const seatMat = mat(scene, "seats", [0.03, 0.04, 0.07], 1);
+  seatMat.metallicF0Factor = 0;   // no sky reflection: seen at a grazing angle the rows turned grey
   const roofMat = mat(scene, "roof", [0.55, 0.57, 0.6], 0.5);
   roofMat.backFaceCulling = false;
 
@@ -68,7 +69,8 @@ export function buildStadium(scene, match, profile, rnd) {
     }
     // stand frame -> world: local (x, h, front + d), turned by rotY (rotY 0 faces -Z, the pitch)
     const c = Math.cos(rotY), s = Math.sin(rotY);
-    for (const [x, d, h] of seatGrid(len, depth, profile.crowd, rnd)) {
+    // no crowd under the camera: the nearest heads would fill the bottom of the broadcast frame
+    for (const [x, d, h] of gantry ? [] : seatGrid(len, depth, profile.crowd, rnd)) {
       const z = front + d;
       people.push([x * c + z * s, h, -x * s + z * c, rotY]);
     }
@@ -88,57 +90,65 @@ export function buildStadium(scene, match, profile, rnd) {
   merge(tiers, seatMat); merge(shells, concrete); merge(roofs, roofMat);
 
   // crowd: a torso and a head per seat. Shirts lean to the two kits, by end of the ground.
-  const torsoTex = canvasTexture(scene, "torso", 64, 64, (g, w, h) => {
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = "#fff";
-    g.beginPath(); g.moveTo(6, h); g.lineTo(8, 22); g.quadraticCurveTo(10, 10, 24, 8); g.lineTo(40, 8);
-    g.quadraticCurveTo(54, 10, 56, 22); g.lineTo(58, h); g.closePath(); g.fill();
-  }, true);
-  const headTex = canvasTexture(scene, "head", 32, 32, (g, w, h) => {
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = "#fff"; g.beginPath(); g.ellipse(w / 2, h / 2, 11, 14, 0, 0, Math.PI * 2); g.fill();
-  }, true);
-  const crowdMat = (name, tex) => {
-    const m = mat(scene, name, [1, 1, 1], 0.9);
-    m.albedoTexture = tex;
-    m.useAlphaFromAlbedoTexture = true;
+  // Silhouettes as raw pixels, not canvas drawings: small canvas textures came out empty under
+  // WebGL 1 on the software test renderer (lavapipe), which hid the whole crowd there.
+  // inside(u, v): u across, v down, both 0..1.
+  const mask = (name, inside) => {
+    const S = 64, px = new Uint8Array(S * S * 4).fill(255);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) px[(y * S + x) * 4 + 3] = inside((x + 0.5) / S, (y + 0.5) / S) ? 255 : 0;
+    const t = B.RawTexture.CreateRGBATexture(px, S, S, scene, true, true, B.Texture.TRILINEAR_SAMPLINGMODE);
+    t.name = name; t.hasAlpha = true;
+    return t;
+  };
+  // shoulders round off from 0.12 to 0.35 down, the body widens to the bottom edge
+  const torsoTex = mask("torso", (u, v) => v > 0.12 && Math.abs(u - 0.5) < (v < 0.35 ? 0.27 + 0.11 * Math.sqrt((v - 0.12) / 0.23) : 0.38 + 0.08 * v));
+  const headTex = mask("head", (u, v) => ((u - 0.5) / 0.34) ** 2 + ((v - 0.5) / 0.44) ** 2 < 1);
+  // a cheap lit material, not PBR: an alpha-tested PBR albedo samples as empty under WebGL 1 on
+  // the software test renderer (lavapipe), and a crowd needs no image-based light
+  const crowdMat = (name, tex, rgb) => {
+    const m = new B.StandardMaterial(name, scene);
+    m.diffuseColor = new B.Color3(...rgb);
+    m.emissiveColor = new B.Color3(...rgb).scale(0.35);
+    m.specularColor = B.Color3.Black();
+    m.diffuseTexture = tex;
+    m.useAlphaFromDiffuseTexture = true;
     m.transparencyMode = B.Material.MATERIAL_ALPHATEST;
     m.alphaCutOff = 0.5;
     m.backFaceCulling = false;
     return m;
   };
-  const torso = B.MeshBuilder.CreatePlane("crowdTorso", { width: 0.5, height: 0.55 }, scene);
-  const head = B.MeshBuilder.CreatePlane("crowdHead", { width: 0.2, height: 0.25 }, scene);
-  torso.material = crowdMat("torsoMat", torsoTex);
-  head.material = crowdMat("headMat", headTex);
+  // colours go by mesh: one draw call per shirt or skin colour
   const lin = (hex) => B.Color3.FromHexString(hex).toLinearSpace();
+  const dim = (c, k) => [c.r * k, c.g * k, c.b * k];
   const home = lin(match.home.color_primary), away = lin(match.away.color_primary);
   const neutral = ["#e8e8e8", "#1d2230", "#3b4660", "#6b6f78", "#8a2b2b", "#2f5d8a", "#c9b48a"].map(lin);
-  const skins = ["#f1c9a5", "#e0ac83", "#c68a62", "#8d5a3b", "#5c3a24"].map(lin);
-  const n = people.length;
-  const tm = new Float32Array(16 * n), hm = new Float32Array(16 * n), tc = new Float32Array(4 * n), hc = new Float32Array(4 * n);
+  const shirts = [dim(home, 1), dim(home, 0.75), dim(away, 1), dim(away, 0.75), ...neutral.map((c) => dim(c, 0.9))];
+  const skins = ["#f1c9a5", "#e0ac83", "#c68a62", "#8d5a3b", "#5c3a24"].map((h) => dim(lin(h), 1));
+  const torsos = shirts.map(() => []), faces = skins.map(() => []);
   const m = new B.Matrix(), q = new B.Quaternion(), one = new B.Vector3(1, 1, 1), pos = new B.Vector3();
-  people.forEach(([x, y, z, rotY], i) => {
+  for (const [x, y, z, rotY] of people) {
     // planes face -Z by default; turn them to face the pitch like the stand
     B.Quaternion.RotationYawPitchRollToRef(rotY + Math.PI, 0, 0, q);
     pos.set(x, y + 0.42 + rnd() * 0.06, z);
-    B.Matrix.ComposeToRef(one, q, pos, m); m.copyToArray(tm, 16 * i);
-    pos.y += 0.38;
-    B.Matrix.ComposeToRef(one, q, pos, m); m.copyToArray(hm, 16 * i);
     const homeEnd = (x < 0) === (match.home.side === "home");
-    const r = rnd();
-    const shirt = r < 0.5 ? (homeEnd ? home : away) : r < 0.62 ? (homeEnd ? away : home) : neutral[Math.floor(rnd() * neutral.length)];
-    const k = 0.75 + rnd() * 0.3;
-    tc.set([shirt.r * k, shirt.g * k, shirt.b * k, 1], 4 * i);
-    const sk = skins[Math.floor(rnd() * skins.length)];
-    hc.set([sk.r, sk.g, sk.b, 1], 4 * i);
-  });
-  for (const [mesh, mats, cols] of [[torso, tm, tc], [head, hm, hc]]) {
-    mesh.thinInstanceSetBuffer("matrix", mats, 16, true);
-    mesh.thinInstanceSetBuffer("color", cols, 4, true);
-    mesh.freezeWorldMatrix();
-    mesh.alwaysSelectAsActiveMesh = true;   // one bounding box for the whole crowd
+    const r = rnd(), shade = rnd() < 0.5 ? 1 : 0;
+    const shirt = r < 0.5 ? (homeEnd ? 0 : 2) + shade : r < 0.62 ? (homeEnd ? 2 : 0) + shade : 4 + Math.floor(rnd() * neutral.length);
+    B.Matrix.ComposeToRef(one, q, pos, m); torsos[shirt].push(...m.m);
+    pos.y += 0.38;
+    B.Matrix.ComposeToRef(one, q, pos, m); faces[Math.floor(rnd() * skins.length)].push(...m.m);
   }
+  const n = people.length;
+  const crowd = (name, w, h, tex, cols, groups) => groups.forEach((list, k) => {
+    if (!list.length) return;
+    const mesh = B.MeshBuilder.CreatePlane(`${name}${k}`, { width: w, height: h }, scene);
+    mesh.material = crowdMat(`${name}Mat${k}`, tex, cols[k]);
+    mesh.thinInstanceSetBuffer("matrix", new Float32Array(list), 16, true);
+    mesh.freezeWorldMatrix();
+    mesh.alwaysSelectAsActiveMesh = true;   // one bounding box for the whole group
+    mesh.material.freeze();
+  });
+  crowd("crowdTorso", 0.5, 0.55, torsoTex, shirts, torsos);
+  crowd("crowdHead", 0.2, 0.25, headTex, skins, faces);
 
   // LED boards round the pitch
   const boardTex = canvasTexture(scene, "boards", 1024, 64, (g, w, h) => {
@@ -181,6 +191,6 @@ export function buildStadium(scene, match, profile, rnd) {
   }
   merge(masts, concrete); merge(heads, lampMat);
 
-  for (const x of [concrete, seatMat, roofMat, torso.material, head.material, lampMat, boardMat]) x.freeze();
+  for (const x of [concrete, seatMat, roofMat, lampMat, boardMat]) x.freeze();
   return { people: n };
 }
