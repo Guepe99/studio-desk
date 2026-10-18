@@ -3,9 +3,11 @@ import { SdGraphic } from "../shared/sd-graphic.mjs";
 
 const KICKER = { shot: "SHOT SPEED", pass: "PASS" };
 
-// quality is display text from the export ("Difficulty 8.1/10", "Goal", "No goal"); a number
-// (0..1) is drawn as a 0..100 bar instead; null hides the row.
-const qualityPct = (q) => Math.round(Math.min(100, Math.max(0, q <= 1 ? q * 100 : q)));
+// quality is display text from the export ("Difficulty 8.1/10", "Goal", "No goal"), or
+// {value, max} drawn as a bar of value / max; null hides the row. A bare number has no scale, so
+// it is shown as text, never guessed into a bar.
+const scaled = (q) => q && typeof q === "object" && Number.isFinite(q.value) && Number.isFinite(q.max) && q.max > 0;
+const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
 export default class PassShot extends SdGraphic {
   css() {
@@ -23,6 +25,7 @@ export default class PassShot extends SdGraphic {
 .q { display: flex; align-items: center; gap: 18px; height: 50px; padding: 0 24px; background: rgba(8,15,38,.92); }
 .q.none, .q.text .track, .q.text .qval { display: none; }
 .qlabel { font-weight: 700; font-size: 24px; letter-spacing: .08em; color: #a8b6d8; }
+.compact .qlabel { font-size: 28px; }
 .q.text .qlabel { font-size: 32px; font-weight: 800; letter-spacing: .03em; color: #fff; }
 .q.goal { background: #2ec4f1; }
 .q.goal .qlabel { color: #0e1a3d; letter-spacing: .12em; text-transform: uppercase; }
@@ -50,13 +53,13 @@ export default class PassShot extends SdGraphic {
     $(".team").textContent = p.team_name ?? p.team_short ?? "";
     $(".big").textContent = Number.isFinite(d.value) ? (d.value >= 100 ? d.value.toFixed(0) : d.value.toFixed(1)) : "";
     $(".unit").textContent = d.unit ?? "";
-    const q = d.quality, row = $(".q"), isNum = typeof q === "number" && Number.isFinite(q);
+    const q = d.quality, row = $(".q"), bar = scaled(q);
     row.classList.toggle("none", q == null || q === "");
-    row.classList.toggle("text", !isNum);
+    row.classList.toggle("text", !bar);
     row.classList.toggle("goal", q === "Goal");
-    $(".qlabel").textContent = isNum ? "QUALITY" : String(q ?? "");
-    $(".bar").style.width = `${isNum ? qualityPct(q) : 0}%`;
-    $(".qval").textContent = isNum ? qualityPct(q) : "";
+    $(".qlabel").textContent = bar ? "QUALITY" : typeof q === "object" ? "" : String(q ?? "");
+    $(".bar").style.width = `${bar ? Math.round(Math.min(100, Math.max(0, (q.value / q.max) * 100))) : 0}%`;
+    $(".qval").textContent = bar ? `${fmt(q.value)}/${fmt(q.max)}` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
   }
 

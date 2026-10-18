@@ -1,7 +1,5 @@
 // Loads a replay export (docs/CONTRACT.md, "Replay export") and answers time questions about it.
 
-const GOAL_SHOTS = new Set(["shot", "shot_freekick", "shot_penalty"]);
-
 async function getJson(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
@@ -36,27 +34,21 @@ export class Match {
     this.players = Object.fromEntries(meta.players.map((p) => [p.player_id, p]));
     this.teams = Object.fromEntries(meta.teams.map((t) => [t.team_id, t]));
     this.index = Object.fromEntries(meta.entities.map((e, i) => [e, i]));
-    // Goals as [ts, scoring team_id]; an own goal counts for the other team.
-    this.goals = events.flatMap((e) => {
-      if (GOAL_SHOTS.has(e.type_name) && e.result_name === "success") return [[e.ts, e.team_id]];
-      if (e.result_name === "owngoal") return [[e.ts, e.team_id === this.home.team_id ? this.away.team_id : this.home.team_id]];
-      return [];
-    });
+    // Goals from the fact ledger: a `score` fact is the scoring team's running total at ts.
+    this.goals = facts.filter((f) => f.kind === "score");
   }
 
+  // ts = period1_s is the half-time whistle; the clock stops at the end of each period.
   clock(ts) {
-    const period = ts < this.meta.period1_s ? 1 : 2;
-    const t = period === 1 ? ts : ts - this.meta.period1_s;
+    const period = ts <= this.meta.period1_s ? 1 : 2;
+    const len = period === 1 ? this.meta.period1_s : this.meta.period2_s;
+    const t = Math.min(period === 1 ? ts : ts - this.meta.period1_s, len - 1e-6);
     return { period, t, minute: Math.floor(t / 60) + (period === 2 ? 45 : 0) + 1 };
   }
 
   score(ts) {
-    let h = 0, a = 0;
-    for (const [g, team] of this.goals) {
-      if (g > ts) continue;
-      if (team === this.home.team_id) h++; else a++;
-    }
-    return [h, a];
+    const top = (team) => Math.max(0, ...this.goals.filter((f) => f.team_id === team && f.ts <= ts).map((f) => f.value));
+    return [top(this.home.team_id), top(this.away.team_id)];
   }
 
   // Entity i at time ts, interpolated between the two nearest frames. null when off the pitch.

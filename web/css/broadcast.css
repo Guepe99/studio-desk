@@ -35,6 +35,12 @@ body {
 #status { position: absolute; inset: 0; display: grid; place-items: center; font: 700 56px/1.2 var(--font); text-align: center; padding: 0 200px; }
 #status:empty { display: none; }
 
+/* Phone in portrait: graphics sit in the deck under the pitch, each at its own scale (ograf-host.js) */
+#deck { display: none; }
+.portrait #deck { display: flex; flex-direction: column; gap: 8px; flex: none; overflow: hidden; }
+.deck-item { position: relative; flex: none; overflow: hidden; }
+.deck-item > div { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+
 /* Score bug: angled ends are the house signature, shared with the graphics */
 #scorebug { position: absolute; left: 56px; top: 40px; height: 66px; display: flex; align-items: stretch;
   font-family: var(--font); font-weight: 800; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); }
@@ -48,7 +54,8 @@ body {
 .sb-period { font-size: 26px; font-weight: 700; color: var(--muted); }
 
 /* Controls */
-#controls { display: flex; align-items: center; gap: 10px; flex: none; font-size: 18px; }
+#controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; flex: none; font-size: 18px; }
+#notice { flex: 1 0 100%; margin: 0; text-align: center; font-weight: 700; color: #ffd166; }
 .ctl { font: 700 18px/1 var(--font); color: var(--paper); background: var(--ink); border: 1px solid #2a3c74; border-radius: 4px;
   height: 36px; padding: 0 12px; cursor: pointer; letter-spacing: .02em; }
 .ctl:hover { background: var(--ink-2); }

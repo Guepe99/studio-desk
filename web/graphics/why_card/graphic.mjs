@@ -2,6 +2,9 @@
 import { SdGraphic } from "../shared/sd-graphic.mjs";
 
 const KICKER = { why: "WHY IT MATTERS", recap: "RECAP" };
+// The body gets 5 lines at 33 px; longer text shrinks to fit, down to 24 px (11 px on a phone in
+// portrait). Text that still does not fit is shown in full and the card grows: a body is never cut.
+const BODY_PX = 33, MIN_PX = 24, LINE = 1.22, MAX_H = 5 * BODY_PX * LINE;
 
 export default class WhyCard extends SdGraphic {
   css() {
@@ -9,8 +12,7 @@ export default class WhyCard extends SdGraphic {
 .box { position: absolute; right: 72px; top: 56px; width: 720px; }
 .card { padding: 22px 30px 26px; margin-top: -2px; border-left: 8px solid #2ec4f1; }
 .title { font-weight: 800; font-size: 50px; line-height: 1.02; letter-spacing: .005em; }
-.body { margin-top: 14px; font-weight: 500; font-size: 33px; line-height: 1.22; color: #dfe7fb;
-  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }`;
+.body { margin-top: 14px; font-weight: 500; font-size: ${BODY_PX}px; line-height: ${LINE}; color: #dfe7fb; }`;
   }
 
   html() {
@@ -24,6 +26,21 @@ export default class WhyCard extends SdGraphic {
     $(".title").textContent = d.title ?? "";
     $(".body").textContent = d.body ?? "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
+    this.fit();
+  }
+
+  async load(params) {
+    const r = await super.load(params);
+    this.fit(); // again with the web font loaded
+    return r;
+  }
+
+  fit() {
+    const b = this.stage.querySelector(".body");
+    for (let px = BODY_PX; px >= MIN_PX; px--) {
+      b.style.fontSize = `${px}px`;
+      if (b.scrollHeight <= MAX_H + 1) return;
+    }
   }
 
   inAnims() {

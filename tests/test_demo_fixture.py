@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -34,3 +35,33 @@ def test_demo_fixture_matches_export_shapes(tmp_path):
     for name in ("events", "facts", "cues"):
         rows = json.loads((out / f"{name}.json").read_text())
         assert [r["ts"] for r in rows] == sorted(r["ts"] for r in rows)
+
+
+def _backed(number, cited):
+    """True when `number` (as printed) is the value of a cited fact, in its unit or in km for metres."""
+    decimals = len(number.split(".")[1]) if "." in number else 0
+    for f in cited:
+        for v in (f["value"], f["value"] / 1000 if f["unit"] == "m" else None):
+            if v is not None and f"{v:.{decimals}f}" == number:
+                return True
+    return False
+
+
+def test_demo_fixture_shows_only_fact_values(tmp_path):
+    spec = importlib.util.spec_from_file_location("make_demo_fixture", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    out = mod.main(tmp_path)
+    facts = {f["fact_id"]: f for f in json.loads((out / "facts.json").read_text())}
+    for c in json.loads((out / "cues.json").read_text()):
+        p = c["payload"]
+        cited = [facts[i] for i in p.get("fact_ids", [p.get("fact_id")])]
+        for field in ("title", "body", "quality"):
+            text = p.get(field)
+            if not isinstance(text, str):
+                continue
+            # a score line "NBR 1-0 EVA" shows 0 for a team without a goal: there is no fact for it
+            # and "/10" is the scale of a difficulty, not a value
+            text = re.sub(r"(?<=\d)-0\b|\b0(?=-\d)|/10\b", "", text)
+            for number in re.findall(r"\d+(?:\.\d+)?", text):
+                assert _backed(number, cited), f"{c['cue_id']} {field}: {number} is not a cited fact value in {text!r}"

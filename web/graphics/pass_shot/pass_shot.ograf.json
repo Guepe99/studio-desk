@@ -3,7 +3,7 @@
   "id": "studiodesk-pass-shot",
   "version": "1.0.0",
   "name": "Studio Desk pass / shot",
-  "description": "Lower third for a pass (length and quality) or a shot (speed). quality is display text (\"Difficulty 8.1/10\", \"Goal\", \"No goal\"); a number 0..1 is drawn as a bar; null hides the row. Vendor load() params: v_showFactIds (boolean), v_players ({player_id: {name, shirt, team_name, color, text}}) for the player's name and shirt.",
+  "description": "Lower third for a pass (length and quality) or a shot (speed). quality is display text (\"Difficulty 8.1/10\", \"Goal\", \"No goal\") or {value, max}, drawn as a bar of value / max; null hides the row. Vendor load() params: v_showFactIds (boolean), v_players ({player_id: {name, shirt, team_name, color, text}}) for the player's name and shirt.",
   "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
   "main": "graphic.mjs",
   "supportsRealTime": true,
@@ -17,7 +17,16 @@
       "player_id": { "type": "string", "title": "Player id", "pattern": "^T[0-9]{2}-[0-9]+$" },
       "value": { "type": "number", "title": "Value", "default": 104.2 },
       "unit": { "type": "string", "title": "Unit", "default": "km/h" },
-      "quality": { "type": ["string", "number", "null"], "title": "Quality", "description": "Display text, e.g. \"Difficulty 8.1/10\", \"Goal\", \"No goal\". A number (0..1) is drawn as a bar.", "default": "Goal" },
+      "quality": {
+        "title": "Quality",
+        "description": "Display text, e.g. \"Difficulty 8.1/10\", \"Goal\", \"No goal\"; or {value, max}, drawn as a bar of value / max (the scale is always in the data).",
+        "oneOf": [
+          { "type": "string" },
+          { "type": "null" },
+          { "type": "object", "required": ["value", "max"], "properties": { "value": { "type": "number" }, "max": { "type": "number", "exclusiveMinimum": 0 } } }
+        ],
+        "default": "Goal"
+      },
       "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
     }
   },

@@ -5,7 +5,7 @@ export default class Nameplate extends SdGraphic {
   css() {
     return `
 .anchor { position: absolute; left: 0; top: 0; will-change: transform; }
-.ring { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; border-radius: 50%;
+.ring { position: absolute; left: -35px; top: -35px; width: 70px; height: 70px; box-sizing: border-box; border-radius: 50%;
   border: 5px solid #2ec4f1; box-shadow: 0 0 0 3px rgba(14,26,61,.55); }
 .leader { position: absolute; left: -2px; width: 4px; background: #2ec4f1; top: -100px; height: 70px; transform-origin: 50% 100%; }
 .box { position: absolute; left: -2px; bottom: 100px; display: flex; flex-direction: column; align-items: flex-start; }
@@ -45,13 +45,14 @@ export default class Nameplate extends SdGraphic {
 
   get customActions() {
     return {
-      // payload {x, y, visible}: the player's position in renderer pixels, sent every frame
+      // payload {x, y, visible}: the player's position in renderer pixels, sent every frame. The
+      // element may be larger than the renderer (drawn magnified): flip against the renderer edge.
       position({ x, y, visible = true }) {
         if (!this.anchor) return;
         const k = 1920 / (this.clientWidth || 1920);
         const sx = x * k, sy = y * k;
         this.anchor.classList.toggle("hidden", !visible || !Number.isFinite(sx));
-        this.anchor.classList.toggle("flip-x", sx > 1460);
+        this.anchor.classList.toggle("flip-x", sx > this.resolution.width * k - 460);
         this.anchor.classList.toggle("flip-y", sy < 330);
         this.anchor.style.transform = `translate(${sx}px, ${sy}px)`;
       },
