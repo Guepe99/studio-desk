@@ -10,3 +10,18 @@ https://creativecommons.org/publicdomain/zero/1.0/ , as stated in License_Standa
 pack (downloaded 18 Oct 2026).
 
 Our changes (rebinding, kit regions, UVs, decimation) are released under the repository's MIT licence.
+
+footballer-trellis.glb (trial, ?players=trellis) is built by scripts/build_footballer.py --trellis
+from a mesh generated on 18 Oct 2026:
+
+- Input image: generated with Z-Image Turbo (Tongyi-MAI, Apache 2.0,
+  https://huggingface.co/Tongyi-MAI/Z-Image-Turbo), seed 3303, a fictional person; background
+  removed with BiRefNet (MIT, https://huggingface.co/ZhengPeng7/BiRefNet).
+- Mesh and texture: generated from that image with TRELLIS.2-4B (Microsoft, MIT,
+  https://huggingface.co/microsoft/TRELLIS.2-4B) on its official Space
+  (https://huggingface.co/spaces/microsoft/TRELLIS.2, MIT). TRELLIS.2 conditions on DINOv3
+  features (DINOv3 License, https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md),
+  which sets no terms on outputs. None of these licences claims rights over generated assets.
+- Skeleton, clips, skin weights and far body: from footballer.glb above (CC0 sources).
+
+The resulting file is released under the repository's MIT licence.

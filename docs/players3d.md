@@ -101,3 +101,46 @@ Considered and not used:
 - The hands are closed fists in most clips (the mannequin's animation).
 - Babylon 9 blends a bone to NaN when the first two clips evaluated in a frame both weigh 0;
   the stills test only evaluates weighted clips. The scene's own clip blending should do the same.
+
+## Trial: an image-to-3D body (`?players=trellis`)
+
+`web/vendor/players/footballer-trellis.glb` is a trial body from an image-to-3D model. The page
+loads it only with `?players=trellis`; the footballer above stays the default.
+
+1. Input image: Z-Image Turbo (Apache 2.0) through its Hugging Face Space, 1024x1024, seed 3303
+   (seeds 1101 and 2202 were the other candidates). Prompt:
+   "Full-body photo of a fictional adult male football player standing in a strict T-pose, arms
+   stretched straight out horizontally to the sides at shoulder height, palms facing down, fingers
+   together, legs straight and slightly apart, feet pointing forward, front view, looking at the
+   camera, neutral expression, short dark hair, realistic athletic proportions. He wears a plain
+   light grey short-sleeved football shirt with a round collar, plain light grey shorts, plain
+   light grey knee-high socks and plain black football boots. No numbers, no stripes, no logos, no
+   text. Neutral light grey seamless studio background, soft even studio lighting, whole body
+   visible from head to boots, centered, photorealistic, 3D character reference sheet."
+2. Background removed with BiRefNet (MIT) on its demo Space, so the TRELLIS Space's own remover (BRIA RMBG-2.0,
+   non-commercial) never runs: the Space receives an image that already has alpha.
+3. TRELLIS.2-4B (MIT) on the `microsoft/TRELLIS.2` Space: seed 0, resolution 1024, decimation
+   target 100,000, texture 2048. Output: one textured mesh of about 99k triangles.
+4. `scripts/build_footballer.py --trellis <space output>.glb`, Python and gltf-transform only:
+   - simplify to 8% (about 23k triangles), then drop the inner wall: the Space's mesh is a shell
+     about 1 cm thick, and its inward-facing side would poke through the outer one once
+     decimated. About 12k triangles are left;
+   - align to the mannequin's rest pose: scale, soles, arm line stretched to the wrist joints,
+     legs straightened onto the hip joints;
+   - skin weights from the nearest vertex of the default footballer, smoothed, on the same 65
+     joints; finger bones fold into the hand bone, because the scanned hand is one closed shape;
+   - kit lines fitted to the scan's own sleeve, shorts, sock and boot edges (from its texture),
+     then the same plane cuts and region rules as the default footballer;
+   - skin, hair and boots keep the scan's texture, normalised so `dressFootballer` tints them;
+     shirt, shorts and socks take the team colour with the scan's folds as an occlusion map on
+     the second UV set;
+   - the far body (`footballer_lod1`) is the default footballer's.
+
+Limits: one face and one hairstyle (both are part of the scan), hands without fingers, and a
+faceted silhouette at 12k triangles (1.9 MB).
+
+Verdict of the trial (18 Oct 2026): not usable as it stands. The face and hair read better than
+the default's, but the kit regions do not land on the scan's cloth (bands of skin and stray kit
+on the thighs), dropping the inner wall leaves holes in the shorts and the back of the shirt, the
+arms and hands are thin and flat, and at 12k triangles the body looks faceted. The default
+footballer stays.

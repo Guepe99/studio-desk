@@ -180,8 +180,10 @@ export class Scene3D {
 
   async _loadPlayers() {
     const scene = this.scene, match = this.match;
-    // footballers on the mannequin skeleton with the same clips (players3d.js); ?players=mannequin keeps the old look
-    const lib = new URLSearchParams(location.search).get("players") === "mannequin" ? null : await loadFootballer(scene);
+    // footballers on the mannequin skeleton with the same clips (players3d.js); ?players=mannequin keeps the old look,
+    // ?players=trellis tries the TRELLIS.2 body (docs/players3d.md)
+    const look = new URLSearchParams(location.search).get("players");
+    const lib = look === "mannequin" ? null : await loadFootballer(scene, look === "trellis" ? "vendor/players/footballer-trellis.glb" : undefined);
     const container = lib?.container ?? await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
     const kits = {};

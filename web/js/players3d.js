@@ -75,9 +75,11 @@ export function farPalette(kit, look, gk) {
   return [look.skin, kit.shirt, kit.shorts, kit.socks, look.boots, gk ? kit.shirt : look.skin, gk ? kit.gloves : look.skin];
 }
 
-export async function loadFootballer(scene) {
-  const container = await B.LoadAssetContainerAsync("vendor/players/footballer.glb", scene);
+export async function loadFootballer(scene, url = "vendor/players/footballer.glb") {
+  const container = await B.LoadAssetContainerAsync(url, scene);
   const base = Object.fromEntries(container.materials.map((m) => [m.name, m]));
+  // the TRELLIS body carries its folds as an occlusion map under the kit: let it shade direct light too
+  for (const m of container.materials) if (m.ambientTexture) m.ambientTextureImpactOnAnalyticalLights = 1;
   return { scene, container, base, mats: new Map() };
 }
 
