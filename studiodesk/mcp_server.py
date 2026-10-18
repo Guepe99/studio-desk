@@ -1,0 +1,129 @@
+"""Read-only MCP server over matches.sqlite (docs/CONTRACT.md, MCP server).
+
+Run: `python -m studiodesk.mcp_server` (stdio transport).
+
+Clock: when a clock value is set, every tool only returns rows with `ts <= clock`, and match
+info hides what has not happened yet (final score, later substitutions). In-process, call
+`set_clock(ts)` after each event a `MatchClock` releases (`set_clock(None)` stops filtering);
+a separate server process reads its starting value from the env var `STUDIODESK_CLOCK`.
+The database is `DB_PATH` (env `STUDIODESK_MATCHES_DB`, default `data/matches.sqlite`), always
+opened read-only.
+
+The tool functions are plain functions: agents and tests can call them directly.
+"""
+import json
+import math
+import os
+from contextlib import closing
+from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
+
+from . import config, db
+
+DB_PATH = Path(os.environ.get("STUDIODESK_MATCHES_DB", config.MATCHES_DB))
+_clock = float(os.environ["STUDIODESK_CLOCK"]) if os.environ.get("STUDIODESK_CLOCK") else None
+GOAL_SQL = ("((type_name IN ('shot', 'shot_freekick', 'shot_penalty') AND result_name = 'success') "
+            "OR result_name = 'owngoal')")
+
+
+def set_clock(ts):
+    global _clock
+    _clock = None if ts is None else float(ts)
+
+
+def _now():
+    return math.inf if _clock is None else _clock
+
+
+def _rows(sql, args=()):
+    with closing(db.connect(DB_PATH, readonly=True)) as conn:
+        return [dict(r) for r in conn.execute(sql, args)]
+
+
+def _fact(row):
+    row["source_event_ids"] = json.loads(row["source_event_ids"])
+    row["source_frames"] = json.loads(row["source_frames"]) if row["source_frames"] else None
+    return row
+
+
+def _hide_future(lineup):
+    if lineup["off_ts"] is not None and lineup["off_ts"] > _now():
+        lineup["off_ts"] = None
+    return lineup
+
+
+def get_match_info(match_id: str) -> dict:
+    """Match, teams with side, score so far and the players on the team sheet so far."""
+    m = _rows("SELECT match_id, home_team_id, away_team_id, venue_name, period1_s, period2_s, fps "
+              "FROM matches WHERE match_id = ?", (match_id,))
+    if not m:
+        return {"error": f"unknown match {match_id}"}
+    m = m[0]
+    sides = {m["home_team_id"]: "home", m["away_team_id"]: "away"}
+    teams = _rows("SELECT team_id, name, short_name, color_primary, color_secondary FROM teams "
+                  "WHERE team_id IN (?, ?)", (m["home_team_id"], m["away_team_id"]))
+    score = {"home": 0, "away": 0}
+    for g in _rows(f"SELECT team_id, result_name FROM events WHERE match_id = ? AND ts <= ? AND {GOAL_SQL}",
+                   (match_id, _now())):
+        side = sides[g["team_id"]]
+        score[side if g["result_name"] != "owngoal" else ("away" if side == "home" else "home")] += 1
+    players = _rows("SELECT l.player_id, p.team_id, p.name, p.shirt, p.position, l.starter, l.on_ts, l.off_ts "
+                    "FROM lineups l JOIN players p USING (player_id) WHERE l.match_id = ? AND l.on_ts <= ? "
+                    "ORDER BY p.team_id, p.shirt", (match_id, _now()))
+    return {**m, "clock": _clock, "score": score,
+            "teams": [{**t, "side": sides[t["team_id"]]} for t in teams],
+            "players": [_hide_future(p) for p in players]}
+
+
+def get_events(match_id: str, from_ts: float, to_ts: float, type_name: str | None = None) -> list[dict]:
+    """Events with from_ts <= ts <= to_ts, optionally of one SPADL type."""
+    sql = "SELECT * FROM events WHERE match_id = ? AND ts >= ? AND ts <= ? AND ts <= ?"
+    args = [match_id, from_ts, to_ts, _now()]
+    if type_name:
+        sql, args = sql + " AND type_name = ?", args + [type_name]
+    return _rows(sql + " ORDER BY ts, event_id", args)
+
+
+def get_facts(match_id: str, kind: str | None = None, player_id: str | None = None,
+              team_id: str | None = None, from_ts: float | None = None,
+              to_ts: float | None = None) -> list[dict]:
+    """Facts from the ledger, filtered by any of kind, player, team and time range."""
+    sql, args = "SELECT * FROM facts WHERE match_id = ? AND ts <= ?", [match_id, _now()]
+    for col, op, val in (("kind", "=", kind), ("player_id", "=", player_id), ("team_id", "=", team_id),
+                         ("ts", ">=", from_ts), ("ts", "<=", to_ts)):
+        if val is not None:
+            sql, args = sql + f" AND {col} {op} ?", args + [val]
+    return [_fact(r) for r in _rows(sql + " ORDER BY ts, fact_id", args)]
+
+
+def get_fact(match_id: str, fact_id: str) -> dict:
+    """One fact by id."""
+    rows = _rows("SELECT * FROM facts WHERE match_id = ? AND fact_id = ? AND ts <= ?", (match_id, fact_id, _now()))
+    return _fact(rows[0]) if rows else {"error": f"no fact {fact_id} in {match_id}"}
+
+
+def get_player(match_id: str, player_id: str) -> dict:
+    """A player, their team and their place on the team sheet of this match."""
+    rows = _rows("SELECT p.player_id, p.team_id, t.short_name AS team_short, p.name, p.shirt, p.position "
+                 "FROM players p JOIN teams t USING (team_id) WHERE p.player_id = ?", (player_id,))
+    if not rows:
+        return {"error": f"unknown player {player_id}"}
+    lineup = _rows("SELECT starter, on_ts, off_ts FROM lineups WHERE match_id = ? AND player_id = ? AND on_ts <= ?",
+                   (match_id, player_id, _now()))
+    return {**rows[0], "lineup": _hide_future(lineup[0]) if lineup else None}
+
+
+def get_momentum(match_id: str, team_id: str | None = None) -> list[dict]:
+    """Momentum facts (0..10 per team per 5-minute window, ts = end of the window)."""
+    return get_facts(match_id, kind="momentum", team_id=team_id)
+
+
+TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum)
+server = FastMCP("studiodesk")
+for _fn in TOOLS:
+    server.add_tool(_fn, annotations=ToolAnnotations(readOnlyHint=True))
+
+if __name__ == "__main__":
+    server.run()
