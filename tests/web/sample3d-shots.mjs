@@ -48,6 +48,48 @@ try {
   if (blend.some((w) => Math.abs(w.reduce((a, b) => a + b, 0) - 1) > 1e-9) || blend[0][0] !== 1 || blend[4][3] !== 1)
     fail(`clip weights wrong: ${JSON.stringify(blend)}`);
 
+  // the clip's span starts at the replay when the replay goes back before the live stretch
+  const span = await page.evaluate(async () => {
+    const { makeTimeline, clipSpan } = await import("./js/sample3d.js");
+    return clipSpan(makeTimeline([105], 1000, 100));
+  });
+  if (Math.abs(span[0] - 94.1) > 0.01 || Math.abs(span[1] - 120) > 0.01) fail(`clip span ${span}, expected [94.1, 120]`);
+
+  // ball handling (web/js/ball3d.js): the 3D ball is the tracking ball at every event and within
+  // 1.5 m in between, there are kicks and touches, and a rolling ball turns the way it goes
+  const ball = await page.evaluate(() => {
+    const p = window.sample3d.scene.rig.plan, [a, b] = window.sample3d.scene.span;
+    const roll = [];
+    for (let t = a; t < b; t += 0.1) {
+      const q0 = p.ball(t), q1 = p.ball(t + 0.04);
+      const vx = (q1.x - q0.x) / 0.04, vy = (q1.y - q0.y) / 0.04;
+      if (q0.h > 0.05 || Math.hypot(vx, vy) < 2) continue;
+      // the turn from t to t+0.04 (d = q1 * conj(q0), Hamilton) must carry the top of the ball
+      // along the velocity; world X is contract x and world Z is contract y
+      const [ax, ay, az, aw] = q1.q, [bx, by, bz, bw] = [-q0.q[0], -q0.q[1], -q0.q[2], q0.q[3]];
+      const x = aw * bx + ax * bw + ay * bz - az * by, y = aw * by - ax * bz + ay * bw + az * bx;
+      const z = aw * bz + ax * by - ay * bx + az * bw, w = aw * bw - ax * bx - ay * by - az * bz;
+      const top = [2 * (x * y - w * z), 2 * (y * z + w * x)];   // world x and z of the turned up vector
+      roll.push(Math.sign(top[0] * vx + top[1] * vy));
+    }
+    return { ...p.check(a, b), forward: roll.filter((s) => s > 0).length, rolls: roll.length };
+  });
+  console.log(`ball plan: worst ${ball.worst.toFixed(2)} m, ${ball.atEvents.toExponential(1)} m off at events, ${ball.legs} leg actions, rolls forward ${ball.forward}/${ball.rolls}`);
+  if (!(ball.worst < 1.5) || ball.atEvents > 1e-3 || ball.legs < 5) fail(`ball plan off: ${JSON.stringify(ball)}`);
+  if (ball.rolls < 10 || ball.forward < ball.rolls * 0.95) fail(`ball rolls the wrong way: ${ball.forward}/${ball.rolls}`);
+
+  // Space toggles play once, also when the Play button has the focus (Chromium already drops the
+  // button click once keydown is prevented, so here this does not catch a missing keyup handler)
+  const toggles = await page.evaluate(() => {
+    const s = window.sample3d, was = s.state.playing;
+    document.querySelector("#play").focus();
+    return { was };
+  });
+  await page.keyboard.press("Space");
+  const after = await page.evaluate(() => window.sample3d.state.playing);
+  if (after === toggles.was) fail("Space did not toggle play exactly once");
+  await page.evaluate((w) => window.sample3d.setPlaying(w), toggles.was);
+
   // nameplate: the anchor must be where the 3D projection of its player is
   const nameplate = () => page.evaluate(() => {
     const s = window.sample3d;
@@ -90,6 +132,13 @@ try {
     return n / ((performance.now() - t0) / 1000);
   });
   console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics`);
+
+  // without ?match= the page loads M001, the match shipped in the image (it may be absent here)
+  const bare = await page.context().newPage();
+  const asked = bare.waitForRequest((r) => r.url().includes("data/M001/meta.json"), { timeout: 30000 }).then(() => true, () => false);
+  await bare.goto(new URL("sample3d.html?capture=1", base).href);
+  if (!(await asked)) fail("sample3d.html without ?match= did not ask for M001");
+  await bare.close();
 } finally {
   await browser.close();
 }
