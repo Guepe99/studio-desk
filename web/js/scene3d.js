@@ -7,6 +7,7 @@
 // The TV camera stands on the y < 0 side, so x grows to the right as on the 2D pitch.
 
 import { BallRig, ballTexture } from "./ball3d-rig.js";
+import { loadFootballer, dressFootballer } from "./players3d.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -369,6 +370,8 @@ export class Scene3D {
   async _loadPlayers() {
     const scene = this.scene, match = this.match;
     const container = await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
+    // footballers on the mannequin skeleton; ?players=mannequin keeps the old look for comparison
+    const lib = new URLSearchParams(location.search).get("players") === "mannequin" ? null : await loadFootballer(scene, container);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
     const kits = {};
     const kit = (team, gk) => {
@@ -396,15 +399,18 @@ export class Scene3D {
     for (const i of this.entities) {
       const pid = match.meta.entities[i];
       const pl = match.players[pid], team = match.teams[pl.team_id];
-      const inst = container.instantiateModelsToScene((n) => `${pid}-${n}`, false, { doNotInstantiate: true });
+      const inst = lib ? dressFootballer(lib, pid, { team, gk: pl.position === "GK", shirt: pl.shirt })
+        : container.instantiateModelsToScene((n) => `${pid}-${n}`, false, { doNotInstantiate: true });
       const holder = new B.TransformNode(`player-${pid}`, scene);
       const root = inst.rootNodes[0];
       root.parent = holder;
-      root.scaling.scaleInPlace(scale);
-      const k = kit(team, pl.position === "GK");
-      for (const m of root.getChildMeshes()) {
-        m.material = /joint/i.test(m.material?.name ?? "") ? k.joints : k.body;
-        m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
+      root.scaling.scaleInPlace(scale);   // same skeleton at the same scale, so the ball rig's foot reach holds
+      if (!lib) {
+        const k = kit(team, pl.position === "GK");
+        for (const m of root.getChildMeshes()) {
+          m.material = /joint/i.test(m.material?.name ?? "") ? k.joints : k.body;
+          m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
+        }
       }
       const groups = CLIPS.map((c) => {
         const g = inst.animationGroups.find((a) => a.name.endsWith(c.name));
