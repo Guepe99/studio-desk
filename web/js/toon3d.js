@@ -1,10 +1,11 @@
 // Cel shading for the anime footballers (?players=anime, docs/anime3d.md): two material plugins on
 // Babylon's PBR material, so the kit code of players3d.js (albedoColor, albedoTexture) still works.
 //
-//   toon(material, {face})  two flat tones from the sun's angle with a crisp edge, a cool shade
+//   toon(material, {face, soft})  two flat tones from the sun's angle with a crisp edge, a cool shade
 //                           tint and a thin rim on the lit side (MToon's shade colour, shading
 //                           shift and toony, simplified); the face material also tints the iris
-//                           and brow rectangles of its atlas (build_anime.TINT_RECTS)
+//                           and brow rectangles of its atlas (build_anime.TINT_RECTS); soft keeps
+//                           the face nearly lit, as anime faces are (no terminator on the nose)
 //   outline(material)       inverted hull: the vertex shader pushes the surface out along its
 //                           normal by a world width capped at a few pixels, so lines stay thin
 //                           when the player is far (Guilty Gear Xrd's distance-scaled width)
@@ -14,15 +15,16 @@ import { SUN_DIR } from "./scene3d/lighting.js";
 const GLSL = (lang) => lang === undefined || lang === B.ShaderLanguage?.GLSL;
 
 class ToonPlugin extends B.MaterialPluginBase {
-  constructor(material, face) {
-    super(material, "Toon", 200, { TOON: false, TOON_FACE: false });
+  constructor(material, face, soft) {
+    super(material, "Toon", 200, { TOON: false, TOON_FACE: false, TOON_SOFT: false });
     this.face = face;
+    this.soft = soft;
     this.iris = new B.Color3(1, 1, 1);
     this.brow = new B.Color3(1, 1, 1);
     this._enable(true);
   }
   isCompatible(lang) { return GLSL(lang); }
-  prepareDefines(defines) { defines.TOON = true; defines.TOON_FACE = !!this.face; }
+  prepareDefines(defines) { defines.TOON = true; defines.TOON_FACE = !!this.face; defines.TOON_SOFT = !!this.soft; }
   getClassName() { return "ToonPlugin"; }
   getUniforms() {
     return {
@@ -49,6 +51,9 @@ class ToonPlugin extends B.MaterialPluginBase {
   vec3 toonN = normalize(normalW);
   float toonNdl = dot(toonN, -toonSun);
   float toonLit = smoothstep(-0.02, 0.06, toonNdl);
+#ifdef TOON_SOFT
+  toonLit = max(toonLit, 0.8);   // anime faces stay lit: no terminator across the nose and cheeks
+#endif
   vec3 toonV = normalize(vEyePosition.xyz - vPositionW);
   float toonRim = smoothstep(0.62, 0.7, 1.0 - max(dot(toonN, toonV), 0.0)) * toonLit;
   vec3 toonCol = toonAlb * mix(vec3(0.62, 0.6, 0.78), vec3(1.55), toonLit) + toonAlb * toonRim * 0.35;
@@ -98,8 +103,8 @@ class OutlinePlugin extends B.MaterialPluginBase {
 // line width: 9 mm on the body, never more than 1.6 px
 const OUTLINE_WORLD = 0.009, OUTLINE_PX = 1.6;
 
-export function toon(material, { face = false } = {}) {
-  const p = new ToonPlugin(material, face);
+export function toon(material, { face = false, soft = false } = {}) {
+  const p = new ToonPlugin(material, face, soft);
   return p;
 }
 

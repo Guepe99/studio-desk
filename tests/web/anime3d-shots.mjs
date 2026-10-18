@@ -31,6 +31,7 @@ const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 
 async function open(browser, look) {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+  page.setDefaultTimeout(300000);   // the near players' shaders compile on the first close shot, slowly in software
   page.on("console", (m) => { if (m.type() === "error") fail(`console (${look}): ${m.text()}`); });
   page.on("pageerror", (e) => fail(`page error (${look}): ${e.message}`));
   page.on("requestfailed", (r) => fail(`request failed (${look}): ${r.url()}`));
@@ -55,6 +56,8 @@ const fps = (page) => page.evaluate(async () => {
 const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows, cam, target, fov }) => {
   const s = window.sample3d, sc = s.scene, B = window.BABYLON;
   await window.__setTime(4);
+  sc.scene.animationTimeScale = 0;   // the pose set below holds while the shaders compile
+  sc.awareness.enabled = false;      // and the head looks where the clip looks, not at the ball
   document.querySelector("#stage").style.visibility = "hidden";
   const byPid = new Map(sc.players.map((p) => [p.pid, p]));
   for (const p of sc.players) { p.holder.setEnabled(false); sc.rig.setLeg(p.i, null); }
@@ -75,9 +78,23 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
     }
   }
   const cm = sc.cams.replay;
+  if (cam === "face") {
+    // close on the first row's face, from where it looks (the clips turn the head)
+    sc.scene.render();
+    const ms = byPid.get(rows[0].pid).holder.getChildMeshes(false);
+    const head = byPid.get(rows[0].pid).holder.getChildTransformNodes(false).find((n) => /-Head$/.test(n.name));
+    head.computeWorldMatrix(true);
+    const h = head.getAbsolutePosition(), f = ms.find((m) => /anime_face_primitive1$/.test(m.name));
+    f.computeWorldMatrix(true);
+    const d = f.getPositionData(true, true), c = new B.Vector3();
+    for (let i = 0; i < d.length; i += 3) c.addInPlaceFromFloats(d[i], d[i + 1], d[i + 2]);
+    const fc = B.Vector3.TransformCoordinates(c.scaleInPlace(3 / d.length), f.getWorldMatrix());
+    const dir = fc.subtract(h); dir.y = 0; dir.normalize();
+    cam = [fc.x + dir.x * 0.8, fc.y + 0.04, fc.z + dir.z * 0.8]; target = [fc.x, fc.y - 0.02, fc.z];
+  }
   cm.position.set(...cam); cm.setTarget(new B.Vector3(...target)); cm.fov = fov;
   sc.scene.activeCamera = cm;
-  for (let k = 0; k < 200 && !sc.scene.isReady(); k++) await new Promise((r) => setTimeout(r, 50));
+  for (let k = 0; k < 2400 && !sc.scene.isReady(); k++) await new Promise((r) => setTimeout(r, 50));
   sc.scene.render();
   sc.scene.render();
 }, { rows, cam, target, fov });
@@ -85,6 +102,8 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
 // a moment of the match with the replay camera close on the scorer (motion3d-shots.mjs celebCam)
 const goalShot = (page, c, dist) => page.evaluate(async ({ c, dist }) => {
   const s = window.sample3d, B = window.BABYLON, sc = s.scene, m = s.match;
+  sc.scene.animationTimeScale = 1;
+  sc.awareness.enabled = true;
   for (const p of sc.players) p.holder.setEnabled(true);
   await window.__setTime(c - 0.04);
   const { ts } = await window.__setTime(c);
@@ -120,7 +139,7 @@ try {
         const m = window.sample3d.match, id = Object.keys(m.teams)[0];
         return window.sample3d.scene.players.map((p) => ({ pid: p.pid, ...m.players[p.pid] })).filter((p) => p.team_id === id && p.position !== "GK").map((p) => p.pid);
       });
-      await stage(page, { rows: [row(pick0[0], -1.8, Math.PI), row(pick0[1], -0.6, Math.PI), row(pick0[0], 0.6, 0), row(pick0[1], 1.8, 0)], cam: [0, 1.2, -5.8], target: [0, 0.95, 0], fov: 0.55 });
+      await stage(page, { rows: [row(pick0[0], -1.8, Math.PI), row(pick0[1], -0.6, Math.PI), row(pick0[2], 0.6, 0), row(pick0[3], 1.8, 0)], cam: [0, 1.2, -5.8], target: [0, 0.95, 0], fov: 0.55 });
       await page.screenshot({ path: `${tmp}/compare-default.png` });
     }
   }
@@ -167,12 +186,11 @@ try {
 
   // comparison: the same two places and poses as the default page above
   const h = info.home;
-  await stage(page, { rows: [row(h[0], -1.8, Math.PI), row(h[1], -0.6, Math.PI), row(h[0], 0.6, 0), row(h[1], 1.8, 0)], cam: [0, 1.2, -5.8], target: [0, 0.95, 0], fov: 0.55 });
+  await stage(page, { rows: [row(h[0], -1.8, Math.PI), row(h[1], -0.6, Math.PI), row(h[2], 0.6, 0), row(h[3], 1.8, 0)], cam: [0, 1.2, -5.8], target: [0, 0.95, 0], fov: 0.55 });
   await page.screenshot({ path: `${tmp}/compare-anime.png` });
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", `${tmp}/compare-default.png`, "-i", `${tmp}/compare-anime.png`, "-filter_complex",
     "[0]crop=1280:540:0:90[a];[1]crop=1280:540:0:90[b];[a][b]vstack", `${shots}/anime3d-compare.png`]);
   console.log("anime3d-compare.png: default (top), anime (bottom); front left, back right");
-  // the comparison staged the same pid twice: the second row wins, so it is front and back of two players
 
   // clips: idle, jog, sprint, shot at contact, the ball at the foot (trap), then the celebration
   const tiles = [
@@ -217,7 +235,7 @@ try {
   // face: the same player determined (sprinting), happy, frustrated
   const faces = [];
   for (const [name, f] of [["determined", [null, 7]], ["joy", ["celebrate", 0]], ["frustration", ["dejected", 0]]]) {
-    await stage(page, { rows: [row(h[0], 0, Math.PI, { face: f })], cam: [0.12, 1.66, -1.05], target: [0, 1.6, 0], fov: 0.5 });
+    await stage(page, { rows: [row(h[0], 0, Math.PI, { face: f, phase: 0 })], cam: "face", fov: 0.5 });
     faces.push(`${tmp}/face-${name}.png`);
     await page.screenshot({ path: faces.at(-1) });
   }
@@ -227,6 +245,8 @@ try {
   // wide: the live TV frame; how many players are on the far body
   const lod = await page.evaluate(async () => {
     const s = window.sample3d, sc = s.scene;
+    sc.scene.animationTimeScale = 1;
+    sc.awareness.enabled = true;
     for (const p of sc.players) p.holder.setEnabled(true);
     sc.ball.setEnabled(true); sc.ballShadow.setEnabled(true);
     await window.__setTime(6 - 0.04);

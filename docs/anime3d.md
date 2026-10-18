@@ -124,7 +124,10 @@ at run time.
 - The model is flipped (VRM 0.x faces -Z) and its bone is turned onto the target bone.
 - It is stretched along the bone to the target length, and scaled across it by a set factor (the
   mannequin is stockier).
-- The head gets one uniform scale of 1.28, for anime proportions without chibi.
+- The head gets one uniform scale of 1.4, for anime proportions without chibi.
+- VRoid's spine runs near the back and its arms sit behind the chest, so on the mannequin's clips
+  the body stooped. The spine, chest, neck and head are tilted back about the pelvis (3 to 8
+  degrees, `TILT`), and the same idle clip stands the anime body as upright as today's footballer.
 - Each vertex moves by the weighted sum of its joints' maps, as skinning would move it.
 - Normals and blend-shape deltas follow the linear part.
 - The weights are moved onto the mannequin's 65 joints, keeping the four largest.
@@ -154,18 +157,31 @@ Each is greyscale, tinted by the page.
 - the hair style (4) and colour (8);
 - the eye colour (6);
 - the skin tone (the existing palette);
-- a height from 0.95 to 1.05.
+- a height from 0.95 to 1.05;
+- dark or neutral boots (four near-black tones and one off-white), so they do not pull the eye.
 
 Spiky hair never gets the gold colour, a famous look. There is no white or silver hair.
 
 **Shading** (`toon3d.js`).
 - Two tones from the sun's angle with a crisp edge, smoothstep over 0.08 of N·L.
 - A cool shade tint, and a thin rim on the lit side.
+- The face never drops below 80% of the lit tone, so no hard terminator crosses the nose and
+  cheeks (anime faces are drawn lit; Blue Protocol avoids self-shadow for the same reason).
 - Image processing as the scene has it.
-- The outline is an inverted hull: a clone of each near part with a back-face-only dark material,
+- The outline is an inverted hull: one extra mesh per hair style (`anime_outline_<style>`), body,
+  face skin and hair merged with smooth normals, drawn back faces only in a dark unlit material and
   pushed out along the normal by 9 mm. It is capped at 1.6 pixels, so lines stay thin at broadcast
-  distance (Xrd's distance-scaled width).
-- The face is not outlined: its lines are drawn in its texture.
+  distance (Xrd's distance-scaled width). One draw outlines the whole player; the expressions do
+  not move it, which is invisible at 1.6 pixels.
+- The eyes, brows and mouth have no hull: their lines are drawn in the face texture.
+
+**Pose on top of the clips.** After the clips and the upper-body emotions, `players3d.js` turns some
+joints of the anime body part of the way back to their rest pose (`relaxJoints`):
+- the fingers by 70%, so the hands hang relaxed and open instead of in the mannequin's fists,
+  except while the jumping fist celebration plays;
+- the upper spine, neck and head by 50% while a dejected motion clip plays. The yellow player in
+  the goal still is on `M_crouch_head_down`, which today's footballers play too; on a 1.4x head
+  with big hair its head-down pose read as a slump.
 
 **Faces in the match.** `scene3d.js` calls `p.face(r, v, ts)` after the clips:
 - joy for celebrate and join;
@@ -178,15 +194,53 @@ Spiky hair never gets the gold colour, a famous look. There is no white or silve
 
 | | Target | anime.glb |
 |---|---|---|
-| Near triangles (body + face + hair) | about 10k | 9,936 (messy, spiky, swept), 8,506 (crop) |
+| Near triangles (body + face + hair) | about 10k | 9,937 (messy, spiky, swept), 8,506 (crop), plus the outline hull (8,193 or 6,762) |
 | Far triangles | under 4k | 3,329 at most |
-| File size | under 5 MB | 1.98 MB |
-| Draws per near player | 1 to 2 | RESULTS |
+| File size | under 5 MB | 2.73 MB |
+| Draws per near player | 1 to 2 | 11: 7 body regions (the kit code needs them apart), face skin, face features, hair, one outline hull |
 | Draws per far player | 1 to 2 | 1 |
 
 ## Results
 
-RESULTS
+Stills (`tests/web/anime3d-shots.mjs`, software WebGL 1): `out/shots/anime3d-compare.png`,
+`-clips.png`, `-variants.png`, `-face.png`, `-wide.png`, `-goal.png`; the 20 s match as
+`out/shots/anime3d.mp4` (`sample3d-video.mjs DEMO anime3d players=anime`).
+
+- The faces read as anime in the close-ups: big eyes with highlights, small nose, line mouth;
+  determined, joy (closed eyes, open mouth) and frustration differ clearly.
+- Ten players in the variants still give ten style and colour pairs (4 styles, 6 colours there).
+- At the broadcast distance all 22 players are on the far body (one draw each).
+- Frames/s, low profile, software WebGL 1, 22 players on, 1100x618, four fresh pages in turns
+  (default, anime, default, anime), every frame read back so the GPU work is counted:
+  4.42 and 4.05 with today's footballers, 4.86 and 4.61 with the anime ones.
+  An earlier count without the read back gave 6.40 and 10.32 against 32.70 and 27.63. It only
+  measured how fast the page queued frames: today's footballers happen to wait for the GPU inside
+  the render call (140 ms of CPU time per frame), the anime ones do not (3 ms).
+- Where the time goes, one frame read back: the stadium alone takes 130 to 150 ms, the 22 players
+  add 33 to 62 ms with either look. Turning the toon shading or the outline off changes nothing
+  measurable at the broadcast distance, where every player is on the far body. On this shared
+  server single frames vary by up to 50%, so only the four-turn averages are worth comparing.
+
+- Feet (`tests/web/feet3d.mjs`, every boot's lowest vertex against the grass): before the fix the
+  soles sank on both looks, 2.1 cm at the median when planted and up to 21 cm in single frames.
+  The anime heights were not the cause (no slope across the eleven scales). Each clip alone sits
+  0.7 to 1.7 cm under, and the ball touch leg pose (`ball3d-rig.js`) straightens a leg while the
+  jog's pelvis is low. `ball3d-rig.js` now grounds every body after the leg poses: eight points
+  per sole, taken from the boots in the rest pose, and the root lifted by the depth of the lowest
+  one when it is under the grass, never otherwise. After it, on the DEMO sample every 0.12 s:
+  lowest sole -0.9 cm (default) and -0.7 cm (anime), planted median -0.6 and -0.4 cm.
+
+Limits, honestly:
+
+- The bodies stay slim VRoid bodies on the mannequin's clips: they read as stylised footballers,
+  less as hand-drawn anime.
+- The hands are opened by turning the finger joints back, not by a hand pose. Only the jumping
+  fist celebration (`M_celeb_jump_fist`) keeps its fists, and only when it plays as a full-body
+  clip; on the run its upper body leaves the fingers to the locomotion, so the hands stay open.
+- The spiky style is bent from the messy one by a script: from behind it can look like a broom.
+- Bangs cross the eyes in close-ups, as VRoid's sample hair does.
+- The expressions do not move the outline hull (invisible at 1.6 px).
+- In the stills the look-at layer is off (`awareness.enabled = false`), so the heads follow the clip.
 
 ## How to rebuild
 

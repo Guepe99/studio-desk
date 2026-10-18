@@ -18,6 +18,8 @@ Output meshes, all skinned to the mannequin skeleton:
                    atlas, alpha tested), with morph targets for the expressions
   hair_<style>     one per hair style, material hair (greyscale, tinted by the page)
   anime_lod1_<style>  the far body with that hair: one draw, UVs into a 8 x 1 palette
+  anime_outline_<style>  body, face skin and that hair merged with smooth normals: the outline hull
+                   (web/js/toon3d.js) in one draw
 
     .venv/bin/python scripts/build_anime.py ~/tools/anime/dl
 
@@ -69,7 +71,11 @@ def joint_map():
     return m
 
 
-HEAD_SCALE = 1.28   # larger than the body's ~1.2: anime head proportions
+HEAD_SCALE = 1.4    # larger than the body's ~1.2: anime head proportions
+# VRoid's spine runs near its back, the mannequin's through the middle of the body, and its arms sit
+# behind the chest: on the mannequin's clips the anime body stooped. The upper body is tilted back
+# about the pelvis by these angles (degrees), so the same clips stand it upright.
+TILT = {"J_Bip_C_Spine": 3.0, "J_Bip_C_Chest": 6.0, "J_Bip_C_UpperChest": 8.0, "J_Bip_C_Neck": 8.0, "J_Bip_C_Head": 7.0}
 # skinned to the clavicle, but placed with the upper chest: the two rigs' clavicles point differently
 SHOULDERS = {"J_Bip_L_Shoulder": "clavicle_l", "J_Bip_R_Shoulder": "clavicle_r"}
 
@@ -113,6 +119,7 @@ class BoneMap:
 
     def __init__(self, src, dst, src_child, dst_child, radial):
         self.src, self.dst, self.r = F @ src, dst, radial
+        self.T, self.pivot = np.eye(3), np.zeros(3)
         if src_child is None:
             self.u, self.R, self.k, self.len = np.array([0.0, 1.0, 0.0]), np.eye(3), radial, np.inf
             return
@@ -129,12 +136,18 @@ class BoneMap:
         t = q @ self.u
         perp = q - t[:, None] * self.u
         tt = np.where(t < 0, t * self.r, np.where(t <= self.len, t * self.k, self.len * self.k + (t - self.len) * self.r))
-        return (tt[:, None] * self.u + self.r * perp) @ self.R.T + self.dst
+        out = (tt[:, None] * self.u + self.r * perp) @ self.R.T + self.dst
+        return (out - self.pivot) @ self.T.T + self.pivot
+
+    def tilt(self, angle, pivot):
+        """Turn the mapped part about the x axis through `pivot` (negative: backwards)."""
+        c, s = np.cos(angle), np.sin(angle)
+        self.T, self.pivot = np.array([[1, 0, 0], [0, c, -s], [0, s, c]]), pivot
 
     def linear(self):
         """Linear part between joint and child (for morph target deltas)."""
         uu = np.outer(self.u, self.u)
-        return self.R @ (self.k * uu + self.r * (np.eye(3) - uu)) @ F
+        return self.T @ self.R @ (self.k * uu + self.r * (np.eye(3) - uu)) @ F
 
 
 def bone_maps(vrm, skin, man_pos):
@@ -147,6 +160,8 @@ def bone_maps(vrm, skin, man_pos):
     for s, (d, sc, dc, r) in jm.items():
         index[s] = len(maps)
         maps.append(BoneMap(src_pos[s], man_pos[d], src_pos[sc] if sc else None, man_pos[dc] if dc else None, r))
+        if s in TILT:
+            maps[-1].tilt(-np.radians(TILT[s]), man_pos["pelvis"])
     parent = {c: i for i, n in enumerate(vrm.j["nodes"]) for c in n.get("children", [])}
     by_name = {n["name"]: i for i, n in enumerate(vrm.j["nodes"])}
     out = []
@@ -185,7 +200,7 @@ def rebind_vrm(vrm, mesh, skin, maps, joints, target_names, morphs=()):
             sel = (g == b) & (wgt[:, k] > 0)
             w = wgt[sel, k, None]
             out_p[sel] += w * maps[b].points(pos[sel])
-            out_n[sel] += w * (nrm[sel] @ (maps[b].R @ F).T)
+            out_n[sel] += w * (nrm[sel] @ (maps[b].T @ maps[b].R @ F).T)
             for d, od in zip(deltas, out_d):
                 od[sel] += w * (d[sel] @ lin[b].T)
     out_n /= np.maximum(np.linalg.norm(out_n, axis=1, keepdims=True), 1e-12)
@@ -316,11 +331,14 @@ def restyle(pos, label, centre, kind):
             continue
         t = np.clip((p - root) @ axis / L ** 2, 0, 1)[:, None]
         out_dir = (root - centre) / max(np.linalg.norm(root - centre), 1e-6)
+        front = max(0, out_dir[2])   # strands over the forehead
         if kind == "spiky":
-            lift = np.array([0, 1.0, 0]) * max(0, out_dir[1] + 0.3)
-            out[sel] = p + t ** 1.5 * (0.6 * axis + 0.06 * (out_dir + lift))
+            if front > 0.25:          # bangs: shorter and lifted, so the eyes stay clear
+                out[sel] = p + t ** 1.2 * (np.array([0, 0.06, 0.02]) - 0.45 * axis)
+                continue
+            lift = np.array([0, 1.0, -0.5]) * max(0, out_dir[1])   # the crown up and back; the back hangs: not a flame
+            out[sel] = p + t ** 1.5 * (0.15 * axis + 0.04 * (out_dir + lift))
         elif kind == "swept":
-            front = max(0, out_dir[2])   # strands over the forehead go up and back
             out[sel] = p + t ** 1.2 * (np.array([0, 0.07, -0.05]) * (0.3 + front) + 0.02 * out_dir)
     return out
 
@@ -448,10 +466,17 @@ def build(dl, out=OUT):
 
         far_body = far_parts(tmp, region_prims, body, tr)
         kit_far = w.material("kit_far", (1.0, 1.0, 1.0), 0.75)
+        outline = w.material("outline", (0.0, 0.0, 0.0), 1.0)
         for style, v in styles.items():
             mat = mats["hair_crop" if style == "hair_crop" else "hair"]
             hs = simplify_one(tmp, v, HAIR_NEAR if style != "hair_crop" else 1.0, style)
             bf.add_mesh_node(w, armature, style, w.mesh(style, [w.primitive(hs, hs["tri"], mat, hs["uv"])]))
+            # the outline hull of body, face and this hair as one draw, with smooth normals so hard
+            # edges do not split it (the face's expressions do not move it)
+            ol = merge([dict(v, uv=np.zeros((len(v["pos"]), 2))) for v in [p for _, p in near] + [face_skin, hs]])
+            ol["nrm"] = bf.vertex_normals(ol["pos"], ol["tri"], bf.weld(ol["pos"], 1e-4))
+            name = f"anime_outline_{style[5:]}"
+            bf.add_mesh_node(w, armature, name, w.mesh(name, [w.primitive(ol, ol["tri"], outline)]))
             hf = simplify_one(tmp, v, HAIR_FAR if style != "hair_crop" else 0.5, style + "_far", 0.05)
             hf["uv"] = np.tile([(FAR_HAIR + 0.5) / PALETTE, 0.5], (len(hf["pos"]), 1))
             far = merge(far_body + [hf])
