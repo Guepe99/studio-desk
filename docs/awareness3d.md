@@ -227,3 +227,15 @@ mannequin's Head bone, and the emotion weights at goal + 1.5 s. The check runs w
 and off and fails if "on" misses or "off" passes, so it proves each half fails without the layer:
 on, 81% of 42 defender heads within 30 deg, scorer 1, teammates 9 of 10, conceding 9 of 11; off,
 29%, 0, 0 of 10, 0 of 11.
+
+## Cost
+
+The layer's own JavaScript costs 1 to 2 ms a frame for 22 players (probe on DEMO: `pose` 0.3-0.5
+ms, head and emotion pass 0.5-1.1 ms, driver hold check 0.2 ms; the head chain matches Babylon's
+world matrices exactly). Whole-frame rates in the software-WebGL browser of the build machine
+are dominated by load from other jobs: a render took between 17 ms and 1.4 s with the layer on or
+off alike. For the record, the smoke test printed 2.8 to 5.7 frames/s with the layer and 10.6 to
+46.8 without it over three runs, and 11.8 before this layer existed; the probe, interleaved, gave
+30.4 and 5.8 with it and 8.9 and 0.7 without it. The emotion clips that `players.js` clones and
+plays per player may add a real cost that these numbers cannot separate from the noise: measure on
+a GPU before drawing a conclusion.

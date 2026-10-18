@@ -181,7 +181,10 @@ try {
     s.scene.awareness.enabled = true;
     return n / ((performance.now() - t0) / 1000);
   }, on);
-  const fpsOff = await rate(false), fps = await rate(true);
+  // interleaved twice, best of each: one pass in order was dominated by warm-up and machine load
+  const r = [];
+  for (const on of [false, true, false, true]) r.push(await rate(on));
+  const fpsOff = Math.max(r[0], r[2]), fps = Math.max(r[1], r[3]);
   console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics (${fpsOff.toFixed(2)} without awareness)`);
 
   // without ?match= the page loads M001, the match shipped in the image (it may be absent here)
