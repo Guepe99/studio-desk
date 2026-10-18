@@ -6,3 +6,4 @@ data/*.sqlite*
 data/raw
 web/data
 *.egg-info
+.claude
