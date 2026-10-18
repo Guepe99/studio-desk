@@ -24,7 +24,8 @@ export class AwarenessRig {
   constructor(s) {
     this.s = s;
     s.awareness = this;
-    this.aw = new Awareness(s.match, s.span, { ball: (t) => s.rig.ball(t) });
+    // s.motion: the retargeted clips (players.js loadMotion), or none for the SD_ stand-ins
+    this.aw = new Awareness(s.match, s.span, { ball: (t) => s.rig.ball(t), motion: s.motion ?? null });
     this.enabled = true;
     const probe = s.container.instantiateModelsToScene((n) => `aw-probe-${n}`, false, { doNotInstantiate: true });
     const P = nodesOf(probe.rootNodes[0], "aw-probe-");
@@ -57,7 +58,8 @@ export class AwarenessRig {
     const q = this.aw.pose(i, ts);
     if (!q) return null;
     const h = this._held(i, ts);
-    if (h.leg || h.action) { const { mode, ...rest } = q; return rest; }
+    // a ball action or a leg pose owns the legs: no mode, and the emotion stays upper body only
+    if (h.leg || h.action) { const { mode, ...rest } = q; if (rest.emotion) rest.emotion = { ...rest.emotion, full: false }; return rest; }
     return q;
   }
 
@@ -77,7 +79,7 @@ export class AwarenessRig {
     if (!this.enabled || ts === undefined) return;
     for (const { p, n, c } of this.players.values()) {
       if (!p.holder.isEnabled() || this._held(p.i, ts).action) continue;
-      if (HEAD_CLIPS.has(p.upper?.clip)) continue;
+      if (HEAD_CLIPS.has(p.upper?.clip) || this.aw.emotion(p.i, ts)?.clip.startsWith("M_")) continue;   // the real clips move the head
       const L = this.aw.look(p.i, ts);
       if (!L) continue;
       const want = headYaw(p.holder.rotation.y, L.yaw);

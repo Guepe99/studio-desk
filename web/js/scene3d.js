@@ -299,7 +299,11 @@ export class Scene3D {
       p.target = target;
       p.holder.rotation.y = p.yaw;
       this.rig.setLeg(p.i, r.leg);
-      animatePlayer(p, v, dt, r);
+      // run direction in the character's frame [left, forward] (the motion loops pick by it);
+      // the glTF character's left is local -X in Babylon, so left = (-cos yaw, sin yaw) in x/z
+      const yw = p.holder.rotation.y;
+      if (v > 0.2) r.runL = [(-vx * Math.cos(yw) + vy * Math.sin(yw)) / v, (vx * Math.sin(yw) + vy * Math.cos(yw)) / v];
+      animatePlayer(p, v, dt, r, this.motion);
       B.Matrix.TranslationToRef(p.holder.position.x, 0.02, p.holder.position.z, m);
       m.copyToArray(this.shadowBuf, k * 16);
     });

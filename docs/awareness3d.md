@@ -202,6 +202,9 @@ pointing, backpedal or jockey clips. What this layer uses:
   `SD_Palms`, `SD_ArmUp`, `SD_Point`. They are joint keys, not third-party animation.
 - Backpedal, strafe and jockey are the gaits the scene already has (the forward run turned by the
   chest/run angle), so the legs are stand-ins.
+- Since `docs/motion3d.md`, the default page replaces the `SD_` clips and the stand-in gaits with
+  retargeted Kimodo motion (`web/vendor/motion/`); the clips above remain for
+  `?motion=procedural` and as the fallback when the clip file is missing.
 
 ## Tests and numbers
 
