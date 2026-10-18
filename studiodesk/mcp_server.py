@@ -23,6 +23,8 @@ from mcp.types import ToolAnnotations
 from . import config, db
 
 DB_PATH = Path(os.environ.get("STUDIODESK_MATCHES_DB", config.MATCHES_DB))
+# shortcut: one clock per process, so one live run per process; give each run its own clock when the
+# tappa 3 agents run two matches in the same process.
 _clock = float(os.environ["STUDIODESK_CLOCK"]) if os.environ.get("STUDIODESK_CLOCK") else None
 GOAL_SQL = ("((type_name IN ('shot', 'shot_freekick', 'shot_penalty') AND result_name = 'success') "
             "OR result_name = 'owngoal')")
@@ -72,6 +74,10 @@ def get_match_info(match_id: str) -> dict:
     players = _rows("SELECT l.player_id, p.team_id, p.name, p.shirt, p.position, l.starter, l.on_ts, l.off_ts "
                     "FROM lineups l JOIN players p USING (player_id) WHERE l.match_id = ? AND l.on_ts <= ? "
                     "ORDER BY p.team_id, p.shirt", (match_id, _now()))
+    # period lengths include stoppage time: unknown until the period is over
+    p1, end = m["period1_s"], m["period1_s"] + m["period2_s"]
+    m["period1_s"] = p1 if p1 <= _now() else None
+    m["period2_s"] = m["period2_s"] if end <= _now() else None
     return {**m, "clock": _clock, "score": score,
             "teams": [{**t, "side": sides[t["team_id"]]} for t in teams],
             "players": [_hide_future(p) for p in players]}

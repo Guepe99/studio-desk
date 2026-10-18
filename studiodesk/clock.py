@@ -2,7 +2,8 @@
 
 `speed=1` is real time, `speed=10` ten times faster; `speed=0` (or a very large speed) means no
 waiting, for tests and replay generation. Iterate with `for` or `async for`; `.now` is the `ts`
-of the last released event (0.0 before the first).
+of the last released event (0.0 before the first), and the full-time `ts` once the loop ends, so
+full-time facts are released too.
 """
 import asyncio
 import time
@@ -16,6 +17,8 @@ class MatchClock:
         conn = conn or db.matches()
         self.events = [dict(r) for r in conn.execute(
             "SELECT * FROM events WHERE match_id = ? ORDER BY ts, event_id", (match_id,))]
+        self.end = conn.execute("SELECT period1_s + period2_s FROM matches WHERE match_id = ?",
+                                (match_id,)).fetchone()[0]
         if own:
             conn.close()
         self.match_id, self.speed, self.now = match_id, speed, 0.0
@@ -30,6 +33,9 @@ class MatchClock:
                 time.sleep(d)
             self.now = e["ts"]
             yield e
+        if (d := self._wait(self.end, start)) > 0:
+            time.sleep(d)
+        self.now = self.end
 
     async def __aiter__(self):
         start = time.monotonic()
@@ -38,3 +44,6 @@ class MatchClock:
                 await asyncio.sleep(d)
             self.now = e["ts"]
             yield e
+        if (d := self._wait(self.end, start)) > 0:
+            await asyncio.sleep(d)
+        self.now = self.end

@@ -43,6 +43,24 @@ def test_clock_hides_the_future(server_db):
     assert srv.get_match_info("M001")["score"]["home"] == 1
 
 
+def test_clock_hides_later_lineups_facts_and_period_lengths(server_db, match_db):
+    _, conn = match_db
+    conn.execute("UPDATE lineups SET off_ts = 300 WHERE player_id = 'T01-9'")
+    conn.execute("UPDATE lineups SET on_ts = 250 WHERE player_id = 'T01-10'")
+    conn.commit()
+    shot = srv.get_facts("M001", kind="shot_speed")[0]
+    srv.set_clock(190.0)
+    assert "error" in srv.get_fact("M001", shot["fact_id"])
+    assert srv.get_player("M001", "T01-9")["lineup"]["off_ts"] is None
+    assert srv.get_player("M001", "T01-10")["lineup"] is None
+    m = srv.get_match_info("M001")
+    assert len(m["players"]) == 21 and m["period1_s"] == 180.0 and m["period2_s"] is None
+    srv.set_clock(100.0)
+    assert srv.get_match_info("M001")["period1_s"] is None
+    srv.set_clock(None)
+    assert srv.get_player("M001", "T01-9")["lineup"]["off_ts"] == 300
+
+
 def test_lists_tools_through_the_sdk(server_db):
     from mcp.shared.memory import create_connected_server_and_client_session
 

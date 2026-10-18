@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from fixture_match import HOME, write_fixture
+from fixture_match import FPS, HOME, PASS_MS, write_fixture
 from studiodesk import db
 from studiodesk.facts import Match, build
 
@@ -32,6 +32,9 @@ def test_all_kinds_ids_and_sources(match_db):
         if r["source_frames"]:
             a, b = json.loads(r["source_frames"])
             assert 0 <= a <= b < info["frames"]
+            assert b / FPS <= r["ts"] + 1e-9, r  # never released before the frames it was measured on
+    passes = facts(conn, "ball_speed")
+    assert passes and all(abs(r["value"] - PASS_MS * 3.6) < 2 for r in passes)
 
 
 def test_goal_shot_and_sprint(match_db):

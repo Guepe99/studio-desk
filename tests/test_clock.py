@@ -30,3 +30,10 @@ def test_async_iteration(match_db):
         return [e["event_id"] async for e in MatchClock("M001", speed=0, conn=conn)]
 
     assert len(asyncio.run(run())) == len(MatchClock("M001", 0, conn).events)
+
+
+def test_reaches_full_time_after_the_last_event(match_db):
+    _, conn = match_db
+    clock = MatchClock("M001", speed=0, conn=conn)
+    list(clock)
+    assert clock.now == clock.end == 360.0 > clock.events[-1]["ts"]

@@ -36,6 +36,7 @@ LENGTH, WIDTH = 105.0, 68.0
 WINDOW_S = 300.0
 SPRINT_KMH = 25.2
 SMOOTH = 5
+RELEASE_FRAMES = 5  # ball speed is read in the first half second after the kick
 MAX_PLAYER_KMH = 45.0
 MAX_BALL_KMH = 220.0  # faster steps are restarts (ball put back on the spot), not kicks
 
@@ -110,6 +111,8 @@ class Match:
         """`period` is needed for facts at a period end: ts = period1_s alone would read as period 2."""
         if not math.isfinite(value):
             return
+        if frames is not None:  # a fact is known only once its last measured frame has happened
+            ts = max(ts, frames[1] / self.fps)
         self.facts.append(dict(kind=kind, ts=float(ts), period=period or self.period_of(ts), team_id=team,
                                player_id=player, value=float(value), unit=unit, label_en=label,
                                source_event_ids=[int(e) for e in events],
@@ -131,7 +134,7 @@ class Match:
         return self.facts
 
     def peak_ball_kmh(self, f0, f1):
-        b = self.pos[f0:f1 + 1, 0].astype(float)
+        b = self.pos[f0:f1 + 1, 0, :2].astype(float)  # horizontal: a lob's climb is not its speed
         v = np.linalg.norm(np.diff(b, axis=0), axis=1) * self.fps * 3.6
         v = v[np.isfinite(v) & (v <= MAX_BALL_KMH)]
         return float(v.max()) if len(v) else math.nan
@@ -155,7 +158,7 @@ class Match:
                 v = self.xt(e["end_x"], e["end_y"], sign) - self.xt(e["start_x"], e["start_y"], sign)
                 self.add("xt_added", ts, round(v, 4), "xT", f"xT {v:+.3f}", team, pid, [eid])
             if kind in SHOT_TYPES and f0 is not None:
-                f1 = min(self.frame(nxt), f0 + 3 * self.fps)
+                f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = self.peak_ball_kmh(f0, f1)
                 self.add("shot_speed", ts, round(v, 1), "km/h", f"Shot at {v:.0f} km/h", team, pid, [eid], (f0, f1))
             if kind not in PASS_TYPES:
@@ -166,7 +169,7 @@ class Match:
             pressure = bypass = 0.0
             frames = None
             if f0 is not None:
-                f1 = min(self.frame(nxt), f0 + 5 * self.fps)
+                f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = self.peak_ball_kmh(f0, f1)
                 self.add("ball_speed", ts, round(v, 1), "km/h", f"Pass at {v:.0f} km/h", team, pid, [eid], (f0, f1))
                 pressure, bypass = self.pressure_and_bypass(e, f0, sign)
@@ -234,7 +237,7 @@ class Match:
         return [e["event_id"] for e in self.events if a <= e["ts"] <= b]
 
     def on_pitch(self, pid, ts):
-        return self.lineups.get(pid, (0.0, None))[0] < ts
+        return self.lineups.get(pid, (math.inf, None))[0] < ts
 
     def sprints_and_distance(self):
         speed = self.player_speeds()
@@ -253,7 +256,7 @@ class Match:
                 end_ts = float(t - 1) / self.fps
                 ends.append(end_ts)
                 self.add("sprint_speed", end_ts, round(peak, 1), "km/h", f"Sprint at {peak:.1f} km/h", team, pid,
-                         self.events_between(s / self.fps, end_ts), (s, t - 1))
+                         self.events_between(s / self.fps, end_ts), (s, min(t - 1 + SMOOTH // 2, len(v) - 1)))
             step_m = np.nan_to_num(v) / 3.6 / self.fps
             for period, cp, when in checkpoints:
                 if not self.on_pitch(pid, cp):

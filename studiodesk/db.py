@@ -9,7 +9,7 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 def connect(path: Path, readonly: bool = False) -> sqlite3.Connection:
     if readonly:
-        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
+        conn = sqlite3.connect(f"{Path(path).resolve().as_uri()}?mode=ro", uri=True, check_same_thread=False)
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(path, check_same_thread=False)
