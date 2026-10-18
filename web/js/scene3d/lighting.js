@@ -94,11 +94,11 @@ export function setupLighting(scene, profile, mode = "night") {
       for (const l of [key, ...fills]) l.excludedMeshes.push(...meshes);
       const spill = new B.HemisphericLight("spill", new B.Vector3(0, 1, 0), scene);
       spill.diffuse = FLOOD; spill.groundColor = B.Color3.Black(); spill.specular = B.Color3.Black();
-      spill.intensity = 0.3;
+      spill.intensity = 0.6;   // 0.3 hid the goal celebration in the stands
       spill.includedOnlyMeshes = meshes;
       // the crowd glows a little by itself (stands.js) so it reads in daylight shade: dim it
       for (const m of meshes) if (m.material?.emissiveColor && /^crowd/.test(m.name)) {
-        m.material.unfreeze(); m.material.emissiveColor.scaleInPlace(0.4); m.material.freeze();
+        m.material.unfreeze(); m.material.emissiveColor.scaleInPlace(0.7); m.material.freeze();
       }
     },
     // the optimizer's last resort: no shadow maps, the caller turns blob shadows on
