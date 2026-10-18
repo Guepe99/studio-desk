@@ -1,6 +1,8 @@
 // Opens web/sample3d.html on the DEMO fixture, fails on console errors, checks that the nameplate
 // sits on its player in 3D, and saves three 1280x720 screenshots to out/shots/:
-// sample3d-side.png (TV camera), sample3d-nameplate.png, sample3d-replay.png (behind the goal).
+// sample3d-side.png (TV camera), sample3d-nameplate.png, sample3d-replay.png (behind the goal),
+// plus the scene3d-*.png stills of the 3D frame (see below). Run it twice: WebGL 1 for the low
+// profile, WEBGL=2 for the high one.
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-shots.mjs
 import { createRequire } from "node:module";
@@ -23,6 +25,7 @@ const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 try {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+  page.setDefaultTimeout(120000);   // software WebGL 2 with sun shadows is slow
   page.on("console", (m) => { if (m.type() === "error") fail(`console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`page error: ${e.message}`));
   page.on("requestfailed", (r) => fail(`request failed: ${r.url()}`));
@@ -77,6 +80,93 @@ try {
   console.log(`ball plan: worst ${ball.worst.toFixed(2)} m, ${ball.atEvents.toExponential(1)} m off at events, ${ball.legs} leg actions, rolls forward ${ball.forward}/${ball.rolls}`);
   if (!(ball.worst < 1.5) || ball.atEvents > 1e-3 || ball.legs < 5) fail(`ball plan off: ${JSON.stringify(ball)}`);
   if (ball.rolls < 10 || ball.forward < ball.rolls * 0.95) fail(`ball rolls the wrong way: ${ball.forward}/${ball.rolls}`);
+
+  // the broadcast look (docs/scene3d-research.md): image-based light, sun shadows by profile, and
+  // the pure helpers of the profile picker, the crowd, the event actions and the drivers
+  const look = await page.evaluate(async () => {
+    const s = window.sample3d.scene, sc = s.scene;
+    const { pickProfile, PROFILES } = await import("./js/scene3d/quality.js");
+    const { seatGrid } = await import("./js/scene3d/stands.js");
+    const { scheduleActions, actionAt, resolve, facing } = await import("./js/scene3d/players.js");
+    const env = (v, msaa, coarse, side) => ({ webGLVersion: v, maxMSAA: msaa, coarsePointer: coarse, shortSide: side });
+    let seed = 1;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const seats = seatGrid(40, 20, 1, rnd);
+    const sched = scheduleActions([
+      { ts: 10, type_name: "tackle", player_id: "A", start_x: 1, start_y: 2 },
+      { ts: 10.8, type_name: "pass", bodypart_name: "head", player_id: "A", start_x: 1, start_y: 2 },
+      { ts: 20, type_name: "keeper_save", player_id: "K", start_x: 3, start_y: 4 },
+    ]);
+    const r = resolve([
+      { priority: 10, pose: () => ({ dx: 1, yaw: Math.PI / 2, yawW: 1, mode: "backpedal" }) },
+      { priority: 20, pose: () => ({ dy: 2, leg: { kind: "kick" } }) },
+      { priority: 30, pose: () => ({ action: { clip: "Roll" }, actionW: 0.5 }) },
+    ], 0, 0);
+    const casters = s.light.csm?.getShadowMap().renderList.length ?? 0;
+    return {
+      debug: s.debug,
+      env: !!sc.environmentTexture && sc.environmentTexture.isReady(),
+      envIntensity: sc.environmentIntensity,
+      toneMapping: sc.imageProcessingConfiguration.toneMappingType,
+      casters, blobs: s.shadows?.isVisible ?? false,
+      profiles: [pickProfile(env(2, 4, false, 1080)).name, pickProfile(env(1, 1, false, 1080)).name,
+        pickProfile(env(2, 4, true, 390)).name, pickProfile(env(1, 1, false, 1080), "high").name],
+      highHasMore: PROFILES.high.shadowMap > 0 && PROFILES.low.shadowMap === 0,
+      seats: { n: seats.length, top: Math.max(...seats.map((x) => x[2])), inside: seats.every(([x, d]) => Math.abs(x) < 20 && d > 0 && d < 20) },
+      sched: { A: sched.A.map((a) => [a.kind, +a.start.toFixed(2), +a.end.toFixed(2)]), K: sched.K.map((a) => a.kind) },
+      mid: actionAt(sched.K, 20)?.clip, before: actionAt(sched.K, 19)?.clip ?? null,
+      resolved: { dx: r.dx, dy: r.dy, mode: r.mode, leg: r.leg, actionW: r.actionW, yaw: +facing(0, r.turns).toFixed(3) },
+    };
+  });
+  console.log(`look: ${JSON.stringify(look.debug)}, ${look.casters} shadow casters, profiles ${look.profiles}`);
+  if (!look.debug.ibl || !look.env || !(look.envIntensity > 0)) fail("no image-based light");
+  if (look.toneMapping !== 2) fail(`tone mapping ${look.toneMapping}, expected KHR PBR Neutral (2)`);
+  if (look.debug.profile === "high" && (look.debug.shadows !== "csm" || look.casters < 20)) fail(`high profile without sun shadows: ${look.casters} casters`);
+  if (look.debug.profile === "low" && (look.debug.shadows !== "blob" || !look.blobs)) fail("low profile without blob shadows");
+  if (look.profiles.join() !== "high,low,low,high" || !look.highHasMore) fail(`profile picker: ${look.profiles}`);
+  if (look.seats.n < 500 || !look.seats.inside || look.seats.top > 17) fail(`seat grid: ${JSON.stringify(look.seats)}`);
+  // the tackle's slide is cut short by the header 0.8 s later; the save is a dive around its time
+  if (JSON.stringify(look.sched.A.map((a) => a[0])) !== '["slide","header"]' || look.sched.A[0][2] > look.sched.A[1][1] + 1e-9
+    || look.sched.K[0] !== "dive" || look.mid !== "Roll" || look.before !== null) fail(`actions: ${JSON.stringify(look)}`);
+  if (JSON.stringify(look.resolved) !== JSON.stringify({ dx: 1, dy: 2, mode: "backpedal", leg: null, actionW: 0.5, yaw: 1.571 }))
+    fail(`drivers resolve to ${JSON.stringify(look.resolved)}`);
+
+  // broadcast camera: fixed on the halfway line 18 m up, the ball always in the middle 90% of the
+  // frame through the live stretch, except the close shot of the scorer after the goal (centred
+  // on him), then the replay camera after the cut
+  const tv = await page.evaluate(async (cut) => {
+    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [] };
+    const ndc = (cam, v) => window.BABYLON.Vector3.TransformCoordinates(v, cam.getViewMatrix().multiply(cam.getProjectionMatrix()));
+    let first = null;
+    for (let c = 0; c < cut; c += 0.2) {
+      await window.__setTime(c);
+      sc.engine._gl.readPixels(0, 0, 1, 1, 6408, 5121, new Uint8Array(4));   // let a software GPU keep up
+      const cam = sc.scene.activeCamera;
+      if (sc.debug.camera === "celebration") {
+        const g = sc.cams.goals.find((x) => s.tl.at(c).ts >= x.ts);
+        const p = sc.players.find((q) => q.i === g.i).holder.position;
+        const q = ndc(cam, p.add(new window.BABYLON.Vector3(0, 1.2, 0)));
+        out.celebration.push(+Math.hypot(q.x, q.y).toFixed(2));
+        continue;
+      }
+      out.cams.add(cam.name);
+      if (Math.abs(cam.position.x) > 1e-6 || Math.abs(cam.position.y - 18) > 1e-6 || Math.abs(cam.position.z + 68) > 1e-6) out.pos = cam.position.asArray();
+      const p = ndc(cam, sc.ball.getAbsolutePosition());
+      out.worst = Math.max(out.worst, Math.abs(p.x), Math.abs(p.y));
+      const t = cam.getTarget().asArray().map((v) => +v.toFixed(1)).join();
+      if (first === null) first = t; else if (t !== first) out.moved = true;
+    }
+    await window.__setTime(cut + 1);
+    out.replay = sc.scene.activeCamera.name;
+    out.after = sc.debug.camera;
+    out.cams = [...out.cams];
+    return out;
+  }, cut);
+  console.log(`broadcast camera: ball within ${(tv.worst * 100).toFixed(0)}% of the half frame, cameras ${tv.cams}, scorer close-up ${tv.celebration.length} frames (off centre ${Math.max(...tv.celebration)}), then ${tv.after}`);
+  if (tv.celebration.length < 5 || Math.max(...tv.celebration) > 0.35) fail(`no close shot of the scorer after the goal: ${JSON.stringify(tv.celebration)}`);
+  if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on the gantry: ${JSON.stringify(tv)}`);
+  if (!(tv.worst < 0.9) || !tv.moved) fail(`broadcast camera loses the ball or never pans: ${JSON.stringify(tv)}`);
+  if (tv.replay === "tv" || !/^replay/.test(tv.after)) fail(`no replay camera after the cut: ${JSON.stringify(tv)}`);
 
   // awareness (web/js/awareness.js, awareness-rig.js), measured on the rendered bones. Each check
   // runs with the layer on and off: on must pass, and off must fail, or the check measures nothing.
@@ -177,7 +267,8 @@ try {
     const s = window.sample3d, t0 = performance.now();
     s.scene.awareness.enabled = on;
     let n = 0;
-    while (performance.now() - t0 < 4000) { await window.__setTime(4 + n * 0.04); n++; }
+    const gl = s.scene.engine._gl, px = new Uint8Array(4);   // each frame finished, not just queued
+    while (performance.now() - t0 < 4000) { await window.__setTime(4 + n * 0.04); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n++; }
     s.scene.awareness.enabled = true;
     return n / ((performance.now() - t0) / 1000);
   }, on);
@@ -186,6 +277,62 @@ try {
   for (const on of [false, true, false, true]) r.push(await rate(on));
   const fpsOff = Math.max(r[0], r[2]), fps = Math.max(r[1], r[3]);
   console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics (${fpsOff.toFixed(2)} without awareness)`);
+
+  // scene3d stills, 3D frame only (graded against docs/scene3d-research.md). The low profile run
+  // (WebGL 1) saves scene3d-low.png; the high one (WEBGL=2) the wide shot, a replay angle, the
+  // tackle close-up and a phone in portrait, which picks the low profile by itself.
+  const still = async (pg, name, c) => {
+    await pg.evaluate((x) => window.__setTime(x - 0.04), c);
+    await pg.evaluate((x) => window.__setTime(x), c);
+    await pg.locator("#view3d").screenshot({ path: `${shots}/scene3d-${name}.png` });
+    console.log(`scene3d-${name}.png at clock ${c.toFixed(2)} s`);
+  };
+  const open = async (qs, ctxOpts = { viewport: { width: 1280, height: 720 } }) => {
+    const pg = await (await browser.newContext(ctxOpts)).newPage();
+    pg.setDefaultTimeout(120000);
+    pg.on("console", (m) => { if (m.type() === "error") fail(`console (${qs}): ${m.text()}`); });
+    pg.on("pageerror", (e) => fail(`page error (${qs}): ${e.message}`));
+    await pg.goto(new URL(`sample3d.html?match=DEMO&capture=1${qs}`, base).href);
+    await pg.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
+    await pg.evaluate(() => document.fonts.ready);
+    return pg;
+  };
+  await still(page, `celebration-${look.debug.profile}`, tl.goal - tl.from + 1.5);   // before the replay wipe
+  if (look.debug.profile === "low") await still(page, "low", 4);
+  else {
+    await still(page, "wide", 4);
+    const rp = await open("&replay=low");
+    await still(rp, "replay-low", cut + (20 - cut) * 0.5);
+    if (await rp.evaluate(() => window.sample3d.scene.debug.camera) !== "replay-low") fail("?replay=low did not pick the low angle");
+    await rp.close();
+    // the DEMO tackle (T02-8 at 304 s) from 6 m, mid-slide
+    const tk = await open("&from=296");
+    const c = await tk.evaluate(() => 304.25 - window.sample3d.tl.from);
+    await tk.evaluate((x) => window.__setTime(x - 0.04), c);
+    const pose = await tk.evaluate(async (x) => {
+      await window.__setTime(x);
+      const s = window.sample3d.scene, B = window.BABYLON;
+      const p = s.players.find((q) => q.pid === "T02-8");
+      const at = p.holder.position, cam = s.cams.replay;
+      cam.position.set(at.x - 4, 1.4, at.z - 4.5);
+      cam.setTarget(new B.Vector3(at.x, 0.5, at.z));
+      cam.fov = 0.55;
+      s.scene.activeCamera = cam;
+      s.render();
+      return { slide: Object.entries(p.aw).filter(([, w]) => w > 0).map(([k]) => k) };
+    }, c);
+    if (!pose.slide.some((k) => k.startsWith("Slide"))) fail(`tackle not sliding: ${JSON.stringify(pose)}`);
+    await tk.locator("#view3d").screenshot({ path: `${shots}/scene3d-tackle.png` });
+    console.log(`scene3d-tackle.png at clock ${c.toFixed(2)} s, clips ${pose.slide}`);
+    await tk.close();
+    const ph = await open("", { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    if (await ph.evaluate(() => window.sample3d.scene.debug.profile) !== "low") fail("a phone did not get the low profile");
+    await ph.evaluate((x) => window.__setTime(x), 4);
+    await ph.evaluate((x) => window.__setTime(x), 4.04);
+    await ph.screenshot({ path: `${shots}/scene3d-phone.png` });
+    console.log("scene3d-phone.png at clock 4.04 s (whole page)");
+    await ph.close();
+  }
 
   // without ?match= the page loads M001, the match shipped in the image (it may be absent here)
   const bare = await page.context().newPage();

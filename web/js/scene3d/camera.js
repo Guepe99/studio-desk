@@ -6,6 +6,8 @@
 //   do not move the camera, nothing overshoots);
 // - the field of view narrows when play bunches and widens when it spreads;
 // - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does.
+// After a goal the director cuts to a tight shot of the scorer for the celebration (CELEBRATION
+// seconds from 1 s after the goal), then back to the wide view; the ball rule is off meanwhile.
 // Replays use one free camera at one of three angles: behind the goal, low on the touchline, or
 // high and tactical. They are stateless (a Gaussian-smoothed ball) so any frame renders alone.
 const B = window.BABYLON;
@@ -20,6 +22,7 @@ const DEAD = [2.5, 1.5];              // dead zone half-axes, metres (along, acr
 const OMEGA_PAN = 2.2, OMEGA_ZOOM = 1.2;
 const WIDTH_MIN = 32, WIDTH_MAX = 58; // metres of pitch across the frame at the aim point
 const SAFE = 0.8;                     // the ball stays within +-80% of the frame
+export const CELEBRATION = [1, 6];    // seconds after the goal: the scorer's close shot
 
 // Ball position smoothed with a Gaussian over the data around ts (stateless).
 export function smoothBall(match, ts, sigma, lead) {
@@ -75,13 +78,50 @@ export class Cameras {
     this.replay.minZ = 0.3; this.replay.maxZ = 700;
     this.list = [this.tv, this.replay];
     this.state = null;   // {x: [pos, vel], z: [...], w: [...]}
+    this.mode = "broadcast";
+    // the scorer of each goal fact, as an entity index
+    this.goals = match.goals.map((g) => {
+      const pid = g.player_id ?? match.events.find((e) => g.source_event_ids?.includes(e.event_id))?.player_id;
+      return { ts: g.ts, i: match.meta.entities.indexOf(pid) };
+    }).filter((g) => g.i > 0);
     scene.activeCamera = this.tv;
   }
 
   // view: {ts, replay, angle?}; dt: match seconds since the last frame (0 after a jump).
   update(view, ts, dt) {
-    if (view.replay) this._replay(ts, view.angle ?? this.replayAngle);
-    else this._broadcast(ts, dt);
+    if (view.replay) {
+      const angle = view.angle ?? this.replayAngle;
+      this._replay(ts, angle);
+      this.mode = `replay-${angle}`;
+      return;
+    }
+    const goal = this.goals.find((g) => ts >= g.ts + CELEBRATION[0] && ts < g.ts + CELEBRATION[1]);
+    if (goal && this._celebrate(ts, goal.i)) {
+      this.state = null;   // the wide shot warms up again afterwards
+      this.mode = "celebration";
+      return;
+    }
+    this._broadcast(ts, dt);
+    this.mode = "broadcast";
+  }
+
+  // A handheld shot 9 m in front of the scorer, from the main camera's side, framing about 7 m
+  // across at his chest; the aim follows his position averaged over a second, so it stays calm.
+  _celebrate(ts, i) {
+    let x = 0, y = 0, n = 0;
+    for (let k = -5; k <= 5; k++) {
+      const p = this.match.at(i, Math.min(Math.max(ts + k * 0.1, 0), this.match.duration));
+      if (p) { x += p[0]; y += p[1]; n++; }
+    }
+    if (!n) return false;
+    const aim = new B.Vector3(x / n - HALF_L, 1.2, y / n - HALF_W);
+    const cam = this.replay;
+    cam.position.set(aim.x - Math.sign(aim.x || 1) * 3, 2.4, Math.max(aim.z - 9, -HALF_W - 4));
+    cam.setTarget(aim);
+    const dist = B.Vector3.Distance(cam.position, aim);
+    cam.fov = 2 * Math.atan(7 / 2 / dist / (this.scene.getEngine().getAspectRatio(cam) || 16 / 9));
+    this.scene.activeCamera = cam;
+    return true;
   }
 
   _step(ts, dt) {

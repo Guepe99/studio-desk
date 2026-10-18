@@ -1,11 +1,22 @@
 mannequin.glb is derived from UAL1_Standard.glb of the Universal Animation Library [Standard]
 by Quaternius (https://quaternius.itch.io/universal-animation-library,
-https://quaternius.com/packs/universalanimationlibrary.html), downloaded on 18 Oct 2026.
+https://quaternius.com/packs/universalanimationlibrary.html) and UAL2_Standard.glb of the
+Universal Animation Library 2 [Standard] (https://quaternius.itch.io/universal-animation-library-2,
+https://opengameart.org/content/universal-animation-library-2), both downloaded on 18 Oct 2026.
+Both use the same skeleton.
 
-Kept: the Mannequin mesh and skeleton and four clips (Idle_Loop, Walk_Loop, Jog_Fwd_Loop,
-Sprint_Loop); everything else removed and the file quantised with gltf-transform 4.5.1.
+Kept: the Mannequin mesh and skeleton and these clips:
+- from UAL1: Idle_Loop, Walk_Loop, Jog_Fwd_Loop, Sprint_Loop, Jump_Start, Jump_Land, Roll, Yes,
+  Idle_No_Loop;
+- from UAL2: Slide_Start, Slide_Loop, Slide_Exit.
+Everything else removed and the file quantised with gltf-transform 4.5.1.
 
-The License.txt shipped in the pack reads:
+Quaternius published the Quaternius Asset License v1.0 on 28 Aug 2026; its section 7 says it does
+not apply retroactively (https://quaternius.com/license.html). Both zips, as downloaded on
+18 Oct 2026, ship the License.txt below.
+
+The License.txt shipped in each pack (UAL1 and UAL2, identical apart from a Discord link in
+UAL2) reads:
 
 -------------------------------------------------------
 License:

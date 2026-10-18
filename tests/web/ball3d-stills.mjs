@@ -66,7 +66,7 @@ try {
         const mid = new B.Vector3((px + b.x) / 2 - 52.5, 0.55, (py + b.y) / 2 - 34);
         const yaw = me.holder.rotation.y, side = pick.side === "l" ? -1 : 1;
         const rx = Math.cos(yaw) * side, rz = -Math.sin(yaw) * side, fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const cam = sc.goalCam;
+        const cam = sc.cams?.replay ?? sc.goalCam;
         cam.position.set(mid.x + rx * 4.5 + fx * 1.5, 1.0, mid.z + rz * 4.5 + fz * 1.5);
         cam.setTarget(mid);
         cam.fov = 0.5;

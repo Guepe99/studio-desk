@@ -9,9 +9,8 @@
 // The layer never moves the legs during a ball action: while the ball rig or an event action holds
 // a player, his locomotion mode is left alone, and during an event action the head is too.
 //
-// Emotion clips go to the scene as driver emotions (players.js plays them), and are applied again
-// here after the animations: Babylon clamps an animatable's weight to 1, so the scene's upper-body
-// boost blends them only half way over the locomotion and raised arms come out level.
+// Emotion clips go to the scene as driver emotions; players.js applies them on the upper body
+// after the animation step (applyUpper), before the look-at here.
 import { Awareness, CLIPS, headYaw } from "./awareness.js";
 
 const B = window.BABYLON;
@@ -19,7 +18,6 @@ const UP = new B.Vector3(0, 1, 0);
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 // shares of the turn: upper spine, neck, head (R1: the neck does most, the spine adds the rest)
 const YAW_SHARE = { spine_03: 0.25, neck_01: 0.35, Head: 0.4 }, PITCH_SHARE = { neck_01: 0.4, Head: 0.6 };
-const UPPER = /^(spine_0[23]|neck_01|Head|clavicle_[lr]|upperarm_[lr]|lowerarm_[lr]|hand_[lr])$/;
 const HEAD_CLIPS = new Set(["Idle_No_Loop"]);   // clips that move the head themselves: no look on top
 
 export class AwarenessRig {
@@ -35,13 +33,6 @@ export class AwarenessRig {
     // the head's forward axis in its own frame (the mannequin faces +Z in its holder)
     this.fwdLocal = B.Vector3.TransformNormal(new B.Vector3(0, 0, 1), P.Head.getWorldMatrix().clone().invert()).normalize();
     buildGestures(s.scene, s.container, P);
-    // the upper-body tracks of every emotion clip, sampled by hand in _post
-    const fps = s.container.animationGroups[0].targetedAnimations[0].animation.framePerSecond;
-    this.tracks = {};
-    for (const name of [...Object.keys(CLIPS), ...Object.keys(s.motion?.clips ?? {})]) {
-      const g = s.container.animationGroups.find((a) => a.name === name);
-      if (g) this.tracks[name] = { from: g.from, fps, list: g.targetedAnimations.filter((t) => t.animation.targetProperty === "rotationQuaternion" && UPPER.test(t.target.name)).map((t) => [t.target.name, t.animation]) };
-    }
     probe.rootNodes.forEach((n) => n.dispose());
     probe.animationGroups.forEach((g) => g.dispose());
     probe.skeletons.forEach((k) => k.dispose());
@@ -80,7 +71,7 @@ export class AwarenessRig {
     return { yaw: Math.atan2(f.x, f.z), pitch: Math.asin(-f.y) };
   }
 
-  // After the clips have posed the bodies: the emotion's upper body at its full weight, then turn
+  // After the clips and the emotion's upper body (players.js) have posed the bodies: turn
   // spine_03, neck and head so the head points at the look target, clamped to the neck range
   // around the chest (the holder's facing).
   _post() {
@@ -88,12 +79,7 @@ export class AwarenessRig {
     if (!this.enabled || ts === undefined) return;
     for (const { p, n, c } of this.players.values()) {
       if (!p.holder.isEnabled() || this._held(p.i, ts).action) continue;
-      const e = this.aw.emotion(p.i, ts), T = e && this.tracks[e.clip];
-      if (T) {
-        const f = T.from + e.t * T.fps;
-        for (const [b, a] of T.list) if (n[b]) B.Quaternion.SlerpToRef(n[b].rotationQuaternion, a.evaluate(f), e.weight, n[b].rotationQuaternion);
-        if (HEAD_CLIPS.has(e.clip) || e.clip.startsWith("M_")) continue;   // the real clips move the head
-      }
+      if (HEAD_CLIPS.has(p.upper?.clip) || this.aw.emotion(p.i, ts)?.clip.startsWith("M_")) continue;   // the real clips move the head
       const L = this.aw.look(p.i, ts);
       if (!L) continue;
       const want = headYaw(p.holder.rotation.y, L.yaw);
