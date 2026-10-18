@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
@@ -16,6 +17,7 @@ DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 app = FastAPI(title="Studio Desk", version=__version__)
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # tracking.f32 goes from 25 MB to 10 MB
 _credential = None
 
 

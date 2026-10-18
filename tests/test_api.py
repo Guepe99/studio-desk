@@ -9,3 +9,9 @@ def test_health_and_model_ping_is_closed_to_visitors(monkeypatch):
     assert client.post("/api/admin/model-ping").status_code == 403
     monkeypatch.setattr(api, "ADMIN_TOKEN", "s3cret")
     assert client.post("/api/admin/model-ping", headers={"x-admin-token": "wrong"}).status_code == 403
+
+
+
+def test_static_files_are_gzipped():
+    r = TestClient(api.app).get("/index.html", headers={"accept-encoding": "gzip"})
+    assert r.status_code == 200 and r.headers.get("content-encoding") == "gzip"
