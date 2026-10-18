@@ -297,7 +297,7 @@ try {
     await pg.evaluate(() => document.fonts.ready);
     return pg;
   };
-  await still(page, `celebration-${look.debug.profile}`, tl.goal - tl.from + 2.2);
+  await still(page, `celebration-${look.debug.profile}`, tl.goal - tl.from + 1.5);   // before the replay wipe
   if (look.debug.profile === "low") await still(page, "low", 4);
   else {
     await still(page, "wide", 4);

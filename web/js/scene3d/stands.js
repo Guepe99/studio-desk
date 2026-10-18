@@ -64,7 +64,7 @@ export function buildStadium(scene, match, profile, rnd) {
       fascia.parent = root; fascia.position.set(0, 25.2, front + depth * 0.2); shells.push(fascia);
       for (const sx of [-1, 1]) {
         const side = B.MeshBuilder.CreateBox("sd", { width: 0.6, height: 27, depth }, scene);
-        side.parent = root; side.position.set(sx * len / 2, 13.5, front + depth / 2); shells.push(side);
+        side.parent = root; side.position.set(sx * len / 2, 13.5, front + depth / 2); tiers.push(side);   // seat colour: in the wide shot a grey end wall read as sky
       }
     }
     // stand frame -> world: local (x, h, front + d), turned by rotY (rotY 0 faces -Z, the pitch)
