@@ -26,7 +26,10 @@ it stops and asks the lead session; nobody changes the contract inside a feature
 - `story_id`: `S-<6 digits>`. `cue_id`: `C-<6 digits>`.
 - All names (clubs, players, stadiums) are invented. Every generated name is checked against
   `data/forbidden_names.txt` (real clubs, players, grounds, broadcasters; one per line,
-  case-insensitive, matched as whole words).
+  case-insensitive, matched as whole words) with `studiodesk.names.is_forbidden`.
+- Goals are SPADL shots (`shot`, `shot_freekick`, `shot_penalty`) with `result_name = 'success'`;
+  own goals have `result_name = 'owngoal'`.
+- `M001` is the demo match shipped in the container image and opened by default.
 
 ## Storage
 
@@ -63,6 +66,17 @@ control of the ball, or NULL.
 
 The table is only read by the evaluation script and the dataset export. The MCP server and the
 agents never read it.
+
+### Calibration files (committed, produced once by `scripts/calibrate.py`)
+
+- `studiodesk/sim/calibration.json`: the averages the simulator reads (actions per match,
+  pass length and success, shots, sprint counts and speeds, ...). Each value has
+  `{"value", "source"}`; until the calibration script has run, `source` names the published
+  paper the default comes from.
+- `studiodesk/facts/xt_grid.json`: `{"cols": 16, "rows": 12, "grid": [[..16..] x 12], "source"}`.
+  `grid[row][col]`, `row` along `y` (0 at `y = 0`), `col` along `x`, for a team attacking towards
+  `x = 105`. If the file is missing, B produces no `xt_added` facts (never a made-up grid).
+- No raw third-party data in the repo: it lives in `data/raw/` (git-ignored).
 
 ### Fact ledger
 
@@ -123,7 +137,29 @@ is the OGraf `data` for that graphic:
 | `cues.json` | the cue sheet for every audience and language |
 | `traces.json` | agent hand-offs |
 
-The browser replay needs only these files. The API adds the per-visitor decisions and the live
+Shapes (JSON, UTF-8; ids and columns as in the tables, JSON-text columns already parsed):
+
+- `meta.json`: `{match_id, venue_name, fps, period1_s, period2_s, frames, home_score, away_score,
+  teams: [{team_id, name, short_name, color_primary, color_secondary, crest_svg, side}],
+  players: [{player_id, team_id, name, shirt, position}],
+  lineups: [{player_id, starter, on_ts, off_ts}], entities: ["ball", "<player_id>", ..]}`.
+  `side` is `home` or `away`. Frame `k` is at `ts = k / fps`.
+- `events.json`, `facts.json`, `stories.json`, `cues.json`, `traces.json`: arrays of row objects,
+  sorted by `ts`.
+
+Until the agents exist, `export` writes a **template cue sheet** from the facts alone (no AI),
+audiences `analyst` and `casual`, language `en`, `story_id` null: a nameplate for each top
+sprint, a `pass_shot` for each shot and for the hardest passes, `momentum` at the end of every
+5-minute window, a `why_card` recap with template text at half-time and full time. `stories.json`
+and `traces.json` are then `[]`. At most 2 cues overlap for the same audience.
+
+The browser replay needs only these files.
+
+## Web page (`web/`)
+
+Static files, no build step: `web/index.html` plus ES modules in `web/js/`. It opens
+`web/data/<match>/` from `?match=` (default `M001`). FastAPI serves `web/` as static files.
+Pinned libraries are vendored in `web/vendor/` with their licence in `THIRD_PARTY.md`. The API adds the per-visitor decisions and the live
 button.
 
 ## API (FastAPI, `studiodesk/api.py`)

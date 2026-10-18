@@ -39,6 +39,9 @@ https://claude.ai/artifact/LGK8e4Npo6MDLJaRf4VPXF (only the lead session writes 
   `systemd-run --user --unit sd-<name> --same-dir <command>` or `nohup`, write the outcome to
   `out/<name>.log`, and end with `~/bin/avvisa.sh "<what finished>"`.
 - Python: `.venv/bin/python`, `.venv/bin/pytest -q`. Every new module with logic gets a test.
+  There is no `sqlite3` command-line tool: inspect databases from Python.
+- Playwright: reuse `~/bin/pagine/node_modules` (Chromium 1140 in `~/.cache/ms-playwright`),
+  always through `scripts/with-lock.sh chromium`. Do not download another browser.
 - Report back: what you built, how you tested it (command and result), and what you did not test.
 
 ## Layout

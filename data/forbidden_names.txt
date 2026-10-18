@@ -1,0 +1,246 @@
+# Real names that must never appear in generated output (docs/CONTRACT.md, Identifiers).
+# One per line, case-insensitive, matched as whole words. Lines starting with # are comments.
+# shortcut: a hand-made list of the most visible names, not a full register; extend it when a
+# reviewer or the verifier finds a real name that slipped through.
+
+# Leagues and competitions
+Premier League
+Champions League
+Europa League
+Conference League
+Serie A
+La Liga
+LaLiga
+Bundesliga
+Ligue 1
+Eredivisie
+FA Cup
+Carabao Cup
+EFL
+UEFA
+FIFA
+World Cup
+Copa America
+
+# English clubs
+Arsenal
+Aston Villa
+Bournemouth
+Brentford
+Brighton
+Burnley
+Chelsea
+Crystal Palace
+Everton
+Fulham
+Ipswich
+Leeds United
+Leicester
+Liverpool
+Luton
+Manchester City
+Manchester United
+Man City
+Man United
+Man Utd
+Newcastle United
+Newcastle
+Nottingham Forest
+Sheffield United
+Southampton
+Sunderland
+Tottenham
+Spurs
+Watford
+West Ham
+Wolverhampton
+Wolves
+Middlesbrough
+Norwich
+West Bromwich
+Stoke City
+Blackburn Rovers
+Swansea
+Cardiff City
+Hull City
+
+# Other European clubs
+Real Madrid
+Barcelona
+Barca
+Atletico Madrid
+Sevilla
+Valencia
+Villarreal
+Real Sociedad
+Athletic Bilbao
+Real Betis
+Juventus
+Inter Milan
+Internazionale
+AC Milan
+Napoli
+AS Roma
+Lazio
+Atalanta
+Fiorentina
+Bayern
+Borussia Dortmund
+Dortmund
+RB Leipzig
+Bayer Leverkusen
+Leverkusen
+Schalke
+Paris Saint-Germain
+PSG
+Olympique Marseille
+Olympique Lyonnais
+Monaco
+Ajax
+PSV
+Feyenoord
+Benfica
+Porto
+Sporting CP
+Celtic
+Rangers
+Galatasaray
+Fenerbahce
+
+# Grounds
+Emirates Stadium
+Villa Park
+Stamford Bridge
+Goodison Park
+Selhurst Park
+Craven Cottage
+Anfield
+Etihad
+Old Trafford
+St James' Park
+City Ground
+Tottenham Hotspur Stadium
+London Stadium
+Molineux
+Wembley
+Bernabeu
+Camp Nou
+San Siro
+Allianz Arena
+Signal Iduna Park
+Parc des Princes
+
+# Players (full names; distinctive surnames alone)
+Haaland
+Erling Haaland
+Mohamed Salah
+Salah
+Harry Kane
+Bukayo Saka
+Saka
+Kevin De Bruyne
+De Bruyne
+Martin Odegaard
+Odegaard
+Declan Rice
+Bruno Fernandes
+Marcus Rashford
+Rashford
+Son Heung-min
+Heung-min
+Virgil van Dijk
+Van Dijk
+Trent Alexander-Arnold
+Alexander-Arnold
+Phil Foden
+Foden
+Jude Bellingham
+Bellingham
+Cole Palmer
+Rodri
+Ollie Watkins
+Alexander Isak
+Isak
+Kylian Mbappe
+Mbappe
+Lionel Messi
+Messi
+Cristiano Ronaldo
+Ronaldo
+Neymar
+Lamine Yamal
+Yamal
+Vinicius
+Lewandowski
+Gabriel Martinelli
+Martinelli
+Alisson Becker
+Ederson
+Darwin Nunez
+Gvardiol
+Kvaratskhelia
+Wirtz
+Musiala
+Pedri
+Gavi
+Modric
+Wayne Rooney
+Rooney
+Alan Shearer
+Shearer
+Thierry Henry
+Steven Gerrard
+Gerrard
+Frank Lampard
+Lampard
+David Beckham
+Beckham
+
+# Managers
+Pep Guardiola
+Guardiola
+Mikel Arteta
+Arteta
+Jurgen Klopp
+Klopp
+Arne Slot
+Ange Postecoglou
+Postecoglou
+Enzo Maresca
+Maresca
+Ruben Amorim
+Amorim
+Unai Emery
+Carlo Ancelotti
+Ancelotti
+Jose Mourinho
+Mourinho
+Alex Ferguson
+Arsene Wenger
+Wenger
+
+# Broadcasters, kit makers, sponsors
+Sky Sports
+BBC
+TNT Sports
+Amazon Prime
+Prime Video
+DAZN
+ESPN
+NBC
+Peacock
+Canal+
+beIN
+Match of the Day
+Nike
+Adidas
+Puma
+Umbro
+Emirates
+Etihad Airways
+Barclays
+EA Sports
+Opta
+Wyscout
+StatsBomb
+Hawk-Eye
