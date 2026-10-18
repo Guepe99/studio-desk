@@ -10,3 +10,14 @@ https://creativecommons.org/publicdomain/zero/1.0/ , as stated in License_Standa
 pack (downloaded 18 Oct 2026).
 
 Our changes (rebinding, kit regions, UVs, decimation) are released under the repository's MIT licence.
+
+human.glb is built by scripts/build_humans.py from the MakeHuman system assets (base mesh,
+modelling targets, game-engine rig weights, eyes, eyebrows, eyelashes, hair afro01, short01,
+short02, short04, shoes05 and the young light-skinned male skin texture), downloaded on 18 Oct 2026
+from https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip
+and with the MPFB 2.0.18 extension (http://static.makehumancommunity.org/mpfb.html). Each asset
+file says "This asset was explicitly released as CC0 in september 2020", and the pack's index
+lists every asset as CC0. MPFB itself (GPL-3.0-or-later) is a build tool only: none of its code
+is shipped. Skeleton and clips come from web/vendor/quaternius/mannequin.glb as above.
+
+Our changes (retargeting, garments, textures, decimation) are released under the repository's MIT licence.

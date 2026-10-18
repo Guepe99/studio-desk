@@ -66,12 +66,7 @@ so they switch together.
 
 Considered and not used:
 
-- **MakeHuman / MPFB2.** The project states that "all core assets (the base mesh, targets,
-  skins...) are shared under CC0" ([licence](https://static.makehumancommunity.org/about/license.html),
-  [FAQ on closed-source use](https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html)).
-  Its bodies and skins are closer to a real person than the UBC one, but it has its own
-  skeleton and needs Blender to export and rebind, which this machine does not have. The rebind in
-  `build_footballer.py` would take a MakeHuman body the same way; it is the first upgrade to try.
+- **MakeHuman / MPFB2** is now the `?players=human` option, below.
 - **Paid store models** (the owner's reference is one): their licences forbid redistributing the
   model in an extractable form, and this repository is public.
 - **Mixamo and AI-generated meshes**: excluded by the brief.
@@ -101,3 +96,56 @@ Considered and not used:
 - The hands are closed fists in most clips (the mannequin's animation).
 - Babylon 9 blends a bone to NaN when the first two clips evaluated in a frame both weigh 0;
   the stills test only evaluates weighted clips. The scene's own clip blending should do the same.
+
+## MakeHuman bodies (`?players=human`)
+
+`web/vendor/players/human.glb` (about 3.3 MB) holds six MakeHuman bodies on the same 65-joint
+skeleton with the same 12 clips; `sample3d.html?players=human` loads it, the default stays
+`footballer.glb`. `loadFootballer(scene, url)` counts the variant meshes and `dressFootballer`
+keeps one per player.
+
+| Mesh | Triangles | Use |
+|---|---|---|
+| `human0` .. `human5` | 11 800 to 15 600 | near body: skin, forearms, hands, shirt, shorts, socks, boots, eyes, brows, lashes and the variant's hair (one primitive each) |
+| `human_lod1` | about 5 000 | far body (variant 0, nothing hidden), a single draw on the 8 x 1 palette; texel 8 paints the hair |
+
+Variants (`build_humans.VARIANTS`, `HUMAN_VARIANTS` in `players3d.js`): MakeHuman macro sliders
+for age, muscle, weight, proportions and ethnic mix, a few face targets, a hair style (afro01,
+short01, short02, short04 or shaved) and an eyebrow style. The page picks the variant from the
+player hash, then a skin tone that fits it, a hair colour, and a height factor (0.97 to 1.03).
+
+Build, in two stages (Blender and the assets are not in the repository):
+
+    blender -b --factory-startup --python scripts/humans_blender.py -- <work> <work>/variants.json
+    .venv/bin/python scripts/build_humans.py --blender <blender> --work <work>
+
+1. `humans_blender.py` (inside Blender 4.5 with MPFB 2.0.18 and the MakeHuman system assets)
+   shapes each body, adds the `game_engine` rig with MakeHuman's own weights (its bone names are
+   the mannequin's, except `Root` and `head`), fits eyes, brows, lashes, hair and the `shoes05`
+   shoes, and exports a GLB plus the rig's bone heads.
+2. `build_humans.py` moves every vertex from MakeHuman's A-pose to the mannequin's T-pose by
+   linear blend skinning. The torso follows the hip and shoulder joints, not the spine joints
+   (they sit at different heights in the two rigs): pelvis and lower spine put the midpoint of
+   MakeHuman's thighs on the mannequin's, the chest is lifted halfway towards the mannequin's
+   shoulders (fully would shorten the neck), the middle spine takes the average, and each keeps
+   a sideways scale clamped to 0.75 to 1.1 so the hips do not widen. Each limb bone onto the mannequin joint of the same name with a
+   stretch along the bone (clamped to 0.85 to 1.2), the hand by its full frame. Finger weights
+   fold into the hand, so the hand keeps MakeHuman's relaxed half-open shape in every clip.
+3. Garments are shells copied from the body triangles under them, smoothed and pushed out:
+   the shirt 17 mm plus a flare towards the sleeve and a hang 5 cm below the waist, with open
+   sleeves and a stand-up collar strip; its head weights move to the neck and its thigh weights
+   to the pelvis, so it hangs from the trunk and does not twist with the head or the legs. The shorts 12 mm plus up to
+   20 mm of flare at the hem; socks 4 mm. MakeHuman's `shoes05` trainers are cut at the boot
+   line, 3.5 cm above the ankle joint, and the foot under them is kept (MPFB would delete it),
+   painted as sock. Body triangles under a garment are deleted except a margin inside each
+   opening.
+4. Simplified with meshoptimizer (gltf-transform simplify, region borders locked) to 36 % for
+   the near body and 15 % for the far one, then pruned and quantised.
+
+Skin, hair and boot textures are MakeHuman's, turned into tintable detail maps as for the
+footballer; hair, brows and lashes are alpha-tested (`alphaMode` MASK).
+
+Limits of the MakeHuman bodies: the garments are offset shells with no cloth simulation, so the
+shirt follows the skin weights and shows no folds; the boots are MakeHuman's trainers (a flat
+sole, no studs); there are no beards; hair cards are not simplified and are the biggest single
+cost in triangles.

@@ -180,8 +180,10 @@ export class Scene3D {
 
   async _loadPlayers() {
     const scene = this.scene, match = this.match;
-    // footballers on the mannequin skeleton with the same clips (players3d.js); ?players=mannequin keeps the old look
-    const lib = new URLSearchParams(location.search).get("players") === "mannequin" ? null : await loadFootballer(scene);
+    // footballers on the mannequin skeleton with the same clips (players3d.js); ?players=mannequin keeps the old
+    // look, ?players=human loads the MakeHuman bodies
+    const look = new URLSearchParams(location.search).get("players");
+    const lib = look === "mannequin" ? null : await loadFootballer(scene, look === "human" ? "vendor/players/human.glb" : undefined);
     const container = lib?.container ?? await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
     const kits = {};
@@ -196,7 +198,8 @@ export class Scene3D {
     };
     // measure the model once to scale it to PLAYER_H
     const probe = container.instantiateModelsToScene((n) => `probe-${n}`, false, { doNotInstantiate: true });
-    const { min, max } = probe.rootNodes[0].getHierarchyBoundingVectors(true);
+    // human.glb: measure the far body, which has no hair (an afro would shrink everyone)
+    const { min, max } = probe.rootNodes[0].getHierarchyBoundingVectors(true, lib?.variants ? (m) => /human_lod1/.test(m.name) : null);
     const scale = PLAYER_H / (max.y - min.y);
     this.rig = new BallRig(scene, this.match, this.span, probe.rootNodes[0], scale, BALL_R);
     probe.rootNodes.forEach((n) => n.dispose());

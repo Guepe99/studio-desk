@@ -7,6 +7,12 @@
 // frames/s for ?players=mannequin and for the footballers, measured as in sample3d-shots.mjs.
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh players3d-shots.mjs
+//
+// PLAYERS=human runs it on ?players=human (web/vendor/players/human.glb) against the default
+// footballer and names the stills humans3d-*.png, plus:
+//   humans3d-compare.png   the default footballer (left pair) and the human one, front and back
+//   humans3d-variants.png  one player of each body variant
+//   humans3d-goal.png      the replay behind the goal
 import { createRequire } from "node:module";
 import { mkdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -23,6 +29,10 @@ const shots = `${out}/shots`, tmp = `${out}/players3d-tmp`;
 mkdirSync(shots, { recursive: true });
 mkdirSync(tmp, { recursive: true });
 
+const LOOK = process.env.PLAYERS ?? "footballer", BASELINE = LOOK === "human" ? "footballer" : "mannequin";
+const tag = LOOK === "human" ? "humans3d" : "players3d";
+// mesh name patterns, as strings for page.evaluate
+const MESH = LOOK === "human" ? "human\\d" : "footballer", NEAR0 = `${MESH}_primitive0$`;
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 
@@ -31,7 +41,7 @@ async function open(browser, look) {
   page.on("console", (m) => { if (m.type() === "error") fail(`console (${look}): ${m.text()}`); });
   page.on("pageerror", (e) => fail(`page error (${look}): ${e.message}`));
   page.on("requestfailed", (r) => fail(`request failed (${look}): ${r.url()}`));
-  await page.goto(new URL(`sample3d.html?match=DEMO&capture=1&view=3d${look === "mannequin" ? "&players=mannequin" : ""}`, base).href);
+  await page.goto(new URL(`sample3d.html?match=DEMO&capture=1&view=3d${look === "footballer" ? "" : `&players=${look}`}`, base).href);
   await page.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
   return page;
 }
@@ -48,7 +58,7 @@ const fps = (page) => page.evaluate(async () => {
 });
 
 // Stage a few players at the centre spot, the others hidden, and frame them with the goal camera.
-// rows: [{ pid, x, z, yaw, w: clip weights, phase, leg, ball }]
+// rows: [{ pid, x, z, yaw, w: clip weights, phase, leg, ball, upper: an upper-body clip held at its t }]
 const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows, cam, target, fov }) => {
   const s = window.sample3d, sc = s.scene, B = window.BABYLON;
   await window.__setTime(4);
@@ -65,6 +75,7 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
     // to NaN when the first two clips evaluated in a frame both weigh 0
     p.anim.loco.forEach((g, j) => { g.setWeightForAllAnimatables(r.w[j]); if (r.w[j] > 0) g.goToFrame(g.from + r.phase * (g.to - g.from), true); });
     sc.rig.setLeg(p.i, r.leg ?? null);
+    p.upper = r.upper ? { clip: r.upper, t: 0.5, weight: 1 } : null;   // applied after the clips (applyUpper)
     if (r.ball) {
       // the ball centre at the rig's contact point for this kick, in the player's frame
       const reach = sc.rig.reach[r.leg.kind + r.leg.side], c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
@@ -79,14 +90,28 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
   sc.scene.render();
 }, { rows, cam, target, fov });
 
+const picks = (page) => page.evaluate(() => {
+  const m = window.sample3d.match, ids = Object.keys(m.teams);
+  const ps = window.sample3d.scene.players.map((p) => ({ pid: p.pid, ...m.players[p.pid] }));
+  const of = (t, gk) => ps.filter((p) => p.team_id === t && (p.position === "GK") === gk);
+  return { home: of(ids[0], false), away: of(ids[1], false), gk: [...of(ids[0], true), ...of(ids[1], true)] };
+});
+const row = (pid, x, yaw) => ({ pid, x, z: 0, yaw, w: [1, 0, 0, 0], phase: 0.2 });
+// a home player from the front and another from behind, close
+const pair = async (page, pick, file) => {
+  await stage(page, { rows: [row(pick.home[0].pid, -0.55, Math.PI), row(pick.home[1].pid, 0.55, 0)], cam: [0, 1.15, -3.6], target: [0, 1.0, 0], fov: 0.55 });
+  await page.screenshot({ path: file });
+};
+
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 let before = null, after = null;
 try {
-  const old = await open(browser, "mannequin");
+  const old = await open(browser, BASELINE);
   before = await fps(old);
+  if (LOOK === "human") await pair(old, await picks(old), `${tmp}/compare-base.png`);
   await old.context().close();
 
-  const page = await open(browser, "footballer");
+  const page = await open(browser, LOOK);
   after = await fps(page);
 
   // kit logic (players3d.js), on the fixture's teams
@@ -113,7 +138,7 @@ try {
   if (kits.gk.some((k, n) => k.shirt === kits.out[n].shirt || !k.gloves)) fail("keeper kit not distinct");
 
   // the footballer is skinned to the mannequin skeleton: the clips and the rig move its bones
-  const rig = await page.evaluate(async () => {
+  const rig = await page.evaluate(async (MESH) => {
     const sc = window.sample3d.scene, p = sc.players.find((q) => q.anim.loco.length);
     const names = p.holder.getChildMeshes(false).map((m) => m.name);
     const foot = p.holder.getChildTransformNodes(false).find((n) => /foot_r$/.test(n.name));
@@ -128,23 +153,20 @@ try {
     const c = at();
     sc.rig.setLeg(p.i, null);
     const skinned = p.holder.getChildMeshes(false).filter((m) => m.skeleton && m.isEnabled()).length;
-    return { stride: a.subtract(b).length(), kick: b.subtract(c).length(), skinned, footballer: names.some((n) => /footballer/.test(n)) };
-  });
+    return { stride: a.subtract(b).length(), kick: b.subtract(c).length(), skinned, footballer: names.some((n) => new RegExp(MESH).test(n)) };
+  }, MESH);
   console.log(`bones: sprint moves the right foot ${rig.stride.toFixed(2)} m over half a cycle, the kick pose ${rig.kick.toFixed(2)} m; ${rig.skinned} skinned meshes`);
   if (!rig.footballer) fail("the scene still shows the mannequin");
   if (!(rig.stride > 0.1) || !(rig.kick > 0.02)) fail(`clips or rig do not drive the footballer: ${JSON.stringify(rig)}`);
 
-  const pick = await page.evaluate(() => {
-    const m = window.sample3d.match, ids = Object.keys(m.teams);
-    const ps = window.sample3d.scene.players.map((p) => ({ pid: p.pid, ...m.players[p.pid] }));
-    const of = (t, gk) => ps.filter((p) => p.team_id === t && (p.position === "GK") === gk);
-    return { home: of(ids[0], false), away: of(ids[1], false), gk: [...of(ids[0], true), ...of(ids[1], true)] };
-  });
+  const pick = await picks(page);
 
-  // clips: idle, jog, sprint and a right-foot shot at contact, one tile each
+  // clips: idle, jog, sprint, a right-foot shot at contact, the arms-up celebration and a trap, one tile each
   const tiles = [
     ["idle", { w: [1, 0, 0, 0], phase: 0.3 }], ["jog", { w: [0, 0, 1, 0], phase: 0.25 }],
     ["sprint", { w: [0, 0, 0, 1], phase: 0.25 }], ["kick", { w: [1, 0, 0, 0], phase: 0.3, leg: { kind: "shot", side: "r", t: 0 }, ball: true }],
+    ["celebration", { w: [1, 0, 0, 0], phase: 0.3, upper: "SD_ArmsUp" }],
+    ["trap", { w: [1, 0, 0, 0], phase: 0.3, leg: { kind: "trap", side: "r", t: 0 }, ball: true }],
   ];
   const files = [];
   for (const [name, r] of tiles) {
@@ -154,19 +176,18 @@ try {
     files.push(f);
   }
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...files.flatMap((f) => ["-i", f]), "-filter_complex",
-    files.map((_, k) => `[${k}]crop=420:720:430:0[c${k}]`).join(";") + ";" + files.map((_, k) => `[c${k}]`).join("") + "hstack=inputs=4",
-    `${shots}/players3d-clips.png`]);
-  console.log("players3d-clips.png: idle, jog, sprint, shot at contact");
+    files.map((_, k) => `[${k}]crop=420:720:430:0[c${k}]`).join(";") + ";" + files.map((_, k) => `[c${k}]`).join("") + `hstack=inputs=${files.length}`,
+    `${shots}/${tag}-clips.png`]);
+  console.log(`${tag}-clips.png: ${tiles.map((t) => t[0]).join(", ")}`);
 
   // close: home front and back, away front and back, keeper front
-  const row = (pid, x, yaw) => ({ pid, x, z: 0, yaw, w: [1, 0, 0, 0], phase: 0.2 });
   await stage(page, {
     rows: [row(pick.home[0].pid, -2.4, Math.PI), row(pick.home[1].pid, -1.2, 0), row(pick.gk[0].pid, 0, Math.PI),
       row(pick.away[0].pid, 1.2, Math.PI), row(pick.away[1].pid, 2.4, 0)],
     cam: [0, 1.25, -7.2], target: [0, 0.95, 0], fov: 0.55,
   });
-  await page.screenshot({ path: `${shots}/players3d-close.png` });
-  console.log(`players3d-close.png: ${pick.home[0].pid} ${pick.home[1].pid} ${pick.gk[0].pid} ${pick.away[0].pid} ${pick.away[1].pid}`);
+  await page.screenshot({ path: `${shots}/${tag}-close.png` });
+  console.log(`${tag}-close.png: ${pick.home[0].pid} ${pick.home[1].pid} ${pick.gk[0].pid} ${pick.away[0].pid} ${pick.away[1].pid}`);
 
   // hero: one home player as captain, front and back, at close range (the contract has no captain
   // field, so the scene never sets the armband: this repaints the shirt with paintShirt)
@@ -182,27 +203,63 @@ try {
     rows: [row(cap, -0.55, Math.PI), row(pick.home[1].pid, 0.55, 0)],
     cam: [0, 1.15, -3.6], target: [0, 1.0, 0], fov: 0.55,
   });
-  await page.screenshot({ path: `${shots}/players3d-hero.png` });
-  console.log(`players3d-hero.png: ${cap} with the armband, ${pick.home[1].pid} from behind`);
+  await page.screenshot({ path: `${shots}/${tag}-hero.png` });
+  console.log(`${tag}-hero.png: ${cap} with the armband, ${pick.home[1].pid} from behind`);
+
+  if (LOOK === "human") {
+    // the default footballer and the human one in the same light, front and back
+    await pair(page, pick, `${tmp}/compare-human.png`);
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", `${tmp}/compare-base.png`, "-i", `${tmp}/compare-human.png`, "-filter_complex",
+      "[0]crop=640:720:320:0[a];[1]crop=640:720:320:0[b];[a][b]hstack=inputs=2", `${shots}/${tag}-compare.png`]);
+    console.log(`${tag}-compare.png: ${BASELINE} (left pair) and ${LOOK} (right pair)`);
+    // one outfield player per body variant, side by side
+    const byVariant = await page.evaluate(async () => {
+      const m = await import("./js/players3d.js"), s = window.sample3d;
+      const out = {};
+      for (const p of s.scene.players) {
+        const pl = s.match.players[p.pid];
+        if (pl.position === "GK") continue;
+        out[m.playerLook(p.pid, m.HUMAN_VARIANTS.length).variant] ??= p.pid;
+      }
+      return out;
+    });
+    const vs = Object.keys(byVariant).sort();
+    if (vs.length < 6) fail(`only variants ${vs} among the outfield players`);
+    await stage(page, {
+      rows: vs.map((v, k) => row(byVariant[v], (k - (vs.length - 1) / 2) * 0.95, Math.PI)),
+      cam: [0, 1.2, -6.6], target: [0, 0.95, 0], fov: 0.55,
+    });
+    await page.screenshot({ path: `${shots}/${tag}-variants.png` });
+    console.log(`${tag}-variants.png: variants ${vs} (${vs.map((v) => byVariant[v]).join(" ")})`);
+  }
 
   // wide: the live TV frame, graphics hidden; how many players are on the far LOD
-  const lod = await page.evaluate(async () => {
+  const lod = await page.evaluate(async (NEAR0) => {
     const s = window.sample3d, sc = s.scene;
     for (const p of sc.players) p.holder.setEnabled(true);
     await window.__setTime(6 - 0.04);
     await window.__setTime(6);
     const cam = sc.scene.activeCamera;
     let near = 0, far = 0;
-    for (const m of sc.scene.meshes) if (/footballer_primitive0$/.test(m.name) && m.isEnabled()) (m.getLOD(cam) === m ? near++ : far++);
+    for (const m of sc.scene.meshes) if (new RegExp(NEAR0).test(m.name) && m.isEnabled()) (m.getLOD(cam) === m ? near++ : far++);
     return { near, far };
-  });
-  await page.screenshot({ path: `${shots}/players3d-wide.png` });
-  console.log(`players3d-wide.png: ${lod.far} players on the far body, ${lod.near} on the near one`);
+  }, NEAR0);
+  await page.screenshot({ path: `${shots}/${tag}-wide.png` });
+  console.log(`${tag}-wide.png: ${lod.far} players on the far body, ${lod.near} on the near one`);
   if (lod.far + lod.near === 0) fail("no footballer in the wide shot");
+  if (LOOK === "human") {
+    // the replay behind the goal, as sample3d-replay.png
+    const tl = await page.evaluate(() => ({ cut: window.sample3d.tl.cuts[1] }));
+    const c = tl.cut + (20 - tl.cut) * 0.82;
+    await page.evaluate((x) => window.__setTime(x - 0.04), c);
+    await page.evaluate((x) => window.__setTime(x), c);
+    await page.screenshot({ path: `${shots}/${tag}-goal.png` });
+    console.log(`${tag}-goal.png at clock ${c.toFixed(2)} s`);
+  }
 } finally {
   await browser.close();
   rmSync(tmp, { recursive: true, force: true });
 }
-console.log(`software WebGL: ${before?.toFixed(2)} frames/s with mannequins, ${after?.toFixed(2)} with footballers`);
+console.log(`software WebGL: ${before?.toFixed(2)} frames/s with ${BASELINE}, ${after?.toFixed(2)} with ${LOOK}`);
 if (failures.length) { console.log(`${failures.length} failure(s)`); process.exit(1); }
 console.log("players3d shots ok");

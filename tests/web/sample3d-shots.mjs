@@ -15,7 +15,9 @@ const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/p
 const { chromium } = require("playwright");
 
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
-const url = new URL("sample3d.html?match=DEMO&capture=1", base).href;
+// QS: extra query for every page, e.g. QS=&players=human
+const QS = process.env.QS ?? "";
+const url = new URL(`sample3d.html?match=DEMO&capture=1${QS}`, base).href;
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 
@@ -292,7 +294,7 @@ try {
     pg.setDefaultTimeout(120000);
     pg.on("console", (m) => { if (m.type() === "error") fail(`console (${qs}): ${m.text()}`); });
     pg.on("pageerror", (e) => fail(`page error (${qs}): ${e.message}`));
-    await pg.goto(new URL(`sample3d.html?match=DEMO&capture=1${qs}`, base).href);
+    await pg.goto(new URL(`sample3d.html?match=DEMO&capture=1${qs}${QS}`, base).href);
     await pg.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
     await pg.evaluate(() => document.fonts.ready);
     return pg;

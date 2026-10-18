@@ -11,6 +11,10 @@
 // hair1 for the near body; kit_far for the far body, a single draw whose UVs point at an
 // 8 x 1 palette (texel k = region k of REGIONS). Skin and hair textures are detail maps
 // normalised to a known level, so a tone is albedoColor = linear(tone) / level.
+//
+// ?players=human loads web/vendor/players/human.glb (scripts/build_humans.py) instead: MakeHuman
+// bodies on the same skeleton, one mesh per variant (human0..) with its own face and hair
+// (hair_<style>, brows, lashes, eyes), and human_lod1 as the far body. Each player keeps one variant.
 
 const B = window.BABYLON;
 const SKIN_LEVEL = 0.6, HAIR_LEVEL = 0.5;
@@ -26,6 +30,16 @@ const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
 // screen share (bounding sphere over viewport) under which the body switches to the far one:
 // about 120 px of player height in a 720 px frame
 const LOD_COVERAGE = 0.006;
+// human.glb variants (build_humans.VARIANTS order): skin tones that fit the face (SKIN_TONES
+// indices), how many of HAIR_COLOURS fit, whether the head is shaved, and a height factor
+export const HUMAN_VARIANTS = [
+  { tones: [0, 1, 2], hairs: 5, shaved: false, height: 1.0 },
+  { tones: [3, 4, 5], hairs: 2, shaved: false, height: 1.03 },
+  { tones: [1, 2], hairs: 2, shaved: false, height: 0.97 },
+  { tones: [2, 3, 4], hairs: 3, shaved: false, height: 1.01 },
+  { tones: [0, 1, 2], hairs: 4, shaved: true, height: 0.99 },
+  { tones: [2, 3, 4], hairs: 3, shaved: false, height: 1.02 },
+];
 
 // FNV-1a: the same player gets the same look in every render.
 function hash(s) {
@@ -34,15 +48,22 @@ function hash(s) {
   return h;
 }
 
-// Skin tone, hair style and colour, beard: picked from the player id.
-export function playerLook(pid) {
+// Skin tone, hair style and colour, beard: picked from the player id. With `variants` (human.glb)
+// the body variant is picked too, and tone, hair colour and height follow from it.
+export function playerLook(pid, variants = 0) {
   const h = hash(pid);
-  return {
+  const look = {
     skin: SKIN_TONES[h % SKIN_TONES.length],
     hair: HAIR_STYLES[(h >>> 4) % HAIR_STYLES.length],
     hairColour: HAIR_COLOURS[(h >>> 8) % HAIR_COLOURS.length],
     beard: (h >>> 12) % 4 === 0,
     boots: BOOT_COLOURS[(h >>> 16) % BOOT_COLOURS.length],
+  };
+  if (!variants) return look;
+  const variant = (h >>> 20) % variants, v = HUMAN_VARIANTS[variant];
+  return {
+    ...look, variant, height: v.height, beard: false, hair: v.shaved ? "shaved" : `human${variant}`,
+    skin: SKIN_TONES[v.tones[h % v.tones.length]], hairColour: HAIR_COLOURS[(h >>> 8) % v.hairs],
   };
 }
 
@@ -70,15 +91,18 @@ export function kitColours(team, gk) {
   };
 }
 
-// Colour of each region of the far body, in REGIONS order.
+// Colour of each region of the far body, in REGIONS order, then the hair (human.glb paints the top
+// of the head with it).
 export function farPalette(kit, look, gk) {
-  return [look.skin, kit.shirt, kit.shorts, kit.socks, look.boots, gk ? kit.shirt : look.skin, gk ? kit.gloves : look.skin];
+  return [look.skin, kit.shirt, kit.shorts, kit.socks, look.boots, gk ? kit.shirt : look.skin, gk ? kit.gloves : look.skin,
+    look.hair === "shaved" ? look.skin : look.hairColour];
 }
 
-export async function loadFootballer(scene) {
-  const container = await B.LoadAssetContainerAsync("vendor/players/footballer.glb", scene);
+export async function loadFootballer(scene, url = "vendor/players/footballer.glb") {
+  const container = await B.LoadAssetContainerAsync(url, scene);
   const base = Object.fromEntries(container.materials.map((m) => [m.name, m]));
-  return { scene, container, base, mats: new Map() };
+  const variants = new Set(container.meshes.map((m) => /^human(\d)_primitive/.exec(m.name)?.[1]).filter(Boolean)).size;
+  return { scene, container, base, mats: new Map(), variants };
 }
 
 // One shared material per key: kits of a team share their shorts, socks and far body.
@@ -187,7 +211,7 @@ const socksMaterial = (lib, kit) => shared(lib, `socks|${kit.socks}|${kit.band}`
   return kitMaterial(lib, "kit_socks", `fb-socks-${lib.mats.size}`, tex);
 });
 
-export function dressFootballer(lib, pid, { team, gk = false, shirt = null, captain = false, look = playerLook(pid) }) {
+export function dressFootballer(lib, pid, { team, gk = false, shirt = null, captain = false, look = playerLook(pid, lib.variants) }) {
   const prefix = `${pid}-`;
   const inst = lib.container.instantiateModelsToScene((n) => prefix + n, false, { doNotInstantiate: true });
   const kit = kitColours(team, gk);
@@ -200,25 +224,31 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     boots: tinted(lib, "boots", look.boots),
     forearms: gk ? tinted(lib, "kit_shorts", kit.shirt) : skin,
     hands: gk ? tinted(lib, "kit_shorts", kit.gloves) : skin,
-    hair1: tinted(lib, "hair1", look.hairColour, HAIR_LEVEL),
+    hair1: lib.base.hair1 && tinted(lib, "hair1", look.hairColour, HAIR_LEVEL),   // footballer.glb only
     kit_far: farMaterial(lib, farPalette(kit, look, gk)),
   };
+  const hairTint = (name) => tinted(lib, name, look.hairColour, HAIR_LEVEL);
+  const nearPart = lib.variants ? `human${look.variant}` : "footballer";
+  const farPart = lib.variants ? "human_lod1" : "footballer_lod1";
   const near = [], casters = [];
   let main = null;
   let far = null;
   for (const m of inst.rootNodes[0].getChildMeshes(false)) {
+    if (m.isDisposed()) continue;
     const part = m.name.slice(prefix.length).split("_primitive")[0];
     const hair = HAIR_STYLES.includes(part) || part === "beard";
     if (hair && part !== look.hair && !(part === "beard" && look.beard)) { m.dispose(); continue; }
+    if (/^human\d$/.test(part) && part !== nearPart) { m.dispose(); continue; }   // another body variant
     const base = m.material?.name;
     if (!base) continue;   // the empty parent of a multi-primitive mesh
     if (mats[base]) m.material = mats[base];
+    else if (base.startsWith("hair_") || base === "brows") m.material = hairTint(base);
     m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
-    if (part === "footballer_lod1") far = m;
+    if (part === farPart) far = m;
     else {
-      if (part === "footballer") near.push(m);
-      if (part === "footballer" && base === "skin") main = m;
-      if (base !== "eyes") casters.push(m);
+      if (part === nearPart) near.push(m);
+      if (part === nearPart && base === "skin") main = m;
+      if (!["eyes", "lashes", "brows"].includes(base)) casters.push(m);
     }
   }
   // the near body is several draws, the far one a single draw: the skin part hands over to the far
@@ -229,5 +259,6 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     if (m !== main) m.setBoundingInfo(new B.BoundingInfo(bounds.minimum, bounds.maximum));
     m.addLODLevel(LOD_COVERAGE, m === main ? far : null);
   }
+  if (look.height) inst.rootNodes[0].scaling.scaleInPlace(look.height);   // the scene scales on top of this
   return { ...inst, casters };
 }
