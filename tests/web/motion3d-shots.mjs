@@ -3,7 +3,8 @@
 //   motion3d-celebration.png  the scorer's side 2.5 s after the goal, with the clips (-procedural: without)
 //   motion3d-defending.png    the defenders closest to the ball when most of them backpedal, strafe or
 //                             jockey, with the clips (-procedural: without)
-// It prints frames/s for ?motion=procedural and with the clips, measured as in players3d-shots.mjs.
+// It prints frames/s for ?motion=procedural and with the clips, twice each and interleaved, measured as
+// in players3d-shots.mjs, and fails when any bone goes NaN (a vanished player) over the 20 s.
 // The sheet uses web/vendor/players/footballer.glb when it is there (feat/players3d), else the mannequin.
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh motion3d-shots.mjs [match]
@@ -140,7 +141,7 @@ async function sheetRow(page, row) {
   }, { row, body });
 }
 
-let before = null, after = null, again = null;
+let before = null, after = null, again = null, again2 = null;
 try {
   // procedural: frames/s and the two stills
   const old = await open("procedural");
@@ -206,10 +207,13 @@ try {
     imgs.push({ ...r, src: `data:image/png;base64,${readFileSync(f).toString("base64")}` });
   }
   await page.context().close();
-  // procedural again, so the order of the pages (cold shaders) does not decide the comparison
+  // both again, so the order of the pages (cold shaders) does not decide the comparison
   const old2 = await open("procedural");
   again = await fps(old2);
   await old2.context().close();
+  const new2 = await open("motion");
+  again2 = await fps(new2);
+  await new2.context().close();
   const sheet = await (await browser.newContext({ viewport: { width: 1980, height: 800 } })).newPage();
   await sheet.setContent(`<!doctype html><meta charset="utf-8"><style>
     body{margin:0;padding:16px;background:#f3f3f1;font:14px system-ui,sans-serif;color:#222}
@@ -227,6 +231,6 @@ try {
   await browser.close();
   rmSync(tmp, { recursive: true, force: true });
 }
-console.log(`frames/s: procedural ${before?.toFixed(1)}, motion clips ${after?.toFixed(1)}, procedural again ${again?.toFixed(1)}`);
+console.log(`frames/s: procedural ${before?.toFixed(1)}, motion clips ${after?.toFixed(1)}, procedural again ${again?.toFixed(1)}, motion clips again ${again2?.toFixed(1)}`);
 if (errors.length) { console.log(errors.join("\n")); process.exit(1); }
 console.log("motion3d shots ok");

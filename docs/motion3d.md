@@ -66,9 +66,57 @@ and cross-faded over 6 frames.
   the shuffle. The loop's phase follows the ground speed over its stride, so the feet do not slide
   at the clip's own speed. Without the clips the old stand-in gaits play.
 
+## Goalkeeper clips
+
+Six full-body clips for the keeper, generated and retargeted the same way but not yet played by the
+scene (a separate driver will): `GK_Dive_L`, `GK_Dive_R` (full-stretch dive, 2.5 s), `GK_Low_L`,
+`GK_Low_R` (low dive, 2 s), `GK_Catch` (catch at chest height, 2 s) and `GK_Tip` (jump to tip the
+ball over, 2.5 s). The prompts are in `scripts/motion/clips.json`; the first prompts, worded as
+"a goalkeeper dives to his left", gave a keeper lying down in place or diving forwards, so the
+kept ones describe the movement ("jumps sideways far to their left, ... falls onto the ground on
+their left side") and the seed was picked out of three by the measured travel.
+
+A dive has to take the body away from the tracked spot, so these clips are flagged `root` in the
+manifest: the heading stays the one at the start (the roll of the body is the motion), the pelvis
+stays at its rest position in the glb, and all the hips' travel goes to `clips.json`:
+
+    "GK_Dive_L": {"len": 2.5, "loop": false, "full": true, "slide": 0.038,
+                  "root": [[left, up, forward], ...]}    one row per frame at clips.json "fps" (30)
+
+in metres, in the character's own frame at the start of the clip: `left` towards the keeper's left
+(glTF +X; in Babylon the character's left is local -X, so the holder moves by `-left` along its
+local X), `up` the hips' height over standing height (negative when crouched or lying), `forward`
+towards where he faces. Frame 0 is about zero. A driver plays the clip at full weight and adds
+`root[frame]`, turned by the holder's facing, to the holder position. Measured ends: Dive_L 1.55 m
+to the left, Dive_R 2.15 m to the right, Low_L 1.03 m, Low_R 1.15 m, Catch and Tip under 0.05 m;
+the hips drop to 0.8 m under standing for the dives (lying on the side), and the tip jump lifts
+them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
+
 ## Results
 
-RESULTS
+- The sheet (`out/shots/motion3d-sheet.png`, 25 rows, the old pose on the left of each row) is the
+  main evidence: every gesture is readable at broadcast distance, the celebrations and the
+  dejected or crouched poses have weight shifts and timing the procedural poses never had, and the
+  backpedal, side-steps and jockey move the legs the way their names say instead of a reversed run.
+- 100STYLE was not needed: the Kimodo loops close with no visible pop after the cross-fade.
+- Foot slide (feet in contact moving over the ground, from the clip's own contact flags): 0.17 to
+  0.28 m/s on the loops before the phase is tied to the ground speed, which is why the scene
+  drives the phase from the tracking; one-shots mostly under 0.1 m/s, `join_hug` 0.355 m/s but it
+  only ever plays on the upper body.
+- Limits seen: the jockey is a single sideways shuffle, so it looks the same whichever way the
+  defender actually drifts. A celebration often plays on the upper body only, because the tracked
+  scorer is still running (above 1.5 m/s): in the celebration still the scorer runs with his hands
+  to his face, while the procedural still shows both arms up. The goalkeeper clips are in the glb
+  but nothing in the scene plays them yet.
+- A bug found on the way, present in the procedural mode too: when the first two animations
+  Babylon blends on a skeleton both have weight 0, its weighted slerp divides 0 by 0 and the bones
+  become NaN, so the player disappears. Clips are now advanced only while their weight is above 0.
+  The 20 s sweep found 40 NaN frames on the motion page and 1 on the procedural page before the
+  fix, 0 after it.
+- Frames per second, software WebGL on this machine, the same 20 s window measured in the order
+  procedural, motion, procedural, motion: 5.1, 15.6, 12.4, 15.4 (an earlier run: 24.0, 11.5,
+  29.5). The noise between runs is larger than any difference between the modes, so the clips
+  cost no measurable frame rate here; a real GPU was not measured.
 
 ## Tests
 
@@ -76,9 +124,13 @@ RESULTS
   source gives back the rest pose exactly; every committed clip retargets with 22 unit quaternions
   and no NaN; every limb segment of the retargeted body points where the source limb points
   (95th percentile under 12 degrees; swapping the arms or flipping an axis fails it on every
-  clip); the glb has the armature plus the 65 joints and 23 channels per clip.
+  clip); the glb has the armature plus the 65 joints and 23 channels per clip. For the goalkeeper
+  clips: the pelvis stays at rest and the root curve equals the source hips' travel from the start;
+  the left dives end more than 1 m (low: 0.5 m) to the left, the right ones to the right, the catch
+  and the tip stay within 0.5 m and the tip lifts the hips more than 0.15 m.
 - `node --test tests/web/awareness.test.mjs`: with `clips.json`, the emotions keep exactly the
   same sources, more than half play on real clips, one-shots never outlast their clip, and every
   scorer still celebrates.
 - `scripts/with-lock.sh chromium tests/web/run-smoke.sh motion3d-shots.mjs`: the sheet, the two
-  stills with and without the clips, and frames/s.
+  stills with and without the clips, frames/s twice per mode, and a sweep of the 20 s every 0.08 s
+  that fails on any NaN bone.
