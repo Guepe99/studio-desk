@@ -7,9 +7,9 @@ Each vertex is moved from the body's bind pose to the mannequin's with its own s
 mannequin skeleton exactly and every UAL clip drives it unchanged.
 
 The body is split into kit regions (skin, kit_shirt, kit_shorts, kit_socks, boots, forearms, hands,
-eyes), cloth is smoothed and pushed out a little over the skin, the shirt gets UVs for a number on
-the back, and a decimated copy is added for the far view. No animations: the page takes them from
-mannequin.glb.
+eyes), cloth is smoothed and pushed out a little over the skin, shirt, shorts and socks get UVs for
+the kit textures the page draws, and a decimated one-draw copy is added for the far view. The clips of mannequin.glb are
+copied in unchanged, so the scene loads this file in its place.
 
     .venv/bin/python scripts/build_footballer.py ~/tools/ubc/"Universal Base Characters[Standard]"
 
@@ -197,7 +197,7 @@ def classify(pos, dom, lm):
     ra = np.select([np.abs(x) < lm["sleeve"], np.abs(x) < lm["wrist"]], [SHIRT, FOREARMS], HANDS)
     r[arm] = ra[arm]
     r[in_group(dom, ("clavicle",))] = SHIRT
-    rl = np.select([y > lm["hem"], y > lm["sock_top"], y > lm["boot_top"]], [SHORTS, SKIN, SOCKS], BOOTS)
+    rl = np.select([y > lm["waist"], y > lm["hem"], y > lm["sock_top"], y > lm["boot_top"]], [SHIRT, SHORTS, SKIN, SOCKS], BOOTS)
     r[leg] = rl[leg]
     r[in_group(dom, ("foot", "ball"))] = BOOTS
     return r
@@ -267,7 +267,7 @@ def cut_plane(v, axis, value, near):
 
 def cut_kit_lines(v, lm):
     """Cuts the body along every kit line, so hems, sleeves and boot tops are straight."""
-    for axis, value, near in [(1, lm["waist"], TORSO), (1, lm["top"], NECK + TORSO), (1, lm["hem"], LEG + TORSO),
+    for axis, value, near in [(1, lm["waist"], TORSO + LEG), (1, lm["top"], NECK + TORSO), (1, lm["hem"], LEG + TORSO),
                               (1, lm["sock_top"], LEG), (1, lm["boot_top"], LEG),
                               (0, lm["sleeve"], ARM), (0, -lm["sleeve"], ARM), (0, lm["wrist"], ARM), (0, -lm["wrist"], ARM)]:
         v = cut_plane(v, axis, value, near)
@@ -287,7 +287,8 @@ def dress(v, L):
     for k in range(3):
         touches[wid[v["tri"][:, k]], tr] = True
     only = lambda *rs: touches[:, list(rs)].any(1) & ~np.delete(touches, list(rs), axis=1).any(1)
-    pos = smooth(v["pos"], v["tri"], wid, only(SHIRT, SHORTS), 6)       # cloth hides the muscles
+    hem = touches[:, SHIRT] & touches[:, SHORTS]
+    pos = smooth(v["pos"], v["tri"], wid, only(SHIRT, SHORTS) & ~hem, 6)   # cloth hides the muscles; the hem stays straight
     pos = smooth(pos, v["tri"], wid, only(BOOTS), 10)                    # and the toes
     pos = smooth(pos, v["tri"], wid, only(SOCKS), 2)
     nrm = vertex_normals(pos, v["tri"], wid)
@@ -299,22 +300,32 @@ def dress(v, L):
     # shorts flare towards the hem; shirt hangs a little looser at its hem
     y = pos[:, 1]
     flare = np.clip((lm["hip"] - y) / (lm["hip"] - lm["hem"]), 0, 1)
-    o = o + np.where(touches[wid, SHORTS] & ~touches[wid, SKIN], 0.012 * flare, 0)
+    o = o + np.where(touches[wid, SHORTS] & ~touches[wid, SKIN], 0.02 * flare, 0)
     pos = pos + nrm * o[:, None]
     nrm = vertex_normals(pos, v["tri"], wid)
     out = dict(v, pos=pos, nrm=nrm)
     return out, tr, lm
 
 
-def shirt_uv(pos, nrm, lm):
-    """UV for the number texture: the back maps to v in [0, 0.5] (hem at 0, collar at 0.5), the
-    front to [0.5, 1] (collar at 0.5), u from the side seen from behind. Both halves meet at the
-    collar and at the sides, so no triangle sweeps across the number."""
-    width, height = 0.44, lm["top"] - lm["waist"]
-    u = 0.25 - pos[:, 0] / width * 0.5
-    d = np.clip((lm["top"] - pos[:, 1]) / height, 0, 1.2) * 0.5
+# kit texture scale, UV units per metre in both directions (web/js/players3d.js draws with it)
+UV_PER_M = 0.8
+
+
+def kit_uv(pos, nrm, top):
+    """UV of shirt and shorts, the same scale both ways: u = 0.5 - x * UV_PER_M (the player's
+    left at small u), v = 0.5 -/+ (top - y) * UV_PER_M for the back and the front, so the back
+    runs upwards from its hem to v = 0.5 at `top` and the front downwards from there. Front and
+    back meet at the top and at the sides, away from the numbers."""
+    u = 0.5 - pos[:, 0] * UV_PER_M
+    d = np.clip((top - pos[:, 1]) * UV_PER_M, 0, 0.5)
     v = np.where(nrm[:, 2] < 0, 0.5 - d, 0.5 + d)
     return np.c_[u, v].astype(np.float32)
+
+
+def socks_uv(pos, lm):
+    """v from 0 at the sock top to 1 at the boot top, for the coloured band."""
+    v = np.clip((lm["sock_top"] - pos[:, 1]) / (lm["sock_top"] - lm["boot_top"]), 0, 1)
+    return np.c_[np.full_like(v, 0.5), v].astype(np.float32)
 
 
 # --- textures ---------------------------------------------------------------------------------------
@@ -406,8 +417,30 @@ class Writer:
                 + struct.pack("<II", len(bn), 0x004E4942) + bn)
 
 
+def copy_accessor(w, src, i, done):
+    """Accessor i of src copied byte for byte (same component type and normalisation)."""
+    if i not in done:
+        a = dict(src.j["accessors"][i])
+        v = src.j["bufferViews"][a.pop("bufferView")]
+        dt, n = np.dtype(CTYPE[a["componentType"]]), NCOMP[a["type"]]
+        start = v.get("byteOffset", 0) + a.pop("byteOffset", 0)
+        raw = np.ndarray((a["count"], n), dt, src.buffers[v["buffer"]], start, (v.get("byteStride", dt.itemsize * n), dt.itemsize))
+        a["bufferView"] = w.view(np.ascontiguousarray(raw).tobytes())
+        w.j["accessors"].append(a)
+        done[i] = len(w.j["accessors"]) - 1
+    return done[i]
+
+
+def copy_clips(w, man):
+    """Every animation of the mannequin: the nodes keep their indices, so the channels hold."""
+    done = {}
+    w.j["animations"] = [dict(an, samplers=[dict(s, input=copy_accessor(w, man, s["input"], done),
+                                                 output=copy_accessor(w, man, s["output"], done)) for s in an["samplers"]])
+                         for an in man.j.get("animations", [])]
+
+
 def copy_skeleton(w, man):
-    """The mannequin's nodes, scene and skin, without its mesh and animations."""
+    """The mannequin's nodes, scene and skin, without its mesh (clips: copy_clips)."""
     nodes = json.loads(json.dumps(man.j["nodes"]))
     ibm = man.acc(man.j["skins"][0]["inverseBindMatrices"])
     skin = dict(man.j["skins"][0], inverseBindMatrices=w.accessor(ibm, "MAT4", 5126))
@@ -431,8 +464,9 @@ def run(cmd):
 
 # --- the build -----------------------------------------------------------------------------------------
 
-HAIR = {"hair_buzzed": "Hair_Buzzed", "hair_parted": "Hair_SimpleParted", "hair_buns": "Hair_Buns", "beard": "Hair_Beard"}
+HAIR = {"hair_buzzed": "Hair_Buzzed", "hair_parted": "Hair_SimpleParted", "beard": "Hair_Beard"}
 LOD1_RATIO = 0.3
+PALETTE = 8   # texels in the far body's kit palette
 SKIN_UV = ("skin", "forearms", "hands")
 
 
@@ -448,10 +482,14 @@ def build(ubc, out=OUT, lod_ratio=LOD1_RATIO):
     body = rebind(hero, hero.mesh("Sphere.005_Retopology.004")["primitives"][0], 0, target_ibm, target_names)
     eyes = rebind(hero, hero.mesh("Face.001")["primitives"][0], 0, target_ibm, target_names)
     body, tr, lm = dress(body, L)
-    suv = shirt_uv(body["pos"], body["nrm"], lm)
+    kit_uvs = {"kit_shirt": kit_uv(body["pos"], body["nrm"], lm["top"]),
+               "kit_shorts": kit_uv(body["pos"], body["nrm"], lm["waist"]), "kit_socks": socks_uv(body["pos"], lm)}
+    shirt_u = kit_uvs["kit_shirt"][np.unique(body["tri"][tr == SHIRT]), 0]
+    assert 0 < shirt_u.min() and shirt_u.max() < 1, "the shirt UV must stay inside the texture"
 
     w = Writer()
     armature = copy_skeleton(w, man)
+    copy_clips(w, man)
     skin_tex = w.texture(detail_jpeg(ubc / "Base Characters/Textures/T_Superhero_Male_Ligh.png", 512, 0.6))
     skin_rgb = (0.62, 0.42, 0.32)
     mats = {
@@ -470,7 +508,7 @@ def build(ubc, out=OUT, lod_ratio=LOD1_RATIO):
         for r, name in enumerate(REGIONS):
             t = v["tri"][regions == r]
             if len(t):
-                uv = suv if name == "kit_shirt" else (v["uv"] if name in SKIN_UV else None)
+                uv = kit_uvs.get(name, v["uv"] if name in SKIN_UV else None)
                 prims.append(writer.primitive(v, t, mats[name], uv))
         return prims
 
@@ -500,15 +538,22 @@ def build(ubc, out=OUT, lod_ratio=LOD1_RATIO):
         (tmp / "lod1.glb").write_bytes(lw.glb())
         run(GLTF_TRANSFORM + ["simplify", str(tmp / "lod1.glb"), str(tmp / "lod1s.glb"),
                               "--ratio", str(lod_ratio), "--error", "0.01", "--lock-border", "true"])
+        # one primitive (one draw call per far player): each region's UV points at its texel of
+        # an 8 x 1 palette the page paints per kit (texel k = REGIONS[k])
         s = Gltf(tmp / "lod1s.glb")
-        prims = []
+        parts = []
         for p in s.j["meshes"][0]["primitives"]:
             a = p["attributes"]
+            r = REGIONS.index(s.j["materials"][p["material"]]["name"])
             v = dict(pos=s.acc(a["POSITION"]), nrm=s.acc(a["NORMAL"]), jnt=s.acc(a["JOINTS_0"]), wgt=s.acc(a["WEIGHTS_0"]))
-            uv = s.acc(a["TEXCOORD_0"]) if "TEXCOORD_0" in a else None
-            name = s.j["materials"][p["material"]]["name"]
-            prims.append(w.primitive(v, s.acc(p["indices"]).reshape(-1, 3).astype(np.int64), mats[name], uv))
-        add_mesh_node(w, armature, "footballer_lod1", w.mesh("footballer_lod1", prims))
+            v["uv"] = np.tile([(r + 0.5) / PALETTE, 0.5], (len(v["pos"]), 1))
+            v["tri"] = s.acc(p["indices"]).reshape(-1, 3).astype(np.int64)
+            parts.append(v)
+        far = {k: np.concatenate([v[k] for v in parts]) for k in ("pos", "nrm", "jnt", "wgt", "uv")}
+        base = np.cumsum([0] + [len(v["pos"]) for v in parts[:-1]])
+        far["tri"] = np.concatenate([v["tri"] + b for v, b in zip(parts, base)])
+        kit_far = w.material("kit_far", (1.0, 1.0, 1.0), 0.75)
+        add_mesh_node(w, armature, "footballer_lod1", w.mesh("footballer_lod1", [w.primitive(far, far["tri"], kit_far, far["uv"])]))
 
         (tmp / "raw.glb").write_bytes(w.glb())
         out.parent.mkdir(parents=True, exist_ok=True)

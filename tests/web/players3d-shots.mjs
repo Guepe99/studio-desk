@@ -1,6 +1,7 @@
 // Stills of the footballers (web/js/players3d.js) in the 3D sample, saved to out/shots/:
 //   players3d-clips.png  one player in idle, jog, sprint and a kick (ball at the rig's foot reach)
 //   players3d-close.png  both teams' outfield players and a keeper side by side, front and back
+//   players3d-hero.png   a captain from the front and a team-mate from behind, close
 //   players3d-wide.png   the broadcast TV frame
 // It checks the kit logic, that clips and the ball rig drive the footballer's bones, and prints
 // frames/s for ?players=mannequin and for the footballers, measured as in sample3d-shots.mjs.
@@ -35,7 +36,11 @@ async function open(browser, look) {
   return page;
 }
 
+// warm first: until every shader is compiled (slow in software) the players are simply not drawn
 const fps = (page) => page.evaluate(async () => {
+  const s = window.sample3d.scene.scene;
+  for (let k = 0; k < 300 && !s.isReady(); k++) { await window.__setTime(4); await new Promise((r) => setTimeout(r, 50)); }
+  for (let k = 0; k < 4; k++) await window.__setTime(3 + k * 0.04);
   const t0 = performance.now();
   let n = 0;
   while (performance.now() - t0 < 4000) { await window.__setTime(4 + n * 0.04); n++; }
@@ -58,7 +63,7 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
     p.holder.rotation.y = r.yaw;
     // only the weighted clips are evaluated, as Scene3D.update does: Babylon 9 blends a quaternion
     // to NaN when the first two clips evaluated in a frame both weigh 0
-    p.groups.forEach((g, j) => { g.setWeightForAllAnimatables(r.w[j]); if (r.w[j] > 0) g.goToFrame(g.from + r.phase * (g.to - g.from), true); });
+    p.anim.loco.forEach((g, j) => { g.setWeightForAllAnimatables(r.w[j]); if (r.w[j] > 0) g.goToFrame(g.from + r.phase * (g.to - g.from), true); });
     sc.rig.setLeg(p.i, r.leg ?? null);
     if (r.ball) {
       // the ball centre at the rig's contact point for this kick, in the player's frame
@@ -67,7 +72,7 @@ const stage = (page, { rows, cam, target, fov }) => page.evaluate(async ({ rows,
       sc.ball.setEnabled(true);
     }
   }
-  const cm = sc.goalCam;
+  const cm = sc.cams.replay;
   cm.position.set(...cam); cm.setTarget(new B.Vector3(...target)); cm.fov = fov;
   sc.scene.activeCamera = cm;
   sc.scene.render();
@@ -95,23 +100,26 @@ try {
       contrast: ids.map((id) => { const k = m.kitColours(t[id], false); return m.contrast(k.shirt, k.number); }),
       same: JSON.stringify(m.playerLook("P01")) === JSON.stringify(m.playerLook("P01")),
       skins: new Set(looks.map((l) => l.skin)).size, hairs: new Set(looks.map((l) => l.hair)).size,
+      boots: new Set(looks.map((l) => l.boots)).size,
+      readable: ids.flatMap((id) => { const k = m.kitColours(t[id], false); return [m.contrast(k.shorts, k.shortsNumber), m.contrast(k.shirt, k.armband)]; }),
       white: m.kitColours({ side: "home", color_primary: "#ffffff", color_secondary: "#f4f4f4" }, false).number,
     };
   });
   console.log(`kits: ${JSON.stringify(kits.out)}; keepers ${JSON.stringify(kits.gk.map((k) => k.shirt))}`);
   if (kits.contrast.some((c) => c < 2.5)) fail(`shirt number contrast too low: ${kits.contrast}`);
   if (kits.white !== "#111111") fail(`a white shirt with a near-white second colour gets number ${kits.white}`);
-  if (!kits.same || kits.skins < 3 || kits.hairs < 2) fail(`looks not varied or not stable: ${JSON.stringify(kits)}`);
+  if (kits.readable.some((c) => c < 2.5)) fail(`shorts number or armband contrast too low: ${kits.readable}`);
+  if (!kits.same || kits.skins < 3 || kits.hairs < 2 || kits.boots < 3) fail(`looks not varied or not stable: ${JSON.stringify(kits)}`);
   if (kits.gk.some((k, n) => k.shirt === kits.out[n].shirt || !k.gloves)) fail("keeper kit not distinct");
 
   // the footballer is skinned to the mannequin skeleton: the clips and the rig move its bones
   const rig = await page.evaluate(async () => {
-    const sc = window.sample3d.scene, p = sc.players.find((q) => q.groups.length);
+    const sc = window.sample3d.scene, p = sc.players.find((q) => q.anim.loco.length);
     const names = p.holder.getChildMeshes(false).map((m) => m.name);
     const foot = p.holder.getChildTransformNodes(false).find((n) => /foot_r$/.test(n.name));
     const at = () => { sc.scene.render(); foot.computeWorldMatrix(true); return foot.getAbsolutePosition().clone(); };
-    const sprint = p.groups[3];
-    p.groups.forEach((g, j) => g.setWeightForAllAnimatables(j === 3 ? 1 : 0));
+    const sprint = p.anim.loco[3];
+    p.anim.loco.forEach((g, j) => g.setWeightForAllAnimatables(j === 3 ? 1 : 0));
     sprint.goToFrame(sprint.from, true);
     const a = at();
     sprint.goToFrame(sprint.from + 0.5 * (sprint.to - sprint.from), true);
@@ -159,6 +167,23 @@ try {
   });
   await page.screenshot({ path: `${shots}/players3d-close.png` });
   console.log(`players3d-close.png: ${pick.home[0].pid} ${pick.home[1].pid} ${pick.gk[0].pid} ${pick.away[0].pid} ${pick.away[1].pid}`);
+
+  // hero: one home player as captain, front and back, at close range (the contract has no captain
+  // field, so the scene never sets the armband: this repaints the shirt with paintShirt)
+  const cap = pick.home[0].pid;
+  await page.evaluate(async (pid) => {
+    const m = await import("./js/players3d.js");
+    const s = window.sample3d, pl = s.match.players[pid];
+    const tex = s.scene.scene.getMaterialByName(`${pid}-shirt`).albedoTexture;
+    m.paintShirt(tex.getContext(), tex.getSize().width, m.kitColours(s.match.teams[pl.team_id], false), pl.shirt, true);
+    tex.update(false);
+  }, cap);
+  await stage(page, {
+    rows: [row(cap, -0.55, Math.PI), row(pick.home[1].pid, 0.55, 0)],
+    cam: [0, 1.15, -3.6], target: [0, 1.0, 0], fov: 0.55,
+  });
+  await page.screenshot({ path: `${shots}/players3d-hero.png` });
+  console.log(`players3d-hero.png: ${cap} with the armband, ${pick.home[1].pid} from behind`);
 
   // wide: the live TV frame, graphics hidden; how many players are on the far LOD
   const lod = await page.evaluate(async () => {
