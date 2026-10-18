@@ -219,6 +219,7 @@ export class Scene3D {
       this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {} });
     }
     // the container is not disposed: the clones share its geometry and lazy clips come from it
+    this.container = container;
     this.drivers = [];
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
@@ -236,7 +237,7 @@ export class Scene3D {
   // view: {ts, replay}; dt: seconds of match time since the last call (0 after a jump).
   update(view, dt) {
     const { match } = this;
-    const ts = Math.min(view.ts, match.duration);
+    const ts = this.ts = Math.min(view.ts, match.duration);
     const bp = this.rig.ball(ts), b = bp && [bp.x, bp.y, bp.h];
     if (b) {
       const z = b[2];

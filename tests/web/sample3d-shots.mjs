@@ -78,6 +78,54 @@ try {
   if (!(ball.worst < 1.5) || ball.atEvents > 1e-3 || ball.legs < 5) fail(`ball plan off: ${JSON.stringify(ball)}`);
   if (ball.rolls < 10 || ball.forward < ball.rolls * 0.95) fail(`ball rolls the wrong way: ${ball.forward}/${ball.rolls}`);
 
+  // awareness (web/js/awareness.js, awareness-rig.js), measured on the rendered bones. Each check
+  // runs with the layer on and off: on must pass, and off must fail, or the check measures nothing.
+  // 1. defenders (side without the ball, outfield) within 15 m of the ball whose head points
+  //    within 30 deg of it, every 0.8 s of the live part;
+  // 2. 1.5 s after the goal: the scorer, all but 3 teammates and all but 3 of the conceding side
+  //    play an emotion clip.
+  const aware = (on) => page.evaluate(async ({ on, cut }) => {
+    const s = window.sample3d, sc = s.scene, aw = sc.awareness, m = s.match;
+    aw.enabled = on;
+    const ev = [...m.events].sort((a, b) => a.ts - b.ts);
+    const set = async (c) => { await window.__setTime(c - 0.04); return window.__setTime(c); };
+    let n = 0, ok = 0;
+    for (let c = 1; c < cut - 0.3; c += 0.8) {
+      const { ts } = await set(c);
+      const b = sc.rig.ball(ts), poss = ev.filter((e) => e.ts <= ts).pop()?.team_id;
+      for (const p of sc.players) {
+        const at = m.at(p.i, ts);
+        if (!at || p.pid.startsWith(poss) || m.players[p.pid]?.position === "GK") continue;
+        const dx = b.x - at[0], dy = b.y - at[1];
+        if (Math.hypot(dx, dy) > 15) continue;
+        const h = aw.headDir(p.i), off = Math.abs(Math.atan2(Math.sin(Math.atan2(dx, dy) - h.yaw), Math.cos(Math.atan2(dx, dy) - h.yaw)));
+        n++; if (off < Math.PI / 6) ok++;
+      }
+    }
+    const g = m.goals.find((x) => Math.abs(x.ts - s.tl.goal) < 1e-6);
+    const { ts } = await set(s.tl.goal - s.tl.from + 1.5);
+    const scorer = g.player_id ?? m.events.find((e) => g.source_event_ids.includes(e.event_id)).player_id;
+    const r = { scorer: 0, mates: 0, matesOn: 0, conc: 0, concOn: 0 };
+    for (const p of sc.players) {
+      if (!m.at(p.i, ts)) continue;
+      const emo = Object.entries(p.aw).some(([k, w]) => w > 0 && !/^(Slide|Jump|Roll)/.test(k));
+      if (p.pid === scorer) r.scorer = emo ? 1 : 0;
+      else if (p.pid.startsWith(g.team_id)) { r.matesOn++; if (emo) r.mates++; }
+      else { r.concOn++; if (emo) r.conc++; }
+    }
+    aw.enabled = true;
+    return { n, share: ok / Math.max(n, 1), ...r };
+  }, { on, cut });
+  const awOn = await aware(true), awOff = await aware(false);
+  const lookOk = (r) => r.n >= 20 && r.share >= 0.7;
+  const emoOk = (r) => r.scorer === 1 && r.mates >= r.matesOn - 3 && r.conc >= r.concOn - 3;
+  for (const [name, r] of [["on", awOn], ["off", awOff]])
+    console.log(`awareness ${name}: ${(100 * r.share).toFixed(0)}% of ${r.n} defender heads within 30 deg of the ball; after the goal scorer ${r.scorer}, teammates ${r.mates}/${r.matesOn}, conceding ${r.conc}/${r.concOn}`);
+  if (!lookOk(awOn)) fail(`defenders do not watch the ball: ${JSON.stringify(awOn)}`);
+  if (lookOk(awOff)) fail(`head check passes without the awareness layer: ${JSON.stringify(awOff)}`);
+  if (!emoOk(awOn)) fail(`no reaction to the goal: ${JSON.stringify(awOn)}`);
+  if (emoOk(awOff)) fail(`goal check passes without the awareness layer: ${JSON.stringify(awOff)}`);
+
   // Space toggles play once, also when the Play button has the focus (Chromium already drops the
   // button click once keydown is prevented, so here this does not catch a missing keyup handler)
   const toggles = await page.evaluate(() => {
@@ -125,13 +173,16 @@ try {
     console.log(`sample3d-${name}.png at clock ${c.toFixed(2)} s (${Date.now() - t0} ms)`);
   }
   // frame rate in this (software-rendered) browser, for the record
-  const fps = await page.evaluate(async () => {
+  const rate = (on) => page.evaluate(async (on) => {
     const s = window.sample3d, t0 = performance.now();
+    s.scene.awareness.enabled = on;
     let n = 0;
     while (performance.now() - t0 < 4000) { await window.__setTime(4 + n * 0.04); n++; }
+    s.scene.awareness.enabled = true;
     return n / ((performance.now() - t0) / 1000);
-  });
-  console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics`);
+  }, on);
+  const fpsOff = await rate(false), fps = await rate(true);
+  console.log(`software WebGL: ${fps.toFixed(2)} frames/s including graphics (${fpsOff.toFixed(2)} without awareness)`);
 
   // without ?match= the page loads M001, the match shipped in the image (it may be absent here)
   const bare = await page.context().newPage();
