@@ -1,0 +1,49 @@
+// Quality profiles of the 3D scene, picked from what the browser offers (docs/scene3d-research.md,
+// "Test renderer"), overridable with ?quality=low|high, and a SceneOptimizer that steps the live
+// view down when it falls under 30 fps.
+const B = window.BABYLON;
+
+export const PROFILES = {
+  // laptop or desktop with WebGL 2: sun shadows from cascaded maps, MSAA, sharpen and bloom
+  high: { name: "high", shadows: "csm", shadowMap: 1024, msaa: 4, fxaa: false, sharpen: true, bloom: true,
+    maxWidth: 1920, detailScales: 2, crowd: 1, aniso: 8 },
+  // phone, WebGL 1 or a software renderer: blob shadows, FXAA, one grass detail scale, sparser crowd
+  low: { name: "low", shadows: "blob", shadowMap: 0, msaa: 1, fxaa: true, sharpen: false, bloom: false,
+    maxWidth: 1100, detailScales: 1, crowd: 0.3, aniso: 4 },
+};
+
+// env: {webGLVersion, maxMSAA, coarsePointer, shortSide (CSS px)}; param: the ?quality= value.
+export function pickProfile(env, param) {
+  if (param === "low" || param === "high") return { ...PROFILES[param], forced: true };
+  const phone = env.coarsePointer && env.shortSide < 820;
+  const high = env.webGLVersion >= 2 && env.maxMSAA >= 4 && !phone;
+  return { ...PROFILES[high ? "high" : "low"], forced: false };
+}
+
+export function detectEnv(engine) {
+  return {
+    webGLVersion: engine.webGLVersion,
+    maxMSAA: engine.getCaps().maxMSAASamples ?? 1,
+    coarsePointer: window.matchMedia?.("(pointer: coarse)").matches ?? false,
+    shortSide: Math.min(window.innerWidth, window.innerHeight),
+  };
+}
+
+// Steps, cheapest loss first: render scale, then post effects, then sun shadows to blobs.
+// hooks: {scaleBy(f), dropPost(), dropShadows()}. It stops for good once the view holds 30 fps.
+export function startOptimizer(scene, hooks) {
+  const opts = new B.SceneOptimizerOptions(30, 2000);
+  const step = (priority, apply, desc) => {
+    const o = new B.CustomOptimization(priority);
+    o.onApply = () => { apply(); return true; };   // one step per priority level
+    o.onGetDescription = () => desc;
+    opts.addOptimization(o);
+  };
+  step(0, () => hooks.scaleBy(1.25), "render scale x1.25");
+  step(1, () => hooks.dropPost(), "MSAA, sharpen and bloom off");
+  step(2, () => hooks.dropShadows(), "sun shadows to blob shadows");
+  step(3, () => hooks.scaleBy(1.25), "render scale x1.25 again");
+  const optimizer = new B.SceneOptimizer(scene, opts, false, false);
+  optimizer.start();
+  return optimizer;
+}
