@@ -48,6 +48,7 @@ try {
     return found;
   });
   console.log(JSON.stringify(picks));
+  console.log("ball plan:", JSON.stringify(await page.evaluate(() => window.sample3d.scene.rig.plan.check())));
   for (const [name, pick] of Object.entries(picks)) {
     const files = [];
     for (const [k, off] of OFFSETS.entries()) {
