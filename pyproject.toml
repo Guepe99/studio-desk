@@ -1,0 +1,30 @@
+[project]
+name = "studiodesk"
+version = "0.1.0"
+description = "AI production desk for a football broadcast, on synthetic match data"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+  "numpy>=2.1",
+  "fastapi>=0.115",
+  "uvicorn>=0.32",
+]
+
+[project.optional-dependencies]
+agents = [
+  "agent-framework-core[mcp]==1.22.0",
+  "agent-framework-foundry==1.15.0",
+  "agent-framework-orchestrations==1.3.2",
+  "azure-monitor-opentelemetry",
+  "mcp",
+]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools]
+packages = ["studiodesk"]
+
+[tool.setuptools.package-data]
+studiodesk = ["schema.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
