@@ -79,6 +79,7 @@ export class Scene3D {
     buildPitch(scene, this.profile);
     this._goals();
     this.crowd = buildStadium(scene, match, this.profile, mulberry(5));
+    this.light.shadeStands(scene.meshes.filter((m) => /^(tier|w|rf)_merged$|^crowd/.test(m.name)));
     this._ball();
     this.post = setupPost(scene, this.cams.list, this.profile);
     // for the tests: what the frame is made of

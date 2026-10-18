@@ -4,11 +4,11 @@
 //   means the floodlight lamps (half the bloom resolution on the low profile).
 // - A broadcast grade through a colour lookup table built here (grade() below), a very light
 //   vignette, no grain and no chromatic aberration (they muddy flat cel shading).
-// - Depth of field only on tight replay shots, high profile only. No motion blur: TV sport runs
+// - Depth of field only on the tight shot and replays, high profile only. No motion blur: TV sport runs
 //   shutters of about 1/100 to 1/120 s. SSAO2 at half resolution, high profile only.
 const B = window.BABYLON;
 
-export const LUT_N = 32;   // lattice points per channel
+export const LUT_N = 16;   // lattice points per channel: plenty for a smooth grade
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 // ITU-R BT.709 camera transfer (OETF) and the BT.1886 display (gamma 2.4).
@@ -52,6 +52,10 @@ export function lutPixels(n = LUT_N, fn = grade) {
 export function lutTexture(scene, fn = grade, n = LUT_N) {
   const t = B.RawTexture.CreateRGBATexture(lutPixels(n, fn), n * n, n, scene, false, false, B.Texture.BILINEAR_SAMPLINGMODE);
   t.wrapU = t.wrapV = B.Texture.CLAMP_ADDRESSMODE;
+  // no anisotropic filtering: where two neighbouring pixels fall in different blue slices the
+  // texture coordinate jumps by a whole slice, and an anisotropic tap blends across it (coloured
+  // speckles over the grass and on every edge)
+  t.anisotropicFilteringLevel = 1;
   t.name = "broadcastLut";
   return t;
 }
@@ -106,7 +110,7 @@ export function setupPost(scene, cameras, profile) {
   let dof = false;
   return {
     pipe, ssao, lut,
-    // per frame: depth of field on for a tight replay shot (focus in metres), off otherwise
+    // per frame: depth of field on for a tight shot or a replay (focus in metres), off otherwise
     update(cams) {
       const want = !!profile.dof && cams.focus !== null && !!pipe;
       if (want !== dof) { dof = want; pipe.depthOfFieldEnabled = want; if (want) pipe.depthOfFieldBlurLevel = B.DepthOfFieldEffectBlurLevel.Low; }

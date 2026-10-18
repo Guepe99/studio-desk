@@ -51,7 +51,7 @@ export function setupLighting(scene, profile, mode = "night") {
       l.diffuse = FLOOD;
       l.specular = FLOOD.scale(0.5);
       // the key is a touch stronger, so one shadow leads and the others are fill
-      l.intensity = k === 0 ? 1.9 : 1.25;
+      l.intensity = k === 0 ? 2.2 : 1.45;
       if (k === 0) key = l; else fills.push(l);
     });
   } else {
@@ -87,6 +87,20 @@ export function setupLighting(scene, profile, mode = "night") {
     // grounding.js draws their shadows as faint blobs
     blobLights: () => (night ? MASTS.slice(csm ? 1 : 0) : (csm ? [] : null)),
     addCaster(mesh) { if (csm) csm.addShadowCaster(mesh, true); },
+    // at night the floodlights are aimed at the pitch and the stands sit outside their beams: they
+    // only get a dim spill, so the bright pitch stands out from darker surroundings as on TV
+    shadeStands(meshes) {
+      if (!night) return;
+      for (const l of [key, ...fills]) l.excludedMeshes.push(...meshes);
+      const spill = new B.HemisphericLight("spill", new B.Vector3(0, 1, 0), scene);
+      spill.diffuse = FLOOD; spill.groundColor = B.Color3.Black(); spill.specular = B.Color3.Black();
+      spill.intensity = 0.3;
+      spill.includedOnlyMeshes = meshes;
+      // the crowd glows a little by itself (stands.js) so it reads in daylight shade: dim it
+      for (const m of meshes) if (m.material?.emissiveColor && /^crowd/.test(m.name)) {
+        m.material.unfreeze(); m.material.emissiveColor.scaleInPlace(0.4); m.material.freeze();
+      }
+    },
     // the optimizer's last resort: no shadow maps, the caller turns blob shadows on
     dropShadows() { if (csm) { csm.getShadowMap().refreshRate = 0; csm.dispose(); csm = null; this.csm = null; } },
   };

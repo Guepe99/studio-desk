@@ -1,6 +1,8 @@
 // Stills for docs/broadcast3d.md, saved to out/shots/broadcast3d-<tag>-<shot>.png: the wide live
-// shot, the tight shot at the stoppage after the goal, the goal-camera replay, the phone page in
-// portrait and landscape, and the wide shot again with ?light=day. Run it on the high profile:
+// shot, the tight shot at the stoppage after the goal, the goal-camera replay, an establishing
+// shot (camera 1 on a wide lens, tilted up to the far roof and masts: the floodlights are outside
+// every match framing), the phone page in portrait and landscape, and the wide shot again with
+// ?light=day. Run it on the high profile:
 //
 //   WEBGL=2 scripts/with-lock.sh chromium tests/web/run-smoke.sh broadcast3d-stills.mjs <tag> [match] [query]
 import { createRequire } from "node:module";
@@ -42,6 +44,16 @@ try {
   await save(pg, "wide", 4);
   await save(pg, "tight", tl.goal - tl.from + 1.6);
   await save(pg, "replay", tl.cut + (20 - tl.cut) * 0.6);
+  await pg.evaluate(() => {
+    const cams = window.sample3d.scene.cams;
+    cams.update = function () {
+      this.focus = null; this.mode = "establishing";
+      this.tv.setTarget(new window.BABYLON.Vector3(0, 8, 20));
+      this.tv.fov = 0.72;   // about 70 degrees across at 16:9
+      this.scene.activeCamera = this.tv;
+    };
+  });
+  await save(pg, "establishing", 4);
   await pg.close();
   const day = await open("&light=day");
   await save(day, "wide-day", 4);

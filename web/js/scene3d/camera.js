@@ -14,9 +14,11 @@
 //   degrees), tighter when play bunches; a small frame (a phone) zooms in further so players stay
 //   readable;
 // - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does.
-// Cuts happen only at a stoppage: after a goal the director cuts to camera 2, beside camera 1 on
-// the same platform, for a tight shot of the scorer (CELEBRATION seconds from 1 s after the goal),
-// then back to camera 1; the ball rule is off meanwhile.
+// Cuts happen only at a stoppage: after a goal the director cuts to camera 2, a pitchside handheld
+// on a long lens, for a tight shot of the scorer (CELEBRATION seconds from 1 s after the goal),
+// then back to camera 1; the ball rule is off meanwhile. A foul or a keeper's save gets the same
+// tight shot (of the fouler, of the keeper) when play really stops: from 1 s after it until 0.5 s
+// before the next event, and only if that leaves at least 2 s.
 // Replays use one free camera at one of four angles: the goal camera (behind the goal on the long
 // axis, line of sight 13.5 degrees, OP-32 2.2.7), a pitch-level camera in line with the 18-yard
 // line, the reverse angle from the far stand, and a high tactical view. They are stateless (a
@@ -26,7 +28,6 @@ const HALF_L = 52.5, HALF_W = 34;
 const DEG = Math.PI / 180;
 
 export const BROADCAST_POS = new B.Vector3(0, 18, -HALF_W - 34);   // 70.3 m from the centre spot
-export const CAM2_POS = new B.Vector3(3, 18, -HALF_W - 34);        // camera 2, on the same platform
 export const REPLAY_ANGLES = ["goal", "low", "reverse", "high"];
 const BALL_SHARE = 0.65;              // aim = 65% ball + 35% centroid of the nearby players
 const NEAR_SIGMA = 18;                // metres: who counts as "near the ball"
@@ -36,9 +37,12 @@ const DEAD = [2.5, 1.5];              // dead zone half-axes, metres (along, acr
 const OMEGA_PAN = 2.4, OMEGA_ZOOM = 1.2;
 export const WIDTH = [24, 42];        // metres of pitch across the frame at the aim point
 const SAFE = 0.8;                     // the ball stays within +-80% of the frame
-const TIGHT_W = 7;                    // camera 2: metres across the frame at the scorer's chest
+// camera 2, pitchside: 18 m from the player, 2.2 m up (a handheld at shoulder height on a low
+// step), 3.2 m across the frame at him, aimed 1.2 m up: knees to head, nearly level, stand behind
+const TIGHT = { dist: 18, height: 2.2, width: 3.2, aim: 1.2 };
 const GOAL_CAM = { back: 14, tilt: 13.5 * DEG };   // metres behind the goal line, sight line to the penalty mark
 export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
+const STOP_EVENTS = new Set(["foul", "keeper_save"]);
 
 // Zoom factor for the size of the frame on screen: 1 from 1000 CSS px wide, down to 0.65 on a phone.
 export const lensScale = (cssW) => Math.min(1, Math.max(0.65, (cssW || 1000) / 1000));
@@ -97,19 +101,26 @@ export class Cameras {
     this.replayAngle = "goal";
     this.tv = new B.FreeCamera("tv", BROADCAST_POS.clone(), scene);
     this.tv.minZ = 2; this.tv.maxZ = 700;
-    this.cam2 = new B.FreeCamera("cam2", CAM2_POS.clone(), scene);
+    this.cam2 = new B.FreeCamera("cam2", new B.Vector3(0, TIGHT.height, -HALF_W - 4), scene);
     this.cam2.minZ = 2; this.cam2.maxZ = 700;
     this.replay = new B.FreeCamera("replay", new B.Vector3(0, 10, 0), scene);
     this.replay.minZ = 0.3; this.replay.maxZ = 700;
     this.list = [this.tv, this.cam2, this.replay];
     this.state = null;   // {x: [pos, vel], z: [...], w: [...]}
     this.mode = "broadcast";
-    this.focus = null;   // metres to the subject of a tight replay shot (depth of field), else null
+    this.focus = null;   // metres to the subject of a tight shot or a replay (depth of field), else null
     // the scorer of each goal fact, as an entity index
     this.goals = match.goals.map((g) => {
       const pid = g.player_id ?? match.events.find((e) => g.source_event_ids?.includes(e.event_id))?.player_id;
       return { ts: g.ts, i: match.meta.entities.indexOf(pid) };
     }).filter((g) => g.i > 0);
+    // stoppages with a tight shot, as [from, to, entity]: goals, then fouls and saves that stop play
+    const idx = (pid) => match.meta.entities.indexOf(pid);
+    this.stops = this.goals.map((g) => [g.ts + CELEBRATION[0], g.ts + CELEBRATION[1], g.i]);
+    match.events.forEach((e, k) => {
+      const next = match.events[k + 1]?.ts ?? match.duration;
+      if (STOP_EVENTS.has(e.type_name) && idx(e.player_id) > 0 && next - 0.5 - (e.ts + 1) >= 2) this.stops.push([e.ts + 1, Math.min(e.ts + 6, next - 0.5), idx(e.player_id)]);
+    });
     scene.activeCamera = this.tv;
   }
 
@@ -127,8 +138,8 @@ export class Cameras {
       this.mode = `replay-${angle}`;
       return;
     }
-    const goal = this.goals.find((g) => ts >= g.ts + CELEBRATION[0] && ts < g.ts + CELEBRATION[1]);
-    if (goal && this._celebrate(ts, goal.i)) {
+    const stop = this.stops.find(([a, b]) => ts >= a && ts < b);
+    if (stop && this._celebrate(ts, stop)) {
       this.state = null;   // the wide shot warms up again afterwards
       this.mode = "celebration";
       return;
@@ -137,19 +148,31 @@ export class Cameras {
     this.mode = "broadcast";
   }
 
-  // Camera 2 on the scorer: same platform as camera 1, about 7 m of pitch across the frame at his
-  // chest, so a lens of a few degrees; the aim follows his position averaged over a second.
-  _celebrate(ts, i) {
-    let x = 0, y = 0, n = 0;
-    for (let k = -5; k <= 5; k++) {
-      const p = this.match.at(i, Math.min(Math.max(ts + k * 0.1, 0), this.match.duration));
-      if (p) { x += p[0]; y += p[1]; n++; }
-    }
-    if (!n) return false;
-    const aim = new B.Vector3(x / n - HALF_L, 1.1, y / n - HALF_W);
+  // Camera 2 on the player at a stoppage: a pitchside handheld that stands where the player was
+  // when the stoppage began, seen from the near touchline side and a little towards the halfway
+  // line (never on the pitch beyond 4 m from its lines), so the far stand is behind him. It stays
+  // put for the shot; the aim follows his position averaged over a second. Depth of field on the
+  // high profile, as on a long lens.
+  _celebrate(ts, [from, , i]) {
+    const avg = (t) => {
+      let x = 0, y = 0, n = 0;
+      for (let k = -5; k <= 5; k++) {
+        const p = this.match.at(i, Math.min(Math.max(t + k * 0.1, 0), this.match.duration));
+        if (p) { x += p[0]; y += p[1]; n++; }
+      }
+      return n ? [x / n - HALF_L, y / n - HALF_W] : null;
+    };
+    const now = avg(ts), start = avg(from);
+    if (!now || !start) return false;
+    const dir = new B.Vector3(-Math.sign(start[0]) * 0.35, 0, -1).normalize();
     const cam = this.cam2;
+    cam.position.set(Math.min(Math.max(start[0] + dir.x * TIGHT.dist, -HALF_L - 4), HALF_L + 4), TIGHT.height,
+      Math.max(start[1] + dir.z * TIGHT.dist, -HALF_W - 4));
+    const aim = new B.Vector3(now[0], TIGHT.aim, now[1]);
     cam.setTarget(aim);
-    cam.fov = this._fovFor(cam, TIGHT_W * this._zoom(), B.Vector3.Distance(cam.position, aim));
+    const dist = B.Vector3.Distance(cam.position, aim);
+    cam.fov = this._fovFor(cam, TIGHT.width, dist);   // no phone zoom: already knees up
+    this.focus = dist;
     this.scene.activeCamera = cam;
     return true;
   }

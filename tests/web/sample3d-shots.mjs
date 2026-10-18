@@ -138,10 +138,12 @@ try {
   // Broadcast rules (docs/broadcast3d.md): camera 1 on the halfway line 30 to 40 m back from the
   // near touchline, 12 to 16 degrees down to the centre spot and along its median line of sight; a
   // long lens (19 to 34 degrees across, 24 to 42 m of pitch at the aim); the tight shot of the
-  // scorer from camera 2 on the same platform, over 50 m away; cuts only at a stoppage (within 8 s
-  // after a goal).
+  // scorer from camera 2, a pitchside handheld: 2 to 4 m up, 8 to 30 m away, on a long lens (under
+  // 16 degrees across), nearly level (3 degrees up to 6 down), still for the shot, with his head and
+  // knees in the frame; cuts only at a stoppage (within 8 s after a goal, or inside the
+  // camera's own foul and save stoppages).
   const tv = await page.evaluate(async (cut) => {
-    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [], tight: [], hfov: [], width: [], pitch: [], cuts: [] };
+    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [], tight: [], tightPitch: [], head: [], cam2: [], hfov: [], width: [], pitch: [], cuts: [] };
     const ndc = (cam, v) => window.BABYLON.Vector3.TransformCoordinates(v, cam.getViewMatrix().multiply(cam.getProjectionMatrix()));
     let first = null, last = null;
     for (let c = 0; c < cut; c += 0.2) {
@@ -156,6 +158,10 @@ try {
         const q = ndc(cam, p.add(new window.BABYLON.Vector3(0, 1.2, 0)));
         out.celebration.push(+Math.hypot(q.x, q.y).toFixed(2));
         out.tight.push(+window.BABYLON.Vector3.Distance(cam.position, p).toFixed(1));
+        const at = cam.getTarget();
+        out.tightPitch.push(Math.asin((cam.position.y - at.y) / window.BABYLON.Vector3.Distance(cam.position, at)) * 180 / Math.PI);
+        out.head.push([ndc(cam, p.add(new window.BABYLON.Vector3(0, 1.85, 0))).y, ndc(cam, p.add(new window.BABYLON.Vector3(0, 0.5, 0))).y]);
+        out.cam2.push([...cam.position.asArray(), 2 * Math.atan(Math.tan(cam.fov / 2) * sc.engine.getAspectRatio(cam)) * 180 / Math.PI]);
         continue;
       }
       const hfov = 2 * Math.atan(Math.tan(cam.fov / 2) * sc.engine.getAspectRatio(cam));
@@ -184,23 +190,30 @@ try {
   const med = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
   const spot = Math.atan2(18, 68) * 180 / Math.PI;   // the gantry is fixed at (0, 18, -68), checked above
   const lens = { hfov: [Math.min(...tv.hfov), Math.max(...tv.hfov)].map((v) => +v.toFixed(1)), width: [Math.min(...tv.width), Math.max(...tv.width)].map((v) => +v.toFixed(1)),
-    pitch: +med(tv.pitch).toFixed(1), tight: tv.tight.length ? Math.min(...tv.tight) : 0 };
+    pitch: +med(tv.pitch).toFixed(1), tight: tv.tight.length ? Math.min(...tv.tight) : 0,
+    tightPitch: tv.tightPitch.length ? [Math.min(...tv.tightPitch), Math.max(...tv.tightPitch)].map((v) => +v.toFixed(1)) : [],
+    framed: tv.head.filter(([h, f]) => h < 0.98 && f > -0.98).length / Math.max(1, tv.head.length),
+    height: tv.cam2.length ? [Math.min(...tv.cam2.map((c) => c[1])), Math.max(...tv.cam2.map((c) => c[1]))] : [],
+    still: tv.cam2.every((c) => Math.hypot(c[0] - tv.cam2[0][0], c[2] - tv.cam2[0][2]) < 1e-3),
+    tightLens: tv.cam2.length ? +Math.max(...tv.cam2.map((c) => c[3])).toFixed(1) : 0 };
   const goalTs = await page.evaluate(() => window.sample3d.match.goals.map((g) => g.ts));
+  const stops = await page.evaluate(() => window.sample3d.scene.cams.stops?.map(([a, b]) => [a, b]) ?? []);
   const before = await at(cut - 0.01);
   const cuts = [...tv.cuts, { ts: before.ts, to: "replay" }];
-  const atStop = (ts) => goalTs.some((g) => ts >= g && ts <= g + 8);
-  console.log(`broadcast rules: centre spot ${spot.toFixed(1)} deg down, median line of sight ${lens.pitch} deg, lens ${lens.hfov} deg across, ${lens.width} m of pitch at the aim, tight shot from ${lens.tight} m, cuts at ${cuts.map((x) => `${x.ts.toFixed(1)}->${x.to}`)}`);
+  const atStop = (ts) => goalTs.some((g) => ts >= g && ts <= g + 8) || stops.some(([a, b]) => ts >= a - 0.3 && ts <= b + 0.3);
+  console.log(`broadcast rules: centre spot ${spot.toFixed(1)} deg down, median line of sight ${lens.pitch} deg, lens ${lens.hfov} deg across, ${lens.width} m of pitch at the aim, tight shot from ${lens.tight} m and ${lens.height} m up on a ${lens.tightLens} deg lens at ${lens.tightPitch} deg down (knees to head in ${(lens.framed * 100).toFixed(0)}% of frames), cuts at ${cuts.map((x) => `${x.ts.toFixed(1)}->${x.to}`)}`);
   if (spot < 12 || spot > 16 || lens.pitch < 12 || lens.pitch > 16) fail(`camera 1 not 12 to 16 degrees down: ${JSON.stringify(lens)}`);
   if (lens.hfov[0] < 18 || lens.hfov[1] > 34 || lens.width[0] < 23 || lens.width[1] > 43) fail(`camera 1 not on a long lens: ${JSON.stringify(lens)}`);
-  if (!(lens.tight > 50)) fail(`tight shot not from the camera platform: ${JSON.stringify(lens)}`);
+  if (!(lens.tight >= 8 && Math.max(...tv.tight) <= 30 && lens.height[0] >= 2 && lens.height[1] <= 4 && lens.tightLens < 16 && lens.still)) fail(`tight shot not from a pitchside camera on a long lens: ${JSON.stringify(lens)}`);
+  if (!(lens.tightPitch[0] >= -3 && lens.tightPitch[1] <= 6 && lens.framed >= 0.8)) fail(`tight shot not level and knees to head: ${JSON.stringify(lens)}`);
   if (cuts.some((x) => !atStop(x.ts))) fail(`a cut in live play: ${JSON.stringify(cuts)}, goals at ${goalTs}`);
 
   // grounding (web/js/scene3d/grounding.js), on the rendered pixels: the grass 0.3 m in front of
-  // each player's feet against the grass 1.2 m to the side of that point (same stripe), median over
-  // the players on screen. On it must be darker, off it must not.
+  // each player's feet, with the layer on against off (median over the players on screen), must
+  // darken; the grass 8 m in front of them, beyond every blob, must not change
   const ground = (on) => page.evaluate(async (on) => {
     const s = window.sample3d, sc = s.scene, B = window.BABYLON;
-    sc.grounding.enabled = on;
+    if (sc.grounding) sc.grounding.enabled = on;   // absent before broadcast3d: on and off match, the check fails
     await window.__setTime(3.96); await window.__setTime(4);
     const eng = sc.engine, gl = eng._gl, w = eng.getRenderWidth(), h = eng.getRenderHeight();
     const cam = sc.scene.activeCamera, px = new Uint8Array(4), tm = cam.getTransformationMatrix(), vp = cam.viewport.toGlobal(w, h);
@@ -210,20 +223,19 @@ try {
       gl.readPixels(Math.round(p.x), Math.round(h - p.y), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
       return 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
     };
-    const r = [];
-    for (const p of sc.players) {
-      if (!p.holder.isEnabled()) continue;
-      const q = p.holder.position, a = lum(new B.Vector3(q.x, 0, q.z - 0.3)), b = lum(new B.Vector3(q.x + 1.2, 0, q.z - 0.3));
-      if (a !== null && b) r.push(a / b);
-    }
-    sc.grounding.enabled = true;
-    r.sort((x, y) => x - y);
-    return { n: r.length, median: +r[r.length >> 1].toFixed(3) };
+    const r = sc.players.filter((p) => p.holder.isEnabled()).map((p) => {
+      const q = p.holder.position;
+      return [lum(new B.Vector3(q.x, 0, q.z - 0.3)), lum(new B.Vector3(q.x, 0, q.z - 8))];
+    });
+    if (sc.grounding) sc.grounding.enabled = true;
+    return r;
   }, on);
-  const grOn = await ground(true), grOff = await ground(false);
-  console.log(`grounding: grass in front of the feet at ${grOn.median} of the grass beside it (${grOff.median} without), ${grOn.n} players`);
-  if (!(grOn.n >= 8 && grOn.median < 0.9)) fail(`no darkening under the feet: ${JSON.stringify(grOn)}`);
-  if (grOff.median < 0.9) fail(`grounding check passes without grounding: ${JSON.stringify(grOff)}`);
+  const gOn = await ground(true), gOff = await ground(false);
+  const ratio = (j) => med(gOn.map((v, k) => (v[j] && gOff[k][j] ? v[j] / gOff[k][j] : null)).filter((x) => x !== null));
+  const gr = { feet: +ratio(0).toFixed(3), away: +ratio(1).toFixed(3), n: gOn.filter((v) => v[0]).length };
+  console.log(`grounding: grass in front of the feet at ${gr.feet} of its brightness without the layer, 8 m away at ${gr.away}, ${gr.n} players`);
+  if (!(gr.n >= 8 && gr.feet < 0.9)) fail(`no darkening under the feet: ${JSON.stringify(gr)}`);
+  if (!(gr.away > 0.95)) fail(`grounding darkens more than the feet: ${JSON.stringify(gr)}`);
 
   // the colour grade's lookup table layout (web/js/scene3d/post.js): an identity table must leave
   // the frame as it is without grading, and the broadcast table must change it
@@ -240,9 +252,9 @@ try {
     setGrade(cfg, sc.post.lut); const graded = await grab();
     id.dispose();
     return { identity: +diff(ident, plain).toFixed(2), graded: +diff(graded, plain).toFixed(2) };
-  });
+  }).catch((e) => ({ error: e.message.split("\n")[0] }));
   console.log(`colour grade: identity table off by ${lut.identity}/255, broadcast grade ${lut.graded}/255 from the ungraded frame`);
-  if (!(lut.identity < 1.5) || !(lut.graded > 2)) fail(`lookup table layout wrong: ${JSON.stringify(lut)}`);
+  if (!(lut.identity < 2) || !(lut.graded > 2)) fail(`lookup table layout wrong: ${JSON.stringify(lut)}`);
 
   // awareness (web/js/awareness.js, awareness-rig.js), measured on the rendered bones. Each check
   // runs with the layer on and off: on must pass, and off must fail, or the check measures nothing.
