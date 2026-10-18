@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { Match } from "../../web/js/match.js";
 import { BallPlan } from "../../web/js/ball3d.js";
 import { smoothMatch } from "../../web/js/scene3d/track.js";
-import { planKeeper, keeperRoot, solve } from "../../web/js/keeper3d.js";
+import { planKeeper, keeperRoot, realRoot, solve } from "../../web/js/keeper3d.js";
 
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/data");
 
@@ -100,5 +100,26 @@ test("solve: the body's reach lands on the ball for a full-stretch dive", () => 
     const x = r.s + D * Math.sin(r.roll), y = r.lift + D * Math.cos(r.roll);
     assert.ok(Math.hypot(x - d, y - h) < 0.6, `dive to (${d}, ${h}): body points at (${x.toFixed(2)}, ${y.toFixed(2)})`);
     assert.ok(r.s <= 2.0, `shift ${r.s}`);
+  }
+});
+
+test("real clips: the contact frame lands on the crossing time and the hands on the ball", () => {
+  const m = load("M001") ?? load("DEMO");
+  // made-up dives: 2 m across in 1.5 s, the body down to the ground, hands 0.5 m past the root at 0.6 s
+  const clip = (sg) => ({ len: 2.5, fps: 30, contact: 0.6, hand: [sg * 1.3, 1.1, 0.2],
+    root: Array.from({ length: 75 }, (_, f) => [sg * 2 * Math.min(1, f / 45), -0.75 * Math.min(1, f / 40), 0]) });
+  const real = { GK_Dive_L: clip(1), GK_Dive_R: clip(-1), GK_Low_L: clip(1), GK_Low_R: clip(-1) };
+  const plan = new BallPlan(m, [0, m.duration], { ballR: 0.11 });
+  const rs = planKeeper(m, (t) => plan.ball(t), { ballR: 0.11, real }).filter((r) => r.real);
+  assert.ok(rs.length > 0, "no reaction took a real clip");
+  for (const r of rs) {
+    const k = realRoot(r, r.tc), q = r.real, sg = r.clip.endsWith("_L") ? 1 : -1;
+    assert.ok(Math.abs(k.clipT - 0.6) < 1e-6, `shot ${r.shot}: clip at ${k.clipT} at contact`);
+    assert.ok(q.rate <= 2.5 + 1e-9, `shot ${r.shot}: run-up ${q.rate}x`);
+    // hands to the left at contact: the scaled root plus the hands' reach beyond it in the clip
+    const hands = -(k.dx * r.u[0] + k.dy * r.u[1]) + sg * 0.5;
+    if (!r.goal && q.lat > 0.4 && q.lat < 1.5) assert.ok(Math.abs(hands + r.d) < 0.05, `shot ${r.shot}: hands ${hands.toFixed(2)} m left, ball ${(-r.d).toFixed(2)}`);
+    const last = realRoot(r, r.end - 1e-3);
+    assert.ok(Math.hypot(last.dx, last.dy) < 0.05 && Math.abs(last.lift) < 0.02 && last.w < 0.02, `shot ${r.shot}: not back at the end`);
   }
 });

@@ -9,7 +9,7 @@
 // Real clips can replace the procedural ones by name (GK_Dive_L, GK_Dive_R, GK_Low_L, GK_Low_R,
 // GK_Catch, GK_Tip): a clip already in the file is never overwritten. Such a clip should be in
 // place (no root motion) and keyed on keeper3d.CLIP_KEYS; keeperRoot() gives the root curve.
-import { planKeeper, keeperRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
+import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
 import { nodesOf, chain, aim, turnWorld } from "./awareness-rig.js";
 
 const B = window.BABYLON;
@@ -21,14 +21,23 @@ export class KeeperRig {
     this.s = s;
     s.keeper = this;
     this.enabled = true;
-    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span: s.span });
+    const probe = s.container.instantiateModelsToScene((n) => `gk-probe-${n}`, false, { doNotInstantiate: true });
+    probe.animationGroups.forEach((g) => g.dispose());
+    const P = nodesOf(probe.rootNodes[0], "gk-probe-");
+    // stand-ins for the clips the file lacks, keyed on the unposed probe (before the measuring)
+    this.procedural = buildKeeperClips(s.scene, s.container, P);
+    // the retargeted clips (players.js loadMotion) with their root curve; ?motion=procedural or a
+    // missing file leaves the procedural poses below
+    this.real = {};
+    for (const name of new Set(Object.values(CLIPS).flat())) {
+      const c = s.motion?.clips?.[name], g = c?.root && s.container.animationGroups.find((a) => a.name === name);
+      if (g) this.real[name] = { ...c, fps: s.motion.fps, ...measureClip(s, probe.rootNodes[0], P, g, c, s.motion.fps, kindOf(name)) };
+    }
+    probe.rootNodes.forEach((n) => n.dispose());
+    probe.skeletons.forEach((k) => k.dispose());
+    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span: s.span, real: this.real });
     this.by = new Map();
     for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
-    const probe = s.container.instantiateModelsToScene((n) => `gk-probe-${n}`, false, { doNotInstantiate: true });
-    this.procedural = buildKeeperClips(s.scene, s.container, nodesOf(probe.rootNodes[0], "gk-probe-"));
-    probe.rootNodes.forEach((n) => n.dispose());
-    probe.animationGroups.forEach((g) => g.dispose());
-    probe.skeletons.forEach((k) => k.dispose());
     s.addDriver({ priority: 30, pose: (i, ts) => this.pose(i, ts) });
     s.scene.onAfterAnimationsObservable.add(() => this._arms());
   }
@@ -42,7 +51,7 @@ export class KeeperRig {
   pose(i, ts) {
     const r = this.at(i, ts);
     if (!r) return null;
-    const k = keeperRoot(r, ts);
+    const k = r.real ? realRoot(r, ts) : keeperRoot(r, ts);
     return { dx: k.dx, dy: k.dy, dz: k.lift, roll: k.roll, yaw: r.yaw, yawW: k.w,
       action: { clip: r.clip, time: k.clipT, weight: k.w }, actionW: k.w };
   }
@@ -75,6 +84,40 @@ export class KeeperRig {
     const m = a.add(b).scale(0.5);
     return [m.x + HALF_L, m.z + HALF_W, m.y];
   }
+}
+
+const kindOf = (name) => Object.keys(CLIPS).find((k) => CLIPS[k].includes(name));
+
+// Contact frame and hand midpoint of a real clip, played on the probe (scaled like the players,
+// facing +Z at the origin) plus its root curve: [left, up, forward] metres from the start spot.
+// Contact: dives, the first frame the hands are 85% of their widest; catch, 90% of their furthest
+// forward in the first 1.2 s; tip, the highest.
+function measureClip(s, root, P, src, c, fps, kind) {
+  const holder = new B.TransformNode("gk-probe-holder", s.scene);
+  root.parent = holder;
+  root.scaling.scaleInPlace(s.players[0].holder.getChildren()[0].scaling.x / root.scaling.x);
+  const g = src.clone(`gk-probe-${src.name}`, (t) => P[t.name] ?? null);
+  g.start(false, 1, g.from, g.to); g.pause(); g.setWeightForAllAnimatables(1);
+  const rows = [];
+  for (let f = 0; f < c.root.length; f++) {
+    g.goToFrame(Math.min(g.to, g.from + (f / fps) * (g.targetedAnimations[0].animation.framePerSecond)));
+    s.scene.animate();
+    const [a, b] = ["l", "r"].map((side) => { chain(P[`hand_${side}`]); return P[`hand_${side}`].getAbsolutePosition(); });
+    const r = c.root[f];
+    rows.push([-(a.x + b.x) / 2 + r[0], (a.y + b.y) / 2 + r[1], (a.z + b.z) / 2 + r[2]]);
+  }
+  g.dispose();
+  root.parent = null;
+  holder.dispose();
+  let k = 0;
+  if (kind === "dive" || kind === "low") {
+    const sg = Math.sign(c.root.at(-1)[0]) || 1, top = Math.max(...rows.map((h) => h[0] * sg));
+    k = rows.findIndex((h) => h[0] * sg >= 0.85 * top);
+  } else if (kind === "catch") {
+    const early = rows.slice(0, Math.round(1.2 * fps)), top = Math.max(...early.map((h) => h[2]));
+    k = early.findIndex((h) => h[2] >= 0.9 * top);
+  } else k = rows.reduce((best, h, j) => (h[1] > rows[best][1] ? j : best), 0);
+  return { contact: k / fps, hand: rows[k] };
 }
 
 // Turn a bone part of the way (w) towards pointing its child along dir (world).

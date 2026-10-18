@@ -42,7 +42,10 @@ function keeperOf(match, team, ts) {
 }
 
 // body: { shoulder: m from the soles to the shoulders, arm: m from shoulder to hand }.
-export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45, arm: 0.62 }, span = [0, match.duration] } = {}) {
+// real: the motion clips by name, { len, fps, root: [[left, up, forward], ...], contact: s,
+// hand: [left, up, forward] } (keeper3d-rig.js measures contact and hand); a reaction whose clip
+// is there plays it on its root curve (realRoot), the others the procedural poses (keeperRoot).
+export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45, arm: 0.62 }, span = [0, match.duration], real = {} } = {}) {
   const ev = [...match.events].sort((a, b) => a.ts - b.ts);
   const goalTs = match.goals.map((g) => g.ts);
   const out = [];
@@ -93,8 +96,11 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     const reach = goal ? clamp((tc - start) / 1.0, 0.25, 0.6) : 1;
     const side = d >= 0 ? 1 : -1;   // +1: his right
     const target = { d: d * reach, h: goal ? Math.max(0.3, h * reach) : h, f: Math.max(0, f) };
-    out.push({ i, pid: kpid, shot: e.event_id, goal, kind, side, clip: CLIPS[kind][side > 0 ? 1 : 0], tc, start,
-      end: tc + T.fall + T.lie + T.rise, yaw, u, fw, ball: [b.x, b.y, h], d, h, ...solve(kind, target, body) });
+    const r = { i, pid: kpid, shot: e.event_id, goal, kind, side, clip: CLIPS[kind][side > 0 ? 1 : 0], tc, start,
+      end: tc + T.fall + T.lie + T.rise, yaw, u, fw, ball: [b.x, b.y, h], d, h, ...solve(kind, target, body) };
+    const c = real[r.clip];
+    if (c) fitClip(r, c, { earliest: goal ? e.ts + LATE : e.ts + REACT, want: [-target.d, target.h, f] });
+    out.push(r);
   }
   // one at a time per keeper: a later reaction cuts the earlier short
   out.sort((a, b) => a.start - b.start);
@@ -103,6 +109,47 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     if (n) out[k].end = Math.min(out[k].end, n.start);
   }
   return out;
+}
+
+// A real clip on reaction r: time-warp the clip's run-up so its contact frame lands on r.tc, then
+// play it at 1x until the body is down, hold, and blend back to the tracked spot. The root curve's
+// sideways travel is scaled so the hands reach the ball sideways; height and depth get a small
+// shift around contact. want: the ball from the keeper's spot, [left, up, forward] metres.
+const RATE_MAX = 2.5;   // fastest run-up, times the clip's own (a reflex save)
+const DOWN_S = 0.9;     // s of clip after contact before the hold
+const RISE_S = 0.8;     // s to blend back up onto the tracking
+function fitClip(r, c, { earliest, want }) {
+  let start = Math.max(earliest, r.tc - c.contact);
+  if (c.contact / (r.tc - start) > RATE_MAX) start = r.tc - c.contact / RATE_MAX;
+  const at = rootAt(c, c.contact);
+  const lat = Math.abs(at[0]) > 0.3 ? clamp((want[0] - (c.hand[0] - at[0])) / at[0], 0.4, 1.5) : 1;
+  const hold = Math.min(c.len, c.contact + DOWN_S);
+  r.start = start;
+  r.real = { rate: c.contact / (r.tc - start), lat, hold, tHold: r.tc + hold - c.contact, root: c.root, fps: c.fps, contact: c.contact,
+    // what the scaled root leaves: sideways only for clips that barely travel (catch, tip)
+    shift: Math.abs(at[0]) > 0.3 ? 0 : clamp(want[0] - c.hand[0], -0.8, 0.8),
+    up: clamp(want[1] - c.hand[1], -0.4, 0.4), fwd: clamp(want[2] - c.hand[2], -0.3, 0.6) };
+  r.end = r.real.tHold + RISE_S;
+}
+
+// Root of clip c at clip time t: [left, up, forward], linear between frames.
+function rootAt(c, t) {
+  const f = clamp(t * c.fps, 0, c.root.length - 1), k = Math.min(Math.floor(f), c.root.length - 2), a = f - k;
+  return [0, 1, 2].map((j) => c.root[k][j] + (c.root[k + 1][j] - c.root[k][j]) * a);
+}
+
+// Root offset of reaction r with a real clip at ts, like keeperRoot (roll 0: the clip turns the body).
+export function realRoot(r, ts) {
+  if (ts < r.start || ts >= r.end) return null;
+  const q = r.real;
+  const clipT = ts < r.tc ? (ts - r.start) * q.rate : Math.min(q.hold, q.contact + ts - r.tc);
+  const [l, u, f] = rootAt(q, clipT);
+  // the shifts come in before contact and stay; everything goes back during the rise
+  const g = smooth((ts - r.start) / (r.tc - r.start)), back = 1 - smooth((ts - q.tHold) / RISE_S);
+  const around = g * (1 - smooth((ts - r.tc - 0.2) / 0.4));   // height and depth only near contact
+  const left = (l * q.lat + q.shift * g) * back, ahead = (f + q.fwd * around) * back;
+  const w = Math.max(0, Math.min(1, (ts - r.start) / 0.1, back));
+  return { dx: -r.u[0] * left + r.fw[0] * ahead, dy: -r.u[1] * left + r.fw[1] * ahead, lift: (u + q.up * around) * back, roll: 0, w, clipT };
 }
 
 // First time in [a, b] the drawn ball comes nearest to point p.
