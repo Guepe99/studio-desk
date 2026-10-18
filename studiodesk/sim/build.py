@@ -114,7 +114,7 @@ def simulate(match_no, seed, league, cal, comeback, minutes=None):
     goals = [(float(ts[k]), e["team_id"]) for k, e in enumerate(ev)
              if e["type_name"] in SHOT_TYPES and e["result_name"] == "success"]
     score = {home.id: sum(g[1] == home.id for g in goals), away.id: sum(g[1] == away.id for g in goals)}
-    storylines = storyline_rows(match_id, story, plan, goals, pos, frames_ts, cal, total, home.id, away.id)
+    storylines = storyline_rows(match_id, story, plan, goals, pos, frames_ts, cal, total, home.id, away.id, periods[0])
     match = (match_id, seed, home.id, away.id, venues[home.id], periods[0], periods[1], fps,
              score[home.id], score[away.id], GENERATOR_VERSION)
     owners = [ents[o] if o >= 0 else None for o in owner]
@@ -122,7 +122,7 @@ def simulate(match_no, seed, league, cal, comeback, minutes=None):
                 owners=owners, ts=frames_ts, storylines=storylines)
 
 
-def storyline_rows(match_id, story, plan, goals, pos, ts, cal, total, home_id, away_id):
+def storyline_rows(match_id, story, plan, goals, pos, ts, cal, total, home_id, away_id, period1_s):
     rows = []
 
     def add(kind, t0, t1, team=None, player=None, **params):
@@ -143,6 +143,7 @@ def storyline_rows(match_id, story, plan, goals, pos, ts, cal, total, home_id, a
         fps = round(1 / (ts[1] - ts[0]))
         p = pos[:, sp["idx"] + 1, :2].astype(float)
         speed = np.r_[0, np.hypot(*np.diff(p, axis=0).T) * fps * 3.6]
+        speed[np.searchsorted(ts, period1_s)] = 0  # players are moved at the 2nd-half restart
         win = (ts >= sp["ts0"] - 1) & (ts <= sp["ts1"] + 2)
         above = win & (speed > thr)
         if above.any():
@@ -159,7 +160,7 @@ def storyline_rows(match_id, story, plan, goals, pos, ts, cal, total, home_id, a
             behind_since[other] = t
         if diff[team] >= 0 and team in behind_since:
             add("comeback", behind_since.pop(team), t, team, planned=plan["comeback"],
-                score_after=f"{diff[team] - diff[other]:+d}")
+                score_after=f"{diff[team]:+d}")
     return rows
 
 
@@ -177,7 +178,7 @@ def write(conn, league, results):
         conn.executemany("INSERT INTO tracking_entities VALUES (?,?,?)",
                          [(mid, k, e) for k, e in enumerate(r["entities"])])
         conn.executemany("INSERT INTO tracking_frames VALUES (?,?,?,?,?)",
-                         ((mid, f, round(float(r["ts"][f]), 1), r["owners"][f], r["pos"][f].tobytes())
+                         ((mid, f, round(float(r["ts"][f]), 1), r["owners"][f], r["pos"][f].astype("<f4").tobytes())
                           for f in range(len(r["ts"]))))
         conn.executemany("INSERT INTO storylines VALUES (?,?,?,?,?,?,?,?)", r["storylines"])
     conn.commit()

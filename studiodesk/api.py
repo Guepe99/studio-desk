@@ -1,7 +1,9 @@
 """HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
 import mimetypes
 import os
+import re
 import secrets
+from stat import S_ISREG
 import time
 from pathlib import Path
 
@@ -18,8 +20,18 @@ ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.open
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
-app = FastAPI(title="Studio Desk", version=__version__)
+# No /docs or /openapi.json in public: they would advertise the admin route and its header.
+app = FastAPI(title="Studio Desk", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+                    "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": "frame-ancestors 'none'"}
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.update(SECURITY_HEADERS)
+    return response
 _credential = None
 
 
@@ -39,7 +51,7 @@ def health():
 @app.post("/api/admin/model-ping")
 def model_ping(x_admin_token: str = Header(default="")):
     # Paid call: only the operator may trigger it, never a visitor.
-    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token, ADMIN_TOKEN):
+    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token.encode(), ADMIN_TOKEN.encode()):
         raise HTTPException(403, "forbidden")
     if not ENDPOINT:
         raise HTTPException(503, "model endpoint not configured")
@@ -63,17 +75,29 @@ def model_ping(x_admin_token: str = Header(default="")):
             "token_ms": round((t1 - t0) * 1000), "model_ms": round((t2 - t1) * 1000)}
 
 
+def accepts_gzip(header: str) -> bool:
+    for part in header.split(","):
+        name, _, params = part.partition(";")
+        if name.strip().lower() == "gzip":
+            return not re.fullmatch(r"\s*q\s*=\s*0(\.0*)?\s*", params)
+    return False
+
+
 class PrecompressedStatic(StaticFiles):
     """Serves <file>.gz when the build left one: gzipping 25 MB of tracking per visit is too slow."""
 
     async def get_response(self, path, scope):
-        accepts = b"gzip" in dict(scope["headers"]).get(b"accept-encoding", b"")
-        gz = Path(self.directory) / f"{path}.gz"
-        if accepts and gz.is_file():
-            return FileResponse(gz, media_type=mimetypes.guess_type(path)[0] or "application/octet-stream",
-                                headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
-        return await super().get_response(path, scope)
-
+        headers = {"Vary": "Accept-Encoding"}
+        if scope["method"] in ("GET", "HEAD") and accepts_gzip(dict(scope["headers"]).get(b"accept-encoding", b"").decode("latin-1")):
+            gz, stat = self.lookup_path(f"{path}.gz")  # Starlette's lookup refuses paths outside the directory
+            if stat is not None and S_ISREG(stat.st_mode):
+                r = self.file_response(gz, stat, scope)  # ETag and 304 like any static file
+                r.headers.update(headers | {"Content-Encoding": "gzip",
+                                            "Content-Type": mimetypes.guess_type(path)[0] or "application/octet-stream"})
+                return r
+        r = await super().get_response(path, scope)
+        r.headers.update(headers)
+        return r
 
 if WEB.is_dir():
     app.mount("/", PrecompressedStatic(directory=WEB, html=True), name="web")

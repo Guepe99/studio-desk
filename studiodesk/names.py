@@ -6,9 +6,15 @@ from functools import lru_cache
 from . import config
 
 
+# letters NFKD does not split into base + accent
+_LATIN = str.maketrans({"ø": "o", "æ": "ae", "œ": "oe", "ł": "l", "đ": "d", "ð": "d", "þ": "th", "ı": "i"})
+
+
 def _fold(text: str) -> str:
-    # "Mbappé" must match "Mbappe": compare without accents, case-insensitive.
-    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
+    # "Mbappé", "Ødegaard", "Arsenal’s", "Alexander–Arnold": compare plain lowercase words joined by
+    # one space, so accents, curly apostrophes, dashes and line breaks cannot hide a name.
+    text = unicodedata.normalize("NFKD", text.casefold().translate(_LATIN))
+    return " ".join(re.findall(r"[a-z0-9]+", "".join(c for c in text if not unicodedata.combining(c))))
 
 
 @lru_cache(maxsize=1)

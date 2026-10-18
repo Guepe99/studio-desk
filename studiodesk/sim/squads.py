@@ -18,11 +18,11 @@ FIRST = ["Mateo", "Luca", "Kofi", "Tomasz", "Hiroshi", "Ade", "Santiago", "Emil"
          "Joao", "Pieter", "Moussa", "Ricardo", "Aleks", "Daniel", "Femi", "Hugo", "Sami", "Wei",
          "Bruno", "Leandro", "Malik", "Stefan", "Teodor", "Nuno", "Aziz", "Callum", "Rui", "Jin"]
 LAST = ["Okonkwo", "Varga", "Lindqvist", "Moreau", "Takeda", "Mensah", "Castellanos", "Novak",
-        "Brennan", "Haddad", "Ferreira", "Kowalczyk", "Adeyemi", "Sorensen", "Bianchi", "Diallo",
+        "Brennan", "Haddad", "Vellacott", "Kowalczyk", "Adeyemi", "Sorensen", "Bianchi", "Dunsavel",
         "Ishikawa", "Rojas", "Petrov", "Achterberg", "Nwosu", "Quintero", "Halvorsen", "Benali",
-        "Szabo", "Oyelaran", "Marchetti", "Tavares", "Kimura", "Duarte", "Lundgren", "Asante", "Pavic",
-        "Mbeki", "Carvalho", "Strand", "Galvan", "Keane-Doyle", "Oduya", "Rinaldi", "Sakamoto",
-        "Vasquez", "Holmberg", "Traore", "Lisowski", "Abara", "Fontaine", "Morales", "Ekwueme", "Yilmaz"]
+        "Szabo", "Oyelaran", "Marchetti", "Ombrecht", "Kimura", "Duarte", "Lundgren", "Marravi", "Pavic",
+        "Mbeki", "Quennell", "Strand", "Galvan", "Keane-Doyle", "Oduya", "Rinaldi", "Sakamoto",
+        "Vasquez", "Holmberg", "Tessaro", "Lisowski", "Abara", "Fontaine", "Morales", "Ekwueme", "Yilmaz"]
 SQUAD = ["GK"] * 2 + ["DF"] * 6 + ["MF"] * 6 + ["FW"] * 4  # 18 per club
 SHIRTS = {"GK": [1, 13], "DF": [2, 3, 4, 5, 15, 22], "MF": [6, 8, 10, 14, 16, 18], "FW": [7, 9, 11, 19]}
 

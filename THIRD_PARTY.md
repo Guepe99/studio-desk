@@ -11,3 +11,19 @@
 | Babylon.js 9.29.0 (`babylonjs` and `babylonjs-loaders`, glTF 2 loader) | Apache 2.0 (`web/vendor/babylonjs/9.29.0/license.md`) | https://github.com/BabylonJS/Babylon.js, https://www.npmjs.com/package/babylonjs | Vendored UMD builds for the 3D view `web/sample3d.html` |
 | Quaternius Universal Animation Library [Standard]: Mannequin and four locomotion clips | CC0 1.0 (`web/vendor/quaternius/LICENSE.txt`) | https://quaternius.itch.io/universal-animation-library | `web/vendor/quaternius/mannequin.glb`, stripped and quantised, for the 3D players |
 | Mesa lavapipe (`mesa-vulkan-swrast`, Alpine package) | MIT | https://www.mesa3d.org/ | Test container only (`tests/web/webgl`): software WebGL for the headless screenshots; not shipped |
+
+## Runtime dependencies shipped in the container image
+
+Installed from PyPI at the versions pinned in `pyproject.toml`; not vendored in the repository.
+
+| What | Licence | Source |
+|---|---|---|
+| FastAPI | MIT | https://github.com/fastapi/fastapi |
+| Starlette | BSD 3-Clause | https://github.com/encode/starlette |
+| Uvicorn | BSD 3-Clause | https://github.com/encode/uvicorn |
+| NumPy (wheels bundle OpenBLAS, BSD 3-Clause, and the GCC runtime libraries, GPL 3 with the runtime library exception) | BSD 3-Clause | https://github.com/numpy/numpy |
+| HTTPX | BSD 3-Clause | https://github.com/encode/httpx |
+| Pydantic | MIT | https://github.com/pydantic/pydantic |
+| Azure Identity for Python | MIT | https://github.com/Azure/azure-sdk-for-python |
+| Microsoft Agent Framework (agents extra) | MIT | https://github.com/microsoft/agent-framework |
+| Python 3.12 official image on Debian bookworm (`python:3.12-slim-bookworm`) | PSF licence for Python; Debian packages under their own licences | https://hub.docker.com/_/python |

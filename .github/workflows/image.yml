@@ -1,6 +1,9 @@
 name: image
+# Builds only a main commit whose tests passed (the ci workflow), tagged with that commit's sha.
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 permissions:
@@ -8,9 +11,12 @@ permissions:
   packages: write
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -22,4 +28,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/guepe99/studio-desk:latest
-            ghcr.io/guepe99/studio-desk:${{ github.sha }}
+            ghcr.io/guepe99/studio-desk:${{ github.event.workflow_run.head_sha || github.sha }}

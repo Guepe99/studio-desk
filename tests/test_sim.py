@@ -44,7 +44,7 @@ def test_frame_count(built):
     _, conn = built
     for m in conn.execute("SELECT * FROM matches"):
         n = conn.execute("SELECT COUNT(*) FROM tracking_frames WHERE match_id=?", (m["match_id"],)).fetchone()[0]
-        assert abs(n - round((m["period1_s"] + m["period2_s"]) * m["fps"])) <= 1
+        assert n == round((m["period1_s"] + m["period2_s"]) * m["fps"])
 
 
 def test_speed_and_acceleration_caps(built):
@@ -93,3 +93,24 @@ def test_calibration_format_and_report(built):
         assert set(entry) == {"value", "source"} and entry["source"], name
     text = report(built[0])
     assert "actions_per_team_per_match" in text and "storyline" not in text.lower()
+
+
+def test_sides_switch_at_half_time_and_t_restarts(built):
+    _, conn = built
+    for m in conn.execute("SELECT * FROM matches").fetchall():
+        p1 = m["period1_s"]
+        for period, sign in ((1, 1), (2, -1)):
+            xs = [r[0] for r in conn.execute(
+                "SELECT start_x FROM events WHERE match_id=? AND period=? AND team_id=? AND type_name LIKE 'shot%'",
+                (m["match_id"], period, m["home_team_id"]))]
+            assert all((x - 52.5) * sign > 0 for x in xs), (m["match_id"], period)  # home shoots at 105, then 0
+        for t, ts in conn.execute("SELECT t, ts FROM events WHERE match_id=? AND period=2", (m["match_id"],)):
+            assert abs(t - (ts - p1)) <= 0.011  # t is period-relative
+
+
+def test_ball_has_an_owner_in_open_play(built):
+    _, conn = built
+    for (mid,) in conn.execute("SELECT match_id FROM matches"):
+        owned, total = conn.execute("SELECT COUNT(ball_owner), COUNT(*) FROM tracking_frames WHERE match_id=?",
+                                    (mid,)).fetchone()
+        assert 0.3 < owned / total < 1, mid

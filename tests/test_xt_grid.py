@@ -16,5 +16,6 @@ def test_committed_xt_grid_shape_and_orientation():
     assert c >= 14 and 4 <= r <= 7
     cols = g.mean(axis=0)
     assert cols[-1] > cols[8] > cols[0]
-    # the two touchlines carry similar threat: catches a transposed or scrambled grid
+    # the two touchlines carry similar threat: catches a scrambled grid (not a y flip: the grid is
+    # nearly symmetric, so calibrate.py's row flip is checked only by reading socceraction's code)
     assert np.allclose(g, g[::-1], atol=g.max() * 0.35)

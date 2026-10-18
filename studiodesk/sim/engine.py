@@ -1,7 +1,8 @@
 """Event engine: a possession state machine (possession -> action -> outcome) writing SPADL actions.
 
 The engine runs on in-play time `tg` (seconds of ball in play since kick-off). Dead-ball time is
-inserted afterwards in `timeline()`, so the action count follows the calibration exactly.
+inserted afterwards in `timeline()`; the action count is paced towards the calibration
+(docs/realism.md shows how close it gets).
 Coordinates handed to `emit` are absolute (docs/CONTRACT.md); decisions use the acting team's
 attacking frame, where the team attacks towards x = 105.
 """
