@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-momentum",
+  "version": "1.0.0",
+  "name": "Studio Desk momentum",
+  "description": "Momentum bars per window from kick-off to now (values 0..10), home above and away below a centre line; the latest window is lit. Vendor load() params: v_showFactIds (boolean), v_teams ({home: {short, color}, away: {short, color}}).",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["home", "away", "window", "fact_ids"],
+    "properties": {
+      "home": { "type": "array", "title": "Home momentum", "items": { "type": "number", "minimum": 0, "maximum": 10 }, "default": [4, 6, 5] },
+      "away": { "type": "array", "title": "Away momentum", "items": { "type": "number", "minimum": 0, "maximum": 10 }, "default": [6, 3, 5] },
+      "window": { "type": "integer", "title": "Windows so far", "minimum": 1, "default": 3 },
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+    }
+  },
+  "actionDurations": [
+    { "type": "playAction", "duration": -1 },
+    { "type": "stopAction", "duration": 260 },
+    { "type": "updateAction", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}

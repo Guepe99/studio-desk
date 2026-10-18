@@ -1,0 +1,100 @@
+@font-face { font-family: "Barlow Condensed"; font-weight: 500; font-display: swap;
+  src: url("../vendor/fonts/barlow-condensed/BarlowCondensed-500-latin.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap;
+  src: url("../vendor/fonts/barlow-condensed/BarlowCondensed-700-latin.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 800; font-display: swap;
+  src: url("../vendor/fonts/barlow-condensed/BarlowCondensed-800-latin.woff2") format("woff2"); }
+
+:root {
+  --ink: #0e1a3d;      /* graphic panels */
+  --ink-2: #1a2c60;    /* raised panel, clock */
+  --page: #071027;     /* around the frame */
+  --signal: #2ec4f1;   /* Studio Desk accent */
+  --paper: #ffffff;
+  --muted: #a8b6d8;
+  --font: "Barlow Condensed", "Arial Narrow", sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(120% 80% at 50% 0%, #102056 0%, var(--page) 60%);
+  color: var(--paper);
+  font-family: var(--font);
+  overflow: hidden;
+}
+
+#app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; }
+
+/* The frame is sized by app.js to the largest 16:9 that fits; the 1920x1080 stage is scaled into it. */
+#frame { position: relative; overflow: hidden; background: #1f5e2b; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); border-radius: 6px; flex: none; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+#pitch { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#overlay { position: absolute; inset: 0; pointer-events: none; }
+#status { position: absolute; inset: 0; display: grid; place-items: center; font: 700 56px/1.2 var(--font); text-align: center; padding: 0 200px; }
+#status:empty { display: none; }
+
+/* Score bug: angled ends are the house signature, shared with the graphics */
+#scorebug { position: absolute; left: 56px; top: 40px; height: 66px; display: flex; align-items: stretch;
+  font-family: var(--font); font-weight: 800; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); }
+.sb-team { display: flex; align-items: center; gap: 14px; background: var(--ink); padding: 0 18px; font-size: 42px; letter-spacing: .02em; }
+.sb-home { clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%); padding-left: 26px; }
+.sb-chip { width: 10px; height: 40px; border-radius: 2px; }
+.sb-score { display: flex; align-items: center; gap: 10px; background: var(--paper); color: var(--ink); padding: 0 20px; font-size: 48px; font-variant-numeric: tabular-nums; }
+.sb-sep { width: 12px; height: 4px; background: var(--ink); opacity: .5; }
+.sb-clock { display: flex; align-items: center; gap: 12px; background: var(--ink-2); padding: 0 34px 0 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+.sb-min { font-size: 42px; color: var(--signal); font-variant-numeric: tabular-nums; min-width: 58px; text-align: right; }
+.sb-period { font-size: 26px; font-weight: 700; color: var(--muted); }
+
+/* Controls */
+#controls { display: flex; align-items: center; gap: 10px; flex: none; font-size: 18px; }
+.ctl { font: 700 18px/1 var(--font); color: var(--paper); background: var(--ink); border: 1px solid #2a3c74; border-radius: 4px;
+  height: 36px; padding: 0 12px; cursor: pointer; letter-spacing: .02em; }
+.ctl:hover { background: var(--ink-2); }
+.ctl[aria-pressed="true"] { background: var(--signal); color: var(--ink); border-color: var(--signal); }
+.ctl:focus-visible, select:focus-visible, #seek-range:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.ctl.icon { width: 44px; padding: 0; display: grid; place-items: center; }
+.ctl.icon svg { width: 22px; height: 22px; fill: currentColor; }
+.ctl.icon .i-pause, .ctl.icon.playing .i-play { display: none; }
+.ctl.icon.playing .i-pause { display: inline; }
+.seg { display: flex; }
+.seg .ctl { border-radius: 0; margin-left: -1px; }
+.seg .ctl:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.seg .ctl:last-child { border-radius: 0 4px 4px 0; }
+.readout { font-weight: 700; font-size: 20px; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+select { font: 700 18px/1 var(--font); color: var(--paper); background: var(--ink); border: 1px solid #2a3c74; border-radius: 4px; height: 36px; padding: 0 8px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+#seek { position: relative; flex: 1; min-width: 120px; height: 36px; }
+#seek-marks { position: absolute; left: 8px; right: 8px; top: 0; bottom: 0; pointer-events: none; }
+#seek-marks::before { content: ""; position: absolute; left: 0; right: 0; top: 16px; height: 4px; border-radius: 2px; background: #2a3c74; }
+#seek-marks .fill { position: absolute; left: 0; top: 16px; height: 4px; border-radius: 2px; background: var(--signal); }
+#seek-marks .tick { position: absolute; top: 24px; width: 1px; height: 6px; background: #5b6c9c; }
+#seek-marks .tick.major { height: 10px; background: var(--muted); }
+#seek-marks .half { position: absolute; top: 8px; width: 2px; height: 20px; background: var(--paper); opacity: .7; }
+#seek-marks .goal { position: absolute; top: 4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--paper); }
+#seek-range { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+#seek-range::-webkit-slider-runnable-track { height: 36px; background: transparent; }
+#seek-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: 10px; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 3px var(--signal); }
+#seek-range::-moz-range-track { height: 36px; background: transparent; }
+#seek-range::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 3px var(--signal); }
+
+/* Phone in landscape: tighter controls, the frame gets the height */
+@media (max-height: 500px) {
+  #app { gap: 6px; padding: 6px 16px; }
+  #controls { gap: 6px; }
+  .ctl, select { height: 30px; font-size: 15px; padding: 0 8px; }
+  .ctl.icon { width: 36px; }
+  .readout { font-size: 16px; min-width: 32px; }
+  #seek { height: 30px; min-width: 80px; }
+  #seek-marks::before, #seek-marks .fill { top: 13px; }
+  #seek-marks .tick { top: 20px; }
+  #seek-marks .goal { top: 1px; }
+  #seek-range::-webkit-slider-runnable-track { height: 30px; }
+  #seek-range::-webkit-slider-thumb { margin-top: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-pass-shot",
+  "version": "1.0.0",
+  "name": "Studio Desk pass / shot",
+  "description": "Lower third for a pass (length and quality) or a shot (speed). quality is display text (\"Difficulty 8.1/10\", \"Goal\", \"No goal\"); a number 0..1 is drawn as a bar; null hides the row. Vendor load() params: v_showFactIds (boolean), v_players ({player_id: {name, shirt, team_name, color, text}}) for the player's name and shirt.",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["mode", "player_id", "value", "unit", "fact_ids"],
+    "properties": {
+      "mode": { "type": "string", "title": "Mode", "enum": ["pass", "shot"], "default": "shot" },
+      "player_id": { "type": "string", "title": "Player id", "pattern": "^T[0-9]{2}-[0-9]+$" },
+      "value": { "type": "number", "title": "Value", "default": 104.2 },
+      "unit": { "type": "string", "title": "Unit", "default": "km/h" },
+      "quality": { "type": ["string", "number", "null"], "title": "Quality", "description": "Display text, e.g. \"Difficulty 8.1/10\", \"Goal\", \"No goal\". A number (0..1) is drawn as a bar.", "default": "Goal" },
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+    }
+  },
+  "actionDurations": [
+    { "type": "playAction", "duration": 1120 },
+    { "type": "stopAction", "duration": 260 },
+    { "type": "updateAction", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}

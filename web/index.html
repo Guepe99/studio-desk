@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio Desk</title>
+  <meta name="description" content="The AI production desk of a football broadcast, on a synthetic match.">
+  <link rel="preload" href="vendor/fonts/barlow-condensed/BarlowCondensed-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/broadcast.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <main id="app">
+    <div id="frame" aria-label="Match broadcast">
+      <div id="stage">
+        <canvas id="pitch"></canvas>
+        <div id="scorebug" aria-live="off">
+          <div class="sb-team sb-home"><span class="sb-chip"></span><span class="sb-name"></span></div>
+          <div class="sb-score"><span class="sb-h">0</span><span class="sb-sep"></span><span class="sb-a">0</span></div>
+          <div class="sb-team sb-away"><span class="sb-name"></span><span class="sb-chip"></span></div>
+          <div class="sb-clock"><span class="sb-min"></span><span class="sb-period"></span></div>
+        </div>
+        <div id="overlay"></div>
+        <div id="status" role="status"></div>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M7 4.5v15l12-7.5z"/><path class="i-pause" d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
+      </button>
+      <div id="seek">
+        <div id="seek-marks" aria-hidden="true"></div>
+        <input id="seek-range" type="range" min="0" max="1" step="0.1" value="0" aria-label="Match time" data-i18n-aria="seek">
+      </div>
+      <span id="time" class="readout">0'</span>
+      <div class="seg" role="group" aria-label="Playback speed" data-i18n-aria="speed">
+        <button class="ctl" type="button" data-speed="1" aria-pressed="true">1x</button>
+        <button class="ctl" type="button" data-speed="4">4x</button>
+        <button class="ctl" type="button" data-speed="16">16x</button>
+        <button class="ctl" type="button" data-speed="64">64x</button>
+      </div>
+      <button id="half2" class="ctl" type="button" data-i18n="half2">2nd half</button>
+      <div class="seg" role="group" aria-label="Audience" data-i18n-aria="audience">
+        <button class="ctl" type="button" data-audience="analyst" aria-pressed="true" data-i18n="analyst">Analyst</button>
+        <button class="ctl" type="button" data-audience="casual" data-i18n="casual">Casual fan</button>
+      </div>
+      <label class="lang"><span class="sr" data-i18n="language">Language</span>
+        <select id="lang"><option value="en">EN</option></select>
+      </label>
+    </div>
+  </main>
+</body>
+</html>

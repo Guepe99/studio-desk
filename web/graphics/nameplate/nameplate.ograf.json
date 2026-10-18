@@ -1,0 +1,47 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-nameplate",
+  "version": "1.0.0",
+  "name": "Studio Desk nameplate",
+  "description": "A tag attached to a player on the pitch with name, team and speed. The renderer sends the player's position every frame through the custom action 'position'. Vendor load() params: v_showFactIds (boolean), v_players ({player_id: {color, text}}) for the shirt block colours.",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["player_id", "name", "shirt", "team_short", "speed_kmh", "fact_id"],
+    "properties": {
+      "player_id": { "type": "string", "title": "Player id", "pattern": "^T[0-9]{2}-[0-9]+$", "hidden": true },
+      "name": { "type": "string", "title": "Name", "default": "Player Name" },
+      "shirt": { "type": "integer", "title": "Shirt", "minimum": 0, "default": 10 },
+      "team_short": { "type": "string", "title": "Team", "default": "HOM" },
+      "speed_kmh": { "type": "number", "title": "Speed (km/h)", "minimum": 0, "default": 33.5 },
+      "fact_id": { "type": "string", "title": "Fact id", "hidden": true }
+    }
+  },
+  "customActions": [
+    {
+      "id": "position",
+      "name": "Position",
+      "description": "Moves the tag to the player's position, in renderer pixels. Called by the renderer every frame; visible false hides the tag (player off the pitch).",
+      "schema": {
+        "type": "object",
+        "required": ["x", "y"],
+        "properties": {
+          "x": { "type": "number", "title": "X (px)" },
+          "y": { "type": "number", "title": "Y (px)" },
+          "visible": { "type": "boolean", "title": "Visible", "default": true }
+        }
+      }
+    }
+  ],
+  "actionDurations": [
+    { "type": "playAction", "duration": 760 },
+    { "type": "stopAction", "duration": 250 },
+    { "type": "updateAction", "duration": 0 },
+    { "type": "customAction", "customActionId": "position", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}

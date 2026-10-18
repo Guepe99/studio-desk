@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-why-card",
+  "version": "1.0.0",
+  "name": "Studio Desk why it matters / recap",
+  "description": "A card with a title and up to five lines of body text: 'why it matters' after a key moment, or a recap at half-time and full time. Vendor load() params: v_showFactIds (boolean).",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["kind", "title", "body", "fact_ids"],
+    "properties": {
+      "kind": { "type": "string", "title": "Kind", "enum": ["why", "recap"], "default": "why" },
+      "title": { "type": "string", "title": "Title", "default": "The run that made it" },
+      "body": { "type": "string", "title": "Body", "gddType": "multi-line", "default": "A sprint at 33.8 km/h opened the defence." },
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+    }
+  },
+  "actionDurations": [
+    { "type": "playAction", "duration": 840 },
+    { "type": "stopAction", "duration": 260 },
+    { "type": "updateAction", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}
