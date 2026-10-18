@@ -4,11 +4,16 @@
 const B = window.BABYLON;
 
 export const PROFILES = {
-  // laptop or desktop with WebGL 2: sun shadows from cascaded maps, MSAA, sharpen and bloom
-  high: { name: "high", shadows: "csm", shadowMap: 1024, msaa: 4, fxaa: false, sharpen: true, bloom: true,
+  // laptop or desktop with WebGL 2: three shadow cascades fitted to the view, MSAA, sharpen, bloom,
+  // depth of field on tight replays, SSAO2 at half resolution (docs/broadcast3d.md)
+  high: { name: "high", shadows: "csm", shadowMap: 1024, cascades: 3, autoDepthBounds: true, shadowQuality: "medium",
+    msaa: 4, fxaa: false, sharpen: true, bloom: true, bloomScale: 0.5, dof: true, ssao: true,
     maxWidth: 1920, detailScales: 2, crowd: 1, aniso: 8 },
-  // phone, WebGL 1 or a software renderer: blob shadows, FXAA, one grass detail scale, sparser crowd
-  low: { name: "low", shadows: "blob", shadowMap: 0, msaa: 1, fxaa: true, sharpen: false, bloom: false,
+  // phone, WebGL 1 or a software renderer: blob shadows (two cascades on a WebGL 2 phone, see
+  // pickProfile), FXAA, bloom at half the high profile's scale, no depth of field or SSAO, one
+  // grass detail scale, sparser crowd
+  low: { name: "low", shadows: "blob", shadowMap: 0, cascades: 2, autoDepthBounds: false, shadowQuality: "low",
+    msaa: 1, fxaa: true, sharpen: true, bloom: true, bloomScale: 0.25, dof: false, ssao: false,
     maxWidth: 1100, detailScales: 1, crowd: 0.3, aniso: 4 },
 };
 
@@ -17,7 +22,10 @@ export function pickProfile(env, param) {
   if (param === "low" || param === "high") return { ...PROFILES[param], forced: true };
   const phone = env.coarsePointer && env.shortSide < 820;
   const high = env.webGLVersion >= 2 && env.maxMSAA >= 4 && !phone;
-  return { ...PROFILES[high ? "high" : "low"], forced: false };
+  if (high) return { ...PROFILES.high, forced: false };
+  // a phone with WebGL 2 still gets a real shadow map: two cascades of 1024 px
+  if (env.webGLVersion >= 2) return { ...PROFILES.low, shadows: "csm", shadowMap: 1024, forced: false };
+  return { ...PROFILES.low, forced: false };
 }
 
 export function detectEnv(engine) {
@@ -40,7 +48,7 @@ export function startOptimizer(scene, hooks) {
     opts.addOptimization(o);
   };
   step(0, () => hooks.scaleBy(1.25), "render scale x1.25");
-  step(1, () => hooks.dropPost(), "MSAA, sharpen and bloom off");
+  step(1, () => hooks.dropPost(), "MSAA, sharpen, bloom, depth of field and SSAO off");
   step(2, () => hooks.dropShadows(), "sun shadows to blob shadows");
   step(3, () => hooks.scaleBy(1.25), "render scale x1.25 again");
   const optimizer = new B.SceneOptimizer(scene, opts, false, false);

@@ -109,7 +109,7 @@ try {
       env: !!sc.environmentTexture && sc.environmentTexture.isReady(),
       envIntensity: sc.environmentIntensity,
       toneMapping: sc.imageProcessingConfiguration.toneMappingType,
-      casters, blobs: s.shadows?.isVisible ?? false,
+      casters, blobs: s.grounding?.contact.isVisible ?? false,
       profiles: [pickProfile(env(2, 4, false, 1080)).name, pickProfile(env(1, 1, false, 1080)).name,
         pickProfile(env(2, 4, true, 390)).name, pickProfile(env(1, 1, false, 1080), "high").name],
       highHasMore: PROFILES.high.shadowMap > 0 && PROFILES.low.shadowMap === 0,
@@ -122,7 +122,8 @@ try {
   if (!look.debug.ibl || !look.env || !(look.envIntensity > 0)) fail("no image-based light");
   if (look.toneMapping !== 2) fail(`tone mapping ${look.toneMapping}, expected KHR PBR Neutral (2)`);
   if (look.debug.profile === "high" && (look.debug.shadows !== "csm" || look.casters < 20)) fail(`high profile without sun shadows: ${look.casters} casters`);
-  if (look.debug.profile === "low" && (look.debug.shadows !== "blob" || !look.blobs)) fail("low profile without blob shadows");
+  if (!look.blobs) fail("no contact shadows under the players");
+  if (look.debug.profile === "low" && look.debug.shadows !== "blob") fail("low profile without blob shadows");
   if (look.profiles.join() !== "high,low,low,high" || !look.highHasMore) fail(`profile picker: ${look.profiles}`);
   if (look.seats.n < 500 || !look.seats.inside || look.seats.top > 17) fail(`seat grid: ${JSON.stringify(look.seats)}`);
   // the tackle's slide is cut short by the header 0.8 s later; saves are keeper3d's, not an action
@@ -134,21 +135,34 @@ try {
   // broadcast camera: fixed on the halfway line 18 m up, the ball always in the middle 90% of the
   // frame through the live stretch, except the close shot of the scorer after the goal (centred
   // on him), then the replay camera after the cut
+  // Broadcast rules (docs/broadcast3d.md): camera 1 on the halfway line 30 to 40 m back from the
+  // near touchline, 12 to 16 degrees down to the centre spot and along its median line of sight; a
+  // long lens (19 to 34 degrees across, 24 to 42 m of pitch at the aim); the tight shot of the
+  // scorer from camera 2 on the same platform, over 50 m away; cuts only at a stoppage (within 8 s
+  // after a goal).
   const tv = await page.evaluate(async (cut) => {
-    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [] };
+    const s = window.sample3d, sc = s.scene, out = { worst: 0, moved: false, cams: new Set(), celebration: [], tight: [], hfov: [], width: [], pitch: [], cuts: [] };
     const ndc = (cam, v) => window.BABYLON.Vector3.TransformCoordinates(v, cam.getViewMatrix().multiply(cam.getProjectionMatrix()));
-    let first = null;
+    let first = null, last = null;
     for (let c = 0; c < cut; c += 0.2) {
-      await window.__setTime(c);
+      const { ts } = await window.__setTime(c);
       sc.engine._gl.readPixels(0, 0, 1, 1, 6408, 5121, new Uint8Array(4));   // let a software GPU keep up
       const cam = sc.scene.activeCamera;
+      if (last !== null && cam.name !== last) out.cuts.push({ ts, to: cam.name });
+      last = cam.name;
       if (sc.debug.camera === "celebration") {
         const g = sc.cams.goals.find((x) => s.tl.at(c).ts >= x.ts);
         const p = sc.players.find((q) => q.i === g.i).holder.position;
         const q = ndc(cam, p.add(new window.BABYLON.Vector3(0, 1.2, 0)));
         out.celebration.push(+Math.hypot(q.x, q.y).toFixed(2));
+        out.tight.push(+window.BABYLON.Vector3.Distance(cam.position, p).toFixed(1));
         continue;
       }
+      const hfov = 2 * Math.atan(Math.tan(cam.fov / 2) * sc.engine.getAspectRatio(cam));
+      const aim = cam.getTarget(), dist = window.BABYLON.Vector3.Distance(cam.position, aim);
+      out.hfov.push(hfov * 180 / Math.PI);
+      out.width.push(2 * dist * Math.tan(hfov / 2));
+      out.pitch.push(Math.asin((cam.position.y - aim.y) / dist) * 180 / Math.PI);
       out.cams.add(cam.name);
       if (Math.abs(cam.position.x) > 1e-6 || Math.abs(cam.position.y - 18) > 1e-6 || Math.abs(cam.position.z + 68) > 1e-6) out.pos = cam.position.asArray();
       const p = ndc(cam, sc.ball.getAbsolutePosition());
@@ -167,6 +181,68 @@ try {
   if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on the gantry: ${JSON.stringify(tv)}`);
   if (!(tv.worst < 0.9) || !tv.moved) fail(`broadcast camera loses the ball or never pans: ${JSON.stringify(tv)}`);
   if (tv.replay === "tv" || !/^replay/.test(tv.after)) fail(`no replay camera after the cut: ${JSON.stringify(tv)}`);
+  const med = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
+  const spot = Math.atan2(18, 68) * 180 / Math.PI;   // the gantry is fixed at (0, 18, -68), checked above
+  const lens = { hfov: [Math.min(...tv.hfov), Math.max(...tv.hfov)].map((v) => +v.toFixed(1)), width: [Math.min(...tv.width), Math.max(...tv.width)].map((v) => +v.toFixed(1)),
+    pitch: +med(tv.pitch).toFixed(1), tight: tv.tight.length ? Math.min(...tv.tight) : 0 };
+  const goalTs = await page.evaluate(() => window.sample3d.match.goals.map((g) => g.ts));
+  const before = await at(cut - 0.01);
+  const cuts = [...tv.cuts, { ts: before.ts, to: "replay" }];
+  const atStop = (ts) => goalTs.some((g) => ts >= g && ts <= g + 8);
+  console.log(`broadcast rules: centre spot ${spot.toFixed(1)} deg down, median line of sight ${lens.pitch} deg, lens ${lens.hfov} deg across, ${lens.width} m of pitch at the aim, tight shot from ${lens.tight} m, cuts at ${cuts.map((x) => `${x.ts.toFixed(1)}->${x.to}`)}`);
+  if (spot < 12 || spot > 16 || lens.pitch < 12 || lens.pitch > 16) fail(`camera 1 not 12 to 16 degrees down: ${JSON.stringify(lens)}`);
+  if (lens.hfov[0] < 18 || lens.hfov[1] > 34 || lens.width[0] < 23 || lens.width[1] > 43) fail(`camera 1 not on a long lens: ${JSON.stringify(lens)}`);
+  if (!(lens.tight > 50)) fail(`tight shot not from the camera platform: ${JSON.stringify(lens)}`);
+  if (cuts.some((x) => !atStop(x.ts))) fail(`a cut in live play: ${JSON.stringify(cuts)}, goals at ${goalTs}`);
+
+  // grounding (web/js/scene3d/grounding.js), on the rendered pixels: the grass 0.3 m in front of
+  // each player's feet against the grass 1.2 m to the side of that point (same stripe), median over
+  // the players on screen. On it must be darker, off it must not.
+  const ground = (on) => page.evaluate(async (on) => {
+    const s = window.sample3d, sc = s.scene, B = window.BABYLON;
+    sc.grounding.enabled = on;
+    await window.__setTime(3.96); await window.__setTime(4);
+    const eng = sc.engine, gl = eng._gl, w = eng.getRenderWidth(), h = eng.getRenderHeight();
+    const cam = sc.scene.activeCamera, px = new Uint8Array(4), tm = cam.getTransformationMatrix(), vp = cam.viewport.toGlobal(w, h);
+    const lum = (v) => {
+      const p = B.Vector3.Project(v, B.Matrix.IdentityReadOnly, tm, vp);
+      if (p.x < 2 || p.y < 2 || p.x > w - 3 || p.y > h - 3 || p.z < 0 || p.z > 1) return null;
+      gl.readPixels(Math.round(p.x), Math.round(h - p.y), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      return 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
+    };
+    const r = [];
+    for (const p of sc.players) {
+      if (!p.holder.isEnabled()) continue;
+      const q = p.holder.position, a = lum(new B.Vector3(q.x, 0, q.z - 0.3)), b = lum(new B.Vector3(q.x + 1.2, 0, q.z - 0.3));
+      if (a !== null && b) r.push(a / b);
+    }
+    sc.grounding.enabled = true;
+    r.sort((x, y) => x - y);
+    return { n: r.length, median: +r[r.length >> 1].toFixed(3) };
+  }, on);
+  const grOn = await ground(true), grOff = await ground(false);
+  console.log(`grounding: grass in front of the feet at ${grOn.median} of the grass beside it (${grOff.median} without), ${grOn.n} players`);
+  if (!(grOn.n >= 8 && grOn.median < 0.9)) fail(`no darkening under the feet: ${JSON.stringify(grOn)}`);
+  if (grOff.median < 0.9) fail(`grounding check passes without grounding: ${JSON.stringify(grOff)}`);
+
+  // the colour grade's lookup table layout (web/js/scene3d/post.js): an identity table must leave
+  // the frame as it is without grading, and the broadcast table must change it
+  const lut = await page.evaluate(async () => {
+    const s = window.sample3d, sc = s.scene, { lutTexture, setGrade } = await import("./js/scene3d/post.js");
+    const cfg = sc.post.pipe.imageProcessing.imageProcessingConfiguration;
+    const gl = sc.engine._gl, w = sc.engine.getRenderWidth(), h = sc.engine.getRenderHeight();
+    const id = lutTexture(sc.scene, (r, g, b) => [r, g, b]);
+    await new Promise((ok) => id.isReady() ? ok() : id.onLoadObservable.addOnce(ok));
+    const grab = async () => { await window.__setTime(3.96); await window.__setTime(4); const px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+    const diff = (a, b) => { let d = 0, n = 0; for (let k = 0; k < a.length; k += 4 * 97) { for (let c = 0; c < 3; c++) d += Math.abs(a[k + c] - b[k + c]); n += 3; } return d / n; };
+    setGrade(cfg, id); const ident = await grab();
+    setGrade(cfg, null); const plain = await grab();
+    setGrade(cfg, sc.post.lut); const graded = await grab();
+    id.dispose();
+    return { identity: +diff(ident, plain).toFixed(2), graded: +diff(graded, plain).toFixed(2) };
+  });
+  console.log(`colour grade: identity table off by ${lut.identity}/255, broadcast grade ${lut.graded}/255 from the ungraded frame`);
+  if (!(lut.identity < 1.5) || !(lut.graded > 2)) fail(`lookup table layout wrong: ${JSON.stringify(lut)}`);
 
   // awareness (web/js/awareness.js, awareness-rig.js), measured on the rendered bones. Each check
   // runs with the layer on and off: on must pass, and off must fail, or the check measures nothing.

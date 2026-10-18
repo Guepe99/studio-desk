@@ -1,5 +1,6 @@
 // 3D broadcast scene (Babylon.js 9, global BABYLON from web/vendor/babylonjs/).
-// A daylight stadium lit by a stadium HDRI and one sun, the broadcast camera of camera.js,
+// An evening match under floodlights (?light=day: the daylight stadium), the broadcast cameras of
+// camera.js, the graded post chain of post.js, contact shadows of grounding.js,
 // footballers on the Quaternius skeleton (players3d.js) driven by tracking.f32 with locomotion
 // and event-driven actions.
 // The parts live in web/js/scene3d/; docs/scene3d-research.md explains the choices.
@@ -8,7 +9,8 @@
 // World axes: X = contract x - 52.5 (along the pitch), Z = contract y - 34 (across), Y up.
 // The TV camera stands on the y < 0 side, so x grows to the right as on the 2D pitch.
 import { pickProfile, detectEnv, startOptimizer } from "./scene3d/quality.js";
-import { setupLighting, pbr } from "./scene3d/lighting.js";
+import { setupLighting, lightMode, pbr } from "./scene3d/lighting.js";
+import { Grounding } from "./scene3d/grounding.js";
 import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
@@ -63,14 +65,13 @@ export class Scene3D {
     this.entities = entities;
     const engine = this.engine = new B.Engine(canvas, true, { preserveDrawingBuffer: capture, stencil: false, powerPreference: "high-performance" }, true);
     const scene = this.scene = new B.Scene(engine);
-    scene.clearColor = new B.Color4(0.55, 0.65, 0.8, 1);
     scene.skipPointerMovePicking = true;
     scene.constantlyUpdateMeshUnderPointer = false;
     const params = new URLSearchParams(location.search);
     this.profile = pickProfile(detectEnv(engine), params.get("quality"));
     this.scale = 1;   // extra render scaling from the optimizer
 
-    this.light = setupLighting(scene, this.profile);
+    this.light = setupLighting(scene, this.profile, lightMode(params.get("light")));
     this.cams = new Cameras(scene, match, goalEnd);
     if (REPLAY_ANGLES.includes(params.get("replay"))) this.cams.replayAngle = params.get("replay");
     this.tv = this.cams.tv;
@@ -81,7 +82,7 @@ export class Scene3D {
     this._ball();
     this.post = setupPost(scene, this.cams.list, this.profile);
     // for the tests: what the frame is made of
-    this.debug = { profile: this.profile.name, ibl: !!scene.environmentTexture, shadows: this.profile.shadows, camera: "broadcast" };
+    this.debug = { profile: this.profile.name, ibl: !!scene.environmentTexture, shadows: this.profile.shadows, camera: "broadcast", light: this.light.mode };
 
     this.resize();
     if (!capture) {
@@ -102,12 +103,11 @@ export class Scene3D {
     this.engine.resize();
   }
 
-  // Blob shadows under players and ball: the low profile, or after the optimizer drops the sun's.
+  // After the optimizer drops the shadow map: grounding.js reads the lights again every frame and
+  // draws blob shadows for all of them.
   _useBlobs(on) {
     this.blobs = on;
     this.debug.shadows = on ? "blob" : "csm";
-    this.ballShadow.isVisible = on;
-    if (this.shadows) this.shadows.isVisible = on;
   }
 
   _goals() {
@@ -165,8 +165,7 @@ export class Scene3D {
     this.ball.rotationQuaternion = B.Quaternion.Identity();
     this.light.addCaster(this.ball);
     this.ballShadow = B.MeshBuilder.CreateGround("ballShadow", { width: BALL_R * 3, height: BALL_R * 3 }, scene);
-    this.ballShadow.material = this._blobMat("ballShadowMat");
-    this.ballShadow.isVisible = this.profile.shadows === "blob";
+    this.ballShadow.material = this._blobMat("ballShadowMat");   // contact shadow, every profile
   }
 
   // soft round contact shadow, darker in the middle (the sun is high, so it stays under the body)
@@ -238,13 +237,8 @@ export class Scene3D {
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
     scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) applyUpper(p); });
 
-    // blob shadows, one thin-instanced plane for all players (low profile)
-    const sh = this.shadows = B.MeshBuilder.CreateGround("shadows", { width: 1.5, height: 1.5 }, scene);
-    sh.material = this._blobMat("shadowMat");
-    sh.alwaysSelectAsActiveMesh = true;
-    sh.isVisible = this.profile.shadows === "blob";
-    this.shadowBuf = new Float32Array(16 * this.players.length);
-    sh.thinInstanceSetBuffer("matrix", this.shadowBuf, 16, false);
+    // contact darkening under every player, and blob shadows for the lights without a shadow map
+    this.grounding = new Grounding(scene, this.players.length, this.light);
   }
 
   // --- per frame
@@ -263,10 +257,11 @@ export class Scene3D {
     this.ball.setEnabled(!!b);
     this.ballShadow.setEnabled(!!b);
 
-    const m = new B.Matrix();
+    const gr = this.grounding;
+    gr.frame();
     this.players.forEach((p, k) => {
       const now = match.at(p.i, ts);
-      if (!now) { p.holder.setEnabled(false); B.Matrix.ScalingToRef(0, 0, 0, m); m.copyToArray(this.shadowBuf, k * 16); return; }
+      if (!now) { p.holder.setEnabled(false); gr.set(k, 0, 0, false); return; }
       p.holder.setEnabled(true);
       // shown position: tracking plus the drivers' offsets (the ball rig puts the foot on the ball)
       const r = resolve(this.drivers, p.i, ts);
@@ -304,12 +299,12 @@ export class Scene3D {
       const yw = p.holder.rotation.y;
       if (v > 0.2) r.runL = [(-vx * Math.cos(yw) + vy * Math.sin(yw)) / v, (vx * Math.sin(yw) + vy * Math.cos(yw)) / v];
       animatePlayer(p, v, dt, r, this.motion);
-      B.Matrix.TranslationToRef(p.holder.position.x, 0.02, p.holder.position.z, m);
-      m.copyToArray(this.shadowBuf, k * 16);
+      gr.set(k, p.holder.position.x, p.holder.position.z, true);
     });
-    this.shadows.thinInstanceBufferUpdated("matrix");
+    gr.commit();
 
     this.cams.update(view, ts, dt);
+    this.post.update(this.cams);
     this.debug.camera = this.cams.mode;
   }
 
