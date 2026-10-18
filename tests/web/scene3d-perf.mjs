@@ -25,12 +25,33 @@ try {
     return n / ((performance.now() - t0) / 1000);
   });
   console.log(`profile ${await page.evaluate(() => JSON.stringify(window.sample3d.scene.debug))}`);
+  const split = () => page.evaluate(async () => {
+    const s = window.sample3d, sc = s.scene, out = { update: 0, render: 0, sync: 0, engineFrame: 0 };
+    for (let n = 0; n < 15; n++) {
+      const v = s.tl.at(4 + n * 0.04);
+      let t = performance.now(); sc.update(v, 0.04); out.update += performance.now() - t;
+      t = performance.now(); sc.render(); sc.engine.getGlInfo && sc.engine._gl.finish(); out.render += performance.now() - t;
+      t = performance.now(); s.host.sync(v.ts, false); await Promise.all([...s.host.live.values()].map((i) => i.chain)); out.sync += performance.now() - t;
+    }
+    for (const k in out) out[k] = +(out[k] / 15).toFixed(1);
+    const e = sc.engine;
+    out.effects = Object.keys(e._compiledEffects ?? {}).length;
+    out.active = sc.scene.getActiveMeshes().length;
+    out.meshes = sc.scene.meshes.length;
+    out.anims = sc.scene._activeAnimatables?.length;
+    out.observers = sc.scene.onAfterAnimationsObservable.observers.length + "/" + sc.scene.onBeforeRenderObservable.observers.length;
+    return out;
+  });
+  console.log(`ms per frame ${JSON.stringify(await split())}`);
   console.log(`all on: ${(await fps()).toFixed(2)} fps`);
+  console.log(`ms per frame ${JSON.stringify(await split())}`);
   const steps = [
+    ["all on, again", () => {}],
+    ["all on, third time", () => {}],
     ["sun shadows off", (s) => s.light.dropShadows()],
     ["crowd off", (s) => s.scene.meshes.filter((m) => /^crowd/.test(m.name)).forEach((m) => m.setEnabled(false))],
     ["post effects to minimum", (s) => s.post.drop()],
-    ["post pipeline off", (s) => s.post.pipe.dispose()],
+    ["post pipeline off", (s) => { s.post.pipe?.dispose(); s.post.fxaa?.forEach((f) => f.dispose()); }],
     ["stands off", (s) => s.scene.meshes.filter((m) => /^(tier|w|rf|bd|mast|lampHead)/.test(m.name)).forEach((m) => m.setEnabled(false))],
   ];
   for (const [name, fn] of steps) {

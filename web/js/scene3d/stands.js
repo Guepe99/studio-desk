@@ -44,7 +44,8 @@ export function buildStadium(scene, match, profile, rnd) {
 
   const tiers = [], shells = [], roofs = [];
   const people = [];   // [worldX, worldY, worldZ, rotY]
-  const stand = (len, front, depth, rotY) => {
+  // gantry: the near side, where the broadcast camera sits; no roof or side walls to frame it
+  const stand = (len, front, depth, rotY, gantry = false) => {
     const root = new B.TransformNode("stand", scene);
     root.rotation.y = rotY;
     const rake = Math.atan2(15.5, depth), slope = Math.hypot(15.5, depth);
@@ -55,13 +56,15 @@ export function buildStadium(scene, match, profile, rnd) {
     wall.parent = root; wall.position.set(0, 0.75, front); shells.push(wall);
     const back = B.MeshBuilder.CreateBox("bk", { width: len, height: 27, depth: 1 }, scene);
     back.parent = root; back.position.set(0, 13.5, front + depth + 0.5); shells.push(back);
-    const roof = B.MeshBuilder.CreateBox("rf", { width: len + 1, height: 0.6, depth: depth * 0.8 }, scene);
-    roof.parent = root; roof.position.set(0, 25.5, front + depth * 0.6); roof.rotation.x = -0.06; roofs.push(roof);
-    const fascia = B.MeshBuilder.CreateBox("fa", { width: len + 1, height: 1.6, depth: 0.3 }, scene);
-    fascia.parent = root; fascia.position.set(0, 25.2, front + depth * 0.2); shells.push(fascia);
-    for (const sx of [-1, 1]) {
-      const side = B.MeshBuilder.CreateBox("sd", { width: 0.6, height: 27, depth }, scene);
-      side.parent = root; side.position.set(sx * len / 2, 13.5, front + depth / 2); shells.push(side);
+    if (!gantry) {
+      const roof = B.MeshBuilder.CreateBox("rf", { width: len + 1, height: 0.6, depth: depth * 0.8 }, scene);
+      roof.parent = root; roof.position.set(0, 25.5, front + depth * 0.6); roof.rotation.x = -0.06; roofs.push(roof);
+      const fascia = B.MeshBuilder.CreateBox("fa", { width: len + 1, height: 1.6, depth: 0.3 }, scene);
+      fascia.parent = root; fascia.position.set(0, 25.2, front + depth * 0.2); shells.push(fascia);
+      for (const sx of [-1, 1]) {
+        const side = B.MeshBuilder.CreateBox("sd", { width: 0.6, height: 27, depth }, scene);
+        side.parent = root; side.position.set(sx * len / 2, 13.5, front + depth / 2); shells.push(side);
+      }
     }
     // stand frame -> world: local (x, h, front + d), turned by rotY (rotY 0 faces -Z, the pitch)
     const c = Math.cos(rotY), s = Math.sin(rotY);
@@ -70,8 +73,10 @@ export function buildStadium(scene, match, profile, rnd) {
       people.push([x * c + z * s, h, -x * s + z * c, rotY]);
     }
   };
-  stand(118, HALF_W + 9, 26, 0);            // far side
-  stand(118, HALF_W + 9, 26, Math.PI);      // near side, the main camera's gantry
+  // the side stands run to the back of the end stands, closing the corners
+  const sideLen = 2 * (HALF_L + 9 + 22);
+  stand(sideLen, HALF_W + 9, 26, 0);                // far side
+  stand(sideLen, HALF_W + 9, 26, Math.PI, true);    // near side
   stand(80, HALF_L + 9, 22, Math.PI / 2);   // right end
   stand(80, HALF_L + 9, 22, -Math.PI / 2);  // left end
   const merge = (list, m) => {

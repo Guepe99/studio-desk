@@ -12,7 +12,7 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, resolveRoot } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 
@@ -72,7 +72,6 @@ export class Scene3D {
     this.crowd = buildStadium(scene, match, this.profile, mulberry(5));
     this._ball();
     this.post = setupPost(scene, this.cams.list, this.profile);
-    this.schedule = scheduleActions(match.events, match.goals);
     // for the tests: what the frame is made of
     this.debug = { profile: this.profile.name, ibl: !!scene.environmentTexture, shadows: this.profile.shadows, camera: "broadcast" };
 
@@ -108,7 +107,7 @@ export class Scene3D {
     const white = flatMat(scene, "post", new B.Color3(0.95, 0.95, 0.95), new B.Color3(0.25, 0.25, 0.25));
     const netTex = canvasTexture(scene, "netTex", 128, 128, (g, w, h) => {
       g.clearRect(0, 0, w, h);
-      g.strokeStyle = "rgba(255,255,255,0.9)"; g.lineWidth = 5;
+      g.strokeStyle = "#fff"; g.lineWidth = 3;
       for (let i = 0; i <= 128; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); }
     }, { alpha: true });
     netTex.wrapU = netTex.wrapV = B.Texture.WRAP_ADDRESSMODE;
@@ -118,7 +117,10 @@ export class Scene3D {
     net.transparencyMode = B.Material.MATERIAL_ALPHATEST;
     net.alphaCutOff = 0.3;
     net.backFaceCulling = false;
-    net.emissiveColor = new B.Color3(0.35, 0.35, 0.35);
+    // unlit white: the texture's transparent texels are black and darken lit, filtered cords
+    net.disableLighting = true;
+    net.diffuseColor = new B.Color3(0, 0, 0);
+    net.emissiveColor = new B.Color3(0.82, 0.82, 0.82);
     const GW = 7.32, GH = 2.44, D = 2.2, cell = 0.12 * 4;   // one texture tile = 4 net cells
     const posts = [], nets = [];
     for (const s of [-1, 1]) {
@@ -212,11 +214,14 @@ export class Scene3D {
         m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
         this.light.addCaster(m);
       }
-      const anim = setupAnimations(inst);
+      const anim = setupAnimations(inst, container, `${pid}-`);
       this.rig.addPlayer(i, root);
       this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {} });
     }
-    // the container is not disposed: the clones share its geometry
+    // the container is not disposed: the clones share its geometry and lazy clips come from it
+    this.drivers = [];
+    this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
+    this.addDriver(actionDriver(match, scheduleActions(match.events)));
 
     // blob shadows, one thin-instanced plane for all players (low profile)
     const sh = this.shadows = B.MeshBuilder.CreateGround("shadows", { width: 1.5, height: 1.5 }, scene);
@@ -248,25 +253,24 @@ export class Scene3D {
       const now = match.at(p.i, ts);
       if (!now) { p.holder.setEnabled(false); B.Matrix.ScalingToRef(0, 0, 0, m); m.copyToArray(this.shadowBuf, k * 16); return; }
       p.holder.setEnabled(true);
-      // shown position: tracking plus the ball-handling offset that puts the foot on the ball
-      const at = (t) => { const q = match.at(p.i, t), o = this.rig.pose(p.i, t); return q && o ? [q[0] + o.dx, q[1] + o.dy] : q; };
-      const pose = this.rig.pose(p.i, ts), shown = at(ts);
+      // shown position: tracking plus the drivers' offsets (the ball rig puts the foot on the ball)
+      const r = resolve(this.drivers, p.i, ts);
+      const at = (t) => { const q = match.at(p.i, t); if (!q) return q; const o = offset(this.drivers, p.i, t); return [q[0] + o[0], q[1] + o[1]]; };
+      const shown = [now[0] + r.dx, now[1] + r.dy];
       // velocity over +-0.2 s, which smooths the 10 fps steps of the tracking data
       const a = at(Math.max(0, ts - 0.2)) ?? shown, c = at(Math.min(match.duration, ts + 0.2)) ?? shown;
       const vx = (c[0] - a[0]) / 0.4, vy = (c[1] - a[1]) / 0.4, v = Math.hypot(vx, vy);
       p.holder.position.copyFrom(P(shown[0], shown[1], 0));
-      // face the run; when nearly still, face the ball
+      // face the run (away from it when backpedalling); when nearly still, face the ball
       let want = p.yaw;
-      if (v > 0.7) want = Math.atan2(vx, vy);
+      if (v > 0.7) want = Math.atan2(vx, vy) + (r.mode === "backpedal" ? Math.PI : 0);
       else if (b) want = Math.atan2(b[0] - shown[0], b[1] - shown[1]);
       if (p.yaw === null || dt === 0) p.yaw = want;
       else p.yaw += angleDiff(p.yaw, want) * (1 - Math.exp(-dt * 7));
-      // one place decides facing and legs: run or ball facing, the ball rig around touches,
-      // a full-body action (slide, dive) over both
-      const act = animatePlayer(p, v, ts, dt, this.schedule);
-      const root = resolveRoot(p.yaw, pose, act, shown);
-      p.holder.rotation.y = root.yaw;
-      this.rig.setLeg(p.i, root.leg);
+      // the drivers turn the body over that facing, in priority order (players.js)
+      p.holder.rotation.y = facing(p.yaw, r.turns);
+      this.rig.setLeg(p.i, r.leg);
+      animatePlayer(p, v, dt, r);
       B.Matrix.TranslationToRef(p.holder.position.x, 0.02, p.holder.position.z, m);
       m.copyToArray(this.shadowBuf, k * 16);
     });
@@ -278,13 +282,20 @@ export class Scene3D {
 
   render() { this.scene.render(); }
 
+  // Plug a driver in: {priority, pose(i, ts)}, see web/js/scene3d/players.js. Awareness modules
+  // take priority 10, so the ball rig (20) and the event actions (30) win over them.
+  addDriver(d) {
+    this.drivers.push(d);
+    this.drivers.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+  }
+
   // Screen position, in 1920 x 1080 stage pixels, of a player's feet.
   project(entityIndex, ts) {
     const p = this.match.at(entityIndex, Math.min(ts, this.match.duration));
     if (!p) return { x: 0, y: 0, visible: false };
-    const o = this.rig.pose(entityIndex, Math.min(ts, this.match.duration));
+    const o = offset(this.drivers, entityIndex, Math.min(ts, this.match.duration));
     const cam = this.scene.activeCamera;
-    const world = P(p[0] + (o?.dx ?? 0), p[1] + (o?.dy ?? 0), 0);
+    const world = P(p[0] + o[0], p[1] + o[1], 0);
     const w = this.engine.getRenderWidth(), h = this.engine.getRenderHeight();
     const view = cam.getViewMatrix();
     if (B.Vector3.TransformCoordinates(world, view).z <= 0) return { x: 0, y: 0, visible: false };
