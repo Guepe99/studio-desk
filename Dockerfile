@@ -8,7 +8,7 @@ COPY data/forbidden_names.txt ./data/
 # The demo matches are rebuilt from the seed at image build: no data files in git.
 RUN python -m studiodesk.sim build --matches 4 --seed 7 \
  && python -m studiodesk.facts build --all \
- && for m in M001 M002 M003 M004; do python -m studiodesk.export "$m"; done \
+ && for m in M001 M002 M003 M004; do python -m studiodesk.export "$m" && gzip -k -6 "web/data/$m/tracking.f32"; done \
  && chown -R app /app/data
 USER app
 EXPOSE 8000

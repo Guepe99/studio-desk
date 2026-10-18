@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
@@ -17,7 +18,7 @@ DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 app = FastAPI(title="Studio Desk", version=__version__)
-app.add_middleware(GZipMiddleware, minimum_size=1000)  # tracking.f32 goes from 25 MB to 10 MB
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 _credential = None
 
 
@@ -61,5 +62,17 @@ def model_ping(x_admin_token: str = Header(default="")):
             "token_ms": round((t1 - t0) * 1000), "model_ms": round((t2 - t1) * 1000)}
 
 
+class PrecompressedStatic(StaticFiles):
+    """Serves <file>.gz when the build left one: gzipping 25 MB of tracking per visit is too slow."""
+
+    async def get_response(self, path, scope):
+        accepts = b"gzip" in dict(scope["headers"]).get(b"accept-encoding", b"")
+        gz = Path(self.directory) / f"{path}.gz"
+        if accepts and gz.is_file():
+            return FileResponse(gz, media_type="application/octet-stream",
+                                headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+        return await super().get_response(path, scope)
+
+
 if WEB.is_dir():
-    app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
+    app.mount("/", PrecompressedStatic(directory=WEB, html=True), name="web")
