@@ -187,8 +187,10 @@ export class Scene3D {
 
   async _loadPlayers() {
     const scene = this.scene, match = this.match;
-    // footballers on the mannequin skeleton with the same clips (players3d.js); ?players=mannequin keeps the old look
-    const lib = new URLSearchParams(location.search).get("players") === "mannequin" ? null : await loadFootballer(scene);
+    // cel-shaded anime footballers on the mannequin skeleton with the same clips (players3d.js);
+    // ?players=footballer the earlier realistic body, ?players=mannequin the plain mannequin
+    const look = new URLSearchParams(location.search).get("players");
+    const lib = look === "mannequin" ? null : await loadFootballer(scene, { anime: look !== "footballer" });
     const container = lib?.container ?? await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
     const kits = {};
@@ -219,7 +221,7 @@ export class Scene3D {
       const holder = new B.TransformNode(`player-${pid}`, scene);
       const root = inst.rootNodes[0];
       root.parent = holder;
-      root.scaling.scaleInPlace(scale);
+      root.scaling.scaleInPlace(scale * (inst.height ?? 1));
       if (!lib) {
         const k = kit(team, pl.position === "GK");
         for (const m of root.getChildMeshes()) {
@@ -230,7 +232,7 @@ export class Scene3D {
       for (const m of inst.casters ?? root.getChildMeshes()) this.light.addCaster(m);
       const anim = setupAnimations(inst, container, `${pid}-`);
       this.rig.addPlayer(i, root);
-      this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {} });
+      this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {}, face: inst.face });
     }
     // the container is not disposed: the clones share its geometry and lazy clips come from it
     this.container = container;
@@ -301,6 +303,7 @@ export class Scene3D {
       const yw = p.holder.rotation.y;
       if (v > 0.2) r.runL = [(-vx * Math.cos(yw) + vy * Math.sin(yw)) / v, (vx * Math.sin(yw) + vy * Math.cos(yw)) / v];
       animatePlayer(p, v, dt, r, this.motion);
+      p.face?.(r, v, ts);   // anime faces: expression from the emotion and the speed
       gr.set(k, p.holder.position.x, p.holder.position.z, true);
     });
     gr.commit();

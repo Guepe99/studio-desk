@@ -31,7 +31,7 @@ async function open(browser, look) {
   page.on("console", (m) => { if (m.type() === "error") fail(`console (${look}): ${m.text()}`); });
   page.on("pageerror", (e) => fail(`page error (${look}): ${e.message}`));
   page.on("requestfailed", (r) => fail(`request failed (${look}): ${r.url()}`));
-  await page.goto(new URL(`sample3d.html?match=DEMO&capture=1&view=3d${look === "mannequin" ? "&players=mannequin" : ""}`, base).href);
+  await page.goto(new URL(`sample3d.html?match=DEMO&capture=1&view=3d&players=${look === "mannequin" ? "mannequin" : "footballer"}`, base).href);
   await page.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
   return page;
 }
