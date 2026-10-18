@@ -21,7 +21,7 @@ agents = [
   "azure-monitor-opentelemetry==1.8.11",
   "mcp==1.30.0",  # agent-framework-core 1.22.0 needs mcp<2
 ]
-dev = ["pytest==9.1.1"]
+dev = ["pytest==9.1.1", "mcp==1.30.0"]  # mcp: tests/test_mcp.py, same pin as in agents
 
 [tool.setuptools.packages.find]
 include = ["studiodesk*"]
