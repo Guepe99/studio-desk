@@ -10,6 +10,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { measure } from "./flow3d-measure.mjs";
 
 const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
 const { chromium } = require("playwright");
@@ -214,6 +215,66 @@ try {
   if (lookOk(awOff)) fail(`head check passes without the awareness layer: ${JSON.stringify(awOff)}`);
   if (!emoOk(awOn)) fail(`no reaction to the goal: ${JSON.stringify(awOn)}`);
   if (emoOk(awOff)) fail(`goal check passes without the awareness layer: ${JSON.stringify(awOff)}`);
+
+  // flow and keeper (docs/flow3d.md). The ball is real size; every shot the keeper saves or
+  // concedes in the clip window has a reaction that moves him (and does not with ?keeper off);
+  // the players' paths have no 10 fps velocity steps, the body never snaps round in one frame,
+  // and planted feet at a jog barely slide.
+  const kp = await page.evaluate(async () => {
+    const s = window.sample3d, sc = s.scene, m = s.match, kr = sc.keeper, [a, b] = sc.span;
+    const ev = [...m.events].sort((x, y) => x.ts - y.ts), gk = new Set(m.meta.players.filter((p) => p.position === "GK").map((p) => p.player_id));
+    const shots = ev.filter((e, k) => {
+      if (!/^shot/.test(e.type_name) || e.ts < a || e.ts > b) return false;
+      if (e.result_name === "success" && m.goals.some((g) => Math.abs(g.ts - e.ts) < 0.5)) return true;
+      const n = ev.slice(k + 1).find((x) => x.period === e.period);
+      return n && gk.has(n.player_id) && n.team_id !== e.team_id && n.ts - e.ts <= 3 && n.type_name !== "goalkick";
+    }).map((e) => e.event_id);
+    const moved = async (on) => {
+      kr.enabled = on;
+      const out = [];
+      for (const r of kr.reactions.filter((x) => shots.includes(x.shot))) {
+        const c = r.tc - s.tl.from;
+        await window.__setTime(c - 0.04); await window.__setTime(c);
+        const p = sc.players.find((q) => q.i === r.i), at = m.at(r.i, r.tc);
+        out.push(+Math.hypot(p.holder.position.x + 52.5 - at[0], p.holder.position.z + 34 - at[1], p.holder.position.y).toFixed(2));
+      }
+      kr.enabled = true;
+      return out;
+    };
+    return { ballR: +sc.ball.getBoundingInfo().boundingSphere.radiusWorld.toFixed(3), shots, planned: kr.reactions.map((r) => r.shot),
+      kinds: kr.reactions.map((r) => `${r.kind}${r.real ? "" : " (procedural)"}`), on: await moved(true), off: await moved(false) };
+  });
+  console.log(`ball radius ${kp.ballR} m; keeper: shots on target ${kp.shots}, reactions ${kp.planned} (${kp.kinds}), body off the tracking at contact ${kp.on} m (${kp.off} m without)`);
+  if (Math.abs(kp.ballR - 0.11) > 0.005) fail(`ball radius ${kp.ballR} m, a size 5 ball is 0.11 m`);
+  if (!kp.shots.length || kp.shots.some((id) => !kp.planned.includes(id))) fail(`a shot on target without a keeper reaction: ${JSON.stringify(kp)}`);
+  if (kp.on.some((d) => d < 0.3) || kp.off.some((d) => d >= 0.3)) fail(`the keeper does not leave his spot for the shot: ${JSON.stringify(kp)}`);
+  // the DEMO save (shot at 240 s, the keeper on the ball next): hands on the ball at contact
+  const sv = await (await browser.newContext({ viewport: { width: 640, height: 360 } })).newPage();
+  sv.setDefaultTimeout(120000);
+  sv.on("pageerror", (e) => fail(`page error (save): ${e.message}`));
+  await sv.goto(new URL("sample3d.html?match=DEMO&capture=1&from=232", base).href);
+  await sv.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
+  const save = await sv.evaluate(async () => {
+    const s = window.sample3d, kr = s.scene.keeper, r = kr?.reactions.find((x) => !x.goal);
+    if (!r) return null;
+    const at = async (on) => {
+      kr.enabled = on;
+      await window.__setTime(r.tc - s.tl.from - 0.04); await window.__setTime(r.tc - s.tl.from);
+      const h = kr.hands(r.i);
+      return +Math.hypot(h[0] - r.ball[0], h[1] - r.ball[1], h[2] - r.ball[2]).toFixed(2);
+    };
+    return { kind: r.kind, clip: r.clip, real: !!r.real, on: await at(true), off: await at(false) };
+  });
+  await sv.close();
+  console.log(`DEMO save: ${JSON.stringify(save)} (hands to ball, m)`);
+  if (!save || !(save.on < 0.5) || save.off < 0.5) fail(`hands not on the ball at the save: ${JSON.stringify(save)}`);
+
+  const flow = await page.evaluate(measure, 8);
+  const jogSlide = flow.footSlide.jog.p50;
+  console.log(`flow: acceleration p95 ${flow.accelShown.p95} m/s2, ${flow.yawSnaps} facing snaps over 15 deg in a frame, planted foot at a jog slides ${jogSlide} m per step (median of ${flow.footSlide.jog.n})`);
+  if (!(flow.accelShown.p95 < 8)) fail(`players' speed still steps every sample: acceleration p95 ${flow.accelShown.p95} m/s2`);
+  if (flow.yawSnaps > 0) fail(`facing snaps: ${JSON.stringify(flow.snapList)}`);
+  if (!(jogSlide < 0.06)) fail(`feet slide at a jog: ${JSON.stringify(flow.footSlide.jog)}`);
 
   // Space toggles play once, also when the Play button has the focus (Chromium already drops the
   // button click once keydown is prevented, so here this does not catch a missing keyup handler)

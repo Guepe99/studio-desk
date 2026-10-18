@@ -7,10 +7,13 @@
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh flow3d-measure.mjs [match] [from] [seconds]
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 
 const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
 const { chromium } = require("playwright");
 
+// run as a script; tests/web/sample3d-shots.mjs imports measure() for its flow checks
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
 const match = process.argv[3] ?? "M001";
 const from = process.argv[4] ? `&from=${process.argv[4]}` : "";
@@ -32,8 +35,9 @@ try {
 } finally {
   await browser.close();
 }
+}
 
-async function measure(seconds) {
+export async function measure(seconds) {
   const s = window.sample3d, sc = s.scene, m = s.match, B = window.BABYLON;
   const { resolve } = await import("./js/scene3d/players.js");
   const HZ = 60, dt = 1 / HZ;

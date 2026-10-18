@@ -117,7 +117,7 @@ function measureClip(s, root, P, src, c, fps, kind) {
     const early = rows.slice(0, Math.round(1.2 * fps)), top = Math.max(...early.map((h) => h[2]));
     k = early.findIndex((h) => h[2] >= 0.9 * top);
   } else k = rows.reduce((best, h, j) => (h[1] > rows[best][1] ? j : best), 0);
-  return { contact: k / fps, hand: rows[k] };
+  return { contact: k / fps, hand: rows[k], hands: rows };
 }
 
 // Turn a bone part of the way (w) towards pointing its child along dir (world).

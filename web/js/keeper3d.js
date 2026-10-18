@@ -119,13 +119,26 @@ const RATE_MAX = 2.5;   // fastest run-up, times the clip's own (a reflex save)
 const DOWN_S = 0.9;     // s of clip after contact before the hold
 const RISE_S = 0.8;     // s to blend back up onto the tracking
 function fitClip(r, c, { earliest, want }) {
-  let start = Math.max(earliest, r.tc - c.contact);
-  if (c.contact / (r.tc - start) > RATE_MAX) start = r.tc - c.contact / RATE_MAX;
+  // a dive's contact frame follows the ball's height: on the way down from the hands' highest
+  // point to their widest, the first frame the hands are no higher than the ball
+  if (c.hands && (r.kind === "dive" || r.kind === "low")) {
+    const H = c.hands, sg = Math.sign(c.root.at(-1)[0]) || 1;
+    const wide = H.reduce((b, h, j) => (h[0] * sg > H[b][0] * sg ? j : b), 0);
+    const k0 = Math.min(wide, Math.round(0.3 * c.fps));   // past the set position
+    const top = H.slice(0, wide + 1).reduce((b, h, j) => (j >= k0 && h[1] > H[b][1] ? j : b), k0);
+    let k = top;
+    while (k < wide && H[k][1] > want[1]) k++;
+    c = { ...c, contact: k / c.fps, hand: H[k] };
+  }
+  // never before the shot: when even the fastest run-up does not fit, the clip starts part way
+  // in (c0) and the first frames blend in from the stance
+  const start = Math.min(Math.max(earliest, r.tc - c.contact), r.tc - MIN_PRE);
+  const rate = Math.min(RATE_MAX, c.contact / (r.tc - start)), c0 = c.contact - rate * (r.tc - start);
   const at = rootAt(c, c.contact);
   const lat = Math.abs(at[0]) > 0.3 ? clamp((want[0] - (c.hand[0] - at[0])) / at[0], 0.4, 1.5) : 1;
   const hold = Math.min(c.len, c.contact + DOWN_S);
   r.start = start;
-  r.real = { rate: c.contact / (r.tc - start), lat, hold, tHold: r.tc + hold - c.contact, root: c.root, fps: c.fps, contact: c.contact,
+  r.real = { rate, c0, lat, hold, tHold: r.tc + hold - c.contact, root: c.root, fps: c.fps, contact: c.contact,
     // what the scaled root leaves: sideways only for clips that barely travel (catch, tip)
     shift: Math.abs(at[0]) > 0.3 ? 0 : clamp(want[0] - c.hand[0], -0.8, 0.8),
     up: clamp(want[1] - c.hand[1], -0.4, 0.4), fwd: clamp(want[2] - c.hand[2], -0.3, 0.6) };
@@ -142,10 +155,11 @@ function rootAt(c, t) {
 export function realRoot(r, ts) {
   if (ts < r.start || ts >= r.end) return null;
   const q = r.real;
-  const clipT = ts < r.tc ? (ts - r.start) * q.rate : Math.min(q.hold, q.contact + ts - r.tc);
-  const [l, u, f] = rootAt(q, clipT);
-  // the shifts come in before contact and stay; everything goes back during the rise
+  const clipT = ts < r.tc ? q.c0 + (ts - r.start) * q.rate : Math.min(q.hold, q.contact + ts - r.tc);
+  // the shifts come in before contact and stay (so does the travel a late start skipped);
+  // everything goes back during the rise
   const g = smooth((ts - r.start) / (r.tc - r.start)), back = 1 - smooth((ts - q.tHold) / RISE_S);
+  const skip = rootAt(q, q.c0), [l, u, f] = rootAt(q, clipT).map((x, j) => x - skip[j] * (1 - g));
   const around = g * (1 - smooth((ts - r.tc - 0.2) / 0.4));   // height and depth only near contact
   const left = (l * q.lat + q.shift * g) * back, ahead = (f + q.fwd * around) * back;
   const w = Math.max(0, Math.min(1, (ts - r.start) / 0.1, back));
