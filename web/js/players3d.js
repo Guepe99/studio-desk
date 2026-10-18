@@ -13,6 +13,7 @@
 // normalised to a known level, so a tone is albedoColor = linear(tone) / level.
 
 const B = window.BABYLON;
+import { toon, outlineMaterial } from "./toon3d.js";
 const SKIN_LEVEL = 0.6, HAIR_LEVEL = 0.5;
 export const REGIONS = ["skin", "kit_shirt", "kit_shorts", "kit_socks", "boots", "forearms", "hands"];
 export const SKIN_TONES = ["#f2cfb3", "#e3b08c", "#c98f68", "#a86d4b", "#7d4b31", "#57321f"];
@@ -75,10 +76,11 @@ export function farPalette(kit, look, gk) {
   return [look.skin, kit.shirt, kit.shorts, kit.socks, look.boots, gk ? kit.shirt : look.skin, gk ? kit.gloves : look.skin];
 }
 
-export async function loadFootballer(scene) {
-  const container = await B.LoadAssetContainerAsync("vendor/players/footballer.glb", scene);
+// anime: web/vendor/players/anime.glb (scripts/build_anime.py), dressed by dressAnime below
+export async function loadFootballer(scene, { anime = false } = {}) {
+  const container = await B.LoadAssetContainerAsync(`vendor/players/${anime ? "anime" : "footballer"}.glb`, scene);
   const base = Object.fromEntries(container.materials.map((m) => [m.name, m]));
-  return { scene, container, base, mats: new Map() };
+  return { scene, container, base, mats: new Map(), anime };
 }
 
 // One shared material per key: kits of a team share their shorts, socks and far body.
@@ -188,6 +190,7 @@ const socksMaterial = (lib, kit) => shared(lib, `socks|${kit.socks}|${kit.band}`
 });
 
 export function dressFootballer(lib, pid, { team, gk = false, shirt = null, captain = false, look = playerLook(pid) }) {
+  if (lib.anime) return dressAnime(lib, pid, { team, gk, shirt, captain, look: animeLook(pid) });
   const prefix = `${pid}-`;
   const inst = lib.container.instantiateModelsToScene((n) => prefix + n, false, { doNotInstantiate: true });
   const kit = kitColours(team, gk);
@@ -230,4 +233,99 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     m.addLODLevel(LOD_COVERAGE, m === main ? far : null);
   }
   return { ...inst, casters };
+}
+
+// --- anime footballers (?players=anime, docs/anime3d.md) ---------------------------------------------
+// Hair styles of anime.glb and anime colours. Original characters only: no style and colour pair
+// copies a known anime or game character (no gold spikes, no white or silver hair).
+export const ANIME_HAIR = ["hair_messy", "hair_spiky", "hair_swept", "hair_crop"];
+export const ANIME_HAIR_COLOURS = ["#1d1d33", "#5a3423", "#b8502a", "#2c4fa0", "#d9a940", "#2f6e4c", "#7b2a3a", "#8b6a4f"];
+export const EYE_COLOURS = ["#3a6fd8", "#2f9a6a", "#8a5a2b", "#6b4bb8", "#c07a1e", "#3d4a5c"];
+// morph targets of anime_face, in order (build_anime.EXPRESSIONS)
+const EXPRESSIONS = ["joy", "sorrow", "determined", "blink"];
+
+export function animeLook(pid) {
+  const h = hash(pid), base = playerLook(pid);
+  const hair = ANIME_HAIR[(h >>> 4) % ANIME_HAIR.length];
+  let hairColour = ANIME_HAIR_COLOURS[(h >>> 8) % ANIME_HAIR_COLOURS.length];
+  if (hair === "hair_spiky" && hairColour === "#d9a940") hairColour = "#b8502a";   // gold spikes are a famous look
+  return { ...base, hair, hairColour, eyes: EYE_COLOURS[(h >>> 20) % EYE_COLOURS.length],
+    height: 0.95 + ((h >>> 24) % 11) / 100, blink: ((h >>> 12) % 97) / 97 };
+}
+
+// Face: the expression from the drivers' emotion (players.js resolve) and the running speed.
+// face(r, v, ts): r the resolved drivers, v the ground speed in m/s, ts the match time.
+function animeFace(managers, look) {
+  const last = new Float32Array(EXPRESSIONS.length);
+  return (r, v, ts) => {
+    const w = new Float32Array(EXPRESSIONS.length);
+    const k = r.emotion?.kind, e = Math.min(1, r.emotion?.weight ?? 0);
+    if (k === "celebrate" || k === "join") w[0] = e;                   // joy
+    else if (k === "dejected" || k === "near_miss") w[1] = e;          // frustration
+    else if (k === "appeal" || k === "protest") w[2] = e;              // frowning at the referee
+    if (!k && v > 5.5) w[2] = 1;                                       // determined: sprinting
+    if (!w[0] && (ts * 0.31 + look.blink) % 1 < 0.035) w[3] = 1;       // a blink every ~3 s
+    if (w.every((x, i) => x === last[i])) return;
+    last.set(w);
+    for (const m of managers) w.forEach((x, i) => { m.getTarget(i).influence = x; });
+  };
+}
+
+const toonOnce = (m, opts) => { if (!m.pluginManager?.getPlugin("Toon")) toon(m, opts); return m; };
+
+function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
+  const prefix = `${pid}-`;
+  const inst = lib.container.instantiateModelsToScene((n) => prefix + n, false, { doNotInstantiate: true });
+  const kit = kitColours(team, gk);
+  const skin = tinted(lib, "skin", look.skin, SKIN_LEVEL);
+  const lin = (hex, f) => B.Color3.FromHexString(hex).toLinearSpace().scale(f);
+  const face = shared(lib, `face|${look.eyes}|${look.hairColour}`, () => {
+    const m = lib.base.face.clone(`fb-face-${lib.mats.size}`);
+    const t = toon(m, { face: true });
+    t.iris = lin(look.eyes, 1.6);
+    t.brow = lin(look.hairColour, 0.7);
+    return m;
+  });
+  const hairBase = look.hair === "hair_crop" ? "hair_crop" : "hair";
+  const mats = {
+    skin, face_skin: tinted(lib, "face_skin", look.skin, SKIN_LEVEL), face,
+    kit_shirt: shirtMaterial(lib, pid, kit, shirt, captain),
+    kit_shorts: shortsMaterial(lib, pid, kit, shirt),
+    kit_socks: socksMaterial(lib, kit),
+    boots: tinted(lib, "boots", look.boots),
+    forearms: gk ? tinted(lib, "kit_shorts", kit.shirt) : skin,
+    hands: gk ? tinted(lib, "kit_shorts", kit.gloves) : skin,
+    [hairBase]: tinted(lib, hairBase, look.hairColour, HAIR_LEVEL),
+    kit_far: farMaterial(lib, [...farPalette(kit, look, gk), look.hairColour]),
+  };
+  const outline = shared(lib, "outline", () => outlineMaterial(lib.scene));
+  const near = [], casters = [], managers = [];
+  let main = null, far = null;
+  for (const m of inst.rootNodes[0].getChildMeshes(false)) {
+    const part = m.name.slice(prefix.length).split("_primitive")[0];
+    const other = part.startsWith("hair_") ? part !== look.hair : part.startsWith("anime_lod1_") && part !== `anime_lod1_${look.hair.slice(5)}`;
+    if (other) { m.dispose(); continue; }
+    const base = m.material?.name;
+    if (!base) continue;   // the empty parent of a multi-primitive mesh
+    m.material = toonOnce(mats[base] ?? m.material);
+    m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
+    if (part.startsWith("anime_lod1_")) { far = m; continue; }
+    near.push(m);
+    if (part === "anime" && base === "skin") main = m;
+    if (m.morphTargetManager) { m.morphTargetManager.optimizeInfluencers = false; managers.push(m.morphTargetManager); }
+    if (base === "face") continue;   // eyes, brows and mouth: no shadow, no outline
+    casters.push(m);
+    const o = m.clone(`${m.name}-outline`, m.parent);   // shares geometry, skeleton and morph targets
+    o.material = outline;
+    o.alwaysSelectAsActiveMesh = true;
+    near.push(o);
+  }
+  // the near parts hand over to the far body (with its hair) all at once, as in dressFootballer
+  const bounds = main.getBoundingInfo();
+  for (const m of near) {
+    m.useLODScreenCoverage = true;
+    if (m !== main) m.setBoundingInfo(new B.BoundingInfo(bounds.minimum, bounds.maximum));
+    m.addLODLevel(LOD_COVERAGE, m === main ? far : null);
+  }
+  return { ...inst, casters, height: look.height, face: animeFace(managers, look) };
 }

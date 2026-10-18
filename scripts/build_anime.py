@@ -176,7 +176,8 @@ def rebind_vrm(vrm, mesh, skin, maps, joints, target_names, morphs=()):
     tgt = np.array([target_names.index(t) for _, t in joints])
     lin = [m.linear() for m in maps]
     out_p, out_n = np.zeros_like(pos), np.zeros_like(nrm)
-    deltas = [vrm.acc(prim["targets"][k]["POSITION"]).astype(float) for k in morphs]
+    # each morph is {blend shape index: weight}: one target per expression keeps WebGL 1 in its limit
+    deltas = [sum(wk * vrm.acc(prim["targets"][k]["POSITION"]).astype(float) for k, wk in m.items()) for m in morphs]
     out_d = [np.zeros_like(pos) for _ in morphs]
     for k in range(4):
         g = geo[jnt[:, k]]
@@ -274,10 +275,10 @@ def atlas_uv(uv, name):
 
 # --- expressions -----------------------------------------------------------------------------------------
 
-# morph targets baked into anime_face: name -> VRoid blend shape (Face.M_F00_000_00_Fcl_<name>)
-EXPRESSIONS = {"joy": "ALL_Joy", "angry": "ALL_Angry", "sorrow": "ALL_Sorrow", "surprised": "ALL_Surprised",
-               "fun": "ALL_Fun", "blink": "EYE_Close", "brow_angry": "BRW_Angry", "eye_angry": "EYE_Angry",
-               "mouth_a": "MTH_A"}
+# morph targets baked into anime_face: name -> {VRoid blend shape (Face.M_F00_000_00_Fcl_<name>): weight}.
+# Four, because WebGL 1 gives morph targets vertex attributes and runs out after about four.
+EXPRESSIONS = {"joy": {"ALL_Joy": 1.0}, "sorrow": {"ALL_Sorrow": 1.0},
+               "determined": {"BRW_Angry": 0.9, "EYE_Angry": 0.45}, "blink": {"EYE_Close": 1.0}}
 
 
 # --- hair styles --------------------------------------------------------------------------------------------
@@ -329,6 +330,7 @@ def restyle(pos, label, centre, kind):
 PALETTE = 8          # far palette texels: REGIONS, then hair
 FAR_HAIR = len(bf.REGIONS)
 HAIR_LEVEL = 0.5
+HAIR_NEAR, HAIR_FAR = 0.2, 0.1   # triangle ratios of the hair, near (error 0.03) and far (0.05)
 SKIN_LEVEL = 0.6
 
 
@@ -366,7 +368,7 @@ def build(dl, out=OUT):
         # face: one vertex set, skin and features as two primitives, expressions as morph targets
         mf = mesh_id["Face.baked"]
         tnames = vrm.j["meshes"][mf]["primitives"][0]["extras"]["targetNames"]
-        morphs = [tnames.index(f"Face.M_F00_000_00_Fcl_{s}") for s in EXPRESSIONS.values()]
+        morphs = [{tnames.index(f"Face.M_F00_000_00_Fcl_{s}"): wk for s, wk in e.items()} for e in EXPRESSIONS.values()]
         mapsf, jointsf = bone_maps(vrm, skin_of[mf], man_pos)
         facev = rebind_vrm(vrm, mf, skin_of[mf], mapsf, jointsf, names, morphs)
         face_skin = compact(facev, indices(vrm, mf, {"M00_000_00_Face_00_SKIN"}))
@@ -448,9 +450,9 @@ def build(dl, out=OUT):
         kit_far = w.material("kit_far", (1.0, 1.0, 1.0), 0.75)
         for style, v in styles.items():
             mat = mats["hair_crop" if style == "hair_crop" else "hair"]
-            hs = simplify_one(tmp, v, 0.4 if style != "hair_crop" else 1.0, style)
+            hs = simplify_one(tmp, v, HAIR_NEAR if style != "hair_crop" else 1.0, style)
             bf.add_mesh_node(w, armature, style, w.mesh(style, [w.primitive(hs, hs["tri"], mat, hs["uv"])]))
-            hf = simplify_one(tmp, v, 0.12 if style != "hair_crop" else 0.5, style + "_far")
+            hf = simplify_one(tmp, v, HAIR_FAR if style != "hair_crop" else 0.5, style + "_far", 0.05)
             hf["uv"] = np.tile([(FAR_HAIR + 0.5) / PALETTE, 0.5], (len(hf["pos"]), 1))
             far = merge(far_body + [hf])
             name = f"anime_lod1_{style[5:]}"
@@ -491,7 +493,7 @@ def read_prims(path):
     return out
 
 
-def simplify_file(tmp, writer_fn, name, ratio, lock):
+def simplify_file(tmp, writer_fn, name, ratio, lock, error=0.01):
     lw = bf.Writer()
     lw.j["nodes"], lw.j["scenes"], lw.j["scene"] = [{"name": name, "mesh": 0}], [{"nodes": [0]}], 0
     lw.mesh(name, writer_fn(lw))
@@ -499,7 +501,7 @@ def simplify_file(tmp, writer_fn, name, ratio, lock):
     if ratio >= 1:
         return read_prims(tmp / f"{name}.glb")
     bf.run(bf.GLTF_TRANSFORM + ["simplify", str(tmp / f"{name}.glb"), str(tmp / f"{name}s.glb"),
-                                "--ratio", str(ratio), "--error", "0.01", "--lock-border", "true" if lock else "false"])
+                                "--ratio", str(ratio), "--error", str(error), "--lock-border", "true" if lock else "false"])
     return read_prims(tmp / f"{name}s.glb")
 
 
@@ -514,11 +516,11 @@ def simplify_regions(tmp, region_prims, body, tr, ratio):
     return simplify_file(tmp, fn, "near", ratio, True)
 
 
-def simplify_one(tmp, v, ratio, name):
+def simplify_one(tmp, v, ratio, name, error=0.03):
     def fn(lw):
         lw.j["materials"] = [{"name": "m"}]
         return [lw.primitive(v, v["tri"], 0, v["uv"])]
-    return simplify_file(tmp, fn, name, ratio, False)[0][1]
+    return simplify_file(tmp, fn, name, ratio, False, error)[0][1]
 
 
 def far_parts(tmp, region_prims, body, tr):

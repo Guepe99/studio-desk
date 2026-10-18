@@ -10,3 +10,17 @@ https://creativecommons.org/publicdomain/zero/1.0/ , as stated in License_Standa
 pack (downloaded 18 Oct 2026).
 
 Our changes (rebinding, kit regions, UVs, decimation) are released under the repository's MIT licence.
+
+anime.glb is built by scripts/build_anime.py from:
+
+- HairSample_Male.vrm and Base_Male.vrm, sample models of VRoid Studio by the VRoid Project
+  (pixiv), https://opengameart.org/content/vroid-studio-cc0-models
+
+The VRoid help centre states that the VRoid Studio sample models are released under CC0,
+https://vroid.pixiv.help/hc/en-us/articles/4402614652569 (read 18 Oct 2026), and the
+OpenGameArt page lists them as CC0 1.0 Universal,
+https://creativecommons.org/publicdomain/zero/1.0/ . The skeleton and clips are the mannequin's
+(see above).
+
+Our changes (rebinding to the mannequin skeleton, kit regions, hair restyling, face atlas,
+decimation) are released under the repository's MIT licence.
