@@ -4,6 +4,7 @@ COPY pyproject.toml ./
 COPY studiodesk ./studiodesk
 RUN pip install --no-cache-dir -e . && useradd -u 10001 app
 COPY web ./web
+RUN gzip -k -9 web/vendor/babylonjs/*/*.js
 COPY data/forbidden_names.txt ./data/
 # The demo matches are rebuilt from the seed at image build: no data files in git.
 RUN python -m studiodesk.sim build --matches 4 --seed 7 \

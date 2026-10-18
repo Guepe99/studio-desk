@@ -29,3 +29,5 @@ def test_precompressed_file_is_served_when_present(tmp_path):
     r = client.get("/t.f32", headers={"accept-encoding": "gzip"})
     assert r.headers["content-encoding"] == "gzip" and r.content == raw
     assert client.get("/t.f32", headers={"accept-encoding": "identity"}).content == raw
+    (tmp_path / "lib.js.gz").write_bytes(gzip.compress(b"var x = 1;"))
+    assert "javascript" in client.get("/lib.js", headers={"accept-encoding": "gzip"}).headers["content-type"]

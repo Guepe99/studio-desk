@@ -1,4 +1,5 @@
 """HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
+import mimetypes
 import os
 import secrets
 import time
@@ -69,7 +70,7 @@ class PrecompressedStatic(StaticFiles):
         accepts = b"gzip" in dict(scope["headers"]).get(b"accept-encoding", b"")
         gz = Path(self.directory) / f"{path}.gz"
         if accepts and gz.is_file():
-            return FileResponse(gz, media_type="application/octet-stream",
+            return FileResponse(gz, media_type=mimetypes.guess_type(path)[0] or "application/octet-stream",
                                 headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
         return await super().get_response(path, scope)
 
