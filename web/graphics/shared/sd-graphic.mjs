@@ -46,8 +46,11 @@ export class SdGraphic extends HTMLElement {
   get customActions() { return {}; }
 
   factsHtml(ids) {
-    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
-    return this.showFacts && list.length ? `<div class="facts">${list.map((f) => `<span>${esc(f)}</span>`).join("")}</div>` : "";
+    const all = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    // A momentum series cites one fact per window: show the latest few, count the rest.
+    const list = all.slice(-3), more = all.length - list.length;
+    const chips = list.map((f) => `<span>${esc(f)}</span>`).join("") + (more ? `<span>+${more} more</span>` : "");
+    return this.showFacts && all.length ? `<div class="facts">${chips}</div>` : "";
   }
 
   // --- OGraf v1 interface
