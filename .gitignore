@@ -10,3 +10,4 @@ out/
 *.log
 *.egg-info/
 web/data/
+.claude/worktrees/
