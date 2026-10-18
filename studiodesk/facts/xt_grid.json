@@ -219,5 +219,5 @@
    0.02444
   ]
  ],
- "source": "socceraction ExpectedThreat(l=16, w=12) fitted on 1836531 SPADL actions from the Wyscout public dataset (Pappalardo et al. 2019), 2017/18 club leagues excluding England: Italy 380, Spain 380, France 380, Germany 306 matches"
+ "source": "socceraction ExpectedThreat(l=16, w=12) fitted on 1836531 SPADL actions from the public soccer-logs event dataset (Pappalardo et al. 2019, Scientific Data 6:236), 2017/18 club leagues excluding England: Italy 380, Spain 380, France 380, Germany 306 matches"
 }

@@ -46,16 +46,38 @@ FILES = {
 # English first division 2017/18 (Wyscout competition 364) is excluded here, in code.
 EXCLUDED_COMPETITIONS = {364}
 
+# Source texts never name the data vendor: data/forbidden_names.txt lists it, and the simulator
+# tests check every calibration source against that list.
 SOURCE = (
-    "Wyscout public dataset (Pappalardo et al. 2019), 4 leagues 2017/18 excluding England, "
-    "computed by scripts/calibrate.py"
+    "Public soccer-logs event dataset (Pappalardo et al. 2019, Scientific Data 6:236), "
+    "4 club leagues 2017/18 excluding England, computed by scripts/calibrate.py"
 )
 L, W = 105.0, 68.0
 SHOTS = ("shot", "shot_freekick", "shot_penalty")
 
 # calibration.json key -> wyscout_averages.json key, only where Wyscout measures the same thing
 # in the same unit. Keys not listed here keep their literature value.
-MAPPING: dict[str, str] = {}
+# Where the simulator's definition differs (its realism report counts pass + cross as "passes"),
+# the value follows how the engine uses the key: pass_success_rate and mean_pass_length_m apply to
+# SPADL "pass"; crosses have cross_success_rate.
+MAPPING: dict[str, str] = {
+    "actions_per_team_per_match": "actions_per_team_match",
+    "pass_share": "pass_and_cross_share_of_actions",
+    "pass_success_rate": "pass_success_rate",
+    "mean_pass_length_m": "pass_length_mean_m",
+    "shots_per_match": "shots_per_match",
+    "goals_per_match": "goals_per_match",
+    "home_goal_share": "home_goal_share",
+    "take_on_success_rate": "take_on_success_rate",
+    "cross_success_rate": "cross_success_rate",
+    "fouls_per_match": "fouls_per_match",
+    "yellow_cards_per_match": "yellow_cards_per_match",
+    "offside_per_match": "offsides_per_match",
+    "throw_ins_per_match": "throw_ins_per_match",
+    "goal_kicks_per_match": "goal_kicks_per_match",
+    "corners_per_match": "corners_per_match",
+}
+CROSSES = ("cross", "freekick_crossed", "corner_crossed")
 
 
 def download():
@@ -114,7 +136,7 @@ def shot_zone(x, y):
     return "outside_box"
 
 
-def match_stats(a, game_id):
+def match_stats(a, game_id, home_team_id):
     """One row per team for this match, plus pass lengths, possession lengths, shot zones."""
     rows, zones = [], []
     a = a.sort_values(["period_id", "action_id"])
@@ -124,16 +146,25 @@ def match_stats(a, game_id):
     poss = pd.DataFrame({"n": g.size(), "dur": g.time_seconds.max() - g.time_seconds.min()})
     passes = a[a.type_name == "pass"]
     plen = np.hypot(passes.end_x - passes.start_x, passes.end_y - passes.start_y).to_numpy("f4")
+    dr = a[a.type_name == "dribble"]
+    dlen = np.hypot(dr.end_x - dr.start_x, dr.end_y - dr.start_y).to_numpy("f4")
     for team, t in a.groupby("team_id"):
         p = t[t.type_name == "pass"]
         shots = t[t.type_name.isin(SHOTS)]
+        ok = t.result_name == "success"
         rows.append({
             "game_id": game_id,
             "team_id": team,
+            "home": int(team == home_team_id),
             "actions": len(t),
             **{f"n_{k}": v for k, v in t.type_name.value_counts().items()},
             "pass_ok": int((p.result_name == "success").sum()),
             "pass_fwd": int((p.end_x > p.start_x).sum()),
+            "cross_open_ok": int(((t.type_name == "cross") & ok).sum()),
+            "cross_all": int(t.type_name.isin(CROSSES).sum()),
+            "cross_ok": int((t.type_name.isin(CROSSES) & ok).sum()),
+            "take_on_ok": int(((t.type_name == "take_on") & ok).sum()),
+            "offsides": int((t.result_name == "offside").sum()),
             "shots": len(shots),
             "goals": int((shots.result_name == "success").sum()),
             "own_goals_for": 0,
@@ -149,7 +180,7 @@ def match_stats(a, game_id):
         for r in rows:
             if r["team_id"] != og.team_id:
                 r["own_goals_for"] += 1
-    return rows, plen, poss, zones
+    return rows, plen, dlen, poss, zones
 
 
 def check_grid(grid):
@@ -163,7 +194,7 @@ def check_grid(grid):
     assert np.allclose(g, g[::-1], atol=g.max() * 0.35), "xT far from symmetric across y"
 
 
-def summarise(teams, plens, poss, zones, n_matches):
+def summarise(teams, plens, dlens, poss, zones, n_matches):
     def dist(s):
         s = s.astype(float)
         return {"mean": round(s.mean(), 3), "std": round(s.std(), 3),
@@ -175,6 +206,8 @@ def summarise(teams, plens, poss, zones, n_matches):
     goals_team = teams.goals + teams.own_goals_for
     goals_match = goals_team.groupby(teams.game_id).sum()
     plen = np.concatenate(plens)
+    dlen = np.concatenate(dlens)
+    per_match = teams.groupby("game_id").sum(numeric_only=True)
     zone_df = pd.DataFrame(zones, columns=["zone", "goal"])
     zg = zone_df.groupby("zone").goal
     v = {
@@ -198,6 +231,22 @@ def summarise(teams, plens, poss, zones, n_matches):
         "fouls_per_team_match": dist(teams.n_foul),
         "yellow_cards_per_team_match": round(teams.yellow.mean(), 3),
         "red_cards_per_team_match": round(teams.red.mean(), 4),
+        # the simulator's definitions: per match (both teams), "passes" = pass + cross
+        "pass_and_cross_share_of_actions": round((teams.n_pass + teams.n_cross).sum()
+                                                 / teams.actions.sum(), 4),
+        "pass_and_cross_success_rate": round((teams.pass_ok + teams.cross_open_ok).sum()
+                                             / (teams.n_pass + teams.n_cross).sum(), 4),
+        "shots_per_match": round(per_match.shots.mean(), 2),
+        "home_goal_share": round(goals_team[teams.home == 1].sum() / goals_team.sum(), 4),
+        "take_on_success_rate": round(teams.take_on_ok.sum() / teams.n_take_on.sum(), 4),
+        "cross_success_rate": round(teams.cross_ok.sum() / teams.cross_all.sum(), 4),
+        "fouls_per_match": round(per_match.n_foul.mean(), 2),
+        "yellow_cards_per_match": round(per_match.yellow.mean(), 2),
+        "offsides_per_match": round(per_match.offsides.mean(), 2),
+        "throw_ins_per_match": round(per_match.n_throw_in.mean(), 2),
+        "goal_kicks_per_match": round(per_match.n_goalkick.mean(), 2),
+        "corners_per_match": round((per_match.n_corner_crossed + per_match.n_corner_short).mean(), 2),
+        "dribble_length_mean_m": round(float(dlen.mean()), 2),
         "possession_sequence_actions": {"mean": round(poss.n.mean(), 2),
                                         "median": float(poss.n.median()),
                                         "p90": float(poss.n.quantile(0.9))},
@@ -214,16 +263,25 @@ def apply_mapping(averages):
     if not CALIBRATION.exists():
         print("calibration.json not found: mapping pending")
         return []
-    cal = json.loads(CALIBRATION.read_text())
-    done = []
+    text = CALIBRATION.read_text()
+    cal = json.loads(text)
+    new = {}
     for key, name in MAPPING.items():
         if key in cal:
             value = averages[name]["value"]
-            cal[key] = {**cal[key], "value": value["mean"] if isinstance(value, dict) else value,
+            new[key] = {**cal[key], "value": value["mean"] if isinstance(value, dict) else value,
                         "source": SOURCE}
-            done.append(key)
-    CALIBRATION.write_text(json.dumps(cal, indent=2) + "\n")
-    return done
+    # the file has one key per line: rewrite only the mapped lines, so the diff shows nothing else
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        key = line.strip().split(":", 1)[0].strip('"')
+        if line.startswith('  "') and key in new:
+            comma = "," if line.rstrip().endswith(",") else ""
+            lines[i] = f"  {json.dumps(key)}: {json.dumps(new[key], ensure_ascii=False)}{comma}"
+    out = json.loads("\n".join(lines))
+    assert out == {**cal, **new}, "calibration.json is not one key per line"
+    CALIBRATION.write_text("\n".join(lines) + "\n")
+    return list(new)
 
 
 def peak_mb():
@@ -243,7 +301,7 @@ def main():
     from socceraction.xthreat import ExpectedThreat
 
     download()
-    team_rows, plens, poss, zones, xt_parts, per_league = [], [], [], [], [], {}
+    team_rows, plens, dlens, poss, zones, xt_parts, per_league = [], [], [], [], [], [], {}
     with zipfile.ZipFile(RAW / "matches.zip") as z:
         for comp_id, area in included_leagues():
             matches = {m["wyId"]: m for m in json.loads(z.read(f"matches_{area}.json"))
@@ -255,9 +313,10 @@ def main():
                     continue
                 home = next(int(t) for t, d in m["teamsData"].items() if d["side"] == "home")
                 a = to_spadl(raw, home)
-                rows, plen, pz, zn = match_stats(a, match_id)
+                rows, plen, dlen, pz, zn = match_stats(a, match_id, home)
                 team_rows += rows
                 plens.append(plen)
+                dlens.append(dlen)
                 poss.append(pz)
                 zones += zn
                 xt_parts.append(a[["type_id", "result_id", "start_x", "start_y", "end_x", "end_y"]]
@@ -282,11 +341,12 @@ def main():
         "cols": 16, "rows": 12,
         "grid": [[round(float(v), 5) for v in row] for row in grid],
         "source": f"socceraction ExpectedThreat(l=16, w=12) fitted on {len(actions)} SPADL actions "
-                  f"from the Wyscout public dataset (Pappalardo et al. 2019), 2017/18 club leagues "
+                  f"from the public soccer-logs event dataset (Pappalardo et al. 2019, Scientific "
+                  f"Data 6:236), 2017/18 club leagues "
                   f"excluding England: {leagues} matches",
     }, indent=1) + "\n")
 
-    averages = summarise(pd.DataFrame(team_rows), plens, pd.concat(poss), zones,
+    averages = summarise(pd.DataFrame(team_rows), plens, dlens, pd.concat(poss), zones,
                          sum(per_league.values()))
     averages["matches_by_league"] = {"value": per_league, "source": SOURCE}
     AVG_OUT.parent.mkdir(exist_ok=True)
