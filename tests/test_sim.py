@@ -1,0 +1,95 @@
+"""Simulator: determinism, geometry, physics caps, scores, names, planted storylines (short matches)."""
+import numpy as np
+import pytest
+
+from studiodesk import db
+from studiodesk.names import is_forbidden
+from studiodesk.sim import load_calibration
+from studiodesk.sim.build import build, simulate
+from studiodesk.sim.report import frames, kinematics, report
+from studiodesk.sim.squads import make_league
+
+MINUTES = 8.0  # per period: short enough for CI, long enough for every planted storyline
+
+
+@pytest.fixture(scope="module")
+def built(tmp_path_factory):
+    path = tmp_path_factory.mktemp("sim") / "m.sqlite"
+    build(4, 7, path, MINUTES)
+    conn = db.connect(path, readonly=True)
+    yield path, conn
+    conn.close()
+
+
+def test_same_seed_same_events_and_frames():
+    cal = load_calibration()
+    runs = [simulate(0, 11, make_league(np.random.default_rng(3), cal), cal, True, 2.0) for _ in range(2)]
+    assert runs[0]["events"] == runs[1]["events"]
+    assert np.array_equal(runs[0]["pos"], runs[1]["pos"], equal_nan=True)
+    assert runs[0]["storylines"] == runs[1]["storylines"]
+
+
+def test_coordinates_inside_the_pitch(built):
+    _, conn = built
+    for r in conn.execute("SELECT start_x, start_y, end_x, end_y FROM events"):
+        assert 0 <= r[0] <= 105 and 0 <= r[2] <= 105 and 0 <= r[1] <= 68 and 0 <= r[3] <= 68
+    for m in conn.execute("SELECT match_id FROM matches"):
+        xy = frames(conn, m[0])[..., :2]
+        ok = np.isfinite(xy[..., 0])
+        assert (xy[ok][:, 0] >= 0).all() and (xy[ok][:, 0] <= 105).all()
+        assert (xy[ok][:, 1] >= 0).all() and (xy[ok][:, 1] <= 68).all()
+
+
+def test_frame_count(built):
+    _, conn = built
+    for m in conn.execute("SELECT * FROM matches"):
+        n = conn.execute("SELECT COUNT(*) FROM tracking_frames WHERE match_id=?", (m["match_id"],)).fetchone()[0]
+        assert abs(n - round((m["period1_s"] + m["period2_s"]) * m["fps"])) <= 1
+
+
+def test_speed_and_acceleration_caps(built):
+    _, conn = built
+    cal = load_calibration()
+    top = {r[0]: r[1] for r in conn.execute("SELECT player_id, top_speed_kmh FROM players")}
+    for m in conn.execute("SELECT * FROM matches").fetchall():
+        pos = frames(conn, m["match_id"])
+        speed, acc = kinematics(pos, m["fps"], int(round(m["period1_s"] * m["fps"])))
+        ents = [r[0] for r in conn.execute("SELECT entity FROM tracking_entities WHERE match_id=? "
+                                           "ORDER BY idx", (m["match_id"],))][1:]
+        caps = np.array([top[p] for p in ents])
+        assert np.nanmax(speed - caps) <= 0.05
+        assert np.nanmax(speed) <= 36.05  # the planted sprint is the only one above 34
+        assert np.nanmax(acc) <= cal["max_accel_ms2"]["value"] + 0.05
+
+
+def test_score_matches_goal_events(built):
+    _, conn = built
+    for m in conn.execute("SELECT * FROM matches"):
+        goals = conn.execute("SELECT team_id, COUNT(*) FROM events WHERE match_id=? AND result_name='success' "
+                             "AND type_name IN ('shot','shot_freekick','shot_penalty') GROUP BY team_id",
+                             (m["match_id"],)).fetchall()
+        g = dict(goals)
+        assert (g.get(m["home_team_id"], 0), g.get(m["away_team_id"], 0)) == (m["home_score"], m["away_score"])
+
+
+def test_no_forbidden_names(built):
+    _, conn = built
+    texts = [r[0] for r in conn.execute("SELECT name FROM teams UNION ALL SELECT short_name FROM teams "
+                                        "UNION ALL SELECT name FROM players UNION ALL SELECT venue_name FROM matches")]
+    texts += [v["source"] for v in load_calibration().values()]
+    assert texts and not [t for t in texts if is_forbidden(t)]
+
+
+def test_every_planted_kind_and_two_comebacks(built):
+    _, conn = built
+    kinds = [r[0] for r in conn.execute("SELECT kind FROM storylines")]
+    for kind in ("tactical_shift", "high_press", "top_sprint"):
+        assert kinds.count(kind) == 4, kind
+    assert kinds.count("comeback") >= 2
+
+
+def test_calibration_format_and_report(built):
+    for name, entry in load_calibration().items():
+        assert set(entry) == {"value", "source"} and entry["source"], name
+    text = report(built[0])
+    assert "actions_per_team_per_match" in text and "storyline" not in text.lower()
