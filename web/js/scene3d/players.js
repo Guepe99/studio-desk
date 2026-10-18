@@ -4,6 +4,8 @@
 // an object with pose(i, ts) -> null | {
 //   dx, dy       metres added to the tracking position (contract axes), e.g. the ball rig's
 //                 offset that puts the foot on the ball;
+//   dz, roll     metres the body is lifted and its roll (radians about the facing axis, the
+//                 holder's rotation.z), summed over the drivers: a keeper's dive (keeper3d.js);
 //   yaw, yawW    a facing (radians, atan2(dx, dy) on the pitch) and how much of it to take (0..1);
 //   leg          a leg pose for the ball rig (ball3d-rig.js);
 //   mode         locomotion mode: "forward" (default), "backpedal", "strafe" or "jockey";
@@ -12,7 +14,7 @@
 // pose() must be a pure function of (i, ts): the scene asks it at ts and at ts +- 0.2 s.
 // Drivers run in priority order, low first; a later facing is blended over the earlier ones and
 // the last mode and emotion win. The scene's own drivers: awareness modules 10 (suggested), the
-// ball rig 20, the event actions below 30 (a slide or dive turns the body to its event point and
+// ball rig 20, the event actions below and the keeper reactions 30 (a slide turns the body to its event point and
 // switches the rig's leg pose off while the clip moves the legs).
 //
 // Clips are sampled with goToFrame from match time, never played, so a seek, a replay or a video
@@ -25,13 +27,16 @@
 const B = window.BABYLON;
 
 // Locomotion clips of the Universal Animation Library: speed (m/s) at which the feet do not
-// slide when the clip plays at 1x, and metres per cycle (measured from the root-motion version).
+// slide when the clip plays at 1x, and metres per cycle. Measured on the scaled player in the
+// scene, as the planted toe's travel per cycle (docs/flow3d.md): the root-motion figures (1.3,
+// 5.0, 5.5 m) were for the unscaled file and left the feet sliding about 10% of the speed.
 export const LOCO = [
   { name: "Idle_Loop", speed: 0, stride: 0, period: 2.5 },
-  { name: "Walk_Loop", speed: 0.975, stride: 1.3 },
-  { name: "Jog_Fwd_Loop", speed: 5.357, stride: 5.0 },
-  { name: "Sprint_Loop", speed: 8.25, stride: 5.5 },
+  { name: "Walk_Loop", speed: 0.93, stride: 1.24 },
+  { name: "Jog_Fwd_Loop", speed: 5.9, stride: 5.5 },
+  { name: "Sprint_Loop", speed: 9.0, stride: 6.0 },
 ];
+const BLEND_S = 0.08;   // s, time constant of the locomotion weights: no one-frame pops
 export const MODES = ["forward", "backpedal", "strafe", "jockey"];
 
 // Weights of the four clips for a ground speed (two neighbours at a time, summing to 1).
@@ -60,7 +65,6 @@ export function gait(mode, v) {
 export const ACTIONS = {
   slide: { phases: [["Slide_Start", 0, 0.83], ["Slide_Loop", 0, 0.35], ["Slide_Exit", 0, 0.5]], contact: 0.7 },
   header: { phases: [["Jump_Start", 0.5, 1.33], ["Jump_Land", 0, 0.9]], contact: 0.8 },
-  dive: { phases: [["Roll", 0, 1.47]], contact: 0.4 },
 };
 const IN_S = 0.15, OUT_S = 0.25;
 const TRACKS = new WeakMap();   // asset container -> {clip: upper-body tracks}
@@ -80,7 +84,6 @@ export function scheduleActions(events) {
     if (!e.player_id) continue;
     const at = [e.start_x, e.start_y];
     if (e.type_name === "tackle" || e.type_name === "foul") add(e.player_id, "slide", e.ts, at);
-    else if (e.type_name === "keeper_save") add(e.player_id, "dive", e.ts, at);
     else if (e.bodypart_name === "head") add(e.player_id, "header", e.ts, at);
   }
   for (const list of Object.values(out)) {
@@ -117,7 +120,7 @@ export function actionDriver(match, schedule) {
       const out = { action: a, actionW: a.weight };
       const here = match.at(i, ts);
       const dx = a.act.at[0] - (here?.[0] ?? 0), dy = a.act.at[1] - (here?.[1] ?? 0);
-      if ((a.act.kind === "slide" || a.act.kind === "dive") && here && Math.hypot(dx, dy) > 0.5) {
+      if (a.act.kind === "slide" && here && Math.hypot(dx, dy) > 0.5) {
         out.yaw = Math.atan2(dx, dy); out.yawW = a.weight;
       }
       return out;
@@ -128,11 +131,11 @@ export function actionDriver(match, schedule) {
 // Combine the drivers' answers for player i at ts (drivers sorted by priority). The facing
 // overrides come back as turns, applied over the scene's own facing with facing().
 export function resolve(drivers, i, ts) {
-  const out = { dx: 0, dy: 0, turns: [], leg: null, mode: "forward", emotion: null, action: null, actionW: 0 };
+  const out = { dx: 0, dy: 0, dz: 0, roll: 0, turns: [], leg: null, mode: "forward", emotion: null, action: null, actionW: 0 };
   for (const d of drivers) {
     const p = d.pose(i, ts);
     if (!p) continue;
-    out.dx += p.dx ?? 0; out.dy += p.dy ?? 0;
+    out.dx += p.dx ?? 0; out.dy += p.dy ?? 0; out.dz += p.dz ?? 0; out.roll += p.roll ?? 0;
     if (p.yawW > 0) out.turns.push([p.yaw, Math.min(1, p.yawW)]);
     if (p.leg !== undefined) out.leg = p.leg;
     if (p.mode) out.mode = p.mode;
@@ -212,7 +215,10 @@ export function applyUpper(p) {
 // frame) from the resolved driver answers r.
 export function animatePlayer(p, v, dt, r) {
   const full = r.action ? r.actionW : 0;
-  const { w, dir, v: vv } = gait(r.mode, v);
+  const { w: goal, dir, v: vv } = gait(r.mode, v);
+  // the weights ease towards the gait's, so a mode switch or a speed spike blends over a few frames
+  const k = dt > 0 ? 1 - Math.exp(-dt / BLEND_S) : 1;
+  const w = p.ws = goal.map((g, j) => (p.ws ? p.ws[j] + (g - p.ws[j]) * k : g));
   const moving = w[1] + w[2] + w[3];
   const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
   p.phase = (((p.phase + dir * (vv / stride) * dt) % 1) + 1) % 1;

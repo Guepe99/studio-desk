@@ -6,6 +6,7 @@ import { Pitch, STAGE_W, STAGE_H, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Scene3D } from "./scene3d.js";
 import { AwarenessRig } from "./awareness-rig.js";
+import { KeeperRig } from "./keeper3d-rig.js";
 
 const LOOP_S = 20;          // clock seconds before the loop restarts
 const REPLAY_MIN_S = 5.5;   // replay length when the goal sits at the default place
@@ -112,7 +113,8 @@ function show(c) {
 
 let lastFrame = null, fpsAt = 0;
 function loop(now) {
-  const dt = lastFrame === null ? 0 : Math.min(0.1, (now - lastFrame) / 1000);
+  // the clock follows real time; only a long stall (a hidden tab) is cut short
+  const dt = lastFrame === null ? 0 : Math.min(0.5, (now - lastFrame) / 1000);
   lastFrame = now;
   if (state.playing) state.c = (state.c + dt) % LOOP_S;
   show(state.c);
@@ -153,6 +155,8 @@ async function main() {
     scene = await Scene3D.create($("#view3d"), match, { capture, entities, goalEnd, span: [s0, s1] });
     // players who watch the ball and react to goals, near misses and fouls; ?aware=0 turns it off
     new AwarenessRig(scene).enabled = params.get("aware") !== "0";
+    // the keeper dives, catches or tips for every shot he saves or concedes; ?keeper=0 turns it off
+    new KeeperRig(scene).enabled = params.get("keeper") !== "0";
   } catch (err) {
     $("#status").textContent = `3D view could not start. ${err.message}`;
     throw err;

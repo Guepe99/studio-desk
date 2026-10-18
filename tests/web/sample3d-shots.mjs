@@ -87,7 +87,7 @@ try {
     const s = window.sample3d.scene, sc = s.scene;
     const { pickProfile, PROFILES } = await import("./js/scene3d/quality.js");
     const { seatGrid } = await import("./js/scene3d/stands.js");
-    const { scheduleActions, actionAt, resolve, facing } = await import("./js/scene3d/players.js");
+    const { scheduleActions, resolve, facing } = await import("./js/scene3d/players.js");
     const env = (v, msaa, coarse, side) => ({ webGLVersion: v, maxMSAA: msaa, coarsePointer: coarse, shortSide: side });
     let seed = 1;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -113,8 +113,7 @@ try {
         pickProfile(env(2, 4, true, 390)).name, pickProfile(env(1, 1, false, 1080), "high").name],
       highHasMore: PROFILES.high.shadowMap > 0 && PROFILES.low.shadowMap === 0,
       seats: { n: seats.length, top: Math.max(...seats.map((x) => x[2])), inside: seats.every(([x, d]) => Math.abs(x) < 20 && d > 0 && d < 20) },
-      sched: { A: sched.A.map((a) => [a.kind, +a.start.toFixed(2), +a.end.toFixed(2)]), K: sched.K.map((a) => a.kind) },
-      mid: actionAt(sched.K, 20)?.clip, before: actionAt(sched.K, 19)?.clip ?? null,
+      sched: { A: sched.A.map((a) => [a.kind, +a.start.toFixed(2), +a.end.toFixed(2)]), K: sched.K?.map((a) => a.kind) ?? null },
       resolved: { dx: r.dx, dy: r.dy, mode: r.mode, leg: r.leg, actionW: r.actionW, yaw: +facing(0, r.turns).toFixed(3) },
     };
   });
@@ -125,9 +124,9 @@ try {
   if (look.debug.profile === "low" && (look.debug.shadows !== "blob" || !look.blobs)) fail("low profile without blob shadows");
   if (look.profiles.join() !== "high,low,low,high" || !look.highHasMore) fail(`profile picker: ${look.profiles}`);
   if (look.seats.n < 500 || !look.seats.inside || look.seats.top > 17) fail(`seat grid: ${JSON.stringify(look.seats)}`);
-  // the tackle's slide is cut short by the header 0.8 s later; the save is a dive around its time
+  // the tackle's slide is cut short by the header 0.8 s later; saves are keeper3d's, not an action
   if (JSON.stringify(look.sched.A.map((a) => a[0])) !== '["slide","header"]' || look.sched.A[0][2] > look.sched.A[1][1] + 1e-9
-    || look.sched.K[0] !== "dive" || look.mid !== "Roll" || look.before !== null) fail(`actions: ${JSON.stringify(look)}`);
+    || look.sched.K !== null) fail(`actions: ${JSON.stringify(look)}`);
   if (JSON.stringify(look.resolved) !== JSON.stringify({ dx: 1, dy: 2, mode: "backpedal", leg: null, actionW: 0.5, yaw: 1.571 }))
     fail(`drivers resolve to ${JSON.stringify(look.resolved)}`);
 
@@ -198,7 +197,7 @@ try {
     const r = { scorer: 0, mates: 0, matesOn: 0, conc: 0, concOn: 0 };
     for (const p of sc.players) {
       if (!m.at(p.i, ts)) continue;
-      const emo = Object.entries(p.aw).some(([k, w]) => w > 0 && !/^(Slide|Jump|Roll)/.test(k));
+      const emo = Object.entries(p.aw).some(([k, w]) => w > 0 && !/^(Slide|Jump|Roll|GK_)/.test(k));
       if (p.pid === scorer) r.scorer = emo ? 1 : 0;
       else if (p.pid.startsWith(g.team_id)) { r.matesOn++; if (emo) r.mates++; }
       else { r.concOn++; if (emo) r.conc++; }

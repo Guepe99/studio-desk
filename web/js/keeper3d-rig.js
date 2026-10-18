@@ -1,0 +1,147 @@
+// Babylon side of keeper3d.js: plugs the keeper reactions into the scene as a driver (priority 30,
+// like the event actions), builds the dive, catch and tip poses the player file lacks, and after
+// the animation step aims the arms at the ball's contact point so the hands meet it.
+//
+//   const kr = new KeeperRig(scene3d);   // after Scene3D.create and the AwarenessRig
+//   kr.reactions                         // planKeeper's list, for the tests
+//   kr.hands(i) -> [x, y, h]             // midpoint of entity i's hands, contract metres
+//
+// Real clips can replace the procedural ones by name (GK_Dive_L, GK_Dive_R, GK_Low_L, GK_Low_R,
+// GK_Catch, GK_Tip): a clip already in the file is never overwritten. Such a clip should be in
+// place (no root motion) and keyed on keeper3d.CLIP_KEYS; keeperRoot() gives the root curve.
+import { planKeeper, keeperRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
+import { nodesOf, chain, aim, turnWorld } from "./awareness-rig.js";
+
+const B = window.BABYLON;
+const HALF_L = 52.5, HALF_W = 34;
+const smooth = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
+
+export class KeeperRig {
+  constructor(s) {
+    this.s = s;
+    s.keeper = this;
+    this.enabled = true;
+    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span: s.span });
+    this.by = new Map();
+    for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
+    const probe = s.container.instantiateModelsToScene((n) => `gk-probe-${n}`, false, { doNotInstantiate: true });
+    this.procedural = buildKeeperClips(s.scene, s.container, nodesOf(probe.rootNodes[0], "gk-probe-"));
+    probe.rootNodes.forEach((n) => n.dispose());
+    probe.animationGroups.forEach((g) => g.dispose());
+    probe.skeletons.forEach((k) => k.dispose());
+    s.addDriver({ priority: 30, pose: (i, ts) => this.pose(i, ts) });
+    s.scene.onAfterAnimationsObservable.add(() => this._arms());
+  }
+
+  at(i, ts) {
+    if (!this.enabled) return null;
+    for (const r of this.by.get(i) ?? []) if (ts >= r.start && ts < r.end) return r;
+    return null;
+  }
+
+  pose(i, ts) {
+    const r = this.at(i, ts);
+    if (!r) return null;
+    const k = keeperRoot(r, ts);
+    return { dx: k.dx, dy: k.dy, dz: k.lift, roll: k.roll, yaw: r.yaw, yawW: k.w,
+      action: { clip: r.clip, time: k.clipT, weight: k.w }, actionW: k.w };
+  }
+
+  // Arms towards the contact point: in from the first move, held through contact, out on landing.
+  _arms() {
+    const ts = this.s.ts;
+    if (ts === undefined) return;
+    for (const p of this.s.players) {
+      const r = this.at(p.i, ts);
+      if (!r || !p.holder.isEnabled()) continue;
+      const w = smooth((ts - r.start) / (r.tc - r.start)) * (1 - smooth((ts - r.tc - 0.2) / 0.4));
+      if (w <= 0) continue;
+      const target = new B.Vector3(r.ball[0] - HALF_L, r.ball[2], r.ball[1] - HALF_W);
+      for (const side of ["l", "r"]) {
+        const up = p.anim.node(`upperarm_${side}`), lo = p.anim.node(`lowerarm_${side}`), hand = p.anim.node(`hand_${side}`);
+        if (!up || !lo || !hand) continue;
+        chain(lo);
+        aimPart(up, lo, target.subtract(up.getAbsolutePosition()), w);
+        chain(hand);
+        aimPart(lo, hand, target.subtract(lo.getAbsolutePosition()), w);
+      }
+    }
+  }
+
+  hands(i) {
+    const p = this.s.players.find((q) => q.i === i);
+    if (!p) return null;
+    const [a, b] = ["l", "r"].map((side) => { const n = p.anim.node(`hand_${side}`); chain(n); return n.getAbsolutePosition(); });
+    const m = a.add(b).scale(0.5);
+    return [m.x + HALF_L, m.z + HALF_W, m.y];
+  }
+}
+
+// Turn a bone part of the way (w) towards pointing its child along dir (world).
+function aimPart(bone, child, dir, w) {
+  const cur = child.getAbsolutePosition().subtract(bone.getAbsolutePosition()).normalize();
+  const d = dir.normalizeToNew();
+  const axis = B.Vector3.Cross(cur, d), s = axis.length();
+  if (s < 1e-6) return;
+  turnWorld(bone, axis.scale(1 / s), Math.atan2(s, B.Vector3.Dot(cur, d)) * w);
+}
+
+// Keeper poses in the character's frame (right, up, forward), mirrored for the left; per bone the
+// direction from the joint to the next one. The holder's roll and lift lay the body down
+// (keeper3d.keeperRoot), so "arms up" here is "arms along the body towards the ball" in a dive.
+const sym = (v) => ({ r: v, l: v });
+const STANCE = { arm: sym([[0.45, -0.55, 0.7], [0.2, -0.1, 0.97]]), thigh: sym([0.12, -0.9, 0.4]), calf: sym([0.04, -0.92, -0.38]), spine: 15 };
+const LANDED = { arm: sym([[0.2, 0.7, 0.68], [0, 0.3, 0.95]]), thigh: sym([0.1, -0.8, 0.58]), calf: sym([0.05, -0.95, -0.3]), spine: 10 };
+const STRETCH = { arm: sym([[0.1, 0.95, 0.3], [0.05, 0.95, 0.3]]), thigh: sym([0.08, -0.99, -0.05]), calf: sym([0.06, -0.99, -0.1]), spine: 0 };
+const GATHER = { arm: sym([[0.15, 0.45, 0.88], [0, 0.1, 0.99]]), thigh: sym([0.1, -0.9, 0.4]), calf: sym([0.05, -0.95, -0.25]), spine: 5 };
+const CATCH = { arm: sym([[0.3, -0.15, 0.94], [-0.25, 0.3, 0.92]]), thigh: STANCE.thigh, calf: STANCE.calf, spine: 20 };
+const HUG = { arm: sym([[0.45, -0.75, 0.48], [-0.75, 0.45, 0.48]]), thigh: STANCE.thigh, calf: STANCE.calf, spine: 25 };
+const TIP = { arm: { r: [[0.1, 0.98, 0.15], [0.05, 0.98, 0.2]], l: [[0.4, 0.2, 0.85], [0.2, 0.3, 0.9]] },
+  thigh: { l: [0.1, -0.45, 0.89], r: [0.08, -0.99, 0] }, calf: { l: [0, -0.97, -0.2], r: [0.06, -0.99, -0.1] }, spine: -5 };
+const SEQ = { dive: [STANCE, STRETCH, LANDED, LANDED, STANCE], low: [STANCE, GATHER, LANDED, LANDED, STANCE],
+  catch: [STANCE, CATCH, HUG, HUG, STANCE], tip: [STANCE, TIP, LANDED, STANCE, STANCE] };
+
+// Key the poses on an unposed probe and add them to the container as animation groups, so the
+// players' lazy clip cache (players.js setupAnimations) finds them by name. Returns the names built.
+function buildKeeperClips(scene, container, P) {
+  const fps = container.animationGroups[0].targetedAnimations[0].animation.framePerSecond;
+  chain(P.upperarm_r); chain(P.upperarm_l);
+  const R = P.upperarm_r.getAbsolutePosition().subtract(P.upperarm_l.getAbsolutePosition());
+  R.y = 0; R.z = 0; R.normalize();
+  const U = new B.Vector3(0, 1, 0), F = new B.Vector3(0, 0, 1);
+  const dir = ([r, u, f], side) => R.scale(side === "l" ? -r : r).add(U.scale(u)).add(F.scale(f));
+  const bones = ["spine_03", "upperarm_r", "lowerarm_r", "upperarm_l", "lowerarm_l", "thigh_r", "calf_r", "thigh_l", "calf_l"];
+  const rest = Object.fromEntries(bones.map((b) => [b, P[b].rotationQuaternion.clone()]));
+  const byName = new Map(container.transformNodes.map((n) => [n.name, n]));
+  const have = new Set(container.animationGroups.map((g) => g.name));
+  const built = new Set();
+  for (const [kind, names] of Object.entries(CLIPS)) {
+    for (const name of new Set(names)) {
+      if (have.has(name)) continue;
+      const tracks = {};
+      SEQ[kind].forEach((pose, k) => {
+        bones.forEach((b) => P[b].rotationQuaternion.copyFrom(rest[b]));
+        const a = (pose.spine * Math.PI) / 180;
+        aim(P.spine_03, P.neck_01, U.scale(Math.cos(a)).add(F.scale(Math.sin(a))));
+        for (const side of ["r", "l"]) {
+          aim(P[`thigh_${side}`], P[`calf_${side}`], dir(pose.thigh[side], side));
+          aim(P[`calf_${side}`], P[`foot_${side}`], dir(pose.calf[side], side));
+          aim(P[`upperarm_${side}`], P[`lowerarm_${side}`], dir(pose.arm[side][0], side));
+          aim(P[`lowerarm_${side}`], P[`hand_${side}`], dir(pose.arm[side][1], side));
+        }
+        for (const b of bones) (tracks[b] ??= []).push({ frame: Math.round(CLIP_KEYS[k] * fps), value: P[b].rotationQuaternion.clone() });
+      });
+      bones.forEach((b) => P[b].rotationQuaternion.copyFrom(rest[b]));
+      const g = new B.AnimationGroup(name, scene);
+      scene.animationGroups.splice(scene.animationGroups.indexOf(g), 1);   // a template, never played itself
+      for (const [b, k] of Object.entries(tracks)) {
+        const an = new B.Animation(`${name}-${b}`, "rotationQuaternion", fps, B.Animation.ANIMATIONTYPE_QUATERNION, B.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        an.setKeys(k);
+        g.addTargetedAnimation(an, byName.get(b));
+      }
+      container.animationGroups.push(g);
+      built.add(name);
+    }
+  }
+  return built;
+}

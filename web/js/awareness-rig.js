@@ -93,7 +93,7 @@ export class AwarenessRig {
 }
 
 // Bones by plain name under a root whose node names carry a prefix.
-function nodesOf(root, prefix) {
+export function nodesOf(root, prefix) {
   const out = {};
   for (const n of root.getChildTransformNodes(false)) out[n.name.startsWith(prefix) ? n.name.slice(prefix.length) : n.name] = n;
   return out;
@@ -126,7 +126,7 @@ class Chain {
 }
 
 // Update the world matrices from the top of the hierarchy down to node.
-function chain(node) {
+export function chain(node) {
   const c = [];
   for (let n = node; n; n = n.parent) c.unshift(n);
   c.forEach((n) => n.computeWorldMatrix(true));
@@ -136,7 +136,7 @@ function chain(node) {
 // axis is the right-hand side). Works in the parent's frame, which may be mirrored (glTF root);
 // the parent's world matrix must be up to date.
 const qd = new B.Quaternion(), inv = new B.Matrix(), axis = new B.Vector3();
-function turnWorld(bone, axisW, angle) {
+export function turnWorld(bone, axisW, angle) {
   rotateIn(bone, bone.parent.getWorldMatrix(), axisW, angle);
   bone.computeWorldMatrix(true);   // the next bone down reads it
 }
@@ -150,7 +150,7 @@ function rotateIn(bone, M, axisW, angle) {
 }
 
 // Point a bone at a world direction (the direction from its joint to its child's joint).
-function aim(bone, child, dir) {
+export function aim(bone, child, dir) {
   chain(child);
   const cur = child.getAbsolutePosition().subtract(bone.getAbsolutePosition()).normalize();
   const d = dir.normalizeToNew();
