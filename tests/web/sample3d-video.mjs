@@ -1,0 +1,46 @@
+// Renders the 20 s 3D sample to out/shots/sample3d.mp4: the page clock is driven frame by frame
+// (window.__setTime, 25 fps), one screenshot per frame, then ffmpeg (libx264, yuv420p, crf 23).
+// The frames are deleted afterwards. About 5 minutes with software WebGL, so run it detached:
+//
+//   scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-video.mjs
+import { createRequire } from "node:module";
+import { mkdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { homedir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
+const { chromium } = require("playwright");
+
+const FPS = 25, SECONDS = 20;
+const base = process.argv[2] ?? "http://127.0.0.1:8765/";
+const url = new URL("sample3d.html?match=DEMO&capture=1&view=3d", base).href;
+const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out");
+const frames = `${out}/sample3d-frames`;
+mkdirSync(frames, { recursive: true });
+mkdirSync(`${out}/shots`, { recursive: true });
+
+const errors = [];
+const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
+try {
+  const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+  page.on("console", (m) => { if (m.type() === "error") errors.push(`console: ${m.text()}`); });
+  page.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
+  await page.goto(url);
+  await page.waitForFunction(() => window.sample3d?.ready, null, { timeout: 180000 });
+  await page.evaluate(() => document.fonts.ready);
+  const t0 = Date.now();
+  for (let f = 0; f < FPS * SECONDS; f++) {
+    await page.evaluate((c) => window.__setTime(c), f / FPS);
+    await page.screenshot({ path: `${frames}/frame${String(f).padStart(4, "0")}.jpg`, type: "jpeg", quality: 95 });
+    if (f % 50 === 0) console.log(`frame ${f} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+  }
+} finally {
+  await browser.close();
+}
+if (errors.length) { console.log(errors.join("\n")); process.exit(1); }
+execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", `${frames}/frame%04d.jpg`,
+  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", "-s", "1280x720", `${out}/shots/sample3d.mp4`], { stdio: "inherit" });
+rmSync(frames, { recursive: true, force: true });
+console.log(`sample3d.mp4 written (${FPS * SECONDS} frames)`);

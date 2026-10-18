@@ -1,0 +1,17 @@
+mannequin.glb is derived from UAL1_Standard.glb of the Universal Animation Library [Standard]
+by Quaternius (https://quaternius.itch.io/universal-animation-library,
+https://quaternius.com/packs/universalanimationlibrary.html), downloaded on 18 Oct 2026.
+
+Kept: the Mannequin mesh and skeleton and four clips (Idle_Loop, Walk_Loop, Jog_Fwd_Loop,
+Sprint_Loop); everything else removed and the file quantised with gltf-transform 4.5.1.
+
+The License.txt shipped in the pack reads:
+
+-------------------------------------------------------
+License:
+CC0 1.0 Universal (CC0 1.0)
+Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+------------------------------------------------------
+Models by @Quaternius

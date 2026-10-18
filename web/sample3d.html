@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio Desk 3D sample</title>
+  <meta name="description" content="Twenty seconds of the synthetic match as a 3D floodlit broadcast, next to the 2D pitch on the same clock.">
+  <link rel="preload" href="vendor/fonts/barlow-condensed/BarlowCondensed-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/broadcast.css">
+  <link rel="stylesheet" href="css/sample3d.css">
+  <script src="vendor/babylonjs/9.29.0/babylon.js"></script>
+  <script src="vendor/babylonjs/9.29.0/babylon.glTF2FileLoader.min.js"></script>
+  <script type="module" src="js/sample3d.js"></script>
+</head>
+<body>
+  <main id="app" class="s3d">
+    <div id="frame" aria-label="3D match broadcast">
+      <canvas id="view3d"></canvas>
+      <div id="stage">
+        <div id="scorebug" aria-live="off">
+          <div class="sb-team sb-home"><span class="sb-chip"></span><span class="sb-name"></span></div>
+          <div class="sb-score"><span class="sb-h">0</span><span class="sb-sep"></span><span class="sb-a">0</span></div>
+          <div class="sb-team sb-away"><span class="sb-name"></span><span class="sb-chip"></span></div>
+          <div class="sb-clock"><span class="sb-min"></span><span class="sb-period"></span></div>
+        </div>
+        <div id="overlay"></div>
+        <div id="replay-badge">Replay</div>
+        <div id="wipe" aria-hidden="true"><span>Studio Desk</span></div>
+        <div id="status" role="status"></div>
+      </div>
+    </div>
+    <aside id="side">
+      <div id="frame2d" aria-label="2D pitch, same clock"><canvas id="pitch"></canvas></div>
+      <p class="cap">2D view, same clock</p>
+      <div id="controls">
+        <button id="play" class="ctl icon playing" type="button" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M7 4.5v15l12-7.5z"/><path class="i-pause" d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
+        </button>
+        <span id="time" class="readout">0.0 s</span>
+        <span id="fps" class="readout"></span>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>

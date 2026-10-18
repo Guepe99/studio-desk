@@ -4,7 +4,10 @@
 # foto-chromium:1 docker image (~/bin/pagine/Dockerfile) and Playwright connects over CDP.
 # Elsewhere (CDP=0) Playwright launches its own Chromium.
 #
-#   scripts/with-lock.sh chromium tests/web/run-smoke.sh
+#   scripts/with-lock.sh chromium tests/web/run-smoke.sh [script.mjs [args...]]
+#
+# The optional script (default smoke.mjs, in tests/web/) gets the page base URL as its first
+# argument. Those scripts get WebGL 1 from Mesa's software Vulkan driver (tests/web/webgl).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
@@ -19,13 +22,24 @@ CONT="sd-smoke-chromium-$$"
 cleanup() { kill "$SERVER" 2>/dev/null || true; docker stop "$CONT" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+SCRIPT=${1:-smoke.mjs}
+shift || true
+# WebGL pages (anything but the 2D smoke test) need the image with the software Vulkan driver.
+WEBGL=${WEBGL:-$([ "$SCRIPT" = smoke.mjs ] && echo 0 || echo 1)}
 if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
-  docker run -d --rm --name "$CONT" --shm-size=1g --network host foto-chromium:1 \
-    chromium-browser --headless --no-sandbox --disable-gpu --hide-scrollbars \
+  IMAGE=foto-chromium:1
+  GL=(--disable-gpu)
+  if [ "$WEBGL" = 1 ]; then
+    IMAGE=sd-chromium-webgl:1
+    docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -q -t "$IMAGE" "$ROOT/tests/web/webgl" >/dev/null
+    GL=(--use-gl=angle --use-angle=vulkan --enable-unsafe-swiftshader --ignore-gpu-blocklist)
+  fi
+  docker run -d --rm --name "$CONT" --shm-size=1g --network host "$IMAGE" \
+    chromium-browser --headless --no-sandbox --hide-scrollbars "${GL[@]}" \
     --remote-debugging-address=127.0.0.1 --remote-debugging-port="$CDPPORT" about:blank >/dev/null
   for _ in $(seq 60); do curl -sf -o /dev/null "http://127.0.0.1:$CDPPORT/json/version" && break; sleep 0.5; done
   export CDP_URL="http://127.0.0.1:$CDPPORT"
 fi
 for _ in $(seq 20); do curl -sf -o /dev/null "http://127.0.0.1:$WEB/index.html" && break; sleep 0.25; done
-node "$ROOT/tests/web/smoke.mjs" "http://127.0.0.1:$WEB/"
+node "$ROOT/tests/web/$SCRIPT" "http://127.0.0.1:$WEB/" "$@"
