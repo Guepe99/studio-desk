@@ -57,6 +57,38 @@ def meta(conn, match_id):
                 "SELECT entity FROM tracking_entities WHERE match_id = ? ORDER BY idx", (match_id,))]}
 
 
+def recap(match, facts, cp, title):
+    """Half-time or full-time why_card payload at cp, from score, pass accuracy, sprint and distance facts."""
+    home, away = (t["team_id"] for t in match["teams"])
+    short = {t["team_id"]: t["short_name"] for t in match["teams"]}
+    players = {p["player_id"]: p for p in match["players"]}
+    by_kind = {}
+    for f in facts:
+        by_kind.setdefault(f["kind"], []).append(f)
+    used, parts = [], []
+    goals = [f for f in by_kind.get("score", []) if f["ts"] <= cp]
+    h = max((f["value"] for f in goals if f["team_id"] == home), default=0)
+    a = max((f["value"] for f in goals if f["team_id"] == away), default=0)
+    used += [f["fact_id"] for f in goals]
+    parts.append(f"{short[home]} {h:.0f}-{a:.0f} {short[away]}.")
+    acc = {f["team_id"]: f for f in by_kind.get("pass_accuracy", []) if f["ts"] == cp and f["player_id"] is None}
+    if home in acc and away in acc:
+        parts.append(f"Pass accuracy: {short[home]} {acc[home]['value']:.0f}%, {short[away]} {acc[away]['value']:.0f}%.")
+        used += [acc[home]["fact_id"], acc[away]["fact_id"]]
+    sprints = [f for f in by_kind.get("sprint_speed", []) if f["ts"] <= cp]
+    if sprints:
+        top = max(sprints, key=lambda f: f["value"])
+        parts.append(f"Fastest sprint: {players.get(top['player_id'], {}).get('name')}, {top['value']:.1f} km/h.")
+        used.append(top["fact_id"])
+    dist = [f for f in by_kind.get("distance_covered", []) if f["ts"] == cp]
+    if dist:
+        top = max(dist, key=lambda f: f["value"])
+        parts.append(f"Most ground covered: {players.get(top['player_id'], {}).get('name')}, "
+                     f"{top['value'] / 1000:.1f} km.")
+        used.append(top["fact_id"])
+    return {"kind": "recap", "title": title, "body": " ".join(parts), "fact_ids": used}
+
+
 def template_cues(match, facts, events):
     """Cue sheet from facts only, audiences analyst and casual, at most 2 overlapping per audience."""
     home, away = (t["team_id"] for t in match["teams"])
@@ -91,35 +123,11 @@ def template_cues(match, facts, events):
         return {"mode": "pass", "player_id": f["player_id"], "value": dist["value"], "unit": dist["unit"],
                 "quality": f"Difficulty {f['value']:.1f}/10", "fact_ids": [dist["fact_id"], f["fact_id"], *extra]}
 
-    def recap(cp, title):
-        used, parts = [], []
-        goals = [f for f in by_kind.get("score", []) if f["ts"] <= cp]
-        h = max((f["value"] for f in goals if f["team_id"] == home), default=0)
-        a = max((f["value"] for f in goals if f["team_id"] == away), default=0)
-        used += [f["fact_id"] for f in goals]
-        parts.append(f"{short[home]} {h:.0f}-{a:.0f} {short[away]}.")
-        acc = {f["team_id"]: f for f in by_kind.get("pass_accuracy", []) if f["ts"] == cp and f["player_id"] is None}
-        if home in acc and away in acc:
-            parts.append(f"Pass accuracy: {short[home]} {acc[home]['value']:.0f}%, {short[away]} {acc[away]['value']:.0f}%.")
-            used += [acc[home]["fact_id"], acc[away]["fact_id"]]
-        sprints = [f for f in by_kind.get("sprint_speed", []) if f["ts"] <= cp]
-        if sprints:
-            top = max(sprints, key=lambda f: f["value"])
-            parts.append(f"Fastest sprint: {players.get(top['player_id'], {}).get('name')}, {top['value']:.1f} km/h.")
-            used.append(top["fact_id"])
-        dist = [f for f in by_kind.get("distance_covered", []) if f["ts"] == cp]
-        if dist:
-            top = max(dist, key=lambda f: f["value"])
-            parts.append(f"Most ground covered: {players.get(top['player_id'], {}).get('name')}, "
-                         f"{top['value'] / 1000:.1f} km.")
-            used.append(top["fact_id"])
-        return {"kind": "recap", "title": title, "body": " ".join(parts), "fact_ids": used}
-
     momentum = sorted(by_kind.get("momentum", []), key=lambda f: f["ts"])
     window_ends = sorted({f["ts"] for f in momentum})
     cues = []
     for audience in ("analyst", "casual"):
-        cands = [(0, p1, "why_card", recap(p1, "Half-time")), (0, end, "why_card", recap(end, "Full time"))]
+        cands = [(0, p1, "why_card", recap(match, facts, p1, "Half-time")), (0, end, "why_card", recap(match, facts, end, "Full time"))]
         cands += [(1, f["ts"], "pass_shot", shot(f)) for f in by_kind.get("shot_speed", [])]
         sprints = sorted(by_kind.get("sprint_speed", []), key=lambda f: -f["value"])[:TOP_SPRINTS[audience]]
         cands += [(2, f["ts"], "nameplate", nameplate(f)) for f in sprints]

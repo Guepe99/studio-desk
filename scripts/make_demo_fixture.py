@@ -2,7 +2,8 @@
 
 The web page is built against this fixture while the real simulator and export do not exist yet.
 Two 3-minute periods at 10 fps, a 4-4-2 each side, passes, a goal for each team, a saved shot and
-a cue sheet that uses all four graphics for both audiences. Stdlib + numpy only.
+a cue sheet that uses all four graphics for both audiences. Every number in a cue is the value of
+a fact it cites; the recaps come from studiodesk/export.py. Stdlib + numpy only.
 
     .venv/bin/python scripts/make_demo_fixture.py [out_dir]
 """
@@ -15,6 +16,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from studiodesk.export import recap  # noqa: E402
 from studiodesk.names import find_forbidden  # noqa: E402
 
 MATCH = "DEMO"
@@ -266,7 +268,6 @@ def main(out_dir: Path) -> Path:
     events, out = sim.events, sim.out
     pid = {p["player_id"]: p for p in players}
     short = {t["team_id"]: t["short_name"] for t in TEAMS}
-    team_name = {t["team_id"]: t["name"].split()[0] for t in TEAMS}
 
     facts, n = [], [0]
 
@@ -287,11 +288,11 @@ def main(out_dir: Path) -> Path:
         fr = int(round(e["ts"] * FPS))
         opp = out[fr, 1:, :2][[i for i, p in enumerate(players) if p["team_id"] != e["team_id"]]]
         near = int(np.sum(np.linalg.norm(opp - (e["end_x"], e["end_y"]), axis=1) < 6))
-        diff = min(0.95, dist / 70 + 0.15 * near)
+        diff = 10 * min(0.95, dist / 70 + 0.15 * near)  # 0..10, as studiodesk/facts
         fd = fact("pass_distance", e["ts"], e["team_id"], e["player_id"], dist, "m",
                   f"Pass of {dist:.0f} m", [e["event_id"]])
-        fq = fact("pass_difficulty", e["ts"], e["team_id"], e["player_id"], diff, "ratio",
-                  f"Pass difficulty {diff:.2f}", [e["event_id"]])
+        fq = fact("pass_difficulty", e["ts"], e["team_id"], e["player_id"], diff, "/10",
+                  f"Pass difficulty {diff:.1f}/10", [e["event_id"]])
         pass_facts.append((diff, e, fd, fq))
     # shots, goals, score
     shot_facts, score = [], {"T01": 0, "T02": 0}
@@ -364,34 +365,27 @@ def main(out_dir: Path) -> Path:
         if fg:
             p = pid[e["player_id"]]
             s = fg["label_en"]
+            # the score line shows both teams' totals, so the card cites every goal so far
+            goals = [f["fact_id"] for f in facts if f["kind"] == "score" and f["ts"] <= fg["ts"]]
             cue(e["ts"] + 8.0, 9.0, "why_card", "analyst", {"kind": "why", "title": f"{s}: the run made it",
                 "body": f"{p['name']} hit {fsp['value']:.1f} km/h on the way in and finished at "
-                        f"{fs['value']:.0f} km/h.", "fact_ids": [fsp["fact_id"], fs["fact_id"], fg["fact_id"]]})
+                        f"{fs['value']:.0f} km/h.", "fact_ids": [fsp["fact_id"], fs["fact_id"], *goals]})
             cue(e["ts"] + 8.0, 9.0, "why_card", "casual", {"kind": "why", "title": f"Goal! {s}",
                 "body": f"{p['name'].split()[0]} sprinted clear and smashed it in.",
-                "fact_ids": [fg["fact_id"]]})
+                "fact_ids": goals})
     hard = max(pass_facts, key=lambda x: x[0])
     _, e, fd, fq = hard
     cue(e["ts"] + 0.5, 5.0, "pass_shot", "analyst", {"mode": "pass", "player_id": e["player_id"],
-        "value": round(fd["value"], 1), "unit": "m", "quality": f"Difficulty {fq['value'] * 10:.1f}/10",
+        "value": round(fd["value"], 1), "unit": "m", "quality": f"Difficulty {fq['value']:.1f}/10",
         "fact_ids": [fd["fact_id"], fq["fact_id"]]})
     cue(120.5, 8.0, "momentum", "analyst", momentum_upto(120))
     cue(P1_S + 120.5, 8.0, "momentum", "analyst", momentum_upto(P1_S + 120))
     cue(P1_S - 10, 8.0, "momentum", "casual", momentum_upto(P1_S))
+    # as studiodesk/export.py: the same recap for both audiences at half-time and full time, 12 s,
+    # the full-time one past the last tracking frame
     for end, label in ((P1_S, "Half-time"), (P1_S + P2_S, "Full time")):
-        sc = [f for f in facts if f["kind"] == "score" and f["ts"] <= end]
-        h = max([f["value"] for f in sc if f["team_id"] == "T01"], default=0)
-        a = max([f["value"] for f in sc if f["team_id"] == "T02"], default=0)
-        top = max((f for f in sprint_facts if f["ts"] <= end), key=lambda f: f["value"])
-        shots_n = sum(1 for e, *_ in shot_facts if e["ts"] <= end)
-        title = f"{label}: {team_name['T01']} {h:.0f}-{a:.0f} {team_name['T02']}"
         for aud in both:
-            body = (f"Shots so far: {shots_n}. Top sprint: {pid[top['player_id']]['name']} at {top['value']:.1f} km/h."
-                    if aud == "analyst" else f"Fastest player on the pitch: {pid[top['player_id']]['name']}.")
-            # as studiodesk/export.py: recaps start at half-time and full time and run 12 s,
-            # the full-time one past the last tracking frame
-            cue(end, 12.0, "why_card", aud, {"kind": "recap", "title": title, "body": body,
-                "fact_ids": [top["fact_id"]] + [f["fact_id"] for f in sc]})
+            cue(end, 12.0, "why_card", aud, recap({"teams": TEAMS, "players": players}, facts, end, label))
     cues.sort(key=lambda c: (c["ts"], c["audience"]))
     for i, c in enumerate(cues, 1):
         c["cue_id"] = f"C-{i:06d}"

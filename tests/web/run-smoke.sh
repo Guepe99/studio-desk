@@ -12,8 +12,11 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
 
-[ -f "$ROOT/web/data/DEMO/meta.json" ] || "$ROOT/.venv/bin/python" "$ROOT/scripts/make_demo_fixture.py" 2>/dev/null \
-  || python3 "$ROOT/scripts/make_demo_fixture.py"
+# rebuild the fixture when it is missing or older than its script; a failure stops the run
+FIXTURE="$ROOT/web/data/DEMO/meta.json" GEN="$ROOT/scripts/make_demo_fixture.py"
+PY="$ROOT/.venv/bin/python"
+[ -x "$PY" ] || PY=python3
+if [ ! -f "$FIXTURE" ] || [ "$GEN" -nt "$FIXTURE" ]; then (cd "$ROOT" && "$PY" "$GEN"); fi
 
 WEB=$(free_port)
 python3 -m http.server "$WEB" --bind 127.0.0.1 --directory "$ROOT/web" >/dev/null 2>&1 &
