@@ -22,11 +22,11 @@ agents = [
 ]
 dev = ["pytest"]
 
-[tool.setuptools]
-packages = ["studiodesk"]
+[tool.setuptools.packages.find]
+include = ["studiodesk*"]
 
 [tool.setuptools.package-data]
-studiodesk = ["schema.sql"]
+studiodesk = ["schema.sql", "**/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
