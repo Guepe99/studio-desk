@@ -507,24 +507,24 @@
   "story_id": "S-000022",
   "lang": "en",
   "file": "voice/S-000022.en.mp3",
-  "duration_s": 7.01,
-  "text_sha1": "71d14c2e8e8cb324c4c109533035ed44845d4570",
+  "duration_s": 5.26,
+  "text_sha1": "a56ba36f8035d68186a7d66e4f232f027d9ddb95",
   "voice": "en-US-Ava:DragonHDLatestNeural"
  },
  {
   "story_id": "S-000022",
   "lang": "es",
   "file": "voice/S-000022.es.mp3",
-  "duration_s": 6.82,
-  "text_sha1": "ff65c1fc93e43da7e65726a1ace7f2e028e71aa5",
+  "duration_s": 5.02,
+  "text_sha1": "f8b0c4e861eeb27201bfbf506f60803da5e6939d",
   "voice": "es-ES-Ximena:DragonHDLatestNeural"
  },
  {
   "story_id": "S-000022",
   "lang": "it",
   "file": "voice/S-000022.it.mp3",
-  "duration_s": 5.45,
-  "text_sha1": "8bd77d2d7c25ec25980f971262edc895bd7f5c9b",
+  "duration_s": 4.92,
+  "text_sha1": "b4da102786a97f46fef1c7f7462788ac371241ed",
   "voice": "it-IT-Isabella:DragonHDLatestNeural"
  },
  {
