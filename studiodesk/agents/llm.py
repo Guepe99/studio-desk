@@ -21,6 +21,8 @@ class Pick(BaseModel):
     candidate_id: str
     confidence: float
     angle: str
+    tone: str   # "calm" or "lively": how the phrasebook line sounds
+    focus: str  # one of the candidate's focus_options, or "": what the line leads with
 
 
 class Picks(BaseModel):
@@ -122,8 +124,8 @@ class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClien
 
     @staticmethod
     def _picks(p):
-        return {"picks": [{"candidate_id": c["candidate_id"], "confidence": 0.9, "angle": c["note"]}
-                          for c in p["candidates"]]}
+        return {"picks": [{"candidate_id": c["candidate_id"], "confidence": 0.9, "angle": c["note"], "tone": "lively",
+                           "focus": (c.get("focus_options") or [""])[0]} for c in p["candidates"]]}
 
     @staticmethod
     def _analyses(p):

@@ -91,14 +91,16 @@ def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print, deadline_
 
     Only a story that passed gets the default_status its risk gives (rules.default_status); every
     other status (flagged, not_checked) means needs_review. The analyst's note is checked with the
-    lines. The cap counts HTTP requests when the analyzer counts them (`analyze.requests`), calls otherwise.
+    lines, and so is the AI proposal. The cap counts HTTP requests when the analyzer counts them (`analyze.requests`), calls otherwise.
     """
-    stories = rt.execute("SELECT story_id, texts, analysis_en, risk FROM stories WHERE match_id = ? ORDER BY ts",
+    stories = rt.execute("SELECT story_id, texts, analysis_en, risk, verifier FROM stories WHERE match_id = ? ORDER BY ts",
                          (match_id,)).fetchall()
     counts, calls, failures, end = Counter(), 0, 0, time.monotonic() + deadline_s
-    for story_id, texts, analysis, risk in stories:
-        texts = json.loads(texts)
-        text = "\n".join(t for t in [texts.get(lang, "") for lang in rules.LANGS] + [analysis or ""] if t.strip())
+    for story_id, texts, analysis, risk, verifier in stories:
+        texts, proposals = json.loads(texts), json.loads(verifier or "{}").get("proposals") or {}
+        # the AI proposal sits on the desk one click from air: it is checked with the lines
+        text = "\n".join(t for t in [texts.get(lang, "") for lang in rules.LANGS] + [analysis or ""]
+                         + [proposals.get(lang, "") for lang in rules.LANGS] if t.strip())
         status = "not_checked"
         if (text and getattr(analyze, "requests", calls) < max_calls and failures < MAX_FAILURES
                 and time.monotonic() < end):

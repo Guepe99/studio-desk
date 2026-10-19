@@ -163,6 +163,13 @@ async function scenario(browser, w, h) {
   expect(await page.evaluate(() => window.studioDesk.state.playing) === playing, `${tag}: Space in the desk toggled play`);
   expect(await page.$eval(`${card(SWING)} .act-approved`, (el) => el.getAttribute("aria-pressed")) === "true", `${tag}: Space did not approve`);
 
+  // 4b. the AI proposal sits under the line on air; "Use proposal" puts it on air
+  const proposal = await page.$eval(`${card(SWING)} .proposal-text`, (el) => el.textContent);
+  expect(proposal.includes(SWING.verifier.proposals.en) && proposal.includes("not on air"), `${tag}: proposal block ${JSON.stringify(proposal)}`);
+  await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions")), page.click(`${card(SWING)} .proposal button`)]);
+  expect(await page.$eval(`${card(SWING)} .story-text`, (el) => el.textContent) === SWING.verifier.proposals.en, `${tag}: Use proposal did not put it on air`);
+  expect(!(await page.$(`${card(SWING)} .proposal button`)), `${tag}: Use proposal button still there once used`);
+
   // 5. AI off: only template graphics
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/kill")), page.click("#ai-switch")]);
   await settled(page);
@@ -233,7 +240,7 @@ async function scenario(browser, w, h) {
   await page.reload();
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   const mine = await page.evaluate(() => Object.fromEntries([...window.studioDesk.desk.decisions].map(([k, v]) => [k, v.decision])));
-  expect(mine[HELD.story_id] === "approved" && mine[AUTO.story_id] === "rejected" && mine[SWING.story_id] === "approved", `${tag}: after reload ${JSON.stringify(mine)}`);
+  expect(mine[HELD.story_id] === "approved" && mine[AUTO.story_id] === "rejected" && mine[SWING.story_id] === "edited", `${tag}: after reload ${JSON.stringify(mine)}`);
   const other = await (await browser.newContext({ viewport: { width: w, height: h } })).newPage();
   await other.goto(url);
   await other.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });

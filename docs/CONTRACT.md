@@ -105,6 +105,12 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
     `flagged` is empty on `pass`; on `rewritten` it says what the earlier drafts got wrong, on
     `template` why the drafts were not used (packs before feat/texts4 may hold other strings).
+    Since feat/phrasebook it also holds `on_air` (`"phrasebook"` or `"template"`: who wrote
+    `texts`, always code), `opener` (the phrasebook exclamation id, or null) and, when the AI's
+    lines passed every check in all three languages, `proposals` (`{"en", "it", "es"}`), shown on
+    the desk and put on air only by a person's `edited` decision. `status` then describes the AI's
+    drafts, not the text on air. A story with `on_air: "phrasebook"` has risk 0.05 (0.35 without
+    fact ids). Packs without `on_air` put the AI's lines in `texts`.
   - `safety` is `passed`, `flagged` or `not_checked`.
   - `fact_ids` holds the story's own facts plus the ones the analyst cited (`cited`). Templates,
     graphics and the `why_card` `fact_ids` use only the story's own facts.
