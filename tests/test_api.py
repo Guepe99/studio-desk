@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -72,15 +73,21 @@ def desk(tmp_path, monkeypatch):
     return lambda: TestClient(api.app)
 
 
-def test_session_cookie_is_http_only_and_secure_behind_https(desk):
+def test_session_is_created_by_the_first_post_with_an_http_only_cookie(desk):
     c = desk()
     r = c.get("/api/session")
     assert r.status_code == 200 and r.json() == {"kill_switch": False, "actions_left": api.MAX_ACTIONS_PER_SESSION}
+    assert "set-cookie" not in r.headers  # a GET never creates a session
+    r = c.post("/api/kill", json={"on": False})
     cookie = r.headers["set-cookie"].lower()
     assert "sd_session=" in cookie and "httponly" in cookie and "samesite=lax" in cookie and "secure" not in cookie
-    assert "set-cookie" not in c.get("/api/session").headers  # the same visitor keeps the session
-    tls = desk().get("/api/session", headers={"x-forwarded-proto": "https"})
-    assert "secure" in tls.headers["set-cookie"].lower()
+    assert c.get("/api/session").json()["actions_left"] == api.MAX_ACTIONS_PER_SESSION - 1
+    assert "set-cookie" not in c.post("/api/kill", json={"on": False}).headers  # the same visitor keeps the session
+    for proto in ["https", "https,http", "HTTPS"]:
+        tls = desk().post("/api/kill", json={"on": False}, headers={"x-forwarded-proto": proto})
+        assert "secure" in tls.headers["set-cookie"].lower(), proto
+    plain = desk().post("/api/kill", json={"on": False}, headers={"x-forwarded-proto": "http,https"})
+    assert "secure" not in plain.headers["set-cookie"].lower()
     assert "session_id" not in r.json()  # the id stays in the HttpOnly cookie
 
 
@@ -114,6 +121,11 @@ def test_decisions_are_per_visitor(desk):
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "x" * 601}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "   "}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "a\x00b"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "a\tb"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "a\u0085b"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "a​b"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"it": "a‮b"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"es": "a⁧b"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "edited_text": {"en": "x"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "session_id": "someone"},
 ])
@@ -130,6 +142,35 @@ def test_unknown_story_oversized_body_and_bad_query(desk):
     assert c.get("/api/decisions", params={"match_id": "../etc"}).status_code == 422
     assert c.post("/api/kill", json={"on": "yes"}).status_code == 422
     assert c.post("/api/live").status_code == 501
+
+
+def test_chunked_body_is_capped_and_errors_carry_the_security_headers(desk):
+    c = desk()
+    chunks = (b"x" * 4096 for _ in range(1280))  # 5 MB with no Content-Length
+    r = c.post("/api/decisions", content=chunks, headers={"content-type": "application/json"})
+    assert r.status_code == 413 and r.headers["content-security-policy"].startswith("default-src 'self'")
+    r = c.post("/api/decisions", json={"pad": "x" * 20000})
+    assert r.status_code == 413 and r.headers["x-content-type-options"] == "nosniff"
+    small = (b for b in [b'{"match_id": "DEMO", ', b'"story_id": "S-000001", "decision": "approved"}'])
+    assert c.post("/api/decisions", content=small, headers={"content-type": "application/json"}).status_code == 200
+
+
+def test_non_numeric_content_length_is_a_400():
+    import asyncio
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"{}", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    async def app(scope, receive, send):
+        pytest.fail("reached the app")
+
+    scope = {"type": "http", "method": "POST", "path": "/api/kill", "headers": [(b"content-length", b"abc")]}
+    asyncio.run(api.BodyCap(app)(scope, receive, send))
+    assert sent[0]["status"] == 400
 
 
 def test_kill_switch_is_per_session_and_audited(desk):
@@ -158,7 +199,9 @@ def test_audit_rows_for_decisions_and_agents(desk):
     mine = a.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"]
     assert [(r["actor"], r["action"], r["story_id"]) for r in mine] == [
         ("commentator", "write", "S-000002"), ("human", "edited", "S-000002"), ("human", "rejected", "S-000001")]
-    assert mine[1]["detail"] == {"langs": ["es"]} and "session_id" not in mine[0]
+    sha = hashlib.sha1("Hola".encode()).hexdigest()  # the audit can tell which text went on air
+    assert mine[1]["detail"] == {"langs": ["es"], "sha1": {"es": sha}} and mine[2]["detail"] == {"langs": []}
+    assert "session_id" not in mine[0]
     assert len(desk().get("/api/audit", params={"match_id": "DEMO"}).json()["rows"]) == 1  # no session: agents only
 
 
@@ -169,8 +212,11 @@ def test_caps(desk, monkeypatch):
     assert [c.post("/api/decisions", json=body).status_code for _ in range(3)] == [200, 200, 429]
     assert c.post("/api/kill", json={"on": True}).status_code == 429
     monkeypatch.setattr(api, "MAX_NEW_SESSIONS_PER_DAY", 2)  # one session exists already
-    assert desk().get("/api/session").status_code == 200
-    assert desk().get("/api/session").status_code == 429
+    assert all(desk().get("/api/session").status_code == 200 for _ in range(5))  # cookieless GETs create nothing
+    assert desk().post("/api/kill", json={"on": True}).status_code == 200
+    r = desk().post("/api/kill", json={"on": True})
+    assert r.status_code == 429 and "too many new sessions" in r.json()["detail"]
+    assert desk().get("/api/session").status_code == 200  # reading still works for a new visitor
     assert c.get("/api/session").status_code == 200  # an existing visitor is never locked out
 
 

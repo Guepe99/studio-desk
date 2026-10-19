@@ -205,6 +205,28 @@ and an automatic stop once the day's cost passes $25.
 - Languages: the sheet for language L is the cues with `lang` L, plus the English template cues
   when L has no template cue of its own.
 
+### Control desk additions (feat/desk2, additive)
+
+These refine the feat/desk rules above; where they differ, these win.
+
+- On air is an allow-list: a story's cues go on air only when its status is `auto_approved`,
+  `approved` or `edited`. Any other `default_status` (missing, `pending`, unknown) is held.
+- A story with `safety: "flagged"` (Content Safety) starts as `needs_review` whatever its
+  `default_status`: it never goes on air by itself. A visitor may approve or edit it onto their
+  screen. The voice-over never speaks a flagged story, approved or not.
+- Sessions: `GET /api/session` and `GET /api/decisions` never create a session. Without a cookie
+  `GET /api/session` gives `{kill_switch: false, actions_left: 300}`. The first `POST`
+  (`/api/decisions` or `/api/kill`) creates the session and sets the cookie; the new-session cap
+  (429 "too many new sessions") applies there.
+- Audit `detail` for a decision: `{"langs": []}` without an edit, `{"langs": [..], "sha1": {lang:
+  sha1 of the edited text}}` with one. The edited text itself is never in the audit.
+- Bodies: a non-numeric `Content-Length` is 400; a body over 16 KB is 413, also when it is sent
+  chunked without a `Content-Length`. Error responses carry the same security headers as the rest.
+- Edited text also refuses tab, C1 controls (U+0080..U+009F), zero-width and bidi characters
+  (U+200B..U+200F, U+202A..U+202E, U+2066..U+2069). Newline is allowed.
+- The page loads the replay without waiting for the API: API calls time out after 4 s and the desk
+  then works offline, with the reason in its footer.
+
 ## MCP server (`studiodesk/mcp_server.py`)
 
 Tools, all read-only over `matches.sqlite`, filtered to `ts <= clock` when the clock is running:

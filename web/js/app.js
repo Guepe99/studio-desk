@@ -140,7 +140,7 @@ function tick(now) {
   pitch.draw(match, Math.min(state.ts, match.duration));
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
-  voice.update(state.ts, end);
+  voice?.update(state.ts, end); // null until its clips are checked
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -173,10 +173,12 @@ function wireControls() {
   });
   $("#lang").addEventListener("change", (e) => { state.lang = e.target.value; applyStrings(); lastBug = ""; refreshCues(); desk.render(); });
   $("#desk-open").addEventListener("click", () => {
-    const open = document.body.classList.toggle("desk-open");
-    $("#desk-open").setAttribute("aria-expanded", String(open));
+    const open = !document.body.classList.contains("desk-open");
+    desk.setDrawer(open);
     if (open) $("#desk").querySelector('[role="tab"][aria-selected="true"]')?.focus();
   });
+  // widening the window docks the desk: a drawer left open would keep the page inert
+  matchMedia("(max-width: 1099px)").addEventListener("change", (e) => { if (!e.matches) desk.setDrawer(false); });
   $("#desk").addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest("textarea")) desk.closeDrawer();
   });
@@ -228,17 +230,19 @@ async function main() {
     $("#notice").hidden = false;
     layout();
   }
+  // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
-  await desk.load();
-  voice = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
-  await voice.load();
+  desk.render();
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, voice, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
   requestAnimationFrame(tick);
+  await desk.load();
+  const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
+  await Promise.all([v.load().then(() => { voice = v; }), desk.connect()]);
 }
 
 main();

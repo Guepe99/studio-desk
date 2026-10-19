@@ -1,4 +1,5 @@
 """HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
+import hashlib
 import json
 import mimetypes
 import os
@@ -28,9 +29,45 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 # No /docs or /openapi.json in public: they would advertise the admin route and its header.
 app = FastAPI(title="Studio Desk", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
+MAX_BODY_BYTES = 16384
+
+
+class BodyCap:
+    """Caps POST bodies at MAX_BODY_BYTES with 413, chunked ones included (they have no Content-Length)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] != "POST":
+            return await self.app(scope, receive, send)
+        length = dict(scope["headers"]).get(b"content-length")
+        if length is not None and not length.isdigit():
+            return await JSONResponse({"detail": "bad Content-Length"}, status_code=400)(scope, receive, send)
+        if length is not None and int(length) > MAX_BODY_BYTES:
+            return await JSONResponse({"detail": "request body too large"}, status_code=413)(scope, receive, send)
+        seen = 0
+
+        async def capped():
+            nonlocal seen
+            message = await receive()
+            seen += len(message.get("body", b""))
+            if seen > MAX_BODY_BYTES:  # FastAPI re-raises an HTTPException met while reading the body
+                raise HTTPException(413, "request body too large")
+            return message
+
+        await self.app(scope, capped, send)
+
+
+# Innermost first: the cap sits inside the security headers, so its 413 carries them too.
+app.add_middleware(BodyCap)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+# The pages load only their own files. Inline styles stay (graphics and seek marks set them); inline scripts do not.
+CSP = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; "
+       "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
+       "connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
-                    "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": "frame-ancestors 'none'"}
+                    "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": CSP}
 
 
 @app.middleware("http")
@@ -114,9 +151,9 @@ MATCH_PATTERN = r"^(M\d{3}|DEMO)$"
 EDIT_MAX_CHARS = 600            # a why_card body: five lines that shrink to fit
 MAX_ACTIONS_PER_SESSION = 300   # decisions and kill-switch flips: plenty for a judge, a wall for a script
 MAX_NEW_SESSIONS_PER_DAY = 5000  # with the cap above, bounds what the public link can write in a day
-MAX_BODY_BYTES = 16384
 SESSION_RE = re.compile(r"[A-Za-z0-9_-]{32}")
-NO_CONTROL_CHARS = r"^[^\x00-\x09\x0b-\x1f\x7f]*$"  # newlines allowed
+# Newlines allowed. Refused: other C0 controls, DEL and C1, zero-width and direction marks, bidi embeddings and isolates.
+NO_CONTROL_CHARS = r"^[^\x00-\x09\x0b-\x1f\x7f-\x9f​-‏‪-‮⁦-⁩]*$"
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=EDIT_MAX_CHARS,
                                         pattern=NO_CONTROL_CHARS)]
@@ -141,23 +178,17 @@ class Kill(BaseModel):
     on: StrictBool
 
 
-@app.middleware("http")
-async def body_cap(request: Request, call_next):
-    # shortcut: trusts Content-Length; a chunked body is not counted. The ingress caps those.
-    if request.method == "POST" and int(request.headers.get("content-length") or 0) > MAX_BODY_BYTES:
-        return JSONResponse({"detail": "request body too large"}, status_code=413)
-    return await call_next(request)
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 @contextmanager
-def _runtime():
+def _runtime(write: bool = False):
     conn = db.runtime()
     try:
         with conn:  # one transaction: an error rolls back the session row and the audit row too
+            if write:  # take the write lock before the cap checks, so concurrent requests cannot pass a cap together
+                conn.execute("BEGIN IMMEDIATE")
             yield conn
     finally:
         conn.close()
@@ -173,7 +204,8 @@ def _session(conn, request: Request, response: Response, create: bool = True) ->
         raise HTTPException(429, "too many new sessions today; the replay still works without saving decisions")
     sid = secrets.token_urlsafe(24)
     conn.execute("INSERT INTO sessions (session_id, created_at) VALUES (?, ?)", (sid, _now()))
-    https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"  # TLS ends at the ingress
+    # TLS ends at the ingress; behind a proxy chain the first value is what the visitor used
+    https = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip().lower() == "https"
     response.set_cookie(COOKIE, sid, max_age=30 * 86400, httponly=True, samesite="lax", secure=https, path="/")
     return sid
 
@@ -217,8 +249,11 @@ def list_matches():
 
 @app.get("/api/session")
 def get_session(request: Request, response: Response):
+    # Read-only: the first POST creates the session, so cookieless GETs cannot use up the day's cap.
     with _runtime() as conn:
-        sid = _session(conn, request, response)
+        sid = _session(conn, request, response, create=False)
+        if sid is None:
+            return {"kill_switch": False, "actions_left": MAX_ACTIONS_PER_SESSION}
         kill = conn.execute("SELECT kill_switch FROM sessions WHERE session_id = ?", (sid,)).fetchone()[0]
         return {"kill_switch": bool(kill), "actions_left": MAX_ACTIONS_PER_SESSION - _actions(conn, sid)}
 
@@ -236,9 +271,16 @@ def get_decisions(request: Request, response: Response, match_id: str = Query(pa
             "decisions": [{**dict(r), "edited_text": json.loads(r["edited_text"]) if r["edited_text"] else None} for r in rows]}
 
 
+def _detail(edited: dict | None) -> dict:
+    """Audit detail of a decision: for an edit, the languages and the SHA-1 of each text that went on air."""
+    if not edited:
+        return {"langs": []}
+    return {"langs": sorted(edited), "sha1": {k: hashlib.sha1(v.encode("utf-8")).hexdigest() for k, v in sorted(edited.items())}}
+
+
 @app.post("/api/decisions")
 def post_decision(d: Decision, request: Request, response: Response):
-    with _runtime() as conn:
+    with _runtime(write=True) as conn:
         sid = _session(conn, request, response)
         if not _story_known(conn, d.match_id, d.story_id):
             raise HTTPException(404, "unknown story for this match")
@@ -250,13 +292,13 @@ def post_decision(d: Decision, request: Request, response: Response):
                      (sid, d.match_id, d.story_id, d.decision, text, at))
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', ?, ?, ?, ?)",
-                     (sid, at, d.decision, d.match_id, d.story_id, json.dumps({"langs": sorted(d.edited_text or {})})))
+                     (sid, at, d.decision, d.match_id, d.story_id, json.dumps(_detail(d.edited_text))))
     return {"story_id": d.story_id, "decision": d.decision, "edited_text": d.edited_text, "at": at}
 
 
 @app.post("/api/kill")
 def post_kill(k: Kill, request: Request, response: Response):
-    with _runtime() as conn:
+    with _runtime(write=True) as conn:
         sid = _session(conn, request, response)
         _spend(conn, sid)
         conn.execute("UPDATE sessions SET kill_switch = ? WHERE session_id = ?", (int(k.on), sid))

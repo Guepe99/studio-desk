@@ -6,10 +6,13 @@
 // the text_sha1 of the DEMO stories, then checks at 1440x900: the button is off until pressed;
 // at 1x a clip starts when an auto-approved story's cue goes on air; seeking stops it; a held
 // story stays silent until approved on the desk, then speaks; the AI switch stops a clip; an
-// edited story and 4x stay silent; a stale text_sha1 is never played. Screenshots of the controls
-// bar at 1440 and 390 px: out/shots/voice-*.png.
+// edited story and 4x stay silent; a stale text_sha1 is never played; one Audio element plays every
+// clip; a language switch stops the clip; a flagged story never speaks; a refused play() turns the
+// button off; the speaker icon is painted, off and on (convex paths, pixels in the icon colour).
+// The fake clips are removed at the end. Screenshots of the controls bar at 1440 and 390 px:
+// out/shots/voice-*.png.
 import { createRequire } from "node:module";
-import { copyFileSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -40,6 +43,12 @@ const manifest = stories.map((s, i) => {
     text_sha1: createHash("sha1").update(text, "utf8").digest("hex"), voice: "test" };
 });
 writeFileSync(path.join(demo, "voice.json"), JSON.stringify(manifest));
+// the fake clips go at the end, also on a crash, so later DEMO runs are silent again
+const cleanup = () => {
+  rmSync(path.join(demo, "voice.json"), { force: true });
+  rmSync(path.join(demo, "voice"), { recursive: true, force: true });
+};
+process.on("exit", cleanup);
 const firstCue = (s) => Math.min(...cues.filter((c) => c.story_id === s.story_id && c.audience === "analyst" && c.lang === "en").map((c) => c.ts));
 
 const failures = [];
@@ -58,7 +67,7 @@ await page.evaluate(() => document.fonts.ready);
 
 const voice = () => page.evaluate(() => {
   const v = window.studioDesk.voice;
-  const a = v.current?.audio;
+  const a = v.current ? v.audio : null;
   return { sid: v.current?.sid ?? null, playing: Boolean(a && !a.paused), t: a?.currentTime ?? 0, ts: window.studioDesk.state.ts };
 });
 // play at speed from half a second before ts until match time passes ts + after (frames are slow here)
@@ -75,6 +84,56 @@ const playFrom = async (ts, after, speed = 1) => {
 };
 
 expect(await page.isVisible("#voice") && (await page.getAttribute("#voice", "aria-pressed")) === "false", "voice button shown, off by default");
+// The speaker icon must really be drawn. Chromium 131 on ANGLE over software Vulkan (the
+// sd-chromium-webgl image) paints nothing for a concave or multi-part path while its box looks
+// fine, and this image's Chromium paints them: so every displayed path must be one convex shape
+// (sampled along its outline), have a box inside the button, and the button must have pixels in the
+// icon colour in a screenshot.
+const icon = () => page.$eval("#voice", (b) => {
+  const r = b.getBoundingClientRect();
+  const convex = (p) => {
+    if ((p.getAttribute("d").match(/[Mm]/g) ?? []).length !== 1) return false;
+    const n = 48, len = p.getTotalLength(), pts = [...Array(n).keys()].map((i) => p.getPointAtLength((len * i) / n));
+    let sign = 0;
+    for (let i = 0; i < n; i++) {
+      const [a, o, c] = [pts[i], pts[(i + 1) % n], pts[(i + 2) % n]];
+      const x = (o.x - a.x) * (c.y - o.y) - (o.y - a.y) * (c.x - o.x);
+      if (Math.abs(x) < 1e-3) continue;
+      if (sign && Math.sign(x) !== sign) return false;
+      sign = Math.sign(x);
+    }
+    return true;
+  };
+  return [...b.querySelectorAll("svg path")].filter((p) => getComputedStyle(p).display !== "none").map((p) => {
+    const q = p.getBoundingClientRect();
+    return { cls: p.getAttribute("class") ?? "speaker", w: q.width, h: q.height, convex: convex(p),
+      inside: q.left >= r.left && q.right <= r.right && q.top >= r.top && q.bottom <= r.bottom };
+  });
+});
+const bright = async () => {
+  const png = (await page.locator("#voice").screenshot()).toString("base64");
+  // pixels nearer the icon colour (the button's `color`, which the paths fill with) than its
+  // background: the screenshot's colours are shifted a little, so no exact match
+  return page.evaluate(async (s) => {
+    const st = getComputedStyle(document.querySelector("#voice"));
+    const [fg, bg] = [st.color, st.backgroundColor].map((v) => v.match(/\d+/g).slice(0, 3).map(Number));
+    const dist = (d, i, x) => Math.abs(d[i] - x[0]) + Math.abs(d[i + 1] - x[1]) + Math.abs(d[i + 2] - x[2]);
+    const img = new Image();
+    img.src = `data:image/png;base64,${s}`;
+    await img.decode();
+    const c = Object.assign(document.createElement("canvas"), { width: img.width, height: img.height });
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (dist(d, i, fg) < dist(d, i, bg)) n++;
+    return n;
+  }, png);
+};
+const iconOk = (paths) => paths.length === 4 && paths.every((p) => p.w > 1 && p.h > 1 && p.inside && p.convex);
+let paths = await icon();
+let lit = await bright();
+expect(iconOk(paths) && lit > 30, `voice icon drawn when off (${lit} icon pixels, ${JSON.stringify(paths)})`);
 expect(await page.evaluate(() => window.studioDesk.voice.clips.size) === stories.length - 1, "clip with a stale text_sha1 is not loaded");
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "muted: no clip at the auto-approved cue");
@@ -83,6 +142,10 @@ await page.focus("#voice");
 await page.keyboard.press("Enter"); // keyboard press is a user gesture too
 expect((await page.getAttribute("#voice", "aria-pressed")) === "true", "Enter turns the voice on");
 expect(await page.evaluate(() => localStorage.getItem("studiodesk.voice")) === "on", "state remembered in localStorage");
+await page.mouse.move(0, 0); // no hover colour in the screenshot
+paths = await icon();
+lit = await bright();
+expect(iconOk(paths) && paths.some((p) => p.cls === "i-on") && lit > 30, `voice icon drawn when on (${lit} icon pixels, ${JSON.stringify(paths)})`);
 
 await playFrom(firstCue(AUTO), 1);
 let v = await voice();
@@ -115,7 +178,44 @@ expect((await voice()).sid === null, "edited story stays silent");
 await page.click(`#story-${STALE.story_id} .act-approved`);
 await playFrom(firstCue(STALE), 1);
 expect((await voice()).sid === null, "stale clip never plays");
+
+// one element for every clip (WebKit unlocks media per element, in the click)
+await page.evaluate(() => { window.firstAudio = window.studioDesk.voice.audio; });
+await playFrom(firstCue(AUTO), 1);
+v = await voice();
+expect(v.sid === AUTO.story_id && v.playing && await page.evaluate(() => window.studioDesk.voice.audio === window.firstAudio),
+  "the same Audio element plays the next clip");
+
+// a language switch stops the clip; the story has no Italian clip, so it stays silent in Italian
+await page.selectOption("#lang", "it");
+await page.waitForTimeout(300);
+v = await voice();
+expect(v.sid === null && !v.playing, "switching to Italian stops the English clip");
+await playFrom(firstCue(AUTO), 1);
+expect((await voice()).sid === null, "Italian: no clip, silent");
+await page.selectOption("#lang", "en");
+
+// a story flagged by Content Safety is held on the desk and never speaks, even once approved
+await page.evaluate((id) => { const d = window.studioDesk.desk; d.byId.get(id).safety = "flagged"; d.changed(); }, AUTO.story_id);
+expect(await page.evaluate((id) => { const d = window.studioDesk.desk; return d.status(d.byId.get(id)); }, AUTO.story_id) === "needs_review",
+  "flagged story held for review");
+await page.click(`#story-${AUTO.story_id} .act-approved`);
+await playFrom(firstCue(AUTO), 1);
+expect((await voice()).sid === null, "flagged story stays silent after approval");
 await page.evaluate(() => window.studioDesk.setPlaying(false));
+
+// a browser that refuses to play (WebKit without a gesture) turns the button back off
+const strict = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const p3 = await strict.newPage();
+await p3.addInitScript(() => {
+  HTMLMediaElement.prototype.play = function () { return Promise.reject(new DOMException("no gesture", "NotAllowedError")); };
+});
+await p3.goto(url);
+await p3.waitForFunction(() => window.studioDesk?.voice, null, { timeout: 15000 });
+await p3.click("#voice");
+await p3.waitForFunction(() => document.querySelector("#voice").getAttribute("aria-pressed") === "false", null, { timeout: 3000 }).catch(() => {});
+expect((await p3.getAttribute("#voice", "aria-pressed")) === "false", "NotAllowedError sets the button back to off");
+await strict.close();
 
 const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
 const p2 = await phone.newPage();
@@ -132,5 +232,6 @@ const box = await p2.$eval("#voice", (el) => el.getBoundingClientRect().toJSON()
 expect(box.right <= 390 && box.width >= 30, `390 px: button inside the screen (${Math.round(box.width)} px wide)`);
 
 await browser.close();
+cleanup();
 if (failures.length) { console.log(`${failures.length} failure(s)`); process.exit(1); }
 console.log("voice: all checks passed");

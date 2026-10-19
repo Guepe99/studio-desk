@@ -100,8 +100,17 @@ async function scenario(browser, w, h) {
   // 1. held until approved
   expect(!(await onAirAt(page, HELD)), `${tag}: ${HELD.story_id} needs review but its graphic is on air`);
   expect((await onAirAt(page, AUTO)) !== null, `${tag}: auto-approved ${AUTO.story_id} not on air`);
+  if (phone) {
+    await openDesk();
+    expect(await page.evaluate(() => document.querySelector("#app").inert && document.querySelector("#desk").getAttribute("aria-modal") === "true"),
+      `${tag}: open drawer is not modal`);
+    await closeDesk();
+    expect(await page.evaluate(() => !document.querySelector("#app").inert && !document.querySelector("#desk").hasAttribute("aria-modal")),
+      `${tag}: closed drawer leaves the page inert`);
+  }
   await openDesk();
-  await page.click(`${card(HELD)} summary`); // evidence open in the shot
+  expect(await page.$$eval(`${card(HELD)} .mini`, (n) => n.length) === 0, `${tag}: pitch map built with the evidence closed`);
+  await page.click(`${card(HELD)} .evidence summary`); // evidence open in the shot
   await seekTo(page, whyCue(HELD).ts + 2);
   await shoot("needs-review");
   expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "Held", `${tag}: held story not marked Held`);
@@ -163,6 +172,12 @@ async function scenario(browser, w, h) {
   expect(await page.$eval("#tab-traces", (el) => el.getAttribute("aria-selected")) === "true", `${tag}: Show trace did not open Traces`);
   const chain = await page.$$eval(`[data-trace="${HELD.story_id}"] .chain li`, (n) => n.map((x) => x.dataset.agent));
   expect(chain[0] === "story_finder" && chain.at(-1) === "director" && chain.includes("verifier"), `${tag}: trace chain ${chain.join(",")}`);
+  // a hand-off shared by several stories counts once over all the groups
+  const [byGroup, total] = await page.evaluate(() => {
+    const d = window.studioDesk.desk, g = [...d.traceGroups().values()];
+    return [g.reduce((n, x) => n + x.sum.cost + x.sum.tokens, 0), d.traces.reduce((n, t) => n + t.cost_usd + t.tokens_in + t.tokens_out, 0)];
+  });
+  expect(Math.abs(byGroup - total) < 1e-6 * Math.max(1, total), `${tag}: trace groups add up to ${byGroup}, the run to ${total}`);
   await shoot("traces", `[data-trace="${HELD.story_id}"]`);
 
   // 7. audit log
@@ -212,11 +227,91 @@ async function scenario(browser, w, h) {
   await ctx.close();
 }
 
+// Edges at 1440: an API that hangs, a refused edit, a language switch while editing, the on-air
+// allow-list, a story flagged by Content Safety, and malformed replay files.
+async function edges(browser) {
+  const newPage = async () => {
+    // bypassCSP: rule() below builds functions from strings; the CSP itself is covered by scenario()
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, bypassCSP: true });
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => fail(`edges page error: ${e.message}`));
+    return page;
+  };
+  const rule = (page, fn, id) => page.evaluate(([f, x]) => { const d = window.studioDesk.desk; return new Function("d", "s", f)(d, d.byId.get(x)); }, [fn, id]);
+
+  // 1. the API never answers: the replay plays at once, the desk goes offline after its timeout
+  let page = await newPage();
+  await page.route("**/api/**", () => new Promise(() => {}));
+  const t0 = Date.now();
+  await page.goto(url);
+  await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
+  await page.evaluate(() => window.studioDesk.setPlaying(true));
+  await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
+  expect(await page.evaluate(() => window.studioDesk.state.ts > 0.5 && !window.studioDesk.desk.online) && Date.now() - t0 < 4000,
+    "edges: the replay waits for a hanging API");
+  await page.waitForFunction(() => /did not answer in time/.test(document.querySelector(".desk-foot")?.textContent ?? ""), null, { timeout: 8000 })
+    .catch(() => fail("edges: no timeout note in the desk footer"));
+  await page.context().close();
+
+  // 2. a refused edit keeps the editor and the draft, with a readable reason; a draft survives a language switch
+  page = await newPage();
+  await page.goto(url);
+  await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
+  await page.click(`${card(AUTO)} .act-edited`);
+  await page.fill(`${card(AUTO)} textarea`, "Draft in English");
+  await page.selectOption("#lang", "it");
+  await page.fill(`${card(AUTO)} textarea`, "Bozza in italiano");
+  await page.selectOption("#lang", "en");
+  expect(await page.inputValue(`${card(AUTO)} textarea`) === "Draft in English", "edges: the English draft did not survive a language switch");
+  await page.route("**/api/decisions", (r) => (r.request().method() === "POST"
+    ? r.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: [{ msg: "pattern" }] }) }) : r.continue()));
+  await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
+  await page.waitForTimeout(200);
+  expect(await page.inputValue(`${card(AUTO)} textarea`).catch(() => null) === "Draft in English", "edges: a refused edit lost the editor or the draft");
+  expect(/character the desk does not accept/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
+  expect(await rule(page, "return d.status(s)", AUTO.story_id) === "auto_approved", "edges: a refused edit stayed as a decision");
+  await page.unroute("**/api/decisions");
+  let sent = null;
+  page.on("request", (r) => { if (r.url().includes("/api/decisions") && r.method() === "POST") sent = r.postDataJSON(); });
+  await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
+  expect(sent?.edited_text?.en === "Draft in English" && sent?.edited_text?.it === "Bozza in italiano", `edges: saved texts ${JSON.stringify(sent?.edited_text)}`);
+  // the response reaches Playwright before the page has handled it
+  expect(await page.waitForSelector(`${card(AUTO)} textarea`, { state: "detached", timeout: 3000 }).then(() => true, () => false),
+    "edges: editor still open after a saved edit");
+
+  // 3. the on-air rule is an allow-list, and a flagged story is held until approved
+  for (const status of ["pending", null, undefined]) {
+    expect(await rule(page, `s.default_status = ${JSON.stringify(status ?? null)}; return d.onAir(s)`, HELD.story_id) === false, `edges: status ${status} goes on air`);
+  }
+  await rule(page, "d.decisions.delete(s.story_id); s.safety = 'flagged'; d.changed()", SWING.story_id);
+  const swing = await rule(page, "return [d.status(s), d.onAir(s)]", SWING.story_id);
+  expect(swing[0] === "needs_review" && swing[1] === false || SWING.default_status !== "auto_approved", `edges: flagged story on air by itself ${swing}`);
+  await rule(page, "s.default_status = 'auto_approved'; s.safety = 'flagged'; d.changed()", AUTO.story_id);
+  await rule(page, "d.decisions.delete(s.story_id); d.changed()", AUTO.story_id);
+  expect(JSON.stringify(await rule(page, "return [d.status(s), d.onAir(s)]", AUTO.story_id)) === '["needs_review",false]', "edges: flagged auto-approved story on air by itself");
+  expect(await page.$eval(`${card(AUTO)} .tally`, (el) => el.textContent) === "Held", "edges: flagged story not marked Held");
+  await page.context().close();
+
+  // 4. malformed replay files: the desk and the traces still render
+  page = await newPage();
+  await page.route("**/data/DEMO/stories.json", (r) => r.fulfill({ contentType: "application/json",
+    body: JSON.stringify([{ story_id: "S-000001", ts: 10, kind: "goal", texts: { en: "x" }, default_status: "auto_approved" }, null, 5]) }));
+  await page.route("**/data/DEMO/traces.json", (r) => r.fulfill({ contentType: "application/json",
+    body: JSON.stringify([{ seq: 1, agent: "analyst", step: "x", story_ids: "S-000001", fact_ids: "F", input_summary: "", output_summary: "" }]) }));
+  await page.goto(url);
+  await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
+  await page.click("#tab-traces");
+  await page.click("#tab-stories");
+  expect(await page.$$eval(".story", (n) => n.length) === 1, "edges: malformed stories.json broke the list");
+  await page.context().close();
+}
+
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 try {
   for (const [w, h] of [[1440, 900], [390, 844]]) {
     try { await scenario(browser, w, h); } catch (e) { fail(`${w}: ${e.message.split("\n").slice(0, 8).join(" | ")}`); }
   }
+  try { await edges(browser); } catch (e) { fail(`edges: ${e.message.split("\n").slice(0, 8).join(" | ")}`); }
 } finally {
   await browser.close();
 }

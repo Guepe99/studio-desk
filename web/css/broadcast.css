@@ -262,3 +262,10 @@ body { display: flex; }
 .io-k { display: inline-block; min-width: 30px; color: var(--muted); }
 .step-meta { margin: 4px 0 0; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
 .fids { margin: 4px 0 0; }
+/* long ids and model output must wrap inside the drawer, never widen it */
+.io, .fids, .flabel, .story-text { overflow-wrap: anywhere; }
+/* touch: 44 px targets (WCAG 2.5.5) */
+@media (pointer: coarse) {
+  .link, .switch, .flagged summary, .evidence summary { min-height: 44px; }
+  .flagged summary, .evidence summary { display: flex; align-items: center; }
+}
