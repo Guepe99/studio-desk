@@ -70,7 +70,7 @@ def test_answer_with_cited_facts_counts_and_audits(studio):
     assert {(q["session_id"] == "*", q["questions"]) for q in rows("questions_daily")} == {(True, 1), (False, 1)}
     assert rows("usage_daily")[0]["cost_usd"] == pytest.approx(a["cost_usd"], abs=1e-6)
     assert c.post("/api/ask", json=body()).json()["questions_left"] == config.ASK_PER_SESSION_PER_DAY - 2
-    assert c.post("/api/decisions", json={"match_id": "M001", "story_id": "S-000001", "decision": "approved"}).status_code == 404
+    assert c.post("/api/decisions", json={"match_id": "M001", "story_id": "S-999999", "decision": "approved"}).status_code == 404
     assert c.get("/api/session").json()["actions_left"] == api.MAX_ACTIONS_PER_SESSION  # asking is not a desk action
 
 

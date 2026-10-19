@@ -5,7 +5,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 # Dependencies first, in their own layer: a code change does not reinstall them.
 # Editable: config.py and api.py find data/ and web/ next to the package, under /app.
-RUN mkdir studiodesk && touch studiodesk/__init__.py && pip install --no-cache-dir -e . && useradd -u 10001 app
+RUN mkdir studiodesk && touch studiodesk/__init__.py && pip install --no-cache-dir -e ".[agents]" && useradd -u 10001 app
 COPY studiodesk ./studiodesk
 COPY data/forbidden_names.txt ./data/
 # The demo matches are rebuilt from the seed at image build: no data files in git. This slow layer
