@@ -41,12 +41,13 @@ export function detectEnv(engine) {
 }
 
 // Steps, cheapest loss first: render scale, then post effects, then sun shadows to blobs.
-// hooks: {scaleBy(f), dropPost(), dropShadows()}. It stops for good once the view holds 30 fps.
+// hooks: {scaleBy(f), dropPost(), dropShadows(), held()}. It stops for good once the view holds 30
+// fps. While held() (a paused picture draws no frames to count) a step waits for the next check.
 export function startOptimizer(scene, hooks) {
   const opts = new B.SceneOptimizerOptions(30, 2000);
   const step = (priority, apply, desc) => {
     const o = new B.CustomOptimization(priority);
-    o.onApply = () => { apply(); return true; };   // one step per priority level
+    o.onApply = () => { if (hooks.held?.()) return false; apply(); return true; };   // one step per priority level
     o.onGetDescription = () => desc;
     opts.addOptimization(o);
   };
