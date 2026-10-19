@@ -69,6 +69,8 @@ body {
 .ctl.icon svg { width: 22px; height: 22px; fill: currentColor; }
 .ctl.icon .i-pause, .ctl.icon.playing .i-play { display: none; }
 .ctl.icon.playing .i-pause { display: inline; }
+#voice[hidden], #voice .i-on, #voice[aria-pressed="true"] .i-off { display: none; }
+#voice[aria-pressed="true"] .i-on { display: inline; }
 .seg { display: flex; }
 .seg .ctl { border-radius: 0; margin-left: -1px; }
 .seg .ctl:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }

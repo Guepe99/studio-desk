@@ -35,7 +35,8 @@ cleanup() { kill "$SERVER" 2>/dev/null || true; docker stop "$CONT" >/dev/null 2
 trap cleanup EXIT
 
 # WebGL pages (anything but the 2D pages) need the image with the software Vulkan driver.
-WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs) echo 0 ;; *) echo 1 ;; esac)}
+# voice.mjs needs MP3 decoding, which the foto-chromium build lacks: it runs in the Playwright image.
+WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs) echo 0 ;; voice.mjs) echo 2 ;; *) echo 1 ;; esac)}
 if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
   IMAGE=foto-chromium:1
