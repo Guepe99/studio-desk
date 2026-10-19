@@ -2,6 +2,7 @@
 import { loadMatch } from "./match.js";
 import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
+import { Desk } from "./desk.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -22,16 +23,18 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, end = 0;
+let match = null, host = null, desk = null, end = 0;
 // Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
 let portrait = false, scale = 1;
 
 function layout() {
   // controls wrap: size them first, then give the frame the height that is left
-  const cw = Math.min(window.innerWidth - 32, 860);
+  // the docked desk (wide screens) takes its width from #app; the drawer (narrow) floats over it
+  const W = $("#app").clientWidth || window.innerWidth;
+  const cw = Math.min(W - 32, 860);
   controls.style.width = `${cw}px`;
   const ch = controls.offsetHeight + 24;
-  const w = Math.max(160, window.innerWidth - 32), h = Math.max(90, window.innerHeight - ch);
+  const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
   const s = Math.min(w / STAGE_W, h / STAGE_H);
   frame.style.width = `${Math.round(STAGE_W * s)}px`;
   frame.style.height = `${Math.round(STAGE_H * s)}px`;
@@ -39,7 +42,7 @@ function layout() {
   controls.style.width = `${Math.max(Math.round(STAGE_W * s), cw)}px`;
   pitch.resize(s * Math.min(window.devicePixelRatio || 1, 2));
   scale = s;
-  portrait = window.innerHeight > window.innerWidth;
+  portrait = window.innerHeight > W;
   document.body.classList.toggle("portrait", portrait);
   if (portrait) {
     deck.style.width = frame.style.width;
@@ -49,7 +52,8 @@ function layout() {
 }
 
 function applyStrings() {
-  document.documentElement.lang = state.lang;
+  // the page chrome is English; the graphics and story texts carry the chosen language
+  for (const el of [$("#overlay"), deck]) el.lang = state.lang;
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));
@@ -72,7 +76,7 @@ function pressed(group, attr, value) {
 }
 
 function cueSheet() {
-  return match.cues.filter((c) => c.audience === state.audience && c.lang === state.lang);
+  return desk.sheet(match.cues, state.audience, state.lang);
 }
 
 function refreshCues() {
@@ -164,14 +168,22 @@ function wireControls() {
     seek(e.key === "Home" ? 0 : e.key === "End" ? end : state.ts + d);
     e.target.value = String(state.ts);
   });
-  $("#lang").addEventListener("change", (e) => { state.lang = e.target.value; applyStrings(); lastBug = ""; refreshCues(); });
+  $("#lang").addEventListener("change", (e) => { state.lang = e.target.value; applyStrings(); lastBug = ""; refreshCues(); desk.render(); });
+  $("#desk-open").addEventListener("click", () => {
+    const open = document.body.classList.toggle("desk-open");
+    $("#desk-open").setAttribute("aria-expanded", String(open));
+    if (open) $("#desk").querySelector('[role="tab"][aria-selected="true"]')?.focus();
+  });
+  $("#desk").addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest("textarea")) desk.closeDrawer();
+  });
   // Space toggles play anywhere; keyup is swallowed too so a focused button does not click as well.
   window.addEventListener("keydown", (e) => {
-    if (e.code !== "Space" || e.target.tagName === "SELECT") return;
+    if (e.code !== "Space" || e.target.tagName === "SELECT" || e.target.closest?.("#desk")) return;
     e.preventDefault();
     if (!e.repeat) setPlaying(!state.playing);
   }, true);
-  window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT") e.preventDefault(); }, true);
+  window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk")) e.preventDefault(); }, true);
   window.addEventListener("resize", layout);
 }
 
@@ -213,12 +225,14 @@ async function main() {
     $("#notice").hidden = false;
     layout();
   }
+  desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
+  await desk.load();
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, seek, setPlaying, get end() { return end; } };
   requestAnimationFrame(tick);
 }
 

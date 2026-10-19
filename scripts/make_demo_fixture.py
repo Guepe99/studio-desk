@@ -3,7 +3,8 @@
 The web page is built against this fixture while the real simulator and export do not exist yet.
 Two 3-minute periods at 10 fps, a 4-4-2 each side, passes, a goal for each team, a saved shot and
 a cue sheet that uses all four graphics for both audiences. Every number in a cue is the value of
-a fact it cites; the recaps come from studiodesk/export.py. Stdlib + numpy only.
+a fact it cites; the recaps come from studiodesk/export.py. Stories, their why cards in en, it and
+es, and the agent traces come from scripts/demo_stories.py. Stdlib + numpy only.
 
     .venv/bin/python scripts/make_demo_fixture.py [out_dir]
 """
@@ -18,6 +19,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from studiodesk.export import recap  # noqa: E402
 from studiodesk.names import find_forbidden  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import demo_stories  # noqa: E402
+
+
+def sheet(cues, audience, lang):
+    """The cues web/js/desk.js plays when every story is on air: the language's own cues, plus the
+    English template cues (story_id null) when that language has no template cues of its own."""
+    mine = [c for c in cues if c["audience"] == audience]
+    own = [c for c in mine if c["lang"] == lang]
+    if lang != "en" and not any(c["story_id"] is None for c in own):
+        own += [c for c in mine if c["lang"] == "en" and c["story_id"] is None]
+    return own
 
 MATCH = "DEMO"
 FPS = 10
@@ -393,24 +407,29 @@ def main(out_dir: Path) -> Path:
     meta = {"match_id": MATCH, "venue_name": VENUE, "fps": FPS, "period1_s": P1_S, "period2_s": P2_S,
             "frames": FRAMES, "home_score": score["T01"], "away_score": score["T02"], "teams": TEAMS,
             "players": players, "lineups": lineups, "entities": ["ball"] + sim.ids}
+    # what the agents will add: stories, their why cards in three languages, the hand-off traces
+    stories, cues, traces = demo_stories.build(meta, events, facts, cues)
 
     # self-checks: shapes, names, contract limits
     assert out.shape == (FRAMES, len(meta["entities"]), 3)
     assert not np.isnan(out[:, 0]).any(), "ball must always have a position"
-    for text in [VENUE] + [t["name"] for t in TEAMS] + [p["name"] for p in players]:
+    texts = [c["payload"].get(k, "") for c in cues for k in ("title", "body")] + [s["analysis_en"] for s in stories]
+    for text in [VENUE] + [t["name"] for t in TEAMS] + [p["name"] for p in players] + texts + [
+            v for s in stories for v in s["texts"].values()]:
         assert not find_forbidden(text), f"real name in fixture: {text}"
     for aud in both:
-        mine = [c for c in cues if c["audience"] == aud]
-        for c in mine:
-            # the most graphics on screen at once is reached at some cue start
-            overlap = [o for o in mine if o["ts"] <= c["ts"] < o["ts"] + o["duration_s"]]
-            assert len(overlap) <= 2, f"more than 2 cues on screen for {aud} at {c['ts']}"
-            assert 0 <= c["ts"] <= P1_S + P2_S
+        for lang in ("en", "it", "es"):
+            mine = sheet(cues, aud, lang)
+            for c in mine:
+                # the most graphics on screen at once is reached at some cue start
+                overlap = [o for o in mine if o["ts"] <= c["ts"] < o["ts"] + o["duration_s"]]
+                assert len(overlap) <= 2, f"more than 2 cues on screen for {aud} {lang} at {c['ts']}"
+                assert 0 <= c["ts"] <= P1_S + P2_S
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_dir.joinpath("tracking.f32").write_bytes(out.astype("<f4").tobytes())
     for name, rows in (("meta", meta), ("events", events), ("facts", facts), ("cues", cues),
-                       ("stories", []), ("traces", [])):
+                       ("stories", stories), ("traces", traces)):
         out_dir.joinpath(f"{name}.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
     return out_dir
 

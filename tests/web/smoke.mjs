@@ -37,6 +37,11 @@ const check = async (name, fn) => {
 const meta = await (await fetch(`${dataUrl}meta.json`)).json();
 const facts = await (await fetch(`${dataUrl}facts.json`)).json();
 const pos = new Float32Array(await (await fetch(`${dataUrl}tracking.f32`)).arrayBuffer());
+// On air for a visitor who has not touched the desk: template cues and auto-approved stories, in
+// English (tests/web/desk.mjs covers the other languages and the desk's decisions).
+const storiesRes = await fetch(`${dataUrl}stories.json`);
+const autoApproved = new Set((storiesRes.ok ? await storiesRes.json() : []).filter((s) => s.default_status === "auto_approved").map((s) => s.story_id));
+const onAir = (c) => c.lang === "en" && (c.story_id === null || autoApproved.has(c.story_id));
 const N = meta.entities.length, P1 = meta.period1_s, DUR = meta.period1_s + meta.period2_s;
 const PX = (1080 - 130 - 70) / 68, LEFT = (1920 - 105 * PX) / 2;
 function stageAt(entity, ts) {
@@ -98,7 +103,9 @@ const scorebug = (page) => page.evaluate(() => ({
 const open = async (browser, opts, { route, ignoreConsole = false } = {}) => {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();
-  if (!ignoreConsole) page.on("console", (m) => { if (m.type() === "error") fail(`${opts.viewport.width}x${opts.viewport.height} console: ${m.text()}`); });
+  // with static hosting the desk's api/ calls 404 and the desk keeps decisions in the tab
+  const apiMiss = (m) => /\/api\//.test(m.location()?.url ?? "");
+  if (!ignoreConsole) page.on("console", (m) => { if (m.type() === "error" && !apiMiss(m)) fail(`${opts.viewport.width}x${opts.viewport.height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${opts.viewport.width}x${opts.viewport.height} page error: ${e.message}`));
   if (route) await route(page);
   await page.goto(url);
@@ -171,7 +178,7 @@ const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.
 try {
   const page = await open(browser, { viewport: { width: 1280, height: 720 } });
   page.on("requestfailed", (r) => fail(`request failed: ${r.url()}`));
-  const cues = await page.evaluate(() => window.studioDesk.match.cues);
+  const cues = (await page.evaluate(() => window.studioDesk.match.cues)).filter(onAir);
 
   await check("cues", async () => {
     const shotFor = {};
