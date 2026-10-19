@@ -3,7 +3,7 @@
     .venv/bin/python scripts/measures.py [--runtime-dir out] [--out docs/MEASURES.md] [M001 M002 ...]
 
 Reads, per match: the AI pack `replays/<match>/stories.json`, the runtime database of the run that
-made it (`<runtime-dir>/runtime11-<match>.sqlite`: traces and audit) and, for the first measure only,
+made it (`<runtime-dir>/runtime12-<match>.sqlite`: traces and audit) and, for the first measure only,
 the hidden `storylines` table of `data/matches.sqlite` (`STUDIODESK_MATCHES_DB` overrides it). Like
 scripts/eval_stories.py, this is an evaluation script: agents, the MCP server and the API never read
 the storylines. Nothing is written but the markdown page.
@@ -23,7 +23,7 @@ from studiodesk.agents import rules  # noqa: E402
 import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
-RUNTIME = "runtime11-{}.sqlite"  # the run of out/regen11.sh that made the committed packs
+RUNTIME = "runtime12-{}.sqlite"  # the run of out/regen12.sh that made the committed packs
 
 # The verifier's fixed reasons (rules.REASONS) that block a number, and the one that blocks a name.
 NUMBER_REASONS = {rules.REASONS[k] for k in (
@@ -137,11 +137,14 @@ def markdown(rows):
     waits = [w for r in rows for w in r["waits"]]
     goal_max = max((w for k, w in waits if k == "goal"), default=0.0)
     over = t["trace_tokens"] / (t["tokens_in"] + t["tokens_out"])
+    traces_note = ("The traces of the agent steps add up to the same tokens." if abs(over - 1) < 0.005 else
+                   f"The traces add up to {over:.2f} times as many tokens (${t['trace_cost_usd']:.3f}): they were "
+                   "written before each trace counted only its own calls, so the audit is the figure to quote.")
     return f"""# Measures
 
 What the system did on the {n} replay matches ({", ".join(r["match_id"] for r in rows)}), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
-databases of the run that made them (`out/runtime11-<match>.sqlite`, traces and audit). Rerun the
+databases of the run that made them (`out/runtime12-<match>.sqlite`, traces and audit). Rerun the
 script after a regeneration; every number below comes from it.
 
 {chr(10).join(lines)}
@@ -171,10 +174,8 @@ a proposal; it goes on air only when a person edits the story.
 ## Tokens and cost
 
 {t['calls']} model calls used {t['tokens_in']:,} input and {t['tokens_out']:,} output tokens, ${t['cost_usd']:.3f} in all
-(${t['cost_usd'] / n:.3f} a match), counted from the audit table, one row per model call. The traces
-add up to {over:.2f} times as many tokens (${t['trace_cost_usd']:.3f}): the three commentators run at the
-same time and each trace takes the difference of a shared counter, so it also counts the calls of the
-others. The audit is the figure to quote; the traces need fixing. The Content Safety checks (one call per story,
+(${t['cost_usd'] / n:.3f} a match), counted from the audit table, one row per model call. {traces_note}
+The Content Safety checks (one call per story,
 {t['stories']} in all) are recorded in neither table and are not counted.
 
 ## Delay from event to graphic

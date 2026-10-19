@@ -12,6 +12,7 @@ process over the MCP protocol on memory streams so its clock moves with ours. An
 or times out is replaced by rules and template sentences: the broadcast never waits.
 """
 import asyncio
+import contextvars
 import json
 import time
 import uuid
@@ -246,6 +247,19 @@ class Drafts:
     error: str | None = None
 
 
+# usage of the ask() running in this task: the commentators run at once, so deltas of the
+# shared counters would charge each one with the others' calls
+_ASK_USAGE = contextvars.ContextVar("ask_usage", default=None)
+
+
+def _charge(tokens_in, tokens_out, cost):
+    if (u := _ASK_USAGE.get()) is not None:
+        u["calls"] += 1
+        u["tokens_in"] += tokens_in
+        u["tokens_out"] += tokens_out
+        u["cost_usd"] += cost
+
+
 def _now_iso():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
@@ -295,6 +309,7 @@ class Desk:
         self.tokens_in += tin
         self.tokens_out += tout
         self.cost += c
+        _charge(tin, tout, c)
         self.latency[agent].append(latency_ms)
         db.insert(self.rt, "audit", {"session_id": None, "at": _now_iso(), "actor": agent, "action": "model_call",
                                      "match_id": self.match_id, "story_id": None, "model": model or self.model_name,
@@ -318,6 +333,7 @@ class Desk:
         self.calls += 1
         self.tokens_in += tokens_in
         self.cost += c
+        _charge(tokens_in, 0, c)
         db.insert(self.rt, "audit", {"session_id": None, "at": _now_iso(), "actor": agent, "action": "model_call_timeout",
                                      "match_id": self.match_id, "story_id": None, "model": self.model_name,
                                      "tokens_in": tokens_in, "tokens_out": 0, "cost_usd": round(c, 6),
@@ -332,7 +348,15 @@ class Desk:
         """One agent run with a timeout, at most MAX_PARALLEL_CALLS at once, retried after a rate limit
         (twice) or a timeout (once); returns (parsed output, usage summed over its model calls). Past the
         run's cost or call ceiling it raises at once, so the caller falls back to rules and templates."""
-        t0, calls0, tin0, tout0, cost0 = time.perf_counter(), self.calls, self.tokens_in, self.tokens_out, self.cost
+        t0, mine = time.perf_counter(), {"calls": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+        token = _ASK_USAGE.set(mine)
+        try:
+            out = await self._ask(agent, payload, schema)
+        finally:
+            _ASK_USAGE.reset(token)
+        return out, {**mine, "latency_ms": round((time.perf_counter() - t0) * 1000)}
+
+    async def _ask(self, agent, payload, schema):
         text = json.dumps(payload, ensure_ascii=False)
         timeouts = 0
         for pause in (*RETRY_PAUSES_S, None):
@@ -351,10 +375,7 @@ class Desk:
                 if pause is None or why not in ("timed out", "rate limited") or timeouts > 1:
                     raise
                 await asyncio.sleep(pause)
-        out = schema.model_validate_json(resp.text)
-        return out, {"calls": self.calls - calls0, "tokens_in": self.tokens_in - tin0,
-                     "tokens_out": self.tokens_out - tout0, "cost_usd": self.cost - cost0,
-                     "latency_ms": round((time.perf_counter() - t0) * 1000)}
+        return schema.model_validate_json(resp.text)
 
     # views for prompts
     def brief(self, f):

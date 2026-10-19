@@ -112,6 +112,14 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
     assert sum(a["cost_usd"] for a in au) == pytest.approx(summary["cost_usd"], abs=1e-4)
 
 
+def test_traces_carry_only_their_own_calls(desk_db):
+    _, _, rt = desk_db
+    run(rt, FakeChatClient(delay_s=0.002))  # the delay lets the three commentators' calls overlap
+    tr, au = rows(rt, "traces"), rows(rt, "audit")
+    for k in ("tokens_in", "tokens_out"):
+        assert sum(t[k] for t in tr) == sum(a[k] for a in au)
+
+
 def test_storylines_are_never_read(desk_db, monkeypatch):
     _, _, rt = desk_db
     seen = []
