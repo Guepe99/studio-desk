@@ -8,6 +8,7 @@
   <link rel="preload" href="vendor/fonts/barlow-condensed/BarlowCondensed-800-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/broadcast.css">
+  <link rel="stylesheet" href="css/ask.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -58,9 +59,23 @@
       <label class="lang"><span class="sr" data-i18n="language">Language</span>
         <select id="lang"><option value="en">EN</option><option value="it">IT</option><option value="es">ES</option></select>
       </label>
+      <button id="ask-open" class="ctl" type="button" aria-controls="ask" aria-expanded="false" data-i18n="ask" hidden>Ask the studio</button>
       <button id="desk-open" class="ctl" type="button" aria-controls="desk" aria-expanded="false">Desk <span class="count"></span><span class="off" hidden>offline</span></button>
       <p id="notice" role="alert" hidden></p>
     </div>
+    <section id="ask" aria-labelledby="ask-title" hidden>
+      <div class="ask-head"><h2 id="ask-title" data-i18n="ask">Ask the studio</h2>
+        <button class="ctl ask-close" type="button" data-i18n="close">Close</button></div>
+      <form>
+        <label for="ask-q" data-i18n="askLabel">Your question about the match so far</label>
+        <input id="ask-q" type="text" maxlength="280" required autocomplete="off" aria-describedby="ask-hint">
+        <button class="ctl" type="submit" data-i18n="askSend">Ask</button>
+      </form>
+      <p id="ask-hint" data-i18n="askHint">Answers use only the match data up to the replay time.</p>
+      <p id="ask-status" role="status"></p>
+      <ol id="ask-log"></ol>
+      <p id="ask-live" class="sr" aria-live="polite"></p>
+    </section>
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
 </body>

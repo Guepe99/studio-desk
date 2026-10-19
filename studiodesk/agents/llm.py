@@ -59,6 +59,11 @@ class Verdicts(BaseModel):
     verdicts: list[Verdict]
 
 
+class Answer(BaseModel):  # Ask the studio (studiodesk/agents/ask.py)
+    answer: str
+    fact_ids: list[str]
+
+
 def cost_usd(usage):
     """Cost of one usage record at config.MODEL_PRICE_PER_M."""
     p = config.MODEL_PRICE_PER_M
@@ -150,6 +155,10 @@ class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClien
                            f"{score(s)} after {s['player'] or s['team']} scores in the {s['minute']}'." if "score" in s else
                            f"{s['player'] or s['team']}, {s['minute']}': {cls._label(s)}."}
                           for s in p["stories"]]}
+
+    @staticmethod
+    def _answer(p):  # without a responder the fake has nothing to say: the endpoint declines
+        return {"answer": "", "fact_ids": []}
 
     @staticmethod
     def _verdicts(p):

@@ -67,7 +67,8 @@ async function scenario(browser, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone });
   const page = await ctx.newPage();
   // voice.json is optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
-  const optional = (u) => u.endsWith("/voice.json");
+  // api/ask too: the page probes it with an empty body (422 with a model behind it, 503 without, as here).
+  const optional = (u) => u.endsWith("/voice.json") || u.endsWith("/api/ask");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   page.on("response", (r) => { if (r.status() >= 400 && !optional(r.url())) fail(`${tag} ${r.status()} ${r.url()}`); });
