@@ -6,7 +6,9 @@
 // until this visitor approves it. Only auto_approved, approved and edited go on air: any other or
 // missing status is held. With the AI switched off only template graphics (story_id null) play.
 // Decisions come from the API (per visitor, cookie sd_session); with static hosting, or when the API
-// does not answer within API_TIMEOUT_MS, they are kept in memory for the tab.
+// does not answer within API_TIMEOUT_MS (CONNECT_TRIES times), they are kept in memory for the tab.
+// The desk's controls stay disabled until that is settled, and while a save is in flight: one request
+// at a time, so saves never cross and a server reply never undoes what the visitor did meanwhile.
 
 const LANGS = { en: "English", it: "Italian", es: "Spanish" };
 const KIND = { goal: "Goal", key_pass: "Key pass", momentum_swing: "Momentum swing", comeback: "Comeback",
@@ -26,6 +28,7 @@ const AGENT = Object.fromEntries(AGENTS.map(([id, name, how]) => [id, { name, ho
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
 const ON_AIR = ["auto_approved", "approved", "edited"];
 const API_TIMEOUT_MS = 4000;
+const CONNECT_TRIES = 3; // a slow first answer (a cold container) is not a reason to work offline for the whole visit
 const RUN_MAX_FRAMES = 300; // a sprint run longer than 30 s is not a sprint: never draw a whole-match path
 const SVGNS = "http://www.w3.org/2000/svg";
 
@@ -83,6 +86,9 @@ export class Desk {
     this.kill = false;
     this.online = false;
     this.offline = "";   // why decisions stay in this tab, when the API refused or did not answer
+    this.ready = false;  // connect() has settled, online or not: until then the controls are disabled
+    this.busy = false;   // a save is in flight
+    this.lostFocus = null; // data-focus of a control that lost focus because it was disabled
     this.loaded = false;
     this.auditRows = []; // from the API: this visitor's actions and the agents' rows
     this.localAudit = []; // without the API: this tab's actions
@@ -93,7 +99,16 @@ export class Desk {
     this.note = "";
     this.factIndex = new Map(this.match.facts.map((f) => [f.fact_id, f]));
     this.eventIndex = new Map(this.match.events.map((e) => [e.event_id, e]));
+    // Built once: the live regions stay in the page, so a render announces only a new message.
+    this.headEl = h("header", { className: "desk-head" });
+    this.killEl = h("p", { className: "banner", role: "status" });
+    this.noteEl = h("p", { className: "banner warn", role: "alert" });
+    this.bodyEl = h("div", { className: "desk-body", role: "tabpanel", tabindex: 0, "data-focus": "panel" });
+    this.footEl = h("footer", { className: "desk-foot" });
+    root.replaceChildren(this.headEl, this.killEl, this.noteEl, this.bodyEl, this.footEl);
   }
+
+  locked() { return !this.ready || this.busy; }
 
   /** The replay's stories and traces: static files, no API. */
   async load() {
@@ -107,17 +122,24 @@ export class Desk {
 
   /** This visitor's decisions from the API. Without an answer the desk keeps working in the tab. */
   async connect() {
-    try {
-      const s = await this.api("GET", "api/session");
-      const d = await this.api("GET", `api/decisions?match_id=${encodeURIComponent(this.matchId)}`);
-      this.online = true;
-      this.kill = Boolean(d.kill_switch ?? s.kill_switch);
-      for (const x of list(d.decisions)) if (x && !this.decisions.has(x.story_id)) this.decisions.set(x.story_id, x);
-      await this.refreshAudit();
-    } catch (e) {
-      this.online = false; // static hosting, a refusal or no answer: decisions live in this tab
-      this.offline = e.api ? e.message : e.timeout ? "The server did not answer in time." : "";
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const s = await this.api("GET", "api/session");
+        const d = await this.api("GET", `api/decisions?match_id=${encodeURIComponent(this.matchId)}`);
+        this.online = true;
+        this.kill = Boolean(d.kill_switch ?? s.kill_switch);
+        for (const x of list(d.decisions)) if (x && typeof x.story_id === "string") this.decisions.set(x.story_id, x);
+        await this.refreshAudit();
+        break;
+      } catch (e) {
+        // no answer or a server error: try again; static hosting (404) or a refusal: offline at once
+        if (e.retry && attempt < CONNECT_TRIES) { await new Promise((r) => setTimeout(r, 500 * attempt)); continue; }
+        this.online = false; // decisions live in this tab
+        this.offline = e.api ? e.message : e.timeout ? "The server did not answer in time." : "";
+        break;
+      }
     }
+    this.ready = true;
     this.changed();
   }
 
@@ -130,15 +152,14 @@ export class Desk {
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch (e) {
-      throw Object.assign(new Error(e.name === "TimeoutError" ? "the server did not answer in time" : "no connection"), { timeout: e.name === "TimeoutError" });
+      throw Object.assign(new Error(e.name === "TimeoutError" ? "the server did not answer in time" : "no connection"), { timeout: e.name === "TimeoutError", retry: true });
     }
     let data = null;
     try { data = await r.json(); } catch { /* not JSON: no API here */ }
     if (r.ok && data !== null) return data;
-    // a list detail is FastAPI's validation error: the client already checks length and emptiness
-    const detail = typeof data?.detail === "string" ? data.detail
-      : Array.isArray(data?.detail) ? "the text has a character the desk does not accept" : null;
-    throw Object.assign(new Error(detail ?? `HTTP ${r.status}`), { api: detail !== null });
+    // a list detail is FastAPI's validation error (422): the caller knows what it sent
+    const detail = typeof data?.detail === "string" ? data.detail : Array.isArray(data?.detail) ? `the server refused the request (HTTP ${r.status})` : null;
+    throw Object.assign(new Error(detail ?? `HTTP ${r.status}`), { api: detail !== null, validation: Array.isArray(data?.detail), retry: r.status >= 500 });
   }
 
   async refreshAudit() {
@@ -178,6 +199,7 @@ export class Desk {
   // ---- actions --------------------------------------------------------------------------------
 
   async decide(s, decision, editedText = null) {
+    if (this.locked()) return;
     const id = s.story_id, prev = this.decisions.get(id), at = new Date().toISOString();
     this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at });
     this.note = "";
@@ -188,6 +210,7 @@ export class Desk {
       this.changed();
       return;
     }
+    this.busy = true;
     this.changed();
     try {
       await this.api("POST", "api/decisions", { match_id: this.matchId, story_id: id, decision, ...(editedText ? { edited_text: editedText } : {}) });
@@ -195,8 +218,9 @@ export class Desk {
       await this.refreshAudit();
     } catch (e) {
       if (prev) this.decisions.set(id, prev); else this.decisions.delete(id);
-      this.note = `Not saved: ${e.message}`;
+      this.note = `Not saved: ${e.validation && editedText ? "the text has a character the desk does not accept" : e.message}`;
     }
+    this.busy = false;
     this.changed();
   }
 
@@ -206,10 +230,12 @@ export class Desk {
   }
 
   async setKill(on) {
+    if (this.locked()) return;
     const prev = this.kill;
     this.kill = on;
     this.note = "";
     if (!this.online) this.localAudit.unshift({ at: new Date().toISOString(), actor: "human", action: on ? "ai_off" : "ai_on", story_id: null, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
+    this.busy = this.online;
     this.changed();
     if (!this.online) return;
     try {
@@ -219,6 +245,7 @@ export class Desk {
       this.kill = prev;
       this.note = `Not saved: ${e.message}`;
     }
+    this.busy = false;
     this.changed();
   }
 
@@ -238,9 +265,11 @@ export class Desk {
   // ---- rendering ------------------------------------------------------------------------------
 
   render() {
-    const focusKey = document.activeElement?.closest?.("#desk") ? document.activeElement.dataset.focus : null;
-    const scroll = this.shownTab === this.tab ? this.root.querySelector(".desk-body")?.scrollTop ?? 0 : 0;
+    const active = document.activeElement;
+    const focusKey = active?.closest?.("#desk") ? active.dataset.focus : active === document.body || !active ? this.lostFocus : null;
+    const scroll = this.shownTab === this.tab ? this.bodyEl.scrollTop : 0;
     this.shownTab = this.tab;
+    const locked = this.locked();
     const tabs = [["stories", `Stories`, this.stories.length], ["audit", "Audit log"], ["traces", "Traces"]];
     const tabButton = ([id, label, n]) => h("button", {
       // only the selected tab's panel exists, so only that tab names it
@@ -249,33 +278,42 @@ export class Desk {
       onkeydown: (e) => this.tabKeys(e, tabs.map((t) => t[0])),
     }, label, n !== undefined ? h("span", { className: "count" }, n) : null);
     const body = this.tab === "stories" ? this.renderStories() : this.tab === "audit" ? this.renderAudit() : this.renderTraces();
-    this.root.replaceChildren(...[
-      h("header", { className: "desk-head" },
-        h("div", { className: "desk-title" },
-          h("h2", {}, "Control desk"),
-          h("button", { type: "button", id: "desk-close", className: "ctl", "aria-label": "Close the control desk", "data-focus": "close",
-            onclick: () => this.closeDrawer() }, "Close")),
-        h("div", { className: "desk-bar" },
-          h("button", { type: "button", role: "switch", id: "ai-switch", className: "switch", "aria-checked": String(!this.kill), "data-focus": "kill",
-            onclick: () => this.setKill(!this.kill) },
-          h("span", { className: "track", "aria-hidden": "true" }, h("span", { className: "knob" })),
-          h("span", { className: "switch-label" }, "AI graphics ", h("b", {}, this.kill ? "off" : "on"))),
-          h("span", { className: "desk-sum" }, this.stories.length ? `${this.pending()} of ${this.stories.length} waiting for review` : "")),
-        h("div", { role: "tablist", "aria-label": "Desk views", className: "tabs" }, tabs.map(tabButton))),
-      this.kill ? h("p", { className: "banner", role: "status" }, "AI off: only template graphics are on air. Stories stay listed for review.") : null,
-      this.note ? h("p", { className: "banner warn", role: "alert" }, this.note) : null,
-      h("div", { className: "desk-body", role: "tabpanel", id: `panel-${this.tab}`, "aria-labelledby": `tab-${this.tab}`, tabindex: 0 }, body),
-      h("footer", { className: "desk-foot" }, this.online
-        ? "Your decisions are saved for this browser only. Other visitors see the original replay."
+    const sum = !this.ready ? "Loading your decisions" : this.busy ? "Saving" : this.stories.length ? `${this.pending()} of ${this.stories.length} waiting for review` : "";
+    this.headEl.replaceChildren(
+      h("div", { className: "desk-title" },
+        h("h2", {}, "Control desk"),
+        h("button", { type: "button", id: "desk-close", className: "ctl", "aria-label": "Close the control desk", "data-focus": "close",
+          onclick: () => this.closeDrawer() }, "Close")),
+      h("div", { className: "desk-bar" },
+        h("button", { type: "button", role: "switch", id: "ai-switch", className: "switch", "aria-checked": String(!this.kill), "data-focus": "kill",
+          disabled: locked, onclick: () => this.setKill(!this.kill) },
+        h("span", { className: "track", "aria-hidden": "true" }, h("span", { className: "knob" })),
+        h("span", { className: "switch-label" }, "AI graphics ", h("b", {}, this.kill ? "off" : "on"))),
+        h("span", { className: "desk-sum" }, sum)),
+      h("div", { role: "tablist", "aria-label": "Desk views", className: "tabs" }, tabs.map(tabButton)));
+    setText(this.killEl, this.kill ? "AI off: only template graphics are on air. Stories stay listed for review." : "");
+    setText(this.noteEl, this.note);
+    this.bodyEl.id = `panel-${this.tab}`;
+    this.bodyEl.setAttribute("aria-labelledby", `tab-${this.tab}`);
+    this.bodyEl.replaceChildren(...[body].flat(Infinity).filter(Boolean)); // replaceChildren would print a null as "null"
+    this.bodyEl.scrollTop = scroll;
+    setText(this.footEl, !this.ready ? "Connecting to the server: the desk unlocks once your saved decisions are in."
+      : this.online ? "Your decisions are saved for this browser only. Other visitors see the original replay."
         : this.offline ? `Decisions are kept in this tab only. ${this.offline.replace(/^./, (c) => c.toUpperCase()).replace(/([^.])$/, "$1.")}`
-          : "No server: decisions are kept in this tab only."),
-    ].filter(Boolean)); // replaceChildren would print a null as "null"
-    this.root.querySelector(".desk-body").scrollTop = scroll;
+          : "No server: decisions are kept in this tab only.");
     document.querySelector("#ai-off")?.toggleAttribute("hidden", !this.kill);
-    const badge = document.querySelector("#desk-open .count");
-    if (badge) badge.textContent = this.pending() ? String(this.pending()) : "";
-    if (this.editing) this.root.querySelector("textarea")?.focus();
-    else if (focusKey) this.root.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus();
+    // the Desk button (narrow screens) carries the count and the offline state, so a closed drawer still shows them
+    const open = document.querySelector("#desk-open"), n = this.pending(), off = this.ready && !this.online;
+    if (open) {
+      open.querySelector(".count").textContent = n ? String(n) : "";
+      open.querySelector(".off")?.toggleAttribute("hidden", !off);
+      open.setAttribute("aria-label", `Desk${n ? `, ${n} waiting for review` : ""}${off ? ", offline" : ""}`);
+    }
+    // focus stays on the same control; one disabled during a save gets it back once enabled; a closed editor hands it to Edit
+    const find = (k) => this.root.querySelector(`[data-focus="${CSS.escape(k)}"]`);
+    const el = focusKey ? find(focusKey) ?? find(focusKey.replace(/:(save|cancel|text:\w+)$/, ":edited")) : null;
+    this.lostFocus = el?.disabled ? focusKey : null;
+    if (el && !el.disabled && el !== document.activeElement) el.focus({ preventScroll: true });
   }
 
   tabKeys(e, ids) {
@@ -307,6 +345,7 @@ export class Desk {
     const decided = this.decisions.has(id);
     const act = (decision, label) => h("button", {
       type: "button", className: `ctl act act-${decision}`, "aria-pressed": String(st === decision), "data-focus": `${id}:${decision}`,
+      "aria-label": `${label}: ${kindName(s.kind)} at minute ${minute}${who ? `, ${who}` : ""}`, disabled: this.locked(),
       onclick: () => (decision === "edited" ? this.startEdit(s) : this.decide(s, decision)),
     }, label);
     const firstCue = this.match.cues.find((c) => c.story_id === id);
@@ -339,36 +378,43 @@ export class Desk {
   startEdit(s) {
     this.editing = s.story_id;
     this.render();
+    this.root.querySelector(`[data-focus="${CSS.escape(`${s.story_id}:text:${this.state.lang}`)}"]`)?.focus();
   }
 
+  // All three languages in one editor: saving approves what goes on air in every language, so the
+  // reviewer sees every one. Unchanged text saves as a plain approval.
   renderEditor(s) {
-    const lang = this.state.lang, id = s.story_id;
-    const counter = h("span", { className: "counter", id: `count-${id}` });
-    const area = h("textarea", { lang, maxlength: EDIT_MAX, rows: 4, "aria-label": `Story text in ${LANGS[lang]}`, "aria-describedby": `count-${id}` });
-    // a draft survives a language switch and a failed save; each language keeps its own
-    area.value = this.drafts.get(`${id}|${lang}`) ?? this.text(s, lang);
-    const count = () => { counter.textContent = `${area.value.length}/${EDIT_MAX}, ${LANGS[lang]}`; };
-    count();
+    const id = s.story_id, locked = this.locked();
+    const areas = Object.entries(LANGS).map(([lang, name]) => {
+      const counter = h("span", { className: "counter", id: `count-${id}-${lang}` });
+      const area = h("textarea", { id: `edit-${id}-${lang}`, lang, maxlength: EDIT_MAX, rows: 3, "aria-describedby": `count-${id}-${lang}`,
+        "data-focus": `${id}:text:${lang}` });
+      // a draft survives a re-render and a failed save
+      area.value = this.drafts.get(`${id}|${lang}`) ?? this.text(s, lang);
+      const count = () => { counter.textContent = `${area.value.length}/${EDIT_MAX}`; };
+      count();
+      area.addEventListener("input", () => { this.drafts.set(`${id}|${lang}`, area.value); count(); });
+      area.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { e.preventDefault(); cancel(); }
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+      });
+      return h("div", { className: "edit-lang" }, h("label", { for: `edit-${id}-${lang}` }, name), area, counter);
+    });
     const save = () => {
-      const value = area.value.trim();
-      if (!value) { this.note = "The text cannot be empty. Reject the story to keep it off air."; this.render(); return; }
-      const texts = { ...(this.decisions.get(id)?.edited_text ?? {}) };
-      for (const l of Object.keys(LANGS)) {
-        const d = this.drafts.get(`${id}|${l}`)?.trim();
-        if (d && d !== this.text(s, l)) texts[l] = d;
+      if (this.locked()) return;
+      const texts = {};
+      for (const [l, name] of Object.entries(LANGS)) {
+        const v = (this.drafts.get(`${id}|${l}`) ?? this.text(s, l)).trim();
+        if (!v) { this.note = `The ${name} text cannot be empty. Reject the story to keep it off air.`; this.render(); return; }
+        if (v !== (s.texts?.[l] ?? s.texts?.en ?? "")) texts[l] = v;
       }
-      this.decide(s, "edited", { ...texts, [lang]: value });
+      if (Object.keys(texts).length) this.decide(s, "edited", texts); else this.decide(s, "approved");
     };
     const cancel = () => { this.endEdit(id); this.render(); };
-    area.addEventListener("input", () => { this.drafts.set(`${id}|${lang}`, area.value); count(); });
-    area.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { e.preventDefault(); cancel(); }
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
-    });
-    return h("div", { className: "editor" }, area,
-      h("div", { className: "editor-bar" }, counter,
-        h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, onclick: cancel }, "Cancel"),
-        h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, onclick: save }, "Save and approve")));
+    return h("div", { className: "editor" }, areas,
+      h("div", { className: "editor-bar" },
+        h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, disabled: locked, onclick: cancel }, "Cancel"),
+        h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, disabled: locked, onclick: save }, "Save and approve")));
   }
 
   renderEvidence(s) {
@@ -441,11 +487,12 @@ export class Desk {
 
   // Audit: the agents' rows (from the API, or from the replay traces) and this visitor's actions.
   auditData() {
-    const fromApi = this.auditRows.filter((r) => r.actor !== "human");
+    const fromApi = this.auditRows.filter((r) => r.actor !== "human" && r.actor !== "auto");
     const agents = fromApi.length ? fromApi : this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
       story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }));
     const directorAt = new Map(this.traces.filter((t) => t.agent === "director").flatMap((t) => this.traceStories(t).map((id) => [id, t.at])));
-    const auto = fromApi.some((r) => r.actor === "auto") ? [] : this.stories.filter((s) => this.defaultStatus(s) === "auto_approved")
+    // the API lists the risk rule's approvals itself; without it the desk derives them from the replay
+    const auto = this.online ? this.auditRows.filter((r) => r.actor === "auto") : this.stories.filter((s) => this.defaultStatus(s) === "auto_approved")
       .map((s) => ({ at: directorAt.get(s.story_id) ?? "", actor: "auto", action: "auto_approved", story_id: s.story_id, model: null,
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
     const humans = this.online ? this.auditRows.filter((r) => r.actor === "human") : this.localAudit;
@@ -522,9 +569,9 @@ export class Desk {
     return [legend, [...this.traceGroups()].map(([sid, { rows, sum }]) => {
       const s = this.byId.get(sid);
       const shared = rows.filter((x) => x.shared > 1).length;
-      return h("section", { className: "trace", "data-trace": sid, tabindex: -1, "aria-labelledby": `t-${sid || "run"}` },
+      return h("section", { className: "trace", "data-trace": sid, "data-focus": `trace:${sid}`, tabindex: -1, "aria-labelledby": `t-${sid || "run"}` },
         h("h3", { id: `t-${sid || "run"}` }, s ? `${this.match.clock(s.ts).minute}' ${kindName(s.kind)}` : "Whole run",
-          s ? h("button", { type: "button", className: "link", onclick: () => this.showStory(sid) }, "Show story") : null),
+          s ? h("button", { type: "button", className: "link", "data-focus": `${sid}:show`, onclick: () => this.showStory(sid) }, "Show story") : null),
         h("p", { className: "trace-sum" }, `${rows.length} hand-offs, ${int(Math.round(sum.tokens))} tokens, ${usd(sum.cost)}, ${(sum.ms / 1000).toFixed(1)} s`,
           shared ? `, counting this story's share of the ${shared} shared with other stories` : ""),
         h("ol", { className: "chain" }, rows.map(({ t: r, shared: n }) => h("li", { "data-agent": r.agent, className: traceFailed(r) ? "failed" : "" },
@@ -557,10 +604,13 @@ export class Desk {
 
   closeDrawer() {
     this.setDrawer(false);
-    const b = document.querySelector("#desk-open");
-    b?.setAttribute("aria-expanded", "false");
-    b?.focus();
+    document.querySelector("#desk-open")?.focus();
   }
+}
+
+// A live region announces any text change, the same text included: write only a new one.
+function setText(el, text) {
+  if (el.textContent !== text) el.textContent = text;
 }
 
 function valueText(f) {

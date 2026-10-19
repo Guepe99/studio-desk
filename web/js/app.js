@@ -73,7 +73,7 @@ function seek(ts) {
   voice?.reset();
 }
 
-function pressed(group, attr, value) {
+function pressed(attr, value) {
   for (const b of document.querySelectorAll(`[${attr}]`)) b.setAttribute("aria-pressed", String(b.getAttribute(attr) === String(value)));
 }
 
@@ -151,12 +151,12 @@ function tick(now) {
 function wireControls() {
   $("#play").addEventListener("click", () => setPlaying(!state.playing));
   for (const b of document.querySelectorAll("[data-speed]")) {
-    b.addEventListener("click", () => { state.speed = Number(b.dataset.speed); pressed("speed", "data-speed", state.speed); });
+    b.addEventListener("click", () => { state.speed = Number(b.dataset.speed); pressed("data-speed", state.speed); });
   }
   for (const b of document.querySelectorAll("[data-audience]")) {
     b.addEventListener("click", () => {
       state.audience = b.dataset.audience;
-      pressed("audience", "data-audience", state.audience);
+      pressed("data-audience", state.audience);
       refreshCues();
     });
   }

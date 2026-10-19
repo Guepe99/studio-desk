@@ -56,7 +56,7 @@ Docker, symlink them: `ln -s ../../../replays/M001/voice.json web/data/M001/` an
   synthetic ([Microsoft, disclosure design patterns](https://learn.microsoft.com/en-us/legal/cognitive-services/speech-service/custom-neural-voice/concepts-disclosure-patterns)).
   Off by default; the press is the user gesture browsers need before audio. The choice is kept
   in `localStorage`. Hidden when the replay has no clips.
-- A story speaks once, when its first cue appears on screen (the OGraf host's `live` set), at 1x,
+- A story speaks once, when its card (the why_card showing the text the clip says) appears on screen (the OGraf host's `live` set), at 1x,
   in a language with a clip. Held, rejected and AI-off stories never reach the screen, so they
   never speak; the module also asks `desk.onAir()` every frame and stops a clip whose story leaves
   the air (reject, AI switch off).

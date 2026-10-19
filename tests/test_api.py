@@ -70,6 +70,7 @@ def desk(tmp_path, monkeypatch):
     (tmp_path / "web" / "data" / "DEMO" / "stories.json").write_text(
         json.dumps([{"story_id": "S-000001"}, {"story_id": "S-000002"}]))
     monkeypatch.setattr(api, "WEB", tmp_path / "web")
+    monkeypatch.setattr(api, "_new_sessions", {"day": "", "by_client": {}})
     return lambda: TestClient(api.app)
 
 
@@ -126,6 +127,8 @@ def test_decisions_are_per_visitor(desk):
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "a​b"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"it": "a‮b"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"es": "a⁧b"}},
+    *({"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": f"a{c}b"}}
+      for c in "  ﻿⁠؜­᠎"),  # separators, BOM, word joiner, Arabic mark, soft hyphen
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "edited_text": {"en": "x"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "session_id": "someone"},
 ])
@@ -218,6 +221,63 @@ def test_caps(desk, monkeypatch):
     assert r.status_code == 429 and "too many new sessions" in r.json()["detail"]
     assert desk().get("/api/session").status_code == 200  # reading still works for a new visitor
     assert c.get("/api/session").status_code == 200  # an existing visitor is never locked out
+
+
+def test_new_sessions_are_capped_per_client(desk, monkeypatch):
+    monkeypatch.setattr(api, "MAX_NEW_SESSIONS_PER_CLIENT", 2)
+    post = lambda fwd: desk().post("/api/kill", json={"on": False}, headers={"x-forwarded-for": fwd}).status_code  # noqa: E731
+    # the ingress appends the address it saw: a forged first entry does not buy a new slot
+    assert [post(f"{i}.0.0.1, 203.0.113.7") for i in range(3)] == [200, 200, 429]
+    assert post("198.51.100.2") == 200  # another visitor is not locked out
+    c = desk()
+    assert c.post("/api/kill", json={"on": True}).status_code == 200  # no header: the client host counts
+    assert c.post("/api/kill", json={"on": False}).status_code == 200  # an existing session never counts again
+
+
+def test_server_error_carries_the_security_headers(desk, monkeypatch):
+    import sqlite3
+
+    def locked():
+        raise sqlite3.OperationalError("database is locked")
+    monkeypatch.setattr(api.db, "runtime", locked)
+    r = desk().get("/api/session")
+    assert r.status_code == 500 and r.json() == {"detail": "internal error"}
+    assert r.headers["content-security-policy"] == api.CSP and "camera=()" in r.headers["permissions-policy"]
+    assert "blob:" not in api.CSP.split("script-src")[1].split(";")[0]  # blobs only for workers
+
+
+def test_schema_runs_once_per_version(tmp_path):
+    from studiodesk import db
+    path = tmp_path / "rt.sqlite"
+    conn = db.connect(path)
+    assert {"audit_session"} <= {r["name"] for r in conn.execute("PRAGMA index_list(audit)")}
+    assert "sessions_created" in {r["name"] for r in conn.execute("PRAGMA index_list(sessions)")}
+    conn.execute("DROP INDEX sessions_created")
+    conn.close()
+    conn = db.connect(path)  # same schema version: not run again, so the dropped index stays dropped
+    assert "sessions_created" not in {r["name"] for r in conn.execute("PRAGMA index_list(sessions)")}
+    conn.execute("PRAGMA user_version = 0")  # an older schema.sql: it runs again
+    conn.close()
+    conn = db.connect(path)
+    assert "sessions_created" in {r["name"] for r in conn.execute("PRAGMA index_list(sessions)")}
+    conn.close()
+
+
+def test_audit_lists_the_risk_rule_approvals(desk, tmp_path):
+    demo = tmp_path / "web" / "data" / "DEMO"
+    (demo / "stories.json").write_text(json.dumps([
+        {"story_id": "S-000001", "default_status": "auto_approved", "risk": 0.2, "safety": "passed"},
+        {"story_id": "S-000002", "default_status": "needs_review", "risk": 0.6},
+        {"story_id": "S-000003", "default_status": "auto_approved", "risk": 0.1, "safety": "flagged"}]))
+    (demo / "traces.json").write_text(json.dumps([
+        {"agent": "director", "at": "2026-10-19T09:00:00+00:00", "story_ids": ["S-000001", "S-000003"]}, "junk"]))
+    c = desk()
+    c.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000001", "decision": "rejected"})
+    rows = c.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"]
+    assert [(r["actor"], r["action"], r["story_id"]) for r in rows] == [("human", "rejected", "S-000001"), ("auto", "auto_approved", "S-000001")]
+    assert rows[1]["at"] == "2026-10-19T09:00:00+00:00" and rows[1]["detail"] == {"risk": 0.2}
+    (demo / "stories.json").write_text("not json")
+    assert desk().get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] == []
 
 
 def test_matches_lists_exports(desk, tmp_path):

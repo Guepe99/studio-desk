@@ -1,6 +1,7 @@
 """HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
 import hashlib
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from stat import S_ISREG
 import time
+import unicodedata
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -18,7 +20,7 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
 from . import __version__, db
 
@@ -63,16 +65,22 @@ class BodyCap:
 app.add_middleware(BodyCap)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 # The pages load only their own files. Inline styles stay (graphics and seek marks set them); inline scripts do not.
-CSP = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; "
+# blob: only for workers (Babylon builds its decoder workers from blobs), never for scripts.
+CSP = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
        "connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
-                    "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": CSP}
+                    "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": CSP,
+                    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"}
 
 
 @app.middleware("http")
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:  # Starlette's own 500 sits outside this middleware and would go out without the headers
+        logging.getLogger("uvicorn.error").exception("unhandled error on %s %s", request.method, request.url.path)
+        response = JSONResponse({"detail": "internal error"}, status_code=500)
     response.headers.update(SECURITY_HEADERS)
     return response
 _credential = None
@@ -151,12 +159,22 @@ MATCH_PATTERN = r"^(M\d{3}|DEMO)$"
 EDIT_MAX_CHARS = 600            # a why_card body: five lines that shrink to fit
 MAX_ACTIONS_PER_SESSION = 300   # decisions and kill-switch flips: plenty for a judge, a wall for a script
 MAX_NEW_SESSIONS_PER_DAY = 5000  # with the cap above, bounds what the public link can write in a day
+MAX_NEW_SESSIONS_PER_CLIENT = 50  # per address and UTC day: one script cannot use up the day's sessions for everyone
 SESSION_RE = re.compile(r"[A-Za-z0-9_-]{32}")
-# Newlines allowed. Refused: other C0 controls, DEL and C1, zero-width and direction marks, bidi embeddings and isolates.
-NO_CONTROL_CHARS = r"^[^\x00-\x09\x0b-\x1f\x7f-\x9f​-‏‪-‮⁦-⁩]*$"
+# shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
+_new_sessions = {"day": "", "by_client": {}}
 
-Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=EDIT_MAX_CHARS,
-                                        pattern=NO_CONTROL_CHARS)]
+
+def _printable(text: str) -> str:
+    """Newlines allowed. Refused: every other control (C0, DEL, C1), every format character (zero-width,
+    direction marks, bidi embeddings and isolates, BOM, word joiner, soft hyphen) and the line and paragraph separators."""
+    if any(c != "\n" and unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") for c in text):
+        raise ValueError("control or invisible format character")
+    return text
+
+
+Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=EDIT_MAX_CHARS),
+                 AfterValidator(_printable)]
 
 
 class Decision(BaseModel):
@@ -194,14 +212,26 @@ def _runtime(write: bool = False):
         conn.close()
 
 
-def _session(conn, request: Request, response: Response, create: bool = True) -> str | None:
+def _client(request: Request) -> str:
+    # The Container Apps ingress appends the address it saw to X-Forwarded-For: the last entry is the one a client cannot forge.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+    return forwarded or (request.client.host if request.client else "")
+
+
+def _session(conn, request: Request, response: Response | None = None, create: bool = True) -> str | None:
     sid = request.cookies.get(COOKIE, "")
     if SESSION_RE.fullmatch(sid) and conn.execute("SELECT 1 FROM sessions WHERE session_id = ?", (sid,)).fetchone():
         return sid
     if not create:
         return None
-    if conn.execute("SELECT count(*) FROM sessions WHERE created_at >= ?", (_now()[:10],)).fetchone()[0] >= MAX_NEW_SESSIONS_PER_DAY:
+    day, client = _now()[:10], _client(request)
+    if _new_sessions["day"] != day:
+        _new_sessions.update(day=day, by_client={})
+    by_client = _new_sessions["by_client"]
+    if (by_client.get(client, 0) >= MAX_NEW_SESSIONS_PER_CLIENT
+            or conn.execute("SELECT count(*) FROM sessions WHERE created_at >= ?", (day,)).fetchone()[0] >= MAX_NEW_SESSIONS_PER_DAY):
         raise HTTPException(429, "too many new sessions today; the replay still works without saving decisions")
+    by_client[client] = by_client.get(client, 0) + 1  # counts attempts: a request that fails later still used its slot
     sid = secrets.token_urlsafe(24)
     conn.execute("INSERT INTO sessions (session_id, created_at) VALUES (?, ?)", (sid, _now()))
     # TLS ends at the ingress; behind a proxy chain the first value is what the visitor used
@@ -219,19 +249,39 @@ def _spend(conn, sid: str) -> None:
         raise HTTPException(429, f"this session has used its {MAX_ACTIONS_PER_SESSION} desk actions")
 
 
-@lru_cache(maxsize=16)
-def _replay_story_ids(path: Path, mtime_ns: int) -> frozenset:
-    return frozenset(s["story_id"] for s in json.loads(path.read_text(encoding="utf-8")))
+@lru_cache(maxsize=32)
+def _replay_file(path: Path, mtime_ns: int) -> tuple:
+    rows = json.loads(path.read_text(encoding="utf-8"))
+    return tuple(r for r in rows if isinstance(r, dict)) if isinstance(rows, list) else ()
+
+
+def _replay(match_id: str, name: str) -> tuple:
+    """The rows of a replay file (stories.json, traces.json); () when it is missing or malformed. Read only."""
+    path = WEB / "data" / match_id / name
+    try:
+        return _replay_file(path, path.stat().st_mtime_ns)
+    except (OSError, ValueError):
+        return ()
 
 
 def _story_known(conn, match_id: str, story_id: str) -> bool:
     if conn.execute("SELECT 1 FROM stories WHERE match_id = ? AND story_id = ?", (match_id, story_id)).fetchone():
         return True
-    path = WEB / "data" / match_id / "stories.json"
-    try:
-        return story_id in _replay_story_ids(path, path.stat().st_mtime_ns)
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
+    return any(s.get("story_id") == story_id for s in _replay(match_id, "stories.json"))
+
+
+def _auto_rows(match_id: str) -> list[dict]:
+    """The risk rule's approvals for the replay: one `auto` row per story that goes on air without a human.
+    Derived from stories.json on each read (the rule is deterministic), at the time of the director's hand-off."""
+    director = {}
+    for t in _replay(match_id, "traces.json"):
+        ids = t.get("story_ids") if isinstance(t.get("story_ids"), list) and t.get("story_ids") else [t.get("story_id")]
+        if t.get("agent") == "director":
+            director.update({sid: t.get("at") for sid in ids if isinstance(sid, str)})
+    return [{"at": str(director.get(s.get("story_id")) or ""), "actor": "auto", "action": "auto_approved", "match_id": match_id,
+             "story_id": s.get("story_id"), "model": None, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0,
+             "detail": {"risk": s.get("risk")}}
+            for s in _replay(match_id, "stories.json") if s.get("default_status") == "auto_approved" and s.get("safety") != "flagged"]
 
 
 @app.get("/api/matches")
@@ -248,10 +298,10 @@ def list_matches():
 
 
 @app.get("/api/session")
-def get_session(request: Request, response: Response):
+def get_session(request: Request):
     # Read-only: the first POST creates the session, so cookieless GETs cannot use up the day's cap.
     with _runtime() as conn:
-        sid = _session(conn, request, response, create=False)
+        sid = _session(conn, request, create=False)
         if sid is None:
             return {"kill_switch": False, "actions_left": MAX_ACTIONS_PER_SESSION}
         kill = conn.execute("SELECT kill_switch FROM sessions WHERE session_id = ?", (sid,)).fetchone()[0]
@@ -259,9 +309,9 @@ def get_session(request: Request, response: Response):
 
 
 @app.get("/api/decisions")
-def get_decisions(request: Request, response: Response, match_id: str = Query(pattern=MATCH_PATTERN)):
+def get_decisions(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)):
     with _runtime() as conn:
-        sid = _session(conn, request, response, create=False)
+        sid = _session(conn, request, create=False)
         if sid is None:
             return {"match_id": match_id, "kill_switch": False, "decisions": []}
         kill = conn.execute("SELECT kill_switch FROM sessions WHERE session_id = ?", (sid,)).fetchone()[0]
@@ -308,15 +358,18 @@ def post_kill(k: Kill, request: Request, response: Response):
 
 
 @app.get("/api/audit")
-def get_audit(request: Request, response: Response, match_id: str = Query(pattern=MATCH_PATTERN)):
-    """This visitor's actions plus the agents' rows for the match (session_id NULL), newest first."""
+def get_audit(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)):
+    """This visitor's actions, the agents' rows for the match (session_id NULL) and the risk rule's approvals, newest first."""
     with _runtime() as conn:
-        sid = _session(conn, request, response, create=False)
-        rows = conn.execute(
+        sid = _session(conn, request, create=False)
+        rows = [{**dict(r), "detail": json.loads(r["detail"])} for r in conn.execute(
             "SELECT at, actor, action, match_id, story_id, model, tokens_in, tokens_out, cost_usd, detail FROM audit "
             "WHERE (session_id = ? AND (match_id = ? OR match_id IS NULL)) OR (session_id IS NULL AND match_id = ?) "
-            "ORDER BY id DESC LIMIT 500", (sid, match_id, match_id)).fetchall()
-    return {"match_id": match_id, "rows": [{**dict(r), "detail": json.loads(r["detail"])} for r in rows]}
+            "ORDER BY id DESC LIMIT 500", (sid, match_id, match_id))]
+    auto = [] if any(r["actor"] == "auto" for r in rows) else _auto_rows(match_id)
+    if auto:
+        rows = sorted(rows + auto, key=lambda r: r["at"], reverse=True)[:500]  # stable: ties keep id order
+    return {"match_id": match_id, "rows": rows}
 
 
 @app.post("/api/live")

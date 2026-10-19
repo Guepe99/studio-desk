@@ -1,8 +1,9 @@
 // Voice-over for the replay (docs/voice.md). Clips are generated beforehand by
 // `python -m studiodesk.voice` and listed in data/<match>/voice.json.
 //
-// A story speaks once, when its first cue appears on screen during playback at 1x, in a language
-// it has a clip for. What is on screen is the OGraf host's business and what may go on air is the
+// A story speaks once, when its card (the why_card that shows the text the clip says) appears on
+// screen during playback at 1x, in a language it has a clip for. Its other graphics, and a card this
+// audience gets in other words, stay silent. What is on screen is the OGraf host's business and what may go on air is the
 // desk's: this module only reads host.live (on screen now), host.cues (this visitor's sheet) and
 // desk.onAir / desk.status, so held, rejected and AI-off stories never speak. An edited story stays
 // silent (the clip says the old text), and so does a clip whose text_sha1 no longer matches the
@@ -104,11 +105,16 @@ export class Voice {
     this.queued = null;
   }
 
+  // the cue shows this story's text, the words its clip says
+  card(c) {
+    return c.graphic === "why_card" && c.payload?.body === this.desk.byId.get(c.story_id)?.texts?.[c.lang];
+  }
+
   // may this story speak now, for this visitor?
   allowed(sid) {
     const s = this.desk.byId.get(sid);
     return this.on && this.state.speed === 1 && Boolean(s) && s.safety !== "flagged" && this.desk.onAir(s)
-      && this.desk.status(s) !== "edited" && this.clips.has(`${sid}|${this.state.lang}`) && this.host.cues.some((c) => c.story_id === sid);
+      && this.desk.status(s) !== "edited" && this.clips.has(`${sid}|${this.state.lang}`) && this.host.cues.some((c) => c.story_id === sid && this.card(c));
   }
 
   start(sid) {
@@ -146,7 +152,7 @@ export class Voice {
     if (this.queued && !this.allowed(this.queued.sid)) this.queued = null;
     for (const inst of this.host.live.values()) {
       const c = inst.cue, sid = c.story_id;
-      if (!sid || this.played.has(sid) || now < c.ts) continue;
+      if (!sid || !this.card(c) || this.played.has(sid) || now < c.ts) continue;
       this.played.add(sid);
       if (now - c.ts > START_WINDOW_S || !this.state.playing || !this.allowed(sid)) continue;
       if (this.current) this.queued = { sid, ts: c.ts };
