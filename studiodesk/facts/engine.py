@@ -17,6 +17,13 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   attacking half (event locations without tracking). The two teams sum to 10.
 - line_height = mean over frames of the mean distance from the team's own goal of its 4
   deepest outfield players.
+- team_width / team_length = mean over frames of the spread of the team's outfield players across
+  (y) and along (x) the pitch.
+- formation: the 10 outfield players (on the pitch for at least half of the window) sorted by mean
+  distance from their own goal; the two widest gaps split them into three lines, e.g. 4-4-2,
+  stored as the value 442. Only when the shape is clear: the second widest gap is at least
+  FORMATION_GAP_M and FORMATION_RATIO times the third.
+- shot_distance = distance from the shot location to the centre of the goal being attacked.
 - Sprints: player speed from a 0.5 s centred moving average of the positions, a sprint is
   above 25.2 km/h for at least 1 s; steps above 45 km/h are tracking jumps and are ignored.
 """
@@ -40,6 +47,8 @@ SMOOTH = 5
 RELEASE_FRAMES = 5  # ball speed is read in the first half second after the kick
 MAX_PLAYER_KMH = 45.0
 MAX_BALL_KMH = 220.0  # faster steps are restarts (ball put back on the spot), not kicks
+FORMATION_GAP_M = 6.0
+FORMATION_RATIO = 1.5
 
 
 def clip01(v):
@@ -158,6 +167,9 @@ class Match:
             if self.grid is not None and kind in MOVE_TYPES and e["result_name"] == "success":
                 v = self.xt(e["end_x"], e["end_y"], sign) - self.xt(e["start_x"], e["start_y"], sign)
                 self.add("xt_added", ts, round(v, 4), "xT", f"xT {v:+.3f}", team, pid, [eid])
+            if kind in SHOT_TYPES:
+                d = math.hypot(e["start_x"] - (LENGTH if sign > 0 else 0.0), e["start_y"] - WIDTH / 2)
+                self.add("shot_distance", ts, round(d, 1), "m", f"Shot from {d:.0f} m", team, pid, [eid])
             if kind in SHOT_TYPES and f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = self.peak_ball_kmh(f0, f1)
@@ -297,6 +309,7 @@ class Match:
             for team in (self.home, self.away):
                 self.press(team, period, sl, b, ids, frames, mins)
                 self.line(team, period, sl, b, ids, frames, mins)
+                self.shape(team, period, sl, b, ids, frames, mins)
 
     def momentum(self, period, ts, evs, ids, frames, mins):
         def share(h, a):
@@ -356,6 +369,40 @@ class Match:
         v = float(np.nanmean(dist[ok], axis=1).mean())
         self.add("line_height", ts, round(v, 1), "m", f"Defensive line {v:.1f} m from goal, {mins}",
                  team, None, ids, frames, period)
+
+
+    def shape(self, team, period, sl, ts, ids, frames, mins):
+        """team_width, team_length and, when the lines are clear, formation (module docstring)."""
+        cols = [i for i in self.cols[team] if self.entities[i] not in self.gk]
+        if not cols:
+            return
+        x, y = (self.pos[sl][:, cols, k].astype(float) for k in (0, 1))
+        depth = x if self.sign(team, period) > 0 else LENGTH - x
+        on = np.isfinite(depth).sum(axis=1) >= 2
+        if not on.any():
+            return
+        w = float(np.mean(np.nanmax(y[on], axis=1) - np.nanmin(y[on], axis=1)))
+        n = float(np.mean(np.nanmax(depth[on], axis=1) - np.nanmin(depth[on], axis=1)))
+        self.add("team_width", ts, round(w, 1), "m", f"Team width {w:.1f} m, {mins}", team, None, ids, frames, period)
+        self.add("team_length", ts, round(n, 1), "m", f"Team length {n:.1f} m, {mins}", team, None, ids, frames, period)
+        keep = np.isfinite(depth).mean(axis=0) >= 0.5
+        if keep.sum() != 10:
+            return
+        d = np.sort(np.nanmean(depth[:, keep], axis=0))
+        gaps = np.diff(d)
+        g = np.sort(gaps)[::-1]
+        if g[1] < FORMATION_GAP_M or g[1] < FORMATION_RATIO * g[2]:
+            return
+        a, b = sorted(np.argsort(gaps)[::-1][:2])
+        lines = (a + 1, b - a, 9 - b)
+        name = "-".join(map(str, lines))
+        self.add("formation", ts, float("".join(map(str, lines))), "formation", f"Formation {name}, {mins}",
+                 team, None, ids, frames, period)
+
+
+def formation_name(value):
+    """442.0 -> "4-4-2" (the formation fact's value is its lines as digits)."""
+    return "-".join(str(int(value)))
 
 
 def compute(conn, match_id, xt_grid=XT_GRID):

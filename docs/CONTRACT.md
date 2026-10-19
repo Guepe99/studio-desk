@@ -220,3 +220,33 @@ Tools, all read-only over `matches.sqlite`, filtered to `ts <= clock` when the c
 
 `MatchClock(match_id, speed)` yields events one at a time at match time; `speed=1` is real time.
 Agents only learn about an event when the clock releases it, in replay generation too.
+
+## Agents additions (feat/agents2, additive)
+
+- New fact kinds from B, same columns as the others:
+  - `shot_distance`: metres from the shot location to the centre of the goal attacked, one per
+    shot, `source_event_ids` = the shot event. Label `Shot from 6 m`.
+  - `team_width` and `team_length`: metres between the widest and between the deepest and highest
+    outfield players, mean over a 5-minute window, one per team per window (`ts` = window end, like
+    `momentum`). Label `Team width 37.2 m, min 56-60`.
+  - `formation`: the outfield shape of a team in a 5-minute window, `unit` `formation`, `value`
+    the lines as digits (`442.0` is 4-4-2). Written only when the window shows three clear lines
+    of 10 outfield players. Label `Formation 4-4-2, min 56-60`.
+- `traces.story_ids`: nullable JSON array of `story_id`, default `[]`: the stories a hand-off
+  concerns (all the stories of the batch for the finder, analyst, commentators, verifier and
+  director; the stories sent back for a rewrite). `traces.json` carries it parsed. Runtime
+  databases from before get the column with `ALTER TABLE` on connect. Readers fall back to
+  `story_id`, then to the summaries, when it is missing or empty.
+- `stories.safety` is set by Azure AI Content Safety (text:analyze, api-version 2024-09-01) after
+  `python -m studiodesk.agents run` (skip with `--no-safety`; `--fake` skips it) or with
+  `python -m studiodesk.agents safety <match_id>`: one call per story with its three texts joined,
+  at most 100 calls per match; `flagged` when any category has severity 2 or more, `not_checked`
+  when the call fails or the cap is reached.
+- Verifier notes (`stories.verifier.flagged`) are one sentence of at most 160 characters each. No
+  agent string reaching the page (texts, analysis, angles, notes, trace summaries) carries em or
+  en dashes or control characters.
+- AI replay packs: `replays/<match_id>/{stories,cues,traces}.json`, the export shapes of a real
+  agents run, written by `python -m studiodesk.export <match_id> --runtime <runtime.sqlite> --pack
+  replays/<match_id>`. The image build copies them over the template files in `web/data/<match_id>/`
+  for every match that has a pack. Every `fact_id` and `event_id` in a pack exists in the data
+  rebuilt from the seed (`sim build --matches 4 --seed 7`, then `facts build --all`).

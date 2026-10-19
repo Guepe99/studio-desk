@@ -259,3 +259,180 @@ def test_window_run_only_sees_its_window(desk_db):
     run(rt, FakeChatClient(), from_ts=0, to_ts=150)  # before the goal at about 195 s
     assert {s["kind"] for s in stories(rt)} <= {"big_chance", "pressing_spell", "momentum_swing", "top_sprint"}
     assert all(t["ts"] <= 150 for t in rows(rt, "traces"))
+
+
+# --- text quality, verifier notes, the judge -------------------------------------------------------
+
+BEFORE = [  # lines from the first real run on M001, each with something a TV commentator would not do
+    ("en", "big_chance", "Very close-range chance from very close range but a relatively soft effort at 67 km/h in "
+                         "minute 26. Redwick Wanderers lead 2-0."),
+    ("en", "goal", "Hugo Adeyemi puts Redwick Wanderers 2-0 up at 13 with a 96 km/h strike. Redwick Wanderers lead 2-0."),
+]
+GOOD = [
+    ("en", "goal", "Adeyemi rifles it in at 96 km/h and Redwick Wanderers lead 2-0."),
+    ("it", "goal", "Kimura accorcia con un destro a 96 km/h: 2-1."),
+    ("es", "tactical_shift", "Redwick Wanderers pasa del 4-3-3 al 4-4-2 para cerrar el centro."),
+    ("en", "momentum_swing", "Ostwick FC have taken over in the last ten minutes, momentum 6.8/10."),
+    ("en", "recap", "Half-time at the Old Mill: Redwick Wanderers lead 2-1. Ostwick FC kept the ball better, "
+                    "81% of passes found a shirt."),
+]
+FIRST_RUN_ISSUES = [  # what the judge said about true lines in the first run
+    "Says \"Redwick Wanderers lead 2-1.\" After the goal by Ostwick FC the score is Redwick Wanderers 2, Ostwick FC 1 "
+    "\u2014 saying Redwick lead is correct, but phrasing could imply they still lead unchanged; however the claim is "
+    "factually correct. The actual issue: none.",
+    "Claim 'Redwick Wanderers lead 2-1 after the goal.' is redundant/misleading: score after is Redwick Wanderers 2, "
+    "Ostwick FC 1, so phrasing is correct but repetitive. No factual error. (Remove this issue if strict.)",
+    "claim: Says 'grande occasione' (big chance), claims an event size; but facts label is big_chance so that's okay.",
+    "claim: Text implies 'golazo' is stylistic but acceptable; however it doesn't name minute, that's fine.",
+]
+
+
+def test_style_check_catches_robotic_lines():
+    issues = [rules.style_issues(t, lang, kind) for lang, kind, t in BEFORE]
+    assert any("not the point of a big chance" in i for i in issues[0])
+    assert any("repeated words (close, range, very)" in i for i in issues[0])
+    assert any("score said 2 times" in i for i in issues[1]) and any("redwick" in i for i in issues[1])
+    assert [rules.style_issues(t, lang, kind) for lang, kind, t in GOOD] == [[]] * len(GOOD)
+    # minute ranges and formations are not scores
+    assert rules.score_mentions("Line at 31 m, min 41-45, from 4-3-3 to 4-4-2, now 2-1.") == ["2-1"]
+
+
+def test_agent_strings_are_tidy_and_notes_short():
+    assert rules.tidy("Goal\x07 \u200bfor Redwick \u2014 2\u20131\n") == "Goal for Redwick, 2-1"
+    for issue in FIRST_RUN_ISSUES:
+        n = rules.note(f"en: claim: {issue}")
+        assert n.startswith("en: claim: ") and len(n) <= rules.NOTE_CHARS
+        assert "\u2014" not in n and "\u2013" not in n and n.count(". ") == 0
+
+
+INFO = {"teams": [{"team_id": "T01", "side": "home", "name": "Redwick Wanderers", "short_name": "RED"},
+                  {"team_id": "T02", "side": "away", "name": "Ostwick FC", "short_name": "OST"}],
+        "players": [], "period1_s": 2700.0}
+
+
+def fact(kind, n, ts, value, unit, label, team="T01", period=2):
+    return {"fact_id": f"F-{kind.upper()}-{n:06d}", "kind": kind, "ts": ts, "value": value, "unit": unit,
+            "label_en": label, "team_id": team, "player_id": None, "period": period, "source_event_ids": [n]}
+
+
+def test_judge_gets_the_score_in_words():
+    m = rules.Match(INFO)
+    for n, (ts, team) in enumerate([(600, "T01"), (1500, "T01"), (3100, "T02")], 1):
+        m.facts[f"g{n}"] = fact("score", n, ts, 1, "goal", "Goal", team, 1 if ts < 2700 else 2)
+    desk = workflow.Desk("M001", None, None, "R-test", "fake")
+    desk.m = m
+    assert desk.who_leads(3100) == "Redwick Wanderers lead 2-1" and desk.who_leads(3099.9) == "Redwick Wanderers lead 2-0"
+    assert desk.who_leads(0) == "Level at 0-0"
+    story = {"story_id": "S-000008", "kind": "goal", "minute": 50, "ts": 3100, "team_id": "T02", "player_id": None,
+             "facts": [m.facts["g3"]], "analysis_en": ""}
+    card = desk.card(story)
+    assert (card["score_before"], card["score_after"], card["who_leads"]) == (
+        "Redwick Wanderers 2, Ostwick FC 0", "Redwick Wanderers 2, Ostwick FC 1", "Redwick Wanderers lead 2-1")
+    assert desk.card(story, writer="en")["score"]["who_leads"] == "Redwick Wanderers lead 2-1"
+    assert "score" not in desk.card({**story, "kind": "big_chance"}, writer="en")
+    assert all(rules.no_issue(i) for i in FIRST_RUN_ISSUES)
+    assert not rules.no_issue("The text says Ostwick FC lead, but Redwick Wanderers lead 2-1.")
+    assert not rules.no_issue("Calling the drive unstoppable is not fine.")
+
+
+def test_a_true_score_line_passes_when_the_judge_contradicts_itself(desk_db):
+    _, _, rt = desk_db
+    seen = []
+
+    def judge(schema, p):
+        if schema == "Verdicts":
+            seen.append(p)
+            return {"verdicts": [{"story_id": t["story_id"], "lang": t["lang"], "ok": False,
+                                  "issue": FIRST_RUN_ISSUES[0]} for t in p["texts"]]}
+        return None
+
+    run(rt, FakeChatClient(judge))
+    assert seen and all(s["verifier"]["status"] == "pass" and not s["verifier"]["flagged"] for s in stories(rt))
+    cards = [c for p in seen for c in p["stories"]]
+    assert all({"score_before", "score_after", "who_leads"} <= set(c) for c in cards)
+    assert any(c["kind"] == "goal" and c["who_leads"].endswith("lead 1-0") for c in cards)
+
+
+def test_style_goes_back_to_the_writer_and_costs_little_risk(desk_db):
+    _, _, rt = desk_db
+    feedback = []
+
+    def writer(schema, p):
+        if schema == "Lines" and p["language"] == "en":
+            if "feedback" in p:
+                feedback.append(p["feedback"])
+                return None
+            return {"lines": [{"story_id": s["story_id"], "text": f"Minute {s['minute']}: what a moment, what a moment, what a moment."}
+                              for s in p["stories"]]}
+        return None
+
+    fake = FakeChatClient(writer)
+    run(rt, fake)
+    assert feedback and all("repeated words (moment)" in f for fb in feedback for f in fb.values())
+    for s in stories(rt):
+        assert s["verifier"]["status"] == "rewritten" and "what a moment" not in s["texts"]["en"]
+        assert not any("repeated" in f for f in s["verifier"]["flagged"])  # style is not a verifier note
+        assert s["risk"] < rules.risk({**s, "style_only": False, "fact_ids": s["fact_ids"]})
+    for schema, p in fake.calls:
+        if schema == "Lines":
+            assert "recent_openings" in p
+            for c in p["stories"]:
+                assert c["numbers"] and ("score" in c) == (c["kind"] in rules.SCORE_KINDS)
+
+
+def test_traces_name_their_stories(desk_db, tmp_path):
+    _, conn, rt = desk_db
+    run(rt, FakeChatClient())
+    tr = rows(rt, "traces")
+    for s in stories(rt):
+        agents = {t["agent"] for t in tr if s["story_id"] in json.loads(t["story_ids"])}
+        assert agents == set(AGENTS), s["story_id"]
+    out = export("M001", conn, tmp_path / "web", rt)
+    assert all(isinstance(t["story_ids"], list) for t in json.loads((out / "traces.json").read_text()))
+
+
+def test_runtime_db_from_before_gets_story_ids(tmp_path):
+    import sqlite3
+    old = (ROOT / "studiodesk" / "schema.sql").read_text().split("CREATE TABLE IF NOT EXISTS traces")[1].split(";")[0]
+    old = "CREATE TABLE traces" + "\n".join(x for x in old.splitlines() if "story_ids" not in x)
+    with sqlite3.connect(tmp_path / "rt.sqlite") as c:
+        c.execute(old)
+        c.execute("INSERT INTO traces (match_id, run_id, seq, ts, at, agent, step, input_summary, output_summary) "
+                  "VALUES ('M001', 'R', 1, 0, 'x', 'director', 'cue', '', '')")
+    rt = db.connect(tmp_path / "rt.sqlite")
+    assert rt.execute("SELECT story_ids FROM traces").fetchone()[0] == "[]"
+    rt.close()
+
+
+def test_tactical_shift_from_a_change_of_formation():
+    m = rules.Match(INFO)
+    shapes = {"T01": [433, 433, 433, 442, 442], "T02": [442] * 5}
+    for tid, values in shapes.items():
+        for k, v in enumerate(values, 1):
+            ts = 2700 + 300 * (k + 1)
+            name = rules.formation_name(v)
+            m.facts[f"{tid}{k}"] = fact("formation", k + (10 if tid == "T02" else 0), ts, float(v), "formation",
+                                        f"Formation {name}, min {45 + 5 * k + 1}-{50 + 5 * k}", tid)
+    ends = sorted({f["ts"] for f in m.facts.values()})
+    shifted, found = set(), []
+    for w0, w in zip([2700] + ends, ends):
+        found += [(w, c) for c in rules.window_candidates(m, w0, w, [], shifted)]
+    assert [(w, c["team_id"], c["shape"]) for w, c in found] == [(ends[-1], "T01", ("4-3-3", "4-4-2"))]
+    story = {**found[0][1], "minute": 75, "player_id": None}
+    text = rules.template(m, story, "en")
+    assert text == "Redwick Wanderers switch from 4-3-3 to 4-4-2." and not rules.check_text(text, rules.story_allowed(m, story))
+    assert {"4-3-3", "4-4-2", "minute 75"} <= set(rules.number_list(m, story))
+    assert "minuto 75" in rules.number_list(m, story, "it")
+    assert rules.fmt(6.25, "es") == "6,2" and rules.fmt(96.0, "it") == "96"
+
+
+def test_a_line_pushed_back_by_the_other_team_is_not_a_shift():
+    m = rules.Match(INFO)
+    lines = {"T01": [25, 25, 25, 36, 36], "T02": [30, 30, 30, 19, 19]}  # T01 push up, T02 only drops with it
+    for tid, values in lines.items():
+        for k, v in enumerate(values, 1):
+            m.facts[f"{tid}{k}"] = fact("line_height", k + (10 if tid == "T02" else 0), 2700 + 300 * (k + 1),
+                                        float(v), "m", f"Defensive line {v:.1f} m from goal", tid)
+    w = 2700 + 300 * 6
+    found = rules.window_candidates(m, w - 300, w, [], set())
+    assert [(c["kind"], c["team_id"], c["note"]) for c in found] == [("tactical_shift", "T01", "line higher by 11 m")]

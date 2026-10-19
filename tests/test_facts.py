@@ -1,4 +1,5 @@
 import json
+import math
 import re
 import subprocess
 import sys
@@ -9,9 +10,11 @@ import numpy as np
 from fixture_match import FPS, HOME, PASS_MS, write_fixture
 from studiodesk import db
 from studiodesk.facts import Match, build
+from studiodesk.facts.engine import formation_name
 
 KINDS = {"pass_distance", "pass_difficulty", "pass_accuracy", "ball_speed", "shot_speed", "sprint_speed",
-         "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score"}
+         "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score",
+         "shot_distance", "team_width", "team_length", "formation"}
 
 
 def facts(conn, kind=None):
@@ -83,6 +86,21 @@ def test_windows_for_both_teams(match_db):
         assert abs(sum(r["value"] for r in mom if r["ts"] == ts) - 10) < 0.11
     acc = {(r["team_id"], r["player_id"], r["period"]): r["value"] for r in facts(conn, "pass_accuracy")}
     assert acc[("T01", None, 1)] == 80.0
+
+
+def test_shot_distance_and_team_shape(match_db):
+    info, conn = match_db
+    (shot,) = facts(conn, "shot_distance")
+    (eid, x, y), = conn.execute("SELECT event_id, start_x, start_y FROM events WHERE type_name = 'shot'")
+    assert json.loads(shot["source_event_ids"]) == [eid] and shot["unit"] == "m"
+    assert abs(shot["value"] - math.hypot(x - 0.0, y - 34.0)) < 0.06  # home attack x = 0 in period 2
+    # the fixture's 4-4-2: clear lines whenever nobody leaves them (the sprinter breaks T01's in period 1)
+    forms = {(r["team_id"], r["period"]): (r["value"], r["unit"], r["label_en"]) for r in facts(conn, "formation")}
+    assert set(forms) == {("T02", 1), ("T01", 2), ("T02", 2)}
+    assert all(v == 442.0 and u == "formation" and "4-4-2" in lab for v, u, lab in forms.values())
+    assert formation_name(442.0) == "4-4-2" and formation_name(4231.0) == "4-2-3-1"
+    assert {r["value"] for r in facts(conn, "team_width")} == {48.0}  # y from 10 to 58
+    assert {(r["team_id"], r["period"]): r["value"] for r in facts(conn, "team_length")}[("T02", 1)] == 35.0
 
 
 def test_xt_only_with_a_grid(tmp_path):

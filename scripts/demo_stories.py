@@ -169,7 +169,8 @@ def traces_for(stories, cues, players, short, p1_s):
                      "at": wall.isoformat(timespec="milliseconds").replace("+00:00", "Z"), "agent": agent, "step": step,
                      "input_summary": inp, "output_summary": out, "fact_ids": list(fact_ids),
                      "model": model if tin else None, "tokens_in": tin, "tokens_out": tout, "latency_ms": ms,
-                     "cost_usd": round(tin * PRICE_IN + tout * PRICE_OUT, 6), "story_id": s["story_id"], "_wall": wall})
+                     "cost_usd": round(tin * PRICE_IN + tout * PRICE_OUT, 6), "story_id": s["story_id"],
+                     "story_ids": [s["story_id"]], "_wall": wall})
 
     for k, s in enumerate(stories):
         mm = lambda ts: int(ts // 60) + 1 if ts < p1_s else int((ts - p1_s) // 60) + 46  # noqa: E731

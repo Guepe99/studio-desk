@@ -273,7 +273,8 @@ export class Desk {
         h("div", {}, h("dt", {}, "Verifier"), h("dd", { className: `v-${v.status}` },
           `${VERIFIER[v.status] ?? v.status ?? "none"}`, v.attempts ? `, ${v.attempts} attempt${v.attempts > 1 ? "s" : ""}` : "")),
         h("div", {}, h("dt", {}, "Safety"), h("dd", { className: `s-${s.safety}` }, SAFETY[s.safety] ?? s.safety))),
-      flagged.length ? h("ul", { className: "flagged", "aria-label": "Flagged by the verifier" }, flagged.map((f) => h("li", {}, flagText(f)))) : null,
+      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` }, `Verifier notes (${flagged.length})`),
+        h("ul", {}, flagged.map((f) => h("li", {}, flagText(f))))) : null,
       this.renderEvidence(s),
       editing ? null : h("div", { className: "actions" },
         act("approved", "Approve"), act("edited", "Edit"), act("rejected", "Reject"),
@@ -371,7 +372,7 @@ export class Desk {
     const fromApi = this.auditRows.filter((r) => r.actor !== "human");
     const agents = fromApi.length ? fromApi : this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
       story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }));
-    const directorAt = new Map(this.traces.filter((t) => t.agent === "director").map((t) => [this.traceStory(t), t.at]));
+    const directorAt = new Map(this.traces.filter((t) => t.agent === "director").flatMap((t) => this.traceStories(t).map((id) => [id, t.at])));
     const auto = fromApi.some((r) => r.actor === "auto") ? [] : this.stories.filter((s) => s.default_status === "auto_approved")
       .map((s) => ({ at: directorAt.get(s.story_id) ?? "", actor: "auto", action: "auto_approved", story_id: s.story_id, model: null,
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
@@ -408,14 +409,18 @@ export class Desk {
         h("p", { className: "empty" }, "Nothing logged yet. Approve, edit or reject a story and it shows up here."));
   }
 
-  // A trace row belongs to a story by its story_id, else by a story id named in its summaries,
-  // else by the first story that cites one of its facts.
-  traceStory(t) {
-    if (t.story_id) return t.story_id;
+  // A trace row belongs to the stories in its story_ids; older replays without them fall back to
+  // its story_id, else a story id named in its summaries, else the first story citing one of its facts.
+  traceStories(t) {
+    const ids = (t.story_ids ?? []).filter((id) => this.byId.has(id));
+    if (ids.length) return ids;
+    if (t.story_id) return [t.story_id];
     const named = `${t.input_summary} ${t.output_summary}`.match(/S-\d{6}/)?.[0];
-    if (named && this.byId.has(named)) return named;
-    return this.stories.find((s) => (t.fact_ids ?? []).some((f) => s.fact_ids.includes(f)))?.story_id ?? null;
+    if (named && this.byId.has(named)) return [named];
+    return [this.stories.find((s) => (t.fact_ids ?? []).some((f) => s.fact_ids.includes(f)))?.story_id ?? null];
   }
+
+  traceStory(t) { return this.traceStories(t)[0]; }
 
   renderTraces() {
     const legend = h("ol", { className: "pipeline", "aria-label": "How a story is made" },
@@ -423,9 +428,10 @@ export class Desk {
     if (!this.traces.length) return [legend, h("p", { className: "empty" }, "No agent traces in this replay yet.")];
     const groups = new Map();
     for (const t of this.traces) {
-      const k = this.traceStory(t) ?? "";
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(t);
+      for (const k of this.traceStories(t).map((id) => id ?? "")) {
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(t);
+      }
     }
     return [legend, [...groups].map(([sid, rows]) => {
       rows.sort((a, b) => a.seq - b.seq);
@@ -465,6 +471,7 @@ export class Desk {
 function valueText(f) {
   const v = Number(f.value);
   const n = Number.isInteger(v) ? String(v) : v.toFixed(Math.abs(v) >= 100 ? 0 : 1);
+  if (f.unit === "formation") return String(Math.round(v)).split("").join("-"); // 442 is 4-4-2
   return f.unit === "/10" ? `${n}/10` : f.unit === "goals" ? `${n} goal${v === 1 ? "" : "s"}` : `${n} ${f.unit ?? ""}`.trim();
 }
 

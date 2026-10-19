@@ -7,6 +7,7 @@ import re
 
 from .. import config, names
 from ..export import DURATION
+from ..facts.engine import formation_name
 
 LANGS = ("en", "it", "es")
 MUST_TELL = {"goal", "comeback", "recap"}
@@ -33,9 +34,11 @@ RULES = {
                       "windows. Pick it unless the same team had a swing in the last 10 minutes.",
     "pressing_spell": f"A team pressed hard: intensity {PRESS_SPELL:.0f}/10 in one window or {PRESS_PAIR}/10 in "
                       "two windows in a row. Pick it when it lasts or leads to a chance.",
-    "tactical_shift": f"Between minutes {SHIFT_MINUTES[0]} and {SHIFT_MINUTES[1]} a team moved its defensive "
-                      f"line by {SHIFT_M:.0f} m or more. Pick it: it is a coaching decision viewers want explained.",
+    "tactical_shift": f"Between minutes {SHIFT_MINUTES[0]} and {SHIFT_MINUTES[1]} a team changed its formation "
+                      f"(two windows in a row) or moved its defensive line by {SHIFT_M:.0f} m or more. Pick it: it is "
+                      "a coaching decision viewers want explained.",
 }
+SCORE_KINDS = {"goal", "comeback", "recap"}  # the only stories whose text may say the score
 
 TITLES = {
     "goal": ("Goal", "Gol", "Gol"),
@@ -64,6 +67,8 @@ TEMPLATES = {
     "tactical_shift": ("{team} move their defensive line to {v} m from goal.",
                        "{team} sposta la linea difensiva a {v} m dalla porta.",
                        "{team} coloca su línea defensiva a {v} m de su portería."),
+    "shape_shift": ("{team} switch from {old} to {new}.", "{team} passa dal {old} al {new}.",
+                    "{team} pasa del {old} al {new}."),
     "recap": ("{title}: {home} {h}-{a} {away}.", "{title}: {home} {h}-{a} {away}.", "{title}: {home} {h}-{a} {away}."),
     "recap_acc": (" Pass accuracy {acc_h}% and {acc_a}%.", " Precisione nei passaggi {acc_h}% e {acc_a}%.",
                   " Precisión de pase {acc_h}% y {acc_a}%."),
@@ -78,8 +83,9 @@ def minute(ts, period, p1):
     return math.floor(t / 60) + (45 if period == 2 else 0) + 1
 
 
-def fmt(v):
-    return f"{v:.1f}".rstrip("0").rstrip(".")
+def fmt(v, lang="en"):
+    text = f"{v:.1f}".rstrip("0").rstrip(".")
+    return text if lang == "en" else text.replace(".", ",")
 
 
 # --- candidates -------------------------------------------------------------------------------
@@ -145,8 +151,11 @@ def sprint_candidates(sprint_fact):
                   note=sprint_fact["label_en"])]
 
 
-def _goal_x(m, team_id, period):
-    return 105.0 if (team_id == m.home["team_id"]) == (period == 1) else 0.0
+def _line_delta(line, w):
+    """Defensive line: mean of the last 2 windows minus the 3 before, when the last one ends at w."""
+    if len(line) < 5 or line[-1]["ts"] != w:
+        return None
+    return (line[-1]["value"] + line[-2]["value"]) / 2 - sum(f["value"] for f in line[-5:-2]) / 3
 
 
 def window_candidates(m, w0, w, shots, shifted):
@@ -158,17 +167,17 @@ def window_candidates(m, w0, w, shots, shifted):
     out = []
     goal_events = {e for f in m.kind("score") for e in f["source_event_ids"]}
     by_event = {f["source_event_ids"][0]: f for f in m.kind("shot_speed") if f["source_event_ids"]}
+    dist_of = {f["source_event_ids"][0]: f for f in m.kind("shot_distance") if f["source_event_ids"]}
     chances = []
     for e in shots:
-        f = by_event.get(e["event_id"])
+        f, d = by_event.get(e["event_id"]), dist_of.get(e["event_id"])
         if not f or e["event_id"] in goal_events:
             continue
-        dist = math.hypot(e["start_x"] - _goal_x(m, e["team_id"], e["period"]), e["start_y"] - 34.0)
-        if f["value"] >= BIG_CHANCE_KMH or dist <= BIG_CHANCE_DIST_M:
-            chances.append((f, dist))
-    for f, dist in sorted(chances, key=lambda c: -c[0]["value"])[:2]:
-        out.append(_cand("big_chance", f["ts"], [f], f["team_id"], f["player_id"],
-                         note=f"{f['label_en']}, from {dist:.0f} m"))
+        if f["value"] >= BIG_CHANCE_KMH or (d and d["value"] <= BIG_CHANCE_DIST_M):
+            chances.append((f, d))
+    for f, d in sorted(chances, key=lambda c: -c[0]["value"])[:2]:
+        out.append(_cand("big_chance", f["ts"], [f] + ([d] if d else []), f["team_id"], f["player_id"],
+                         note=f["label_en"] + (f", {d['label_en'].lower()}" if d else "")))
     period = 2 if m.p1 is not None and w > m.p1 + 1e-6 else 1
     in_period = lambda f: f["period"] == period  # noqa: E731
     swings = []
@@ -185,10 +194,23 @@ def window_candidates(m, w0, w, shots, shifted):
             out.append(_cand("pressing_spell", w, spell, tid, note=" / ".join(f["label_en"] for f in spell)))
         line = [f for f in m.kind("line_height", tid) if in_period(f)]
         mi = minute(w, period, m.p1 or math.inf)
-        if (tid not in shifted and len(line) >= 5 and line[-1]["ts"] == w and period == 2
-                and SHIFT_MINUTES[0] <= mi <= SHIFT_MINUTES[1]):
-            delta = (line[-1]["value"] + line[-2]["value"]) / 2 - sum(f["value"] for f in line[-5:-2]) / 3
-            if abs(delta) >= SHIFT_M:
+        shift_time = period == 2 and SHIFT_MINUTES[0] <= mi <= SHIFT_MINUTES[1]
+        form = m.kind("formation", tid)
+        if tid not in shifted and shift_time and len(form) >= 4 and form[-1]["ts"] == w:
+            new, before = form[-1]["value"], form[:-2][-3:]  # two windows of the new shape after 2+ of one old one
+            if (form[-2]["value"] == new and len(before) >= 2 and before[-1]["value"] != new
+                    and len({f["value"] for f in before}) == 1):
+                shifted.add(tid)
+                width = [f for f in m.kind("team_width", tid) if f["ts"] in (before[-1]["ts"], w)]
+                old_name, new_name = formation_name(before[-1]["value"]), formation_name(new)
+                out.append(_cand("tactical_shift", w, [before[-1], form[-2], form[-1], *line[-1:], *width], tid,
+                                 note=f"shape from {old_name} to {new_name}", shape=(old_name, new_name)))
+        if tid not in shifted and shift_time and (delta := _line_delta(line, w)) is not None:
+            other = next(t for t in m.teams if t != tid)
+            # a line pushed back while the other team's line moves up by as much is their push, not our choice
+            mirror = delta < 0 and (_line_delta([f for f in m.kind("line_height", other) if in_period(f)], w)
+                                    or 0) >= SHIFT_M
+            if abs(delta) >= SHIFT_M and not mirror:
                 shifted.add(tid)
                 out.append(_cand("tactical_shift", w, line[-5:], tid,
                                  note=f"line {'higher' if delta > 0 else 'deeper'} by {abs(delta):.0f} m"))
@@ -280,10 +302,117 @@ def story_allowed(m, story):
     return allowed_numbers(story["facts"] + goals, mins)
 
 
+MINUTE = {"en": "minute", "it": "minuto", "es": "minuto"}
+
+
+def number_list(m, story, lang="en"):
+    """The numbers a commentator may write about this story, as strings for the prompt ("96 km/h",
+    "6 m", "4-4-2", "minute 13"), with the decimal comma in Italian and Spanish and long distances in km.
+    The score is listed only for a story whose point is the score."""
+    out = [f"{MINUTE[lang]} {mi}" for mi in sorted({m.minute_of(f) for f in story["facts"]} | {story["minute"]})]
+    for f in story["facts"]:
+        u, v = f["unit"], f["value"]
+        if u == "m" and v >= 1000:
+            u, v = "km", v / 1000
+        if u == "formation":
+            out.append(formation_name(v))
+        elif u in ("%", "/10"):
+            out.append(fmt(v, lang) + u)
+        elif u and f["kind"] != "score":
+            out.append(f"{fmt(v, lang)} {u}")
+    if story["kind"] in SCORE_KINDS:
+        score, _ = m.score_at(story["ts"])
+        out.append(f"{score[m.home['team_id']]}-{score[m.away['team_id']]}")
+    return list(dict.fromkeys(out))
+
+
+_NO_ISSUE = re.compile(r"(stylistic|is|are|that's) (but )?(acceptable|okay|fine)\W*$|issue\s*:\s*none|\(no issue|^\s*(none|n/?a|ok|no issues?)\W*$"
+                       r"|no factual (issue|problem|error|mismatch|contradiction)"
+                       r"|no (issue|problem|error|mismatch|contradiction)s?( found| here)?\W*$", re.IGNORECASE)
+
+
+def no_issue(issue):
+    """True when a judge's "not ok" verdict says, in its own words, that nothing is wrong."""
+    return bool(_NO_ISSUE.search(issue or ""))
+
+
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u2028\u2029\ufeff]")
+_DASH = r"[\u2012\u2013\u2014\u2015]"
+
+
 def tidy(text):
-    """On-screen text uses no em or en dashes (house style): a dash between words becomes a comma."""
-    text = re.sub(r"(\d)\s*[\u2014\u2013]\s*(\d)", r"\1-\2", text)  # 2–1, min 46–47
-    return re.sub(r"\s*[\u2014\u2013]\s*", ", ", text).strip()
+    """Every string the agents put in front of people: no em or en dashes (house style; a dash between
+    words becomes a comma), no control or invisible characters, single spaces."""
+    text = _CONTROL.sub(" ", str(text))
+    text = re.sub(rf"(\d)\s*{_DASH}\s*(\d)", r"\1-\2", text)  # a score or a range keeps a hyphen
+    text = re.sub(rf"\s*{_DASH}\s*", ", ", text)
+    return re.sub(r"\s+", " ", text).strip(" ,")
+
+
+NOTE_CHARS = 160
+
+
+def note(text):
+    """A verifier note for the desk: tidy, one sentence, at most NOTE_CHARS characters.
+
+    Short prefixes such as "en: claim: " stay in front of the sentence."""
+    rest, prefix = tidy(text), ""
+    while (mt := re.match(r"([\w ]{1,12}): ", rest)) and len(mt.group(1).split()) <= 2:
+        prefix, rest = prefix + mt.group(0), rest[mt.end():]
+    first = re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", rest, maxsplit=1)[0]
+    room = NOTE_CHARS - len(prefix)
+    if len(first) > room:
+        first = first[:room - 1].rsplit(" ", 1)[0].rstrip(",;: ") + "\u2026"
+    return prefix + first
+
+
+# --- style: what a TV commentator would not say -------------------------------------------------
+
+STOP = {
+    "en": set("""that this with from into have they them their there then than when what which while were been being
+              after before about over just also more most only some such will would could should still where here
+              make makes made""".split()),
+    "it": set("""della delle dello degli dalla dalle dallo dagli nella nelle nello negli alla alle allo agli sulla
+              sulle sullo sugli come dopo anche ancora sono stato stata questo questa quello quella quando mentre
+              prima però perché più ogni tutto tutti tutta loro dove fino senza verso contro""".split()),
+    "es": set("""para como pero desde tras antes este esta esto estos estas cuando sobre entre hasta porque más
+              todo todos toda donde mientras luego contra hacia sido está están tiene tienen""".split()),
+}
+_SCORE = re.compile(r"(?<![\d.,/-])\d{1,2}\s?-\s?\d{1,2}(?![\d/]|[.,]\d|-\d)")
+_WORD = re.compile(r"[^\W\d_]+")
+
+
+def score_mentions(text):
+    """Scores like 2-1 in text; minute ranges (min 41-45) and formations (4-4-2) are not scores."""
+    return [mt.group(0) for mt in _SCORE.finditer(text)
+            if not re.search(r"min\w*\.?\s*$", text[max(0, mt.start() - 10):mt.start()], re.IGNORECASE)]
+
+
+def repeated_words(text, lang, limit=2):
+    """Content words (4+ letters, not function words) used `limit` times or more in one text."""
+    words = [w.lower() for w in _WORD.findall(text)]
+    stems = [w[:-1] if lang != "it" and w.endswith("s") and len(w) > 4 else w
+             for w in words if len(w) >= 4 and w not in STOP.get(lang, ())]
+    return sorted({w for w in stems if stems.count(w) >= limit})
+
+
+def style_issues(text, lang, kind):
+    """What a TV commentator would not do: say the score twice, or where it is not the point of the
+    story; use the same word twice; run past two sentences. A recap may run to three sentences and
+    name a team twice."""
+    out = []
+    scores = score_mentions(text)
+    if len(scores) > 1:
+        out.append(f"score said {len(scores)} times ({', '.join(scores)}): say it once at most")
+    elif scores and kind not in SCORE_KINDS:
+        out.append(f"the score {scores[0]} is not the point of a {kind.replace('_', ' ')} story: leave it out")
+    longest = 3 if kind == "recap" else 2
+    if rep := repeated_words(text, lang, longest):
+        out.append(f"repeated words ({', '.join(rep)}): say each thing once")
+    sentences = len([x for x in re.split(r"(?<=[.!?])\s+", text) if x.strip()])
+    if sentences > longest:
+        out.append(f"{sentences} sentences: keep it to {longest}")
+    return out
 
 
 # --- templates ---------------------------------------------------------------------------------
@@ -302,8 +431,11 @@ def template(m, story, lang):
         if h in acc and a in acc:
             text += TEMPLATES["recap_acc"][i].format(acc_h=f"{acc[h]:.0f}", acc_a=f"{acc[a]:.0f}")
         return text
+    if kind == "tactical_shift" and story.get("shape"):
+        old, new = story["shape"]
+        return TEMPLATES["shape_shift"][i].format(team=m.team_name(story["team_id"]) or "", old=old, new=new)
     main = [f for f in facts if f["kind"] == MAIN_KIND.get(kind)]
-    v = fmt(main[-1]["value"]) if main else ""
+    v = fmt(main[-1]["value"], lang) if main else ""
     score, _ = m.score_at(story["ts"])
     t = story["team_id"]
     other = next((x for x in m.teams if x != t), None)
@@ -323,7 +455,8 @@ def analysis_template(story):
 def risk(story):
     """0..1: how much a person should look before this goes on air."""
     r = 0.05
-    r += {"pass": 0.0, "rewritten": 0.2, "template": 0.3}[story["verifier"]["status"]]
+    r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
+          "template": 0.3}[story["verifier"]["status"]]  # a rewrite for style alone fixed no fact
     r += 0.2 if story.get("unjudged") else 0.0          # claims without numbers not checked by the AI
     r += 0.1 if story["player_id"] else 0.0              # claims about one person
     r += 0.25 * (1 - min(max(story.get("confidence", 0.5), 0.0), 1.0))
