@@ -136,8 +136,7 @@ def test_rewrites_at_most_twice_then_template(desk_db):
     for s in stories(rt):
         assert s["verifier"]["status"] == "template" and s["verifier"]["attempts"] == 1 + config.MAX_REWRITES
         assert "999" not in s["texts"]["it"]  # and English, though fine, is the template too: one story in all three
-        assert s["verifier"]["flagged"] == ["Italian draft not used: a number the facts do not give.",
-                                            "Fact-only sentence used in all three languages."]
+        assert s["verifier"]["flagged"] == ["Italian draft not used: a number the facts do not give."]
         assert rules.default_status(s["risk"]) == "needs_review"
 
 
@@ -375,7 +374,7 @@ def test_judge_gets_the_score_in_words():
     assert "score" not in desk.card({**story, "kind": "big_chance"}, writer="en")
     it = desk.card(story, writer="it")  # Italian and Spanish writers get the clubs with their article
     assert (it["team"], it["home"], it["score"]["leader"]) == ("l'Ostwick FC", "il Redwick Wanderers", "il Redwick Wanderers")
-    assert card["score_say"] == "with Redwick Wanderers leading 2-1"
+    assert "score_say" not in card and it["score"]["write"] == "2-1"  # home goals first, the home side leads
     mom = [fact("momentum", 20 + k, 2700 + 300 * k, v, "/10", f"Momentum {v}/10") for k, v in enumerate((2.0, 3.1, 9.2, 6.7))]
     swing = {**story, "kind": "momentum_swing", "facts": mom, "ts": 3600}
     assert desk.card(swing, writer="es")["trend"] == \
@@ -433,7 +432,8 @@ def test_style_goes_back_to_the_writer_and_costs_little_risk(desk_db):
     assert feedback and all("repeated words (moment)" in f for fb in feedback for f in fb.values())
     for s in stories(rt):
         assert s["verifier"]["status"] == "rewritten" and "what a moment" not in s["texts"]["en"]
-        assert not any("repeated" in f for f in s["verifier"]["flagged"])  # style is not a verifier note
+        assert any(n.startswith("Earlier English draft:") and n.endswith("a word repeated.")
+                   for n in s["verifier"]["flagged"])  # style leaves a plain note too
         assert s["risk"] < rules.risk({**s, "style_only": False, "fact_ids": s["fact_ids"]})
     for schema, p in fake.calls:
         if schema == "Lines":
@@ -602,7 +602,7 @@ def test_story_issues_catch_distance_possession_score_order_and_trend():
     assert rules.story_issues(m, acc, "Ostwick have bossed possession.", "en")
     goal = _story(m, "goal", [m.facts["g"]], team="T02", player="T02-9", ts=2900)
     assert rules.story_issues(m, goal, "Kimura makes it 0-1.", "en") == [
-        "score order: write the leader first, 1-0, not 0-1", "score without the leader: name Ostwick FC next to 1-0"]
+        "score order: write 1-0, not 0-1 (the leader first)", "score without the leader: name Ostwick FC next to 1-0"]
     assert rules.story_issues(m, goal, "Kimura puts Ostwick 1-0 up.", "en") == []
     press = [fact("press_intensity", 3, 2700 + 300 * k, v, "/10", f"Press intensity {v}/10") for k, v in ((1, 5.6), (2, 4.6))]
     spell = _story(m, "pressing_spell", press, ts=3300)
@@ -742,7 +742,7 @@ def test_desk_notes_carry_a_fixed_reason_never_the_judges_words(desk_db):
     assert rules.desk_notes("rewritten", {"en": [], "it": ["a trend the values do not show"] * 2}, {}) == \
         ["Earlier Italian draft: a trend the values do not show."]
     assert rules.desk_notes("template", {"it": ["x"]}, {"en": [], "es": ["jargon"]}) == \
-        ["Spanish draft not used: jargon.", "Fact-only sentence used in all three languages."]
+        ["Spanish draft not used: jargon."]
 
 
 def test_a_failed_judge_leaves_a_short_reason_in_the_trace(desk_db, monkeypatch):

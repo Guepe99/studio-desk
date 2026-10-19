@@ -88,6 +88,18 @@ def shot_detail(shot, sign, saves=()):
     return ", ".join(w for w in (box, body, shot_outcome(shot, saves)) if w)
 
 
+def window_label(a, b, period, p1):
+    """"min 66-70" for a window from a to b (seconds), minutes as the clock shows them: "min 42-45+1"
+    across the end of the first half, "first-half stoppage time" for a window wholly after 45'.
+    Rounded first: windows() steps by adding floats, and 1499.99999 s would read as minute 70, not 71."""
+    off, cap = (0.0 if period == 1 else p1), 45 * period
+    first = int(round(a - off, 6) // 60) + 1 + cap - 45
+    last = math.ceil(round(b - off, 6) / 60) + cap - 45
+    if first > cap:
+        return ("first" if period == 1 else "second") + "-half stoppage time"
+    return "min " + "-".join(f"{cap}+{x - cap}" if x > cap else str(x) for x in (first, last))
+
+
 class Match:
     def __init__(self, conn, match_id, xt_grid=XT_GRID):
         m = conn.execute("SELECT * FROM matches WHERE match_id = ?", (match_id,)).fetchone()
@@ -335,8 +347,7 @@ class Match:
         for n, (period, a, b, period_end) in enumerate(self.windows(), 1):
             evs = [e for e in self.events if e["period"] == period and a <= e["ts"] and (e["ts"] < b or b == period_end)]
             ids = [e["event_id"] for e in evs]
-            t0, base = a - (0 if period == 1 else self.p1), 45 * (period - 1)
-            mins = f"min {int(t0 // 60) + base + 1}-{math.ceil((b - a + t0) / 60) + base}"
+            mins = window_label(a, b, period, self.p1)
             frames = None
             if self.pos is not None:
                 fa, fb = self.frame(a), max(self.frame(b) - 1, self.frame(a))

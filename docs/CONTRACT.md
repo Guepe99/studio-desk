@@ -91,7 +91,8 @@ Kinds produced by B: `pass_distance`, `pass_difficulty`, `pass_accuracy`, `ball_
 `press_intensity`, `line_height`, `score`.
 
 `momentum` is one fact per team per 5-minute window. The value runs 0..10 and `ts` is the end of
-the window.
+the window. Window labels name display minutes that never overlap (`min 66-70`, `min 71-75`);
+the window after 45' or 90' reads `first-half stoppage time` or `second-half stoppage time`.
 
 ## Runtime records (`runtime.sqlite`)
 
@@ -288,8 +289,8 @@ Agents only learn about an event when the clock releases it, in replay generatio
   at most 100 calls per match; `flagged` when any category has severity 2 or more, `not_checked`
   when the call fails or the cap is reached.
 - Verifier notes (`stories.verifier.flagged`) are plain sentences built from fixed reasons, such as
-  "Earlier Italian draft: a trend the values do not show." or "Fact-only sentence used in all three
-  languages.", never the judge's own words, a rejected number or a fact id; at most 160 characters
+  "Earlier Italian draft: a trend the values do not show." or "Earlier Spanish draft: a word
+  repeated.", never the judge's own words, a rejected number or a fact id; at most 160 characters
   each. No
   agent string reaching the page (texts, analysis, angles, notes, trace summaries) carries em or
   en dashes or control characters.
