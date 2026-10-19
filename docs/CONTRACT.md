@@ -178,6 +178,33 @@ button.
 Live caps (`studiodesk/config.py`): 2 runs per session per day, 20 per day for the whole site,
 and an automatic stop once the day's cost passes $25.
 
+### Control desk additions (feat/desk, additive)
+
+| method | path | what |
+|---|---|---|
+| GET | `/api/audit?match_id=` | `{rows: [{at, actor, action, match_id, story_id, model, tokens_in, tokens_out, cost_usd, detail}]}`: this visitor's rows plus the agents' rows (`session_id` NULL) for the match, newest first, at most 500; `session_id` is never returned |
+
+- Responses: `GET /api/session` gives `{kill_switch, actions_left}`; `GET /api/decisions` gives
+  `{match_id, kill_switch, decisions: [{story_id, decision, edited_text, at}]}` and never creates
+  a session; `POST /api/decisions` echoes `{story_id, decision, edited_text, at}`; `POST /api/kill`
+  gives `{kill_switch}`. The session id lives only in the HttpOnly cookie (SameSite=Lax, Secure
+  behind https, 30 days).
+- Validation: `match_id` matches `M\d{3}` or `DEMO`, `story_id` matches `S-\d{6}` and must exist
+  for the match (404 otherwise); `edited_text` is required with `edited` and only with it, keys
+  `en`/`it`/`es`, 1..600 characters, no control characters; unknown fields 422; bodies over 16 KB
+  413. A later decision replaces the earlier one; `approved` clears an edit.
+- Caps: 300 actions (decisions and kill switch) per session, 5000 new sessions per day, then 429.
+- Every decision and kill-switch change writes an `audit` row: `actor` `human`, `action` the
+  decision or `ai_off`/`ai_on`, `detail` `{"langs": [..]}` for an edit.
+- `POST /api/live` and its stream answer 501 until the live run exists.
+- `traces` rows (table and `traces.json`) may carry `story_id` (null for a run-level hand-off).
+- What goes on air for a visitor: template cues (`story_id` null) always; a story's cues when its
+  status is `auto_approved`, `approved` or `edited`, never when `needs_review` or `rejected`, and
+  none with the kill switch on. A cue whose `story_id` is not in `stories.json` is held. An edit
+  replaces the `payload.body` of that story's `why_card` cues in the edited language.
+- Languages: the sheet for language L is the cues with `lang` L, plus the English template cues
+  when L has no template cue of its own.
+
 ## MCP server (`studiodesk/mcp_server.py`)
 
 Tools, all read-only over `matches.sqlite`, filtered to `ts <= clock` when the clock is running:

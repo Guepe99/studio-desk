@@ -18,19 +18,24 @@ free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",
 FIXTURE="$ROOT/web/data/DEMO/meta.json" GEN="$ROOT/scripts/make_demo_fixture.py"
 PY="$ROOT/.venv/bin/python"
 [ -x "$PY" ] || PY=python3
-if [ ! -f "$FIXTURE" ] || [ "$GEN" -nt "$FIXTURE" ]; then (cd "$ROOT" && "$PY" "$GEN"); fi
+if [ ! -f "$FIXTURE" ] || [ "$GEN" -nt "$FIXTURE" ] || [ "$ROOT/scripts/demo_stories.py" -nt "$FIXTURE" ]; then (cd "$ROOT" && "$PY" "$GEN"); fi
 
+SCRIPT=${1:-smoke.mjs}
+shift || true
 WEB=$(free_port)
-python3 -m http.server "$WEB" --bind 127.0.0.1 --directory "$ROOT/web" >/dev/null 2>&1 &
+if [ "$SCRIPT" = desk.mjs ]; then
+  # the desk needs the API (sessions, decisions); runtime rows go to data/runtime.sqlite
+  (cd "$ROOT" && exec "$PY" -m uvicorn studiodesk.api:app --host 127.0.0.1 --port "$WEB" >/dev/null 2>&1) &
+else
+  python3 -m http.server "$WEB" --bind 127.0.0.1 --directory "$ROOT/web" >/dev/null 2>&1 &
+fi
 SERVER=$!
 CONT="sd-smoke-chromium-$$"
 cleanup() { kill "$SERVER" 2>/dev/null || true; docker stop "$CONT" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-SCRIPT=${1:-smoke.mjs}
-shift || true
-# WebGL pages (anything but the 2D smoke test) need the image with the software Vulkan driver.
-WEBGL=${WEBGL:-$([ "$SCRIPT" = smoke.mjs ] && echo 0 || echo 1)}
+# WebGL pages (anything but the 2D pages) need the image with the software Vulkan driver.
+WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs) echo 0 ;; *) echo 1 ;; esac)}
 if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
   IMAGE=foto-chromium:1

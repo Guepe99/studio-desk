@@ -22,6 +22,7 @@
           <div class="sb-clock"><span class="sb-min"></span><span class="sb-period"></span></div>
         </div>
         <div id="overlay"></div>
+        <div id="ai-off" hidden>AI off</div>
         <div id="status" role="status"></div>
       </div>
     </div>
@@ -48,10 +49,12 @@
         <button class="ctl" type="button" data-audience="casual" data-i18n="casual">Casual fan</button>
       </div>
       <label class="lang"><span class="sr" data-i18n="language">Language</span>
-        <select id="lang"><option value="en">EN</option></select>
+        <select id="lang"><option value="en">EN</option><option value="it">IT</option><option value="es">ES</option></select>
       </label>
+      <button id="desk-open" class="ctl" type="button" aria-controls="desk" aria-expanded="false">Desk <span class="count" aria-label="stories waiting for review"></span></button>
       <p id="notice" role="alert" hidden></p>
     </div>
   </main>
+  <aside id="desk" aria-label="Control desk"></aside>
 </body>
 </html>
