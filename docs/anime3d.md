@@ -160,7 +160,7 @@ Each is greyscale, tinted by the page.
 - a height from 0.95 to 1.05;
 - dark or neutral boots (four near-black tones and one off-white), so they do not pull the eye.
 
-Spiky hair never gets the gold colour, a famous look. There is no white or silver hair.
+Spiky hair never gets the two palest colours (pale blond, platinum): pale spikes are a famous look.
 
 **Shading** (`toon3d.js`).
 - Two tones from the sun's angle with a crisp edge, smoothstep over 0.08 of N·L.
@@ -177,8 +177,8 @@ Spiky hair never gets the gold colour, a famous look. There is no white or silve
 
 **Pose on top of the clips.** After the clips and the upper-body emotions, `players3d.js` turns some
 joints of the anime body part of the way back to their rest pose (`relaxJoints`):
-- the fingers by 70%, so the hands hang relaxed and open instead of in the mannequin's fists,
-  except while the jumping fist celebration plays;
+- the fingers by 45%, so the hands hang in a soft curl instead of in the mannequin's fists (at 70%
+  they hung flat and fanned out), except while the jumping fist celebration plays;
 - the upper spine, neck and head by 50% while a dejected motion clip plays. The yellow player in
   the goal still is on `M_crouch_head_down`, which today's footballers play too; on a 1.4x head
   with big hair its head-down pose read as a slump.
@@ -194,11 +194,20 @@ joints of the anime body part of the way back to their rest pose (`relaxJoints`)
 
 | | Target | anime.glb |
 |---|---|---|
-| Near triangles (body + face + hair) | about 10k | 9,937 (messy, spiky, swept), 8,506 (crop), plus the outline hull (8,193 or 6,762) |
-| Far triangles | under 4k | 3,329 at most |
-| File size | under 5 MB | 2.73 MB |
+| Near triangles (body + face + hair) | about 16k | 15,325 (messy, spiky, swept), 11,596 (crop), plus the outline hull (13,581 or 9,852) |
+| Far triangles | under 4k | 3,343 at most |
+| File size | under 5 MB | 3.33 MB |
 | Draws per near player | 1 to 2 | 11: 7 body regions (the kit code needs them apart), face skin, face features, hair, one outline hull |
 | Draws per far player | 1 to 2 | 1 |
+
+The near body used to be simplified to 62% and the hair to 20%: the silhouette, the hands and the
+toon terminator went polygonal in the close-ups. Since 19 Oct the near body is VRoid's own mesh
+(8,084 triangles) and the near hair keeps 45%; the far LOD did not change. Measured on the DEMO
+sample, low profile, software WebGL 1, two runs each: 3.99 and 3.86 frames/s before, 3.64 and
+3.96 after (291,407 against 431,199 vertices in the scene); `anime3d-shots` 5.18 against 5.00.
+The difference is inside the noise of this shared server. The fingers curl more since the same day (45% back to rest, see above). Same frames before and
+after both changes: `out/shots/motion3d-anime-soft-pair.png` (players 2 and 3, zoomed) and
+`motion3d-anime-soft-clips-pair.png` (idle, jog, sprint).
 
 ## Results
 

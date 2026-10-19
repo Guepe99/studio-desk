@@ -17,11 +17,13 @@
 // ball rig 20, the event actions below and the keeper reactions 30 (a slide turns the body to its event point and
 // switches the rig's leg pose off while the clip moves the legs).
 //
-// Clips are sampled with goToFrame from match time, never played, so a seek, a replay or a video
-// frame always shows the same pose. Action and emotion clips are cloned for a player the first
-// time they are needed: idle clips cost animation time every frame in Babylon. Only clips with a
-// weight above 0 are sampled: when the first two blended values both weigh 0, Babylon divides by
-// zero and the bone turns NaN. Upper-body emotions are not clips at all but a pass after the
+// Clips are sampled with goToFrame from match time, never played. The locomotion phase and the
+// clip weights (p.phase, p.lphase, p.ws) integrate dt, so a frame shows the same pose only when it
+// is reached by the same sequence of frames: the capture and the stills always set the clock in
+// order from a fixed start; a seek in the page can show another stride phase. Action and emotion
+// clips are cloned for a player the first time they are needed: idle clips cost animation time
+// every frame in Babylon. Only clips with a weight above 0 are sampled: when the first two blended
+// values both weigh 0, Babylon divides by zero and the bone turns NaN. Upper-body emotions are not clips at all but a pass after the
 // animation step (applyUpper): Babylon clamps an animatable's weight to 1, so a masked clip could
 // only blend half way over the locomotion.
 const B = window.BABYLON;
