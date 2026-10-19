@@ -31,52 +31,80 @@ from .llm import Analyses, Lines, Picks, Verdicts, cost_usd
 
 MAX_PICKS = 4          # stories per batch besides the must-tell ones
 TOOL_RESULT_CHARS = 6000
+RETRY_PAUSES_S = (3.0, 8.0)  # waits before the second and third try of a rate-limited call
 
 INSTRUCTIONS = {
     "story_finder": (
         "You are the story finder of a football broadcast desk. The user message is JSON with the match "
         "minute, candidate moments found by rules, and the stories already told. Pick the moments worth a "
-        "graphic. `score_after` is the score after the moment, home team first. Rules per kind:\n" + "\n".join(f"- {k}: {v}" for k, v in rules.RULES.items()) +
+        "graphic. `score_after` is the score after the moment, leader first. Rules per kind:\n" + "\n".join(f"- {k}: {v}" for k, v in rules.RULES.items()) +
         f"\nPick at most {MAX_PICKS} besides goals, comebacks and recaps. You may call the studiodesk tools "
         "(always with match_id and a narrow kind or time range) to check context, but usually the candidates "
         "are enough. The angle is one short plain sentence, under 15 words, on what makes the moment "
-        "interesting: the football reason (a run behind the line, a keeper beaten at the near post, a change "
-        "of shape), not the score and not a list of numbers. Do not start it the way the angles in "
-        "`recent_stories` start. Reply with JSON: picks = [{candidate_id, confidence 0..1, angle}]."),
+        "interesting: the football reason (a run behind the line, a change of shape, a spell of pressure), "
+        "not the score and not a list of numbers. Claim only what the candidate says: `outcome` is "
+        "what happened to the shot. Do not start the angle the way the angles in `recent_stories` start. "
+        "Reply with JSON: picks = [{candidate_id, confidence 0..1, angle}]."),
     "analyst": (
         "You are the analyst of a football broadcast desk. For each story in the JSON, explain in one or two "
         "sentences of plain English why it matters, citing the fact ids you rely on in square brackets, e.g. "
-        "[F-SHOT_SPEED-000031]. Use only numbers that appear in the facts, written as they appear there. You "
-        "may call the studiodesk tools (with match_id and a kind, player or time range) to find one more "
-        "supporting fact; cite it if you use it. `score_after` is the score after the moment, home team first; "
-        "mention it only for a goal, comeback or recap. Say each thing once. "
-        "No em or en dashes (a hyphen in a score like 2-1 is fine). Reply with JSON: stories = [{story_id, analysis_en, fact_ids}]."),
+        "[F-SHOT_SPEED-000031]. Use only numbers that appear in the facts, written with digits as they appear "
+        "there, never in words. You may call the studiodesk tools (with match_id and a kind, player or time "
+        "range) to find one more supporting fact; cite it if you use it. `score_after` is the score after the "
+        "moment, leader first; mention it only for a goal, comeback or recap. Pass accuracy is the share of "
+        "passes completed, never possession. `outcome` is what happened to the shot. `home` and `away` name "
+        "the teams' roles. Say each thing once. No em or en dashes (a hyphen in a score like 2-1 is fine). "
+        "Reply with JSON: stories = [{story_id, analysis_en, fact_ids}]."),
     "commentator": (
         "You are a television football commentator writing the on-screen line in {language_name}. {style} "
         "For each story in the JSON write one or two short sentences, the way you would say them over the "
         "replay (a recap may take three). Rules:\n"
         "- Numbers: only the strings in the story's `numbers`, written with digits as listed (a decimal "
-        "may be rounded to a whole number). No other numbers, no invented names, players or events.\n"
-        "- Score: only when the story has `score`, and then once at most; `score.after` is the score right "
-        "after the moment and `score.who_leads` says who leads. A story without `score` never mentions it.\n"
+        "may be rounded to a whole number). Never a number in words, never a count (no 'two goals', "
+        "'hat-trick', 'doppietta', 'tres'), no other units. Minutes as listed, in a full phrase ('in the "
+        "41st minute', 'al minuto 41', 'en el minuto 41'; 45+2' is stoppage time).\n"
+        "- Score: only when the story has `score`, once at most, written exactly as `score.write` (the "
+        "leader's goals first) with the leader named as in `score.after`. A story without `score` never "
+        "mentions it. A recap always gives it.\n"
+        "- Name the player as in `name` (when the story has a player), otherwise the team. `home` and "
+        "`away` say which team is which: 'the visitors' is only ever the away team.\n"
+        "- Say only what the story says. `outcome` is what happened to the shot (goal, saved, wide, over the "
+        "bar, blocked): say exactly that. A shot that did not go in never 'slides under', 'tucks in' or "
+        "'beats the keeper'. Nothing tells where the ball went or how the chance was made: no near or far "
+        "post, corner of the net, cross, pull-back, volley, rebound or deflection. `header` true means a "
+        "header, false means no header.\n"
+        "- Distance words must fit the shot distance: 'close range' up to 11 m, 'six-yard box' up to 5.5 m, "
+        "'edge of the box' 16 to 25 m, 'from distance' or 'from outside the box' only beyond 16.5 m. In Italian "
+        "and Spanish use your own words (area piccola, da pochi passi, dal limite, da fuori; área pequeña, a "
+        "bocajarro, desde la frontal, desde fuera), never English ones.\n"
+        "- Pass accuracy is the share of passes completed, never possession; tie each value to its team.\n"
+        "- Momentum is how much a team is on top, never possession; pressing is how hard it presses, with no "
+        "turnovers or 'carrier'. At most two values, in time order, each at its own fact's `minute`, with "
+        "words that match `trend` (never 'rose' or 'kept up' when it fell).\n"
         "- Say each thing once: no word or idea twice in a line, no restating the story kind, no 'according "
-        "to the data'.\n"
+        "to the data'. Loud verbs (rips, lashes, thunderbolt, rattles, che botta, bordata, trallazo) once a "
+        "match at most.\n"
         "- Vary the openings: do not start the way the lines in `recent_openings` start, and do not start "
         "with the minute or the team name every time.\n"
-        "- Use the team and player names given. No em or en dashes (a hyphen in a score like 2-1 is fine).\n"
+        "- No em or en dashes (a hyphen in a score like 2-1 is fine).\n"
         "If `feedback` is present, rewrite that story to fix exactly that problem. Reply with JSON: "
         "lines = [{story_id, text}]."),
     "verifier": (
-        "You check on-screen football text against the facts. Numbers are already checked by code; judge "
-        "only the claims without numbers: who scored, who leads, what happened, comparisons. Each story "
-        "gives `facts`, `score_before` and `score_after` (the score just before and just after the moment) "
-        "and `who_leads` (who leads after it, in words). A text that agrees with them is ok, even when it "
-        "phrases the score differently or names only the leader. Colour and interpretation (a fine strike, "
-        "a big moment, a nervy spell) are fine. Flag only a contradiction of these facts, an invented event, "
-        "a wrong player or team, or a wrong leader. Never flag style or wording. Texts with lang `analysis` "
-        "are the analyst's notes: judge them the same way. Reply with JSON: verdicts = [{story_id, lang, ok, "
-        "issue}], one verdict per text; ok is true when you found no problem, and then issue is empty; "
-        "otherwise issue is one short sentence naming the wrong claim."),
+        "You check on-screen football text against the facts. Code has checked every number: that it exists in "
+        "the facts, its rounding and how it is written; never flag a number for its format. You check that each number is attached to the right fact, player and team (a sprint speed "
+        "told as a shot speed, or two teams' pass accuracy swapped, is wrong), and every claim without numbers: "
+        "who scored, who leads (`score_before` and `score_after`, leader first), what happened to the shot "
+        "(`outcome`: a saved shot told as a goal, or a wide one told as saved, is wrong), home and away roles "
+        "(`home`, `away`: 'the visitors' are the away team), possession (there is no possession fact: pass "
+        "accuracy is not possession), and invented events (a post, a cross or a header the story does not "
+        "give; `outcome` and `header` come from the match events and count as facts). After a goal the scorer's "
+        "team may still trail: 'pulls one back, 2-1' is right when `score_after` says the other team leads 2-1. "
+        "Colour and interpretation (a fine strike, a big moment, a "
+        "nervy spell) are fine. Never flag style, wording or language (each text is in its own language). Texts with lang `analysis` are the analyst's "
+        "notes: judge them the same way. Reply with JSON: verdicts = [{story_id, lang, ok, issue}], exactly "
+        "one verdict per text. ok is true when you found no problem, and then issue is empty; ok is false "
+        "only when you can name the wrong claim, and then issue is one short sentence naming it. Decide "
+        "before you write: if a claim turns out to be supported, the text is ok; never reason aloud in issue."),
 }
 STYLE = {
     "en": "Write in British English (pitch, keeper, nil, the box, colour), like a Saturday-afternoon TV "
@@ -174,6 +202,8 @@ class Desk:
         self.last_window = 0.0
         self.shifted = set()
         self.openings = defaultdict(list)    # lang -> first words of the lines on air, so openings vary
+        self.used = defaultdict(lambda: {"loud": set(), "openings": set()})  # lang -> what style_issues rations
+        self.slots = asyncio.Semaphore(config.MAX_PARALLEL_CALLS)
 
     async def mcp(self, tool, **args):
         return await mcp_call(self.session, tool, match_id=self.match_id, **args)
@@ -215,54 +245,104 @@ class Desk:
                                  getattr(ctx.result, "model", None))
         return audit
 
+    def record_timeout(self, agent, tokens_in):
+        """A call cut by the timeout is still billed: count its input tokens (an estimate) in the audit."""
+        c = cost_usd({"input_token_count": tokens_in})
+        self.calls += 1
+        self.tokens_in += tokens_in
+        self.cost += c
+        db.insert(self.rt, "audit", {"session_id": None, "at": _now_iso(), "actor": agent, "action": "model_call_timeout",
+                                     "match_id": self.match_id, "story_id": None, "model": self.model_name,
+                                     "tokens_in": tokens_in, "tokens_out": 0, "cost_usd": round(c, 6),
+                                     "detail": {"run_id": self.run_id, "timeout_s": config.AGENT_TIMEOUT_S,
+                                                "match_ts": self.now, "tokens_in_estimated": True}})
+        self.rt.commit()
+
+    def over_budget(self):
+        return self.cost >= config.RUN_MAX_COST_USD or self.calls >= config.RUN_MAX_CALLS
+
     async def ask(self, agent, payload, schema):
-        """One agent run with a timeout; returns (parsed output, usage summed over its model calls)."""
+        """One agent run with a timeout, at most MAX_PARALLEL_CALLS at once, retried after a rate limit
+        (twice) or a timeout (once); returns (parsed output, usage summed over its model calls). Past the
+        run's cost or call ceiling it raises at once, so the caller falls back to rules and templates."""
         t0, calls0, tin0, tout0, cost0 = time.perf_counter(), self.calls, self.tokens_in, self.tokens_out, self.cost
-        resp = await asyncio.wait_for(
-            self.agents[agent].run(json.dumps(payload, ensure_ascii=False), options={"response_format": schema}),
-            config.AGENT_TIMEOUT_S)
+        text = json.dumps(payload, ensure_ascii=False)
+        timeouts = 0
+        for pause in (*RETRY_PAUSES_S, None):
+            if self.over_budget():
+                raise RuntimeError("run budget reached")
+            try:
+                async with self.slots:
+                    resp = await asyncio.wait_for(self.agents[agent].run(text, options={"response_format": schema}),
+                                                  config.AGENT_TIMEOUT_S)
+                break
+            except Exception as e:  # noqa: BLE001 - retried or raised to the caller's fallback
+                why = rules.brief_error(e)
+                if why == "timed out" and isinstance(e, (asyncio.TimeoutError, TimeoutError)):
+                    self.record_timeout(agent, len(text) // 4)
+                    timeouts += 1
+                if pause is None or why not in ("timed out", "rate limited") or timeouts > 1:
+                    raise
+                await asyncio.sleep(pause)
         out = schema.model_validate_json(resp.text)
         return out, {"calls": self.calls - calls0, "tokens_in": self.tokens_in - tin0,
                      "tokens_out": self.tokens_out - tout0, "cost_usd": self.cost - cost0,
                      "latency_ms": round((time.perf_counter() - t0) * 1000)}
 
     # views for prompts
-    def score_text(self, ts):
-        score, _ = self.m.score_at(ts)
-        return (f"{self.m.home['name']} {score[self.m.home['team_id']]}, "
-                f"{self.m.away['name']} {score[self.m.away['team_id']]}")
-
     def brief(self, f):
-        label = f["label_en"] + (f" (score now {self.score_text(f['ts'])})" if f["kind"] == "score" else "")
+        label = self.goal_label(f) if f["kind"] == "score" else rules.display_label(f)
         return {"fact_id": f["fact_id"], "kind": f["kind"], "value": f["value"], "unit": f["unit"],
-                "label": label, "minute": self.m.minute_of(f),
+                "label": label, "minute": rules.stoppage(self.m.minute_of(f), f["period"]),
                 "team": self.m.team_name(f["team_id"]), "player": self.m.player_name(f["player_id"])}
+
+    def goal_label(self, f):
+        """Who scored and the score after, leader first: a goal that pulls one back says the other side leads."""
+        leader, s = self.m.lead(f["ts"])
+        team = self.m.team_name(f["team_id"])
+        if leader is None:
+            return f"Goal for {team}, level at {s}"
+        return f"Goal for {team}, who lead {s}" if leader == f["team_id"] else \
+            f"Goal for {team}; {self.m.team_name(leader)} still lead {s}"
 
     def who_leads(self, ts):
         """The score in words, leader first: "Redwick Wanderers lead 2-1" or "Level at 1-1"."""
-        score, _ = self.m.score_at(ts)
-        (hi_team, hi), (_, lo) = sorted(((t, score[t["team_id"]]) for t in (self.m.home, self.m.away)),
-                                        key=lambda x: -x[1])
-        return f"Level at {hi}-{lo}" if hi == lo else f"{hi_team['name']} lead {hi}-{lo}"
+        leader, s = self.m.lead(ts)
+        return f"Level at {s}" if leader is None else f"{self.m.team_name(leader)} lead {s}"
 
     def card(self, s, analysis=False, writer=None):
-        """A story for a prompt. For a commentator (writer=lang): the allowed numbers, the score only when
-        it is the point of the story, and how the last lines began."""
-        c = {"story_id": s["story_id"], "kind": s["kind"], "minute": s["minute"], "team": self.m.team_name(s["team_id"]),
-             "player": self.m.player_name(s["player_id"]), "angle": s.get("angle", ""),
-             "facts": [self.brief(f) for f in s["facts"]]}
+        """A story for a prompt: who is home and away, what happened to the shot, which way the numbers
+        went. For a commentator (writer=lang): the allowed numbers, the score only when it is the point of
+        the story, and how the last lines began."""
+        side = {self.m.home["team_id"]: "home", self.m.away["team_id"]: "away"}
+        c = {"story_id": s["story_id"], "kind": s["kind"], "minute": self.m.minute_label(s["ts"]),
+             "team": self.m.team_name(s["team_id"]), "team_side": side.get(s["team_id"]),
+             "player": self.m.player_name(s["player_id"]), "home": self.m.home["name"], "away": self.m.away["name"],
+             "angle": s.get("angle", ""),
+             "facts": [self.brief(f) for f in (rules.text_facts(s) if writer else s["facts"])]}  # writers: the values to read
+        if s.get("outcome"):
+            c["outcome"] = rules.OUTCOMES[s["outcome"]][0] if s["outcome"] in rules.OUTCOMES else s["outcome"]
+            c["header"] = bool(s.get("header"))
+        if s["kind"] in ("momentum_swing", "pressing_spell") and len(tf := rules.text_facts(s)) >= 2:
+            d = tf[-1]["value"] - tf[0]["value"]
+            c["trend"] = "rising" if d > 0.2 else "falling" if d < -0.2 else "steady"
         if writer is None:
-            c["score_before"] = self.score_text(s["ts"] - 1e-3)
-            c["score_after"] = self.score_text(s["ts"])
-            c["who_leads"] = self.who_leads(s["ts"])
+            c["score_before"] = self.who_leads(s["ts"] - 1e-3)
+            c["score_after"] = self.who_leads(s["ts"])
         else:
             c["numbers"] = rules.number_list(self.m, s, writer)
+            if s["player_id"]:
+                c["name"] = self.m.required_name(s["player_id"])  # the surname, or the full name when shared
             if s["kind"] in rules.SCORE_KINDS:
-                c["score"] = {"before": self.who_leads(s["ts"] - 1e-3), "after": self.score_text(s["ts"]),
-                              "who_leads": self.who_leads(s["ts"])}
+                after = self.who_leads(s["ts"])
+                if s.get("phase") == "ft":  # the match is over: a win, not a lead
+                    after = after.replace(" lead ", " win ").replace("Level at", "It ended")
+                c["score"] = {"before": self.who_leads(s["ts"] - 1e-3), "after": after,
+                              "write": self.m.lead(s["ts"])[1]}
         if s["kind"] == "recap":
             c["phase"] = rules.TITLES[s["phase"]][0]
-            c["teams"] = {"home": self.m.home["name"], "away": self.m.away["name"]}
+            c["pass_accuracy"] = {self.m.team_name(f["team_id"]): f"{rules.fmt(f['value'])}%"
+                                  for f in s["facts"] if f["kind"] == "pass_accuracy"}
         if analysis:
             c["analysis_en"] = s["analysis_en"]
         return c
@@ -292,6 +372,8 @@ class Desk:
         self.polled = now
         for f in new:
             self.m.facts[f["fact_id"]] = f
+        if any(f["player_id"] and f["player_id"] not in self.m.players for f in new):  # a substitute came on
+            self.m.update(await self.mcp("get_match_info"))
         cands = []
         for f in new:
             if f["kind"] == "score":
@@ -303,7 +385,8 @@ class Desk:
             if self.m.p1 is None:
                 self.m.update(await self.mcp("get_match_info"))
             shots = await self.mcp("get_events", from_ts=self.last_window + 1e-6, to_ts=window_end, type_name="shot")
-            cands += rules.window_candidates(self.m, self.last_window, window_end, shots, self.shifted)
+            saves = await self.mcp("get_events", from_ts=self.last_window + 1e-6, to_ts=now, type_name="keeper_save")
+            cands += rules.window_candidates(self.m, self.last_window, window_end, shots, self.shifted, saves)
             if self.m.p1 is not None and abs(window_end - self.m.p1) < 1e-6:
                 cands.append(rules.recap_candidate(self.m, window_end, "ht"))
             self.last_window = window_end
@@ -372,14 +455,16 @@ def build_workflow(desk):
             await ctx.yield_output(Round(batch, []))
             return
         by_id = {c["candidate_id"]: c for c in cands}
-        payload = {"minute": cands[-1]["minute"],
-                   "candidates": [{"candidate_id": c["candidate_id"], "kind": c["kind"], "minute": c["minute"],
-                                   "team": m().team_name(c["team_id"]), "player": m().player_name(c["player_id"]),
-                                   "note": c["note"], "score_after": desk.score_text(c["ts"]),
+        payload = {"minute": m().minute_label(cands[-1]["ts"]),
+                   "candidates": [{"candidate_id": c["candidate_id"], "kind": c["kind"],
+                                   "minute": m().minute_label(c["ts"]), "team": m().team_name(c["team_id"]),
+                                   "player": m().player_name(c["player_id"]), "note": c["note"],
+                                   "score_after": desk.who_leads(c["ts"]),
+                                   **({"outcome": c["outcome"]} if c.get("outcome") else {}),
                                    "facts": [desk.brief(f) for f in c["facts"][:6]]}
                                   for c in cands],
                    "recent_stories": [{"kind": s["kind"], "team": m().team_name(s["team_id"]),
-                                       "player": m().player_name(s["player_id"]), "minute": s["minute"],
+                                       "player": m().player_name(s["player_id"]), "minute": m().minute_label(s["ts"]),
                                        "angle": s["angle"]}
                                       for s in desk.queue[-8:]]}
         try:
@@ -387,7 +472,7 @@ def build_workflow(desk):
             picks = [(by_id[p.candidate_id], p.confidence, p.angle) for p in out.picks if p.candidate_id in by_id]
             note = ""
         except Exception as e:  # noqa: BLE001 - any failure falls back to the written rules
-            picks, usage, note = [(c, 0.5, c["note"]) for c in _rule_picks(cands)], None, f" fallback: {e!r}"[:200]
+            picks, usage, note = [(c, 0.5, c["note"]) for c in _rule_picks(cands)], None, f" fallback: {rules.brief_error(e)}"
         chosen = {id(c) for c, _, _ in picks}
         picks = list({id(c): (c, conf, a) for c, conf, a in picks}.values())
         must = [(c, 0.7, c["note"]) for c in cands if c["kind"] in rules.MUST_TELL and id(c) not in chosen]
@@ -409,7 +494,7 @@ def build_workflow(desk):
             out, usage = await desk.ask("analyst", {"stories": [desk.card(s) for s in rnd.stories]}, Analyses)
             got = {a.story_id: a for a in out.stories}
         except Exception as e:  # noqa: BLE001
-            got, note = {}, f" fallback: {e!r}"[:200]
+            got, note = {}, f" fallback: {rules.brief_error(e)}"
         for s in rnd.stories:
             a = got.get(s["story_id"])
             if a:
@@ -418,7 +503,8 @@ def build_workflow(desk):
                         s["facts"].append(m().facts[fid])
                         s["fact_ids"].append(fid)
                 text = rules.tidy(a.analysis_en)
-                bad = rules.check_text(text, rules.story_allowed(m(), s))
+                bad = rules.check_text(m().without_names(text), rules.story_allowed(m(), s)) + rules.story_issues(
+                    m(), s, text, "en", on_air=False)  # the analyst's note may quote a goal's "who lead 1-0"
                 s["analysis_en"] = text if not bad else rules.analysis_template(s)
                 s["flagged"] += [rules.note(f"analysis: {b}") for b in bad]
             else:
@@ -435,7 +521,7 @@ def build_workflow(desk):
                 out, usage = await desk.ask(f"commentator_{lang}", payload, Lines)
                 drafts = Drafts(rnd, lang, {x.story_id: x.text for x in out.lines})
             except Exception as e:  # noqa: BLE001
-                usage, drafts = None, Drafts(rnd, lang, {}, f"{e!r}"[:200])
+                usage, drafts = None, Drafts(rnd, lang, {}, rules.brief_error(e))
             desk.trace(f"commentator_{lang}", "draft", f"{len(rnd.stories)} stories",
                        f"{len(drafts.texts)} lines" + (f" fallback: {drafts.error}" if drafts.error else ""),
                        [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
@@ -443,18 +529,21 @@ def build_workflow(desk):
         return write
 
     async def judge(rnd, texts):
-        """AI check of the claims without numbers; returns ({(sid, lang): issue}, judged ok, usage)."""
+        """AI check of the claims; returns ({(sid, lang): issue}, the keys that got a verdict, usage).
+        A text without a verdict (judge down, or a short reply) is not judged, never approved."""
         if not texts:
-            return {}, True, None
+            return {}, set(), None
         payload = {"stories": [desk.card(s) for s in rnd.stories],
                    "texts": [{"story_id": sid, "lang": lang, "text": t} for (sid, lang), t in texts.items()]}
         try:
             out, usage = await desk.ask("verifier", payload, Verdicts)
-        except Exception:  # noqa: BLE001 - not judged: the numbers were checked, the risk goes up
-            return {}, False, None
-        # a "not ok" whose issue says there is no issue is the judge contradicting itself: it passes
-        return {(v.story_id, v.lang): v.issue or "unsupported claim" for v in out.verdicts
-                if not v.ok and (v.story_id, v.lang) in texts and not rules.no_issue(v.issue)}, True, usage
+        except Exception:  # noqa: BLE001 - not judged: the numbers were checked, the story goes to review
+            return {}, set(), None
+        # a "not ok" that argues itself out of its issue is no verdict: the text stays unjudged (review)
+        verdicts = [v for v in out.verdicts if (v.story_id, v.lang) in texts and (v.ok or not rules.retracts(v.issue))]
+        # a "not ok" whose whole issue is "none" is the judge contradicting itself: it passes
+        return ({(v.story_id, v.lang): v.issue or "unsupported claim" for v in verdicts
+                 if not v.ok and not rules.no_issue(v.issue)}, {(v.story_id, v.lang) for v in verdicts}, usage)
 
     async def rewrite(rnd, lang, todo):
         """Ask the commentator of lang to fix the texts in todo {sid: problem}."""
@@ -465,7 +554,7 @@ def build_workflow(desk):
             got = {x.story_id: x.text for x in out.lines if x.story_id in todo}
         except Exception as e:  # noqa: BLE001
             got, usage = {}, None
-            todo = {sid: p + [f"rewrite failed: {e!r}"[:120]] for sid, p in todo.items()}
+            todo = {sid: p + [f"rewrite failed: {rules.brief_error(e)}"] for sid, p in todo.items()}
         desk.trace(f"commentator_{lang}", "rewrite", f"verifier asks to fix {', '.join(todo)}",
                    f"{len(got)} lines", [], usage, list(todo))
         return got
@@ -484,22 +573,34 @@ def build_workflow(desk):
                     attempts[(sid, d.lang)] = 1
                 else:
                     problems[(sid, d.lang)].append(f"no text: {d.error or 'missing'}")
-        unjudged, usage_all = set(), Counter()
+        judged_ok, usage_all = set(), Counter()  # texts the judge passed; a rewrite takes a text out
+        analysis_judged = set()
         for round_no in range(config.MAX_REWRITES + 1):
             last = round_no == config.MAX_REWRITES
             pending = {k: t for k, t in texts.items() if k not in problems}
             for k, t in pending.items():
-                if bad := rules.check_text(t, allowed[k[0]]):
+                if bad := (rules.check_text(m().without_names(t), allowed[k[0]], k[1])
+                           + rules.story_issues(m(), by_sid[k[0]], t, k[1])):
                     problems[k] += bad
-            # style goes back to the writer while there are rounds left; the last round only judges facts
-            style = {} if last else {k: st for k, t in pending.items() if k not in problems
-                                     and (st := rules.style_issues(t, k[1], by_sid[k[0]]["kind"]))}
-            to_judge = {k: t for k, t in pending.items() if k not in problems and k not in style}
+            gaps = {k: g for k, t in pending.items() if k not in problems and (g := rules.story_gaps(m(), by_sid[k[0]], t))}
+            # style goes back to the writer while there are rounds left; in the last round a line that
+            # still leaves out who it is about, or a recap without the score, falls back to the template
+            if last:
+                style = {}
+                for k, g in gaps.items():
+                    problems[k] += g
+                for k, t in pending.items():
+                    if k not in problems and (j := rules.jargon(t)):  # problems is a defaultdict: no empty entries
+                        problems[k] += j
+            else:
+                style = {k: st for k, t in pending.items() if k not in problems and (st := gaps.get(k, []) + rules.style_issues(
+                    t, k[1], by_sid[k[0]]["kind"], desk.used[k[1]]))}
+            to_judge = {k: t for k, t in pending.items() if k not in problems and k not in style and k not in judged_ok}
             notes = {(sid, "analysis"): st["analysis_en"] for sid, st in by_sid.items()} if round_no == 0 else {}
             issues, judged, usage = await judge(rnd, {**to_judge, **notes})
             usage_all.update(usage or {})
-            if not judged:
-                unjudged |= set(to_judge)
+            analysis_judged |= {sid for sid, lang in judged if lang == "analysis"}
+            judged_ok |= {k for k in judged if k in to_judge and k not in issues}
             for sid, lang in [k for k in issues if k[1] == "analysis"]:  # a wrong analysis falls back to the facts
                 by_sid[sid]["analysis_en"] = rules.analysis_template(by_sid[sid])
                 by_sid[sid]["flagged"].append(rules.note(f"analysis: claim: {issues.pop((sid, lang))}"))
@@ -520,26 +621,32 @@ def build_workflow(desk):
                 for sid in todo:
                     texts.pop((sid, lang), None)
                     problems.pop((sid, lang), None)
+                    judged_ok.discard((sid, lang))
                     if sid in got:
                         texts[(sid, lang)] = rules.tidy(got[sid])
                         attempts[(sid, lang)] += 1
                     else:
                         problems[(sid, lang)].append("no rewrite")
-        statuses = Counter()
+        statuses, unjudged_any = Counter(), False
         for sid, s in by_sid.items():
-            status = "pass"
-            for lang in rules.LANGS:
-                k = (sid, lang)
-                if k in texts and k not in problems:
-                    s["texts"][lang] = texts[k]
-                    desk.openings[lang].append(" ".join(texts[k].split()[:3]))
-                    if attempts[k] > 1:
-                        status = "rewritten" if status == "pass" else status
-                else:
+            ok = {lang: (sid, lang) in texts and (sid, lang) not in problems for lang in rules.LANGS}
+            if all(ok.values()):  # all three languages say the same story, or all three are the template
+                status = "rewritten" if any(attempts[(sid, lang)] > 1 for lang in rules.LANGS) else "pass"
+                for lang in rules.LANGS:
+                    t = s["texts"][lang] = texts[(sid, lang)]
+                    desk.openings[lang].append(" ".join(t.split()[:3]))
+                    desk.used[lang]["openings"].add(rules.opening(t))
+                    desk.used[lang]["loud"] |= rules.loud_words(t, lang)
+            else:
+                status = "template"
+                for lang in rules.LANGS:
                     s["texts"][lang] = rules.template(m(), s, lang)
-                    s["flagged"] += [f"{lang}: {p}" for p in problems.get(k, [])]
-                    status = "template"
-            s["unjudged"] = any((sid, lang) in unjudged for lang in rules.LANGS)
+                    s["flagged"] += [f"{lang}: {p}" for p in problems.get((sid, lang), [])]
+                    if ok[lang]:
+                        s["flagged"].append(f"{lang}: template, as another language failed")
+            s["unjudged"] = status != "template" and (sid not in analysis_judged or any(
+                (sid, lang) not in judged_ok for lang in rules.LANGS))
+            unjudged_any |= s["unjudged"]
             s["style_only"] = not any((sid, lang) in factual for lang in rules.LANGS)
             s["flagged"] = list(dict.fromkeys(rules.note(x) for x in s["flagged"]))
             s["verifier"] = {"status": status, "attempts": max(attempts[(sid, lang)] for lang in rules.LANGS),
@@ -548,7 +655,7 @@ def build_workflow(desk):
             statuses[status] += 1
         usage_all["calls"] = usage_all.get("calls", 0)
         desk.trace("verifier", "check", f"{len(texts)} texts in {len(rules.LANGS)} languages",
-                   ", ".join(f"{k} {v}" for k, v in statuses.items()) + (" (claims not judged)" if unjudged else ""),
+                   ", ".join(f"{k} {v}" for k, v in statuses.items()) + (" (claims not judged)" if unjudged_any else ""),
                    [i for s in rnd.stories for i in s["fact_ids"]], dict(usage_all), ids(rnd))
         await ctx.send_message(rnd)
 
@@ -577,7 +684,9 @@ def build_agents(desk, client, tools):
         role = "commentator" if name.startswith("commentator") else name
         text = INSTRUCTIONS[role].replace("{language_name}", LANGUAGE_NAMES[name[-2:]]).replace(
             "{style}", STYLE[name[-2:]]) if role == "commentator" else INSTRUCTIONS[role]
-        desk.agents[name] = Agent(client, text, name=name, tools=tools.get(name), default_options=opts,
+        # the judge reasons a little: at minimal effort it argued itself in circles in its issues
+        o = {**opts, "reasoning": {"effort": "low"}} if name == "verifier" else opts
+        desk.agents[name] = Agent(client, text, name=name, tools=tools.get(name), default_options=o,
                                   middleware=[desk.audit_middleware(name)])
 
 
@@ -615,7 +724,7 @@ async def run_batch(desk, workflow, batch):
             rnd = (await workflow.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
             stories = [desk.new_story(c, 0.5, c["note"]) for c in _rule_picks(batch.candidates)]
-            stories = [template_story(desk, s, f"workflow error: {e!r}"[:200]) for s in stories]
+            stories = [template_story(desk, s, f"workflow error: {rules.brief_error(e)}") for s in stories]
             rnd = Round(batch, stories, desk.director.plan(stories))
             desk.trace("director", "fallback", "workflow failed", f"{len(stories)} template stories",
                        [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])

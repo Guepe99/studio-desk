@@ -2,8 +2,10 @@
 
 One text:analyze call per story, with its three texts joined, and at most MAX_CALLS calls per match
 (the F0 tier allows 5 calls a second and 5000 a month). A story is `flagged` when any category has
-severity FLAG_SEVERITY or more, `passed` otherwise, and stays `not_checked` when the call fails or
-the cap is reached. Auth is Entra ID first (DefaultAzureCredential); if the resource refuses the
+severity FLAG_SEVERITY or more, and then also `needs_review` (a flagged story never airs on its own);
+`passed` otherwise. It stays `not_checked` when the text is empty, the analysis comes back empty, the
+call fails, the cap of HTTP requests or the deadline is reached, or MAX_FAILURES calls in a row failed.
+Auth is Entra ID first (DefaultAzureCredential); if the resource refuses the
 token, the key is read with the az CLI at run time and kept in memory only.
 """
 import json
@@ -21,6 +23,8 @@ RESOURCE = ("studiodesk-safety", "rg-studiodesk")  # account, resource group
 MAX_CALLS = 100
 FLAG_SEVERITY = 2
 MIN_INTERVAL_S = 0.25   # under the F0 limit of 5 calls a second
+MAX_FAILURES = 3        # consecutive failed calls before the step gives up
+DEADLINE_S = 300.0      # the whole step, so a dead endpoint cannot hold a run for 50 minutes
 SCOPE = "https://cognitiveservices.azure.com/.default"
 AZ = os.environ.get("AZ_CLI", "az")
 
@@ -36,7 +40,7 @@ class AzureSafety:
         self.endpoint = (endpoint or os.environ.get("AZURE_CONTENT_SAFETY_ENDPOINT") or _az(
             "cognitiveservices", "account", "show", "-n", RESOURCE[0], "-g", RESOURCE[1],
             "--query", "properties.endpoint")).rstrip("/")
-        self.key, self.token, self.credential, self.last = None, None, None, 0.0
+        self.key, self.token, self.credential, self.last, self.requests = None, None, None, 0.0, 0
 
     def _headers(self):
         if self.key:
@@ -66,6 +70,7 @@ class AzureSafety:
                 self._use_key()
                 headers = self._headers()
             req = urllib.request.Request(url, body, {**headers, "Content-Type": "application/json"}, method="POST")
+            self.requests += 1
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     out = json.load(resp)
@@ -81,22 +86,32 @@ def verdict(analysis):
     return "flagged" if any(v >= FLAG_SEVERITY for v in analysis.values()) else "passed"
 
 
-def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print):
-    """Set stories.safety for every story of the match; returns the count per status."""
+def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print, deadline_s=DEADLINE_S):
+    """Set stories.safety for every story of the match; returns the count per status.
+
+    A flagged story also gets default_status 'needs_review'. The cap counts HTTP requests when the
+    analyzer counts them (`analyze.requests`), calls otherwise.
+    """
     stories = rt.execute("SELECT story_id, texts FROM stories WHERE match_id = ? ORDER BY ts", (match_id,)).fetchall()
-    counts, calls = Counter(), 0
+    counts, calls, failures, end = Counter(), 0, 0, time.monotonic() + deadline_s
     for story_id, texts in stories:
         texts = json.loads(texts)
+        text = "\n".join(t for t in (texts.get(lang, "") for lang in rules.LANGS) if t.strip())
         status = "not_checked"
-        if calls < max_calls:
+        if (text and getattr(analyze, "requests", calls) < max_calls and failures < MAX_FAILURES
+                and time.monotonic() < end):
             calls += 1
             try:
-                analysis = analyze("\n".join(texts.get(lang, "") for lang in rules.LANGS))
-                status = verdict(analysis)
+                analysis = analyze(text)
+                failures = 0
+                status = verdict(analysis) if analysis else "not_checked"
                 if status == "flagged":
                     log(f"{story_id} flagged: {analysis}")
+                    rt.execute("UPDATE stories SET default_status = 'needs_review' WHERE match_id = ? AND story_id = ?",
+                               (match_id, story_id))
             except Exception as e:  # noqa: BLE001 - quota, network or auth: the story stays not_checked
-                log(f"{story_id} not checked: {e!r}"[:200])
+                failures += 1
+                log(f"{story_id} not checked: {type(e).__name__}")
         rt.execute("UPDATE stories SET safety = ? WHERE match_id = ? AND story_id = ?", (status, match_id, story_id))
         counts[status] += 1
     rt.commit()
