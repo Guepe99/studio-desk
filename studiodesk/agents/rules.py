@@ -9,7 +9,7 @@ import unicodedata
 
 from .. import config, names
 from ..export import DURATION
-from ..facts.engine import formation_name, shot_outcome
+from ..facts.engine import BOX_DEPTH, BOX_HALF_WIDTH, LENGTH, WIDTH, formation_name, shot_outcome
 
 LANGS = ("en", "it", "es")
 MUST_TELL = {"goal", "comeback", "recap"}
@@ -48,20 +48,25 @@ TITLES = {
     "big_chance": ("Big chance", "Grande occasione", "Ocasión clara"),
     "top_sprint": ("Sprint", "Scatto", "Sprint"),
     "momentum_swing": ("Momentum swing", "Cambio di inerzia", "Cambio de inercia"),
-    "pressing_spell": ("High press", "Pressing alto", "Presión alta"),
+    "pressing_spell": ("Pressing", "Pressing intenso", "Presión intensa"),
     "tactical_shift": ("Tactical shift", "Cambio tattico", "Cambio táctico"),
     "ht": ("Half-time", "Fine primo tempo", "Descanso"),
     "ft": ("Full time", "Finale", "Final"),
 }
 QUALITY = {"en": ("Goal", "No goal"), "it": ("Gol", "Niente gol"), "es": ("Gol", "Sin gol")}
 # Scores are always written leader first ("2-1"), with the leader named, or as level ("2-2").
+# In Italian and Spanish {team}, {leader} and {player} (when it falls back to the team) carry the
+# club's article ("il Redwick", "l'Harbour", "el Redwick"); {Team} is the same at the start of a sentence.
 TEMPLATES = {
-    "goal_up": ("Goal! {player} puts {team} {s} up.", "Gol di {player}: {team} avanti {s}.",
-                "¡Gol de {player}! {team} se pone por delante, {s}."),
+    "goal_up": ("Goal! {player} puts {team} {s} up.", "Gol di {player}: {team} passa in vantaggio, {s}.",
+                "¡Gol de {player}! {Team} se pone por delante, {s}."),
+    "goal_more": ("Goal! {player} extends the lead for {team}, {s}.", "Gol di {player}: {team} allunga, {s}.",
+                  "¡Gol de {player}! {Team} amplía la ventaja, {s}."),
     "goal_level": ("Goal! {player} draws {team} level at {s}.", "Gol di {player}: {team} pareggia, {s}.",
-                   "¡Gol de {player}! {team} empata, {s}."),
-    "goal_behind": ("Goal! {player} pulls one back for {team}, {s}.", "Gol di {player}: {team} accorcia, {s}.",
-                    "¡Gol de {player}! {team} recorta distancias, {s}."),
+                   "¡Gol de {player}! {Team} empata, {s}."),
+    "goal_behind": ("Goal! {player} pulls one back for {team}, but {leader} still lead {s}.",
+                    "Gol di {player}: {team} accorcia, ma {leader} resta avanti {s}.",
+                    "¡Gol de {player}! {Team} recorta distancias, pero {leader} sigue por delante, {s}."),
     "comeback_level": ("{team} have come back to level at {s}.", "Rimonta completata: {team} pareggia, {s}.",
                        "Remontada: {team} empata, {s}."),
     "comeback_up": ("{team} have turned it round and lead {s}.", "Rimonta completata: {team} avanti {s}.",
@@ -70,15 +75,19 @@ TEMPLATES = {
                    "Grande occasione per {player}: tiro a {v} km/h, {outcome}.",
                    "Ocasión clara para {player}: disparo a {v} km/h, {outcome}."),
     "top_sprint": ("{player} sprints at {v} km/h.", "{player} scatta a {v} km/h.", "{player} esprinta a {v} km/h."),
-    "momentum_swing": ("{team} take over: momentum {v}/10.", "{team} prende in mano l'inerzia della partita: {v}/10.",
-                       "{team} toma el control: dominio {v}/10."),
-    "pressing_spell": ("{team} press high: intensity {v}/10.", "{team} pressa alto: intensità {v}/10.",
-                       "{team} presiona arriba: intensidad {v}/10."),
-    "tactical_shift": ("{team} move their defensive line to {v} m from goal.",
-                       "{team} sposta la linea difensiva a {v} m dalla porta.",
-                       "{team} coloca su línea defensiva a {v} m de su portería."),
-    "shape_shift": ("{team} switch from {old} to {new}.", "{team} passa dal {old} al {new}.",
-                    "{team} pasa del {old} al {new}."),
+    "momentum_swing": ("Momentum for {team}: {trend}.", "Inerzia della partita per {team}: {trend}.",
+                       "Inercia del partido para {team}: {trend}."),
+    "pressing_spell": ("{team} press hard, intensity {trend}.", "Pressing intenso per {team}: l'intensità {trend}.",
+                       "Presión intensa para {team}: la intensidad {trend}."),
+    "tactical_shift": ("{team} hold their defensive line at {v} m from their own goal.",
+                       "{Team} tiene la linea difensiva a {v} m dalla propria porta.",
+                       "{Team} sitúa su línea defensiva a {v} m de su portería."),
+    "line_higher": ("{team} push their defensive line up, {trend}.", "{Team} alza la linea difensiva: {trend}.",
+                    "{Team} adelanta su línea defensiva: {trend}."),
+    "line_deeper": ("{team} drop their defensive line back, {trend}.", "{Team} abbassa la linea difensiva: {trend}.",
+                    "{Team} retrasa su línea defensiva: {trend}."),
+    "shape_shift": ("{team} switch from {old} to {new}.", "{Team} passa dal {old} al {new}.",
+                    "{Team} pasa del {old} al {new}."),
     "recap_lead": ("{title}: {leader} lead {s}.", "{title}: {leader} avanti {s}.", "{title}: {leader} gana {s}."),
     "recap_win": ("{title}: {leader} win {s}.", "{title}: {leader} vince {s}.", "{title}: {leader} gana {s}."),
     "recap_level": ("{title}: level at {s}.", "{title}: parità, {s}.", "{title}: empate, {s}."),
@@ -124,6 +133,73 @@ def display_label(f):
 def fmt(v, lang="en"):
     text = f"{v:.1f}".rstrip("0").rstrip(".")
     return text if lang == "en" else text.replace(".", ",")
+
+
+# Italian articles by the sound the name starts with, and their merged forms with di, a, da, in, su.
+_IT_ART = {"il": {"di": "del", "a": "al", "da": "dal", "in": "nel", "su": "sul"},
+           "lo": {"di": "dello", "a": "allo", "da": "dallo", "in": "nello", "su": "sullo"},
+           "l'": {"di": "dell'", "a": "all'", "da": "dall'", "in": "nell'", "su": "sull'"}}
+
+
+def club(name, lang, prep=None, start=False):
+    """A club name as a native commentator says it: "il Redwick Wanderers", "l'Harbour Vale FC", "lo
+    Sporting", "del Redwick" (prep "di"); "el Redwick", "del Redwick" (prep "de"). English has no article."""
+    if not name or lang == "en":
+        return name or ""
+    if lang == "it":
+        art = "l'" if re.match(r"[aeiouhAEIOUH]", name) else \
+            "lo" if re.match(r"(?:s[^aeiou]|z|x|gn|ps|y)", name, re.IGNORECASE) else "il"
+        word = _IT_ART[art].get(prep, f"{prep} {art}" if prep else art)
+    else:
+        word = {"de": "del", "a": "al"}.get(prep, f"{prep} el" if prep else "el")
+    text = word + name if word.endswith("'") else f"{word} {name}"
+    return text[0].upper() + text[1:] if start else text
+
+
+def shot_place(e):
+    """Where a shot was taken from, from its event's start point: the zone (six_yard, box, byline, edge,
+    outside), the attacker's side (None when central), the depth from the goal line and the distance
+    off the centre line, in m. The shot goes towards the nearer goal; towards x=105 the right is y<34."""
+    if not e or e.get("start_x") is None:
+        return None
+    goal_x = LENGTH if e["start_x"] > LENGTH / 2 else 0.0
+    depth, off = abs(goal_x - e["start_x"]), e["start_y"] - WIDTH / 2
+    central = abs(off) <= 9.16  # inside the posts' line of the six-yard box
+    side = None if central else ("right" if (off < 0) == (goal_x > 0) else "left")
+    if central and depth <= 5.5:
+        zone = "six_yard"
+    elif not central and depth <= 6.0:
+        zone = "byline"
+    elif depth <= BOX_DEPTH and abs(off) <= BOX_HALF_WIDTH:
+        zone = "box"
+    elif abs(off) <= 12.0 and depth <= 23.0:
+        zone = "edge"
+    else:
+        zone = "outside"
+    return {"zone": zone, "side": side if zone != "edge" else None, "depth": round(depth, 1),
+            "offset": round(abs(off), 1)}
+
+
+_SIDE = {"right": ("right", "destra", "derecha"), "left": ("left", "sinistra", "izquierda")}
+PLACES = {  # number-free, and free of outcome words such as "wide"
+    "six_yard": ("in the six-yard box", "nell'area piccola", "en el área pequeña"),
+    "byline": ("from near the byline on the {side}", "dal fondo, sulla {side}", "desde la línea de fondo, por la {side}"),
+    "box": ("from the middle of the box", "dal centro dell'area", "desde el centro del área"),
+    "box_side": ("from the {side} side of the box", "dentro l'area, defilato sulla {side}",
+                 "dentro del área, escorado a la {side}"),
+    "edge": ("from the edge of the box", "dal limite dell'area", "desde la frontal del área"),
+    "outside": ("from distance, straight on", "da fuori area, in posizione centrale", "desde fuera del área, por el centro"),
+    "outside_side": ("from distance on the {side}", "da fuori area, sulla {side}", "desde fuera del área, por la {side}"),
+}
+
+
+def place_text(place, lang):
+    """Where the shot came from, as a commentator says it ("dentro l'area, defilato sulla destra")."""
+    if not place:
+        return None
+    i = LANGS.index(lang)
+    key = place["zone"] + ("_side" if place["side"] and place["zone"] in ("box", "outside") else "")
+    return PLACES[key][i].format(side=_SIDE[place["side"]][i] if place["side"] else "")
 
 
 # --- candidates -------------------------------------------------------------------------------
@@ -203,14 +279,15 @@ def _cand(kind, ts, facts, team_id=None, player_id=None, note="", **extra):
             "evidence_event_ids": ev, "note": note, **extra}
 
 
-def goal_candidates(m, score_fact):
+def goal_candidates(m, score_fact, event=None):
     """A goal, and a comeback when the scoring team trailed just before this goal and is now level
     (RULES: a team that was behind is now level or ahead). One goal moves the score by one, so a
-    comeback fires once per deficit, at the equaliser, and never again on the goals after it."""
+    comeback fires once per deficit, at the equaliser, and never again on the goals after it.
+    `event` is the shot that scored (from get_events), for where it was taken from."""
     shot = [f for kind in ("shot_speed", "shot_distance") for f in m.kind(kind)
             if f["source_event_ids"] == score_fact["source_event_ids"]]
     out = [_cand("goal", score_fact["ts"], [score_fact, *shot], score_fact["team_id"], score_fact["player_id"],
-                 note=score_fact["label_en"], outcome="goal")]
+                 note=score_fact["label_en"], outcome="goal", place=shot_place(event))]
     tid = score_fact["team_id"]
     other = next(t for t in m.teams if t != tid)
     now, goals = m.score_at(score_fact["ts"])
@@ -256,7 +333,7 @@ def window_candidates(m, w0, w, shots, shifted, saves=()):
         outcome = shot_outcome(e, saves)
         out.append(_cand("big_chance", f["ts"], [f] + ([d] if d else []), f["team_id"], f["player_id"],
                          note=f["label_en"] + (f", {d['label_en'].lower()}" if d else f", {OUTCOMES[outcome][0]}"),
-                         outcome=outcome, header=e.get("bodypart_name") == "head"))
+                         outcome=outcome, header=e.get("bodypart_name") == "head", place=shot_place(e)))
     period = 2 if m.p1 is not None and w > m.p1 + 1e-6 else 1
     in_period = lambda f: f["period"] == period  # noqa: E731
     swings = []
@@ -309,6 +386,22 @@ def recap_candidate(m, cp, phase):
     dist = [f for f in m.kind("distance_covered") if f["ts"] == cp]
     facts += [max(dist, key=lambda f: f["value"])] if dist else []
     return _cand("recap", cp, facts, note=TITLES[phase][0], phase=phase)
+
+
+def pack_story(m, s, events):
+    """A story from a replay pack (stories.json) rebuilt with what the checks read: its facts and minute,
+    the place of its shot (`events`: event_id -> event), the recap phase and the change of shape."""
+    facts = [m.facts[i] for i in s["fact_ids"] if i in m.facts]
+    story = {**s, "facts": facts, "minute": minute(s["ts"], m.period_of(s["ts"]), m.p1 or math.inf)}
+    shot = next((f for f in facts if f["kind"] == "shot_distance" and f["source_event_ids"]), None)
+    if shot:
+        story["place"] = shot_place(events.get(shot["source_event_ids"][0]))
+    if s["kind"] == "recap":
+        story["phase"] = "ht" if m.p1 is not None and abs(s["ts"] - m.p1) < 1.0 else "ft"
+    form = [f for f in facts if f["kind"] == "formation"]
+    if s["kind"] == "tactical_shift" and form:
+        story["shape"] = (formation_name(form[0]["value"]), formation_name(form[-1]["value"]))
+    return story
 
 
 # --- verifier: numbers and names ---------------------------------------------------------------
@@ -486,14 +579,100 @@ def story_ids(story):
 
 
 def text_facts(story):
-    """The facts a line should read out: for a momentum swing the low before and the peak after, for
-    a pressing spell its last two windows; otherwise all of them."""
+    """The facts a line should read out: for a momentum swing the low before, the peak and, when it fell
+    back, the last window; for a pressing spell its last two windows; for a moved defensive line where
+    it started (the lowest or highest of the windows before) and where it ended; otherwise all of them."""
     facts = story["facts"]
     if story["kind"] == "momentum_swing" and len(facts) >= 4:
-        return [min(facts[:2], key=lambda f: f["value"]), max(facts[-2:], key=lambda f: f["value"])]
+        low, peak = min(facts[:2], key=lambda f: f["value"]), max(facts[2:], key=lambda f: f["value"])
+        return [low, peak] + ([facts[-1]] if peak is not facts[-1] else [])
     if story["kind"] == "pressing_spell":
         return facts[-2:]
+    if (path := line_path(story)) and not story.get("shape"):
+        return [path["from"], path["to"]]
     return facts
+
+
+def trend_shape(values):
+    """How a run of values moved: rose_then_fell, fell_then_rose, rising, falling or steady (0.2 slack)."""
+    if len(values) < 2:
+        return "steady"
+    first, last, inner = values[0], values[-1], values[1:-1]
+    if inner and max(inner) > max(first, last) + 0.2:
+        return "rose_then_fell"
+    if inner and min(inner) < min(first, last) - 0.2:
+        return "fell_then_rose"
+    return "rising" if last > first + 0.2 else "falling" if last < first - 0.2 else "steady"
+
+
+# a value path as a commentator says it; {0} {1} {2} are "value at minute" in time order
+TREND_WORDS = {
+    "rising": ("up from {0} to {1}", "sale da {0} a {1}", "sube de {0} a {1}"),
+    "falling": ("down from {0} to {1}", "scende da {0} a {1}", "baja de {0} a {1}"),
+    "steady": ("steady, {0} and then {1}", "stabile, {0} e poi {1}", "estable, {0} y luego {1}"),
+    "rose_then_fell": ("up from {0} to {1}, then down to {2}", "sale da {0} a {1}, poi scende a {2}",
+                       "sube de {0} a {1} y luego baja a {2}"),
+    "fell_then_rose": ("down from {0} to {1}, then up to {2}", "scende da {0} a {1}, poi risale a {2}",
+                       "baja de {0} a {1} y luego sube a {2}"),
+    "higher": ("from {0} to {1}, measured from their own goal", "da {0} a {1}, misurata dalla propria porta",
+               "de {0} a {1}, medida desde su portería"),
+    "deeper": ("from {0} to {1}, measured from their own goal", "da {0} a {1}, misurata dalla propria porta",
+               "de {0} a {1}, medida desde su portería"),
+}
+
+
+def _at(m, f, lang, first):
+    """ "in the 65th minute" (first) or "by the 70th"; "al minuto 65" or "al 70" ("all'80"); "en el minuto 65"
+    or "en el 70"; stoppage time as "45+2'". A later minute drops the word, so it is not repeated."""
+    mi, period = m.minute_of(f), f["period"]
+    if mi > (45 if period == 1 else 90):
+        return {"en": "at", "it": "al", "es": "en el"}[lang] + f" {stoppage(mi, period)}'"
+    if first:
+        return {"en": "in the ", "it": "al ", "es": "en el "}[lang] + minute_text(mi, period, lang)
+    if lang == "it":
+        return f"all'{mi}" if mi in (1, 8, 11) or 80 <= mi <= 89 else f"al {mi}"
+    return f"by the {ordinal(mi)}" if lang == "en" else f"en el {mi}"
+
+
+def trend(m, story, lang="en"):
+    """The path of a momentum, pressing or defensive-line story as a ready phrase in lang, with its shape:
+    {"shape": "rose_then_fell", "say": "up from 1.9/10 in the 30th minute to 6.7/10 by the 35th, then down
+    to 5.8/10 by the 40th"}. None for other stories."""
+    if story["kind"] in ("momentum_swing", "pressing_spell"):
+        facts = [f for f in text_facts(story) if f["kind"] in ("momentum", "press_intensity")]
+        shape = trend_shape([f["value"] for f in facts])
+    elif (path := line_path(story)) and not story.get("shape"):
+        facts, shape = [path["from"], path["to"]], path["direction"]
+    else:
+        return None
+    if len(facts) < 2:
+        return None
+    unit = lambda f: f"{fmt(f['value'], lang)}/10" if f["unit"] == "/10" else f"{fmt(f['value'], lang)} m"  # noqa: E731
+    points = [f"{unit(f)} {_at(m, f, lang, i == 0)}" for i, f in enumerate(facts)]
+    return {"shape": shape, "say": TREND_WORDS[shape][LANGS.index(lang)].format(*points)}
+
+
+def line_path(story):
+    """A defensive line's move in a tactical-shift story: {"direction": "higher" | "deeper", "from": the
+    lowest (or highest) window before, "to": the last window}. The value is metres from the team's own
+    goal, so a bigger value is a higher line. None without at least two line windows."""
+    line = [f for f in story["facts"] if f["kind"] == "line_height"]
+    if story["kind"] != "tactical_shift" or len(line) < 2:
+        return None
+    before, after = (line[:-2], line[-2:]) if len(line) >= 5 else (line[:1], line[-1:])
+    delta = sum(f["value"] for f in after) / len(after) - sum(f["value"] for f in before) / len(before)
+    higher = delta > 0
+    start = (min if higher else max)(before, key=lambda f: f["value"])
+    return {"direction": "higher" if higher else "deeper", "from": start, "to": line[-1]}
+
+
+def width_change(story):
+    """"wider", "narrower" or "unchanged" (under 0.5 m) from the first and last team-width facts, or None."""
+    width = [f for f in story["facts"] if f["kind"] == "team_width"]
+    if len(width) < 2:
+        return None
+    d = width[-1]["value"] - width[0]["value"]
+    return "wider" if d >= 0.5 else "narrower" if d <= -0.5 else "unchanged"
 
 
 def ordinal(n):
@@ -527,41 +706,128 @@ def number_list(m, story, lang="en"):
     return list(dict.fromkeys(out))
 
 
-# Distance words and the shot distances (m from the goal centre) at which they are true. Long-range
-# words also need the shot label to say "outside the box" (a shot from 18 m out wide can be inside it).
+# Distance words, the shot distances (m from the goal centre) at which they are true and, when the
+# shot's start point is known, the zones where they are true instead. Long-range words also need the
+# shot label to say "outside the box" (a shot from 18 m out wide can be inside it).
 DISTANCE_WORDS = [
-    (r"six[- ]yard|area piccola|área pequeña|área chica", 0.0, 7.0),
-    (r"close[- ]range|point[- ]blank|tap[- ]in|ravvicinat\w*|bruciapelo|da pochi passi|bocajarro|quemarropa|boca de gol",
-     0.0, 11.0),
-    (r"edge of the (?:box|area)|dal limite|limite dell'area|borde del área|frontal del área", 14.0, 26.0),
+    (r"six[- ]yard|area piccola|área pequeña|área chica", 0.0, 7.0, ("six_yard",)),
+    (r"point[- ]blank|bruciapelo|bocajarro|quemarropa", 0.0, 6.0, None),
+    (r"close[- ]range|tap[- ]in|ravvicinat\w*|da pochi passi|boca de gol", 0.0, 11.0, None),
+    (r"edge of the (?:box|area)|(?:dal|al) limite|limite dell['’]area|borde del área|(?:la )?frontal(?: del área)?",
+     14.0, 26.0, ("edge", "box_central")),
 ]
 LONG_RANGE = (r"from (?:distance|range|outside)|long[- ]range|outside the (?:box|area)|da fuori|dalla distanza|"
-              r"da lontano|fuori area|fuori dall'area|desde fuera|desde lejos|lejano|larga distancia|media distancia|"
+              r"da lontano|fuori area|fuori dall['’]area|desde fuera|desde lejos|lejano|larga distancia|media distancia|"
               r"fuera del área")
-IN_THE_BOX = r"inside the (?:box|area)|in the (?:box|area)|dentro l'area|in area|dentro del área|en el área"
-# where the ball went and how the chance was made: no fact or event field gives these, so they are invented
+IN_THE_BOX = r"inside the (?:box|area)|in the (?:box|area)|dentro l['’]area|in area|dentro del área|en el área"
+# where the ball went, how it was struck and how the chance was made: no fact or event field gives these
 INVENTED = {"en": r"near[- ]post|far[- ]post|top corner|bottom corner|corner of the net|top bins|pull[- ]back|cross|"
                   r"crossed|volley\w*|rebound|scramble|deflect\w*|turnovers?|knock[- ]?down|lay[- ]?off|assist\w*|wind|"
-                  r"(?:the|a) post|woodwork|behind the (?:defen[cs]e|line|back line)|in behind|forc\w* (?:an )?errors?",
+                  r"(?:the|a) post|woodwork|behind the (?:defen[cs]e|line|back line)|in behind|forc\w* (?:an )?errors?|"
+                  r"side-?foot\w*|instep|outside of (?:the|his|her) (?:boot|foot)|toe-?poke\w*|"
+                  r"(?:into|in|inside) the (?:\w+ )?corner|chip\w*|lob\w*|curl\w*",
             "it": r"primo palo|secondo palo|incrocio|angolino|cross|al volo|tiro-volley|ribattuta|deviazion\w*|"
                   r"palle recuperate|recuper\w+ palla|sponda|assist\w*|vento|palo|traversa|"
-                  r"(?:alle spalle|dietro) (?:della|la) difesa|costring\w* (?:all')?error\w*|forzando (?:gli )?error\w*",
+                  r"(?:alle spalle|dietro) (?:della|la) difesa|costring\w* (?:all['’])?error\w*|forzando (?:gli )?error\w*|"
+                  r"di piatto|piattone|collo pieno|di collo|d['’]esterno|di esterno|con l['’]esterno|di punta|"
+                  r"nell['’]angolo|all['’]angolo|a giro|pallonetto|scavetto|cucchiaio",
             "es": r"primer palo|segundo palo|escuadra|centro al área|volea|rechace|desv[ií]o|p[eé]rdidas?|robos?|asistencia|"
-                  r"dejada|viento|poste|a la espalda de la defensa|forz\w* errores"}
-# which foot: a side is invented unless the shot label names it
-FOOT = {"en": r"(?:left|right)[- ]foot\w*|weaker foot", "it": r"di destro|di sinistro|mancino|col destro|col sinistro",
-        "es": r"zurdazo|derechazo|con la (?:zurda|diestra|izquierda|derecha)|pierna (?:izquierda|derecha)"}
+                  r"dejada|viento|poste|palo|larguero|a la espalda de la defensa|forz\w* errores|con el interior|de interior|"
+                  r"con el exterior|de exterior|empeine|puntera|punterazo|rincón|vaselina|picad[ao]|de rosca"}
+# which foot: a side is invented unless the shot label names it; an Italian "destro" is a right-foot shot
+FOOT = {"en": r"(?:left|right)[- ]foot\w*|weaker foot|with (?:his|her|the) (?:left|right)",
+        "it": r"di destro|di sinistro|mancino|col destro|col sinistro|"
+              r"(?<!lato )(?<!versante )(?<!settore )(?<!fianco )(?:destro|sinistro)",
+        "es": r"zurdazo|derechazo|con (?:la |su )?(?:zurda|diestra|izquierda|derecha)|de zurda|pierna (?:izquierda|derecha)|"
+              r"pie (?:izquierdo|derecho)"}
+# what happened to the shot: each set is true for one outcome only
+SHOT_WORDS = {
+    "goal": {"en": r"scores|scored|nets|netted|finds? the net|found the net|smash\w* (?:it |one )?in|fires? home|"
+                   r"fired home|slots?(?: it)? (?:home|in)|slotted|tucks?(?: it)? (?:home|in|away)|tucked|buries|buried|"
+                   r"into the net|nestl\w*|back of the net|beats? the keeper|slides? under",
+             "it": r"segn(?:a|ano|ato|ò|ando|are)|insacc\w*|in rete|va a segno|gonfi\w* la rete|(?:la )?mette dentro|"
+                   r"(?:la )?butta dentro",
+             "es": r"marca(?:ndo)?(?: el| su)? gol|marcó|anota|anotó|al fondo de la red|la mete|la empuja|perfora\w*"},
+    "over": {"en": r"over the (?:bar|crossbar|top)|skie[sd]|blaze[sd]? over|balloon\w*|high and wide|sails? over|flies over|"
+                   r"goes over",
+             "it": r"alt[ao](?! (?:velocità|intensità|potenza))|sopra la traversa|sopra il set",
+             "es": r"por encima|alt[ao](?! velocidad)|a las nubes|se va arriba"},
+    "wide": {"en": r"(?<!from )(?<!out )wide(?! (?:on|of the box|position|angle|out|area))|past the post|off target|"
+                   r"miss\w* the target",
+             "it": r"a lato|sul fondo|di poco fuori|fuori di poco|fuori bersaglio|non inquadra",
+             "es": r"desviad\w*|se marcha fuera|se va fuera|fuera por poco"},
+}
+HEAD = {"en": r"header|headed|heads|nods?|nodded|with (?:his|her|the) head",
+        "it": r"di testa|colpo di testa|testa|incorna\w*|inzucca\w*", "es": r"cabez\w*|cabece\w*|testarazo|de cabeza"}
+KICK = {"en": r"foot\w*|volley\w*|drill\w*|curl\w*|fires?|fired|lash\w*|thump\w*",
+        "it": r"piede|destro|sinistro|mancino|piatto|collo|calci\w*|di punta",
+        "es": r"pie|zurd\w*|diestr\w*|derechazo|empeine|chut\w*|volea"}
 # score-state words: a story whose point is not the score may use them only when they agree with it
 LEADING = {"en": r"leading|in front", "it": r"in vantaggio", "es": r"por delante|en ventaja"}
 TRAILING = {"en": r"trailing|behind on the scoreboard", "it": r"in svantaggio|sotto nel punteggio",
             "es": r"por detrás en el marcador|en desventaja"}
 STILL_PLAYING = {"en": r"(?:leads?|leading) \d+-\d+|in front", "it": r"(?:in vantaggio|avanti|conduce) (?:per )?\d+-\d+",
                  "es": r"(?:manda|mandan|lidera) (?:por )?\d+-\d+"}
+# going ahead: true only for a goal that breaks a level score; a team already ahead extends its lead
+TAKES_LEAD = {"en": r"tak\w* the lead|took the lead|puts? (?:\w+ ){1,4}(?:ahead|in front)|go(?:es)? ahead|went ahead",
+              "it": r"port\w* in vantaggio|va in vantaggio|passa in vantaggio|sblocca\w*",
+              "es": r"(?:se )?pone por delante|adelant\w*"}
 POSSESSION = r"possession|bossed|kept the ball|possesso|posesión|domina(?:n|ba)? el balón|dominio del balón"
+DOMINATION = r"domin\w*"  # no fact measures domination; momentum is "inerzia" / "inercia"
 RISING = {"en": r"rose|rising|rises|climb\w*|surg\w*|grew|growing|cranked up|ramped up|built up|kept up|maintain\w*|"
-                r"sustained|held up",
-          "it": r"sale|salit[oa]|cresc\w*|aument\w*|in crescendo|progress\w*|mantenut[oa]|mantiene|sostenut[oa]|costante",
-          "es": r"sube|subió|crec\w*|aument\w*|se dispar\w*|mantuvo|mantiene|sostenid[oa]|constante"}
+                r"sustained|held up|on the rise",
+          "it": r"sale|salit[oa]|cresc\w*|aument\w*|in crescendo|progress\w*|mantenut[oa]|mantiene|sostenut[oa]|costante|"
+                r"sempre più|in salita|schizz\w*",
+          "es": r"sube|subió|crec\w*|aument\w*|se dispar\w*|mantuvo|mantiene|sostenid[oa]|constante|al alza|en aumento"}
+FALLING = {"en": r"fell|falls?|falling|dropp?\w*|dipp?\w*|slipp?\w*|eas(?:e|ed|es|ing)|fad\w*|down to|back to|declin\w*|"
+                 r"tail\w* off",
+           "it": r"scend\w*|ridiscend\w*|cal[ao]|calan\w*|calat[oa]|in calo|flessione|ced\w*",
+           "es": r"baj\w*|cae|cay\w*|caída|desciend\w*|descend\w*|cede\w*|se enfría"}
+# taking over and holding on: false when the last window fell
+CONTROL = {"en": r"tak\w* (?:control|over|charge|command)|took (?:control|over|charge|command)|seiz\w*|sweep\w*|"
+                 r"in control|in command|(?:until|up to|right up to|all the way to) the \d+\w*(?: minute)?",
+           "it": r"prend\w* (?:in mano|il controllo|il comando)|pres[oa] (?:in mano|il controllo|il comando)|in salita|"
+                 r"fino al(?: minuto)? \d+",
+           "es": r"tom\w* el (?:mando|control)|tomó el (?:mando|control)|se adueñ\w*|hasta el(?: minuto)? \d+|"
+                 r"ventana tras ventana|en aumento"}
+# the two window measures are different numbers: momentum is not press intensity
+MOMENTUM_WORDS = r"momentum|inerzia|inercia"
+PRESS_WORDS = (r"press(?:es|ed|ing)?|pressure|pressione|pressa\w*|pressing|presión|presiona\w*|intensity|intensità|"
+               r"intensidad")
+# press intensity is how hard a team presses, never where on the pitch
+PRESS_HIGH = (r"press\w* high|high[- ]press\w*|high up the pitch|press\w* (?:\w+ ){0,2}up the pitch|in their half|"
+              r"opposition half|press\w* alt[ao]|pressing (?:molto )?alto|pression\w* (?:\w+ ){0,2}alt[ao]|"
+              r"pressa\w* (?:molto )?in avanti|metà campo avversaria|presion\w* arriba|presi[oó]n (?:\w+ ){0,2}alta|"
+              r"presiona\w* alto|presión adelantada|campo rival")
+# an effect on the opponent: no pressing, sprint, momentum or line fact measures one
+CONSEQUENCE = {
+    "en": r"forc\w*|hurr\w*|rush\w*|struggl\w*|cope|coping|pinn\w*|penn\w* (?:\w+ )?in|hemm\w* in|on the back foot|"
+          r"squeez\w*|stifl\w*|suffocat\w*|starv\w*|(?:more|creat\w*|carv\w*) (?:\w+ )?(?:chances?|shots?|openings?)|"
+          r"(?:leav|left|open)\w* (?:\w+ ){0,3}(?:space|room|gaps?|holes?)|"
+          r"(?:left|leav\w*|beat\w*|burn\w*|skin\w*) (?:\w+ ){0,3}(?:defenders?|markers?|for dead|trailing)|"
+          r"keep\w* (?:\w+ ){0,2}(?:deep|back|pinned)|controlled|composure|errors?|mistakes?|turnovers?|"
+          r"win\w* (?:the )?ball back|regain\w*|counter[- ]?attack\w*|on the break|threat\w*|danger\w*|"
+          r"under pressure|maintain\w* (?:\w+ ){0,3}shape",
+    "it": r"costring\w*|obblig\w*|(?:mette|mettono|mettendo|metteva) in difficoltà|in difficoltà|affann\w*|fretta|"
+          r"frettolos\w*|ritmi più \w+|meno spazio|spazi[o]?|chiud\w* (?:gli |ogni )?spazi|soffoc\w*|schiacc\w*|"
+          r"ripartenz\w*|contropied\w*|occasion\w*|tiri|conclusion\w*|recuper\w*|error\w*|pericol\w*|minacc\w*|"
+          r"marcator\w*|semina\w*|brucia\w*|lascia\w* (?:\w+ ){0,2}(?:indietro|sul posto|alle spalle)|sotto pressione",
+    "es": r"oblig\w*|forz\w*|apresurad\w*|precipit\w*|prisa|achic\w*|asfixi\w*|ahog\w*|encierr\w*|encerr\w*|"
+          r"espacios?|huecos?|contras|contraataques?|contragolpe\w*|ocasion\w*|tiros|disparos|remates|robos?|"
+          r"recuper\w*|errores|pérdidas?|peligro\w*|amenaz\w*|defensores|dej\w* atrás|dejando|incomod\w*|"
+          r"bajo presión|en apuros"}
+CONSEQUENCE_KINDS = {"pressing_spell", "top_sprint", "momentum_swing", "tactical_shift"}
+# a defensive line's direction (the value is metres from the team's own goal: bigger is higher)
+HIGH_LINE = {"en": r"high(?:er)?|push\w*(?: \w+){0,3} up|up the pitch|further (?:up|forward)|step\w* up|advanc\w*",
+             "it": r"alt[ao]|alz\w*|avanz\w*|sal[ei]|salit[ao]|in avanti|più su",
+             "es": r"alt[ao]|adelant\w*|sub\w*|avanz\w*|más arriba"}
+DEEP_LINE = {"en": r"deep(?:er)?|drop\w*(?: \w+){0,3} back|drop\w* deep|sit\w* deep|retreat\w*|lower|further back",
+             "it": r"bass[ao]|abbass\w*|profond\w*|arretr\w*|indietr\w*",
+             "es": r"baj[ao]|más baja|retras\w*|retroced\w*|hund\w*|repleg\w*|atrás"}
+WIDER = {"en": r"wider|widen\w*|stretch\w*|more width", "it": r"più larg[ao]|allarg\w*|larg[ao]",
+         "es": r"más anch[ao]|anch[ao]|amplitud|ensanch\w*|abre el campo"}
+NARROWER = {"en": r"narrow\w*|compact\w*|tighter|squeez\w*", "it": r"compatt\w*|strett[ao]|restring\w*|stringe",
+            "es": r"compact\w*|estrech\w*|más junt[ao]|cerrad[ao]"}
 _TEN = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:/\s?10|out of 10|su 10|sobre 10)", re.IGNORECASE)
 
 
@@ -569,29 +835,86 @@ def _has(pattern, text):
     return re.search(rf"(?<!\w)(?:{pattern})(?!\w)", text, re.IGNORECASE)
 
 
-def story_issues(m, story, text, lang, on_air=True):
-    """Claims the ledger contradicts: distance and box words against the shot, a foot no fact names,
-    pass accuracy told as possession, score words against the score, a score with the trailing side
-    first, formations in the wrong order, and momentum or press values out of order, more than two of
-    them, or a rising word for a falling trend. Every issue starts with a fixed reason."""
-    out = []
+def _last(patterns, text):
+    """The pattern key whose last match comes last in text, with that match, or (None, None)."""
+    best = (None, None)
+    for key, pattern in patterns.items():
+        for mt in re.finditer(rf"(?<!\w)(?:{pattern})(?!\w)", text, re.IGNORECASE):
+            if best[1] is None or mt.start() >= best[1].start():
+                best = (key, mt)
+    return best
+
+
+def shot_info(story):
+    """What the events say about the story's shot: outcome, header, distance, label and place; None
+    without a shot. The shot_distance label ends "..., foot|header, goal|saved|wide|over|blocked"."""
     shot = next((f for f in story["facts"] if f["kind"] == "shot_distance"), None)
-    dist, label = (shot["value"], shot["label_en"]) if shot else (None, "")
-    where = f"a shot from {fmt(dist)} m" if shot else "no shot distance in the facts"
-    for pattern, lo, hi in DISTANCE_WORDS:
-        if (hit := _has(pattern, text)) and (dist is None or not lo <= dist <= hi):
+    if not shot and not story.get("outcome"):
+        return None
+    parts = [p.strip() for p in (shot["label_en"] if shot else "").split(",")]
+    return {"outcome": story.get("outcome") or next((p for p in parts if p in OUTCOMES), None),
+            "header": "header" in parts or bool(story.get("header")), "dist": shot["value"] if shot else None,
+            "label": shot["label_en"] if shot else "", "place": story.get("place")}
+
+
+def _named_near(text, start, end, word):
+    """True when word (a team's first word) stands next to the score at text[start:end]: in the same
+    clause, with no other number between them."""
+    stops = [mt.start() for mt in re.finditer(r"[.!?;](?!\d)", text)]  # a decimal point ends no clause
+    lo = max((i for i in stops if i < start), default=-1) + 1
+    before, after = text[lo:start].lower(), text[end:min((i for i in stops if i >= end), default=len(text))].lower()
+    w = word.lower()
+    return (w in before and not re.search(r"\d", before[before.rfind(w) + len(w):])) or \
+        (w in after and not re.search(r"\d", after[:after.find(w)]))
+
+
+def story_issues(m, story, text, lang, on_air=True):
+    """Claims the ledger or the events contradict: distance, place and box words against the shot, what
+    happened to the shot and the body part, a foot side or technique no fact names, pass accuracy told
+    as possession, domination, effects on the opponent no fact shows, score words against the score, a
+    score with the trailing side first or without the leader, going ahead when already ahead, formations
+    in the wrong order, values out of order or too many, trend and take-over words against the values,
+    momentum and pressing mixed up, a defensive line or team width moving the other way.
+    Every issue starts with a fixed reason."""
+    out = []
+    info = shot_info(story)
+    dist, label, place = (info["dist"], info["label"], info["place"]) if info else (None, "", None)
+    where = (f"a shot from {fmt(dist)} m" if dist is not None else "no shot distance in the facts") + \
+        (f", {place_text(place, 'en')}" if place else "")
+    for pattern, lo, hi, zones in DISTANCE_WORDS:
+        if not (hit := _has(pattern, text)):
+            continue
+        if place and zones:
+            ok = place["zone"] in zones or ("box_central" in zones and place["zone"] == "box" and not place["side"]
+                                            and place["depth"] >= 14.0)
+        else:
+            ok = dist is not None and lo <= dist <= hi
+        if not ok:
             out.append(f"distance word does not fit the shot: '{hit.group(0)}', {where}")
     if (hit := _has(LONG_RANGE, text)) and (dist is None or dist < 16.5 or "inside the box" in label):
         out.append(f"distance word does not fit the shot: '{hit.group(0)}', {where}"
                    + (", inside the box" if "inside the box" in label else ""))
     if (hit := _has(IN_THE_BOX, text)) and "outside the box" in label:
         out.append(f"distance word does not fit the shot: '{hit.group(0)}', the shot was outside the box")
+    if info and info["outcome"]:
+        for outcome, words in SHOT_WORDS.items():
+            if outcome != info["outcome"] and (hit := _has(words[lang], text)):
+                out.append(f"shot outcome word: '{hit.group(0)}' but the shot was {OUTCOMES[info['outcome']][0]}")
+        body = (KICK, "it was a header") if info["header"] else (HEAD, "it was not a header")
+        if hit := _has(body[0][lang], text):
+            out.append(f"body part: '{hit.group(0)}' but {body[1]}")
     if (hit := _has(FOOT[lang], text)) and not re.search(r"left foot|right foot", label):
         out.append(f"detail not in the facts: '{hit.group(0)}' (the facts do not say which foot)")
     if hit := _has(POSSESSION, text):
         out.append(f"possession claim: '{hit.group(0)}', there is no possession fact and pass accuracy is not possession")
+    elif hit := _has(DOMINATION, text):
+        out.append(f"domination claim: '{hit.group(0)}', no fact measures domination")
     if hit := _has(INVENTED.get(lang, INVENTED["en"]), text):
         out.append(f"detail not in the facts: '{hit.group(0)}'")
+    if hit := _has(PRESS_HIGH, text):
+        out.append(f"press position: '{hit.group(0)}', press intensity says how hard a team presses, not where")
+    if story["kind"] in CONSEQUENCE_KINDS and (hit := _has(CONSEQUENCE[lang], text)):
+        out.append(f"invented consequence: '{hit.group(0)}', no fact shows an effect on the opponent")
     if on_air and story["kind"] == "recap" and story.get("phase") == "ft" and (hit := _has(STILL_PLAYING[lang], text)):
         out.append(f"lead at full time: '{hit.group(0)}', the match is over, say who won or that it ended level")
     leader, s = m.lead(story["ts"])
@@ -602,23 +925,58 @@ def story_issues(m, story, text, lang, on_air=True):
         elif (hit := _has(TRAILING[lang], text)) and leader in (story["team_id"], None):
             out.append(f"score word against the score: '{hit.group(0)}' but {state}")
     hi, lo = s.split("-")
-    if leader and story["kind"] in SCORE_KINDS and f"{lo}-{hi}" in [x.replace(" ", "") for x in score_mentions(text)]:
+    spans = score_spans(text)
+    if leader and story["kind"] in SCORE_KINDS and f"{lo}-{hi}" in [x.replace(" ", "") for x, _, _ in spans]:
         out.append(f"score order: write the leader first, {s}, not {lo}-{hi}")
+    # an away lead (and any lead in a recap) reads as the home side's unless the leader stands next to it
+    if leader and story["kind"] in SCORE_KINDS and (leader == m.away["team_id"] or story["kind"] == "recap"):
+        word = m.team_word(leader)
+        if any(not _named_near(text, a, b, word) for _, a, b in spans):
+            out.append(f"score without the leader: name {m.team_name(leader)} next to {s}")
+    if story["kind"] in ("goal", "comeback") and (hit := _has(TAKES_LEAD[lang], text)):
+        was = m.lead(story["ts"] - 1e-3)[0]
+        if was is not None or leader != story["team_id"]:
+            out.append(f"lead word: '{hit.group(0)}' but " + (f"{m.team_name(was)} already led" if was == story["team_id"]
+                                                              else f"the score is {s}"))
     if story.get("shape"):
         old, new = story["shape"]
         if old in text and new in text and text.index(new) < text.index(old):
             out.append(f"formation order: the change is from {old} to {new}")
+    if story["kind"] == "momentum_swing" and (hit := _has(PRESS_WORDS, text)):
+        out.append(f"wrong measure: '{hit.group(0)}' in a momentum story, the values are momentum, not pressing")
+    if story["kind"] == "pressing_spell" and (hit := _has(MOMENTUM_WORDS, text)):
+        out.append(f"wrong measure: '{hit.group(0)}' in a pressing story, the values are press intensity")
     if story["kind"] in ("momentum_swing", "pressing_spell"):
+        tf = text_facts(story)
         values = [float(v.replace(",", ".")) for v in _TEN.findall(text)]
         order = [next((i for i, f in enumerate(story["facts"]) if abs(f["value"] - v) <= 0.051), None) for v in values]
-        if len(values) > 2:
-            out.append(f"too many values out of 10: {len(values)}, give two at most, the start and the end")
+        if len(values) > max(len(tf), 2):
+            out.append(f"too many values out of 10: {len(values)}, give {max(len(tf), 2)} at most, in time order")
         elif None not in order and order != sorted(order):
             out.append("time order: the values are not in time order")
-        tf = text_facts(story)
-        if len(tf) >= 2 and tf[-1]["value"] < tf[0]["value"] - 0.2 and (hit := _has(RISING[lang], text)):
+        shape = trend_shape([f["value"] for f in tf])
+        fell = f"the value fell at the end, to {fmt(tf[-1]['value'])}" if len(tf) >= 2 else ""
+        if shape in ("falling", "rose_then_fell") and (hit := _has(CONTROL[lang], text)):
+            out.append(f"trend word against the facts: '{hit.group(0)}' but {fell}")
+        elif shape == "falling" and (hit := _has(RISING[lang], text)):
             out.append(f"trend word against the facts: '{hit.group(0)}' but the value fell from "
                        f"{fmt(tf[0]['value'])} to {fmt(tf[-1]['value'])}")
+        elif shape == "rose_then_fell" and (hit := _has(RISING[lang], text)) and not _has(FALLING[lang], text):
+            out.append(f"trend word against the facts: '{hit.group(0)}' but {fell}")
+        elif shape == "rising" and (hit := _has(FALLING[lang], text)) and not _has(RISING[lang], text):
+            out.append(f"trend word against the facts: '{hit.group(0)}' but the value rose from "
+                       f"{fmt(tf[0]['value'])} to {fmt(tf[-1]['value'])}")
+    if story["kind"] == "tactical_shift":
+        if path := line_path(story):
+            key, hit = _last({"higher": HIGH_LINE[lang], "deeper": DEEP_LINE[lang]}, text)
+            if key and key != path["direction"]:
+                out.append(f"line direction: '{hit.group(0)}' but the line went {path['direction']}, from "
+                           f"{fmt(path['from']['value'])} m to {fmt(path['to']['value'])} m from its own goal")
+        change = width_change(story)
+        for name, pattern in (("wider", WIDER[lang]), ("narrower", NARROWER[lang])):
+            if (hit := _has(pattern, text)) and change != name:
+                out.append(f"width word: '{hit.group(0)}' but " + (f"the team got {change}" if change in ("wider", "narrower")
+                           else "the width did not change" if change else "no fact gives the team width"))
     return out
 
 
@@ -695,32 +1053,56 @@ def note(text):
     return prefix + first
 
 
-# What a desk note may say about a problem: its fixed reason (the head before the first colon of a
-# flag) and the fact it concerns. Never the judge's words or the rejected text, which a model wrote.
+# What a desk note may say about a problem: plain words for its fixed reason (the head before the first
+# colon of a flag). Never the judge's words, the rejected text (a model wrote both) or a fact id.
 REASONS = {
-    "cited fact not in the story": None, "number in words": None, "garbled numbers": None,
-    "formation not in the facts": None, "unit not in the facts": None, "unit glued to a number": None,
-    "letters glued to a number": None, "number not in the facts": None, "unit mismatch": None,
-    "forbidden name (real person or club)": None, "distance word does not fit the shot": ("shot_distance",),
-    "detail not in the facts": ("shot_distance",), "possession claim": ("pass_accuracy",),
-    "lead at full time": ("score",), "score word against the score": ("score",), "score order": ("score",),
-    "formation order": ("formation",), "too many values out of 10": ("momentum", "press_intensity"),
-    "time order": ("momentum", "press_intensity"), "trend word against the facts": ("momentum", "press_intensity"),
-    "name the player": None, "name the team": None, "give the score": ("score",), "jargon": None,
-    "English word": None, "claim": None, "no text": None, "no rewrite": None, "rewrite failed": None,
-    "workflow error": None, "template, as another language failed": None,
+    "cited fact not in the story": "cited a fact from outside the story", "number in words": "a number in words",
+    "garbled numbers": "garbled numbers", "formation not in the facts": "a formation the facts do not give",
+    "unit not in the facts": "a unit the facts do not use", "unit glued to a number": "a unit glued to a number",
+    "letters glued to a number": "letters glued to a number", "number not in the facts": "a number the facts do not give",
+    "unit mismatch": "a number with the wrong unit", "forbidden name (real person or club)": "a real person's or club's name",
+    "distance word does not fit the shot": "a distance or place that does not fit the shot",
+    "shot outcome word": "the wrong ending for the shot", "body part": "the wrong body part for the shot",
+    "detail not in the facts": "a detail the facts do not give",
+    "invented consequence": "an effect on the opponent that no fact shows",
+    "press position": "a pitch position that press intensity does not measure",
+    "domination claim": "domination, which no fact measures", "wrong measure": "momentum and pressing mixed up",
+    "possession claim": "pass accuracy told as possession", "lead at full time": "a lead after the final whistle",
+    "score word against the score": "a score word that contradicts the score",
+    "score order": "the score with the trailing side first", "score without the leader": "a score without the leading team",
+    "lead word": "going ahead when the team was already ahead", "formation order": "the formations in the wrong order",
+    "too many values out of 10": "too many values in one line", "time order": "values out of time order",
+    "trend word against the facts": "a trend the values do not show",
+    "line direction": "the defensive line moving the wrong way", "width word": "a team width the values do not show",
+    "name the player": "the player left out", "name the team": "the team left out", "give the score": "the score left out",
+    "jargon": "jargon", "English word": "an English word", "calque": "a phrase a native commentator would not use",
+    "claim": "a claim the facts do not support", "no text": "no draft came back", "no rewrite": "no draft came back",
+    "rewrite failed": "no draft came back", "workflow error": "the AI writers were not available",
 }
-_SHOWN = {"claim": "claim the AI judge found unsupported"}
 
 
-def reason(problem, story=None):
-    """The desk's words for one problem: "distance word does not fit the shot (F-SHOT_DISTANCE-000012)"."""
-    head = problem.split(":", 1)[0].strip()
-    if head not in REASONS:
-        return "check failed"
-    kinds = REASONS[head] or ()
-    fid = next((f["fact_id"] for f in (story or {}).get("facts", []) if f["kind"] in kinds), None)
-    return _SHOWN.get(head, head) + (f" ({fid})" if fid else "")
+def reason(problem, story=None):  # noqa: ARG001 - story kept for callers; notes no longer carry fact ids
+    """The desk's plain words for one problem: "a distance or place that does not fit the shot"."""
+    return REASONS.get(problem.split(":", 1)[0].strip(), "a failed check")
+
+
+def desk_notes(status, earlier, final):
+    """The notes under a story on the desk, about the text on screen: none when it passed first time;
+    for a rewrite, what the earlier drafts got wrong; for the fact-only sentence, why the drafts were not
+    used. earlier and final map a language to plain reasons (from reason())."""
+    if status == "pass":
+        return []
+    lines = []
+    for lang, reasons in (earlier if status == "rewritten" else final).items():
+        if reasons := list(dict.fromkeys(reasons)):
+            what = "Earlier {} draft" if status == "rewritten" else "{} draft not used"
+            lines.append(note(f"{what.format(LANGUAGES[lang])}: {'; '.join(reasons)}."))
+    if status == "template":
+        lines.append("Fact-only sentence used in all three languages.")
+    return lines
+
+
+LANGUAGES = {"en": "English", "it": "Italian", "es": "Spanish"}
 
 
 def brief_error(e):
@@ -776,14 +1158,51 @@ def english_words(text, lang):
         return []
     hit = _has(ENGLISH + ("|pressing" if lang == "es" else ""), text)
     return [f"English word: '{hit.group(0)}', say it in your language"] if hit else []
+
+
+# Openers and calques a native commentator would not use (from the native review of the replays)
+CALQUES = {"en": r"this matters because|it matter(?:s|ed) because",
+           "it": r"aggiustamento del risultato|spinta da fuori|palla dalla distanza|sul minuto|vs\.?|mezzo tempo|"
+                 r"compattazione",
+           "es": r"lanzó|y parad[oa]|y rechazad[oa]|compactación|vs\.?"}
+
+
+def calques(text, lang):
+    """A phrase a native would not say: a style issue first, a fallback to the template in the last round."""
+    return [f"calque: '{hit.group(0)}' is not what a native commentator says"] if (hit := _has(CALQUES[lang], text)) else []
+
+
+_ARTICLE = re.compile(r"(?:\b(?:il|lo|del|dello|al|allo|dal|dallo|nel|nello|sul|sullo|el|los)\s+|"
+                      r"\b(?:l|dell|all|dall|nell|sull)['’]\s*)$", re.IGNORECASE)
+
+
+def bare_clubs(m, text, lang):
+    """An Italian or Spanish line that names a club without its article ("per Harbour Vale FC"); a name
+    followed by a number (a list of pass accuracy) needs none."""
+    if lang == "en" or m is None:
+        return []
+    for t in m.teams.values():
+        first, *rest = t["name"].split()
+        listed = re.compile(rf"(?:\s+{re.escape(' '.join(rest))})?\s+\d" if rest else r"\s+\d")
+        for mt in re.finditer(rf"(?<!\w){re.escape(first)}(?!\w)", text):
+            if not _ARTICLE.search(text[:mt.start()]) and not listed.match(text, mt.end()):
+                return [f"club without its article: say '{club(t['name'], lang)}'"]
+    return []
+
+
 _SCORE = re.compile(r"(?<![\w.,/+-])\d{1,2}\s?-\s?\d{1,2}(?![\d/]|[.,]\d|-\d)")
 _WORD = re.compile(r"[^\W\d_]+")
 
 
-def score_mentions(text):
-    """Scores like 2-1 in text; minute ranges (min 41-45) and formations (4-4-2) are not scores."""
-    return [mt.group(0) for mt in _SCORE.finditer(text)
+def score_spans(text):
+    """(score, start, end) for scores like 2-1 in text; minute ranges (min 41-45) and formations (4-4-2)
+    are not scores."""
+    return [(mt.group(0), mt.start(), mt.end()) for mt in _SCORE.finditer(text)
             if not re.search(r"min\w*\.?\s*$", text[max(0, mt.start() - 10):mt.start()], re.IGNORECASE)]
+
+
+def score_mentions(text):
+    return [x for x, _, _ in score_spans(text)]
 
 
 def repeated_words(text, lang, limit=2):
@@ -802,11 +1221,12 @@ def loud_words(text, lang):
     return {w.lower() for w in re.findall(rf"(?<!\w)(?:{RATIONED[lang]})(?!\w)", text, re.IGNORECASE)}
 
 
-def style_issues(text, lang, kind, used=None):
+def style_issues(text, lang, kind, used=None, m=None):
     """What a TV commentator would not do: say the score twice, or where it is not the point of the
     story; use the same word twice; run past two sentences; reuse a loud word or an opening already
     on air in this match (`used` = {"loud": set, "openings": set}). A recap may run to three
-    sentences and name a team twice."""
+    sentences and name a team twice. With the match `m`, a club named without its article in Italian
+    or Spanish."""
     out = []
     scores = score_mentions(text)
     if len(scores) > 1:
@@ -819,7 +1239,7 @@ def style_issues(text, lang, kind, used=None):
     sentences = len([x for x in re.split(r"(?<=[.!?])\s+", text) if x.strip()])
     if sentences > longest:
         out.append(f"{sentences} sentences: keep it to {longest}")
-    out += jargon(text) + english_words(text, lang)
+    out += jargon(text) + english_words(text, lang) + calques(text, lang) + bare_clubs(m, text, lang)
     if lang == "en" and (hit := re.search(r"(?<!\bthe )\b\d+(?:st|nd|rd|th) minute\b", text)):
         out.append(f"'{hit.group(0)}' without 'the': say 'in the {hit.group(0)}'")
     tail = [p for p in re.split(r"[,;:]", text.rstrip(" .!"))][-2:]
@@ -837,18 +1257,20 @@ def style_issues(text, lang, kind, used=None):
 
 def template(m, story, lang):
     """A sentence from the facts alone, in lang. Used when the AI text cannot be verified. Scores are
-    leader first; a missing player name falls back to the team, never to an empty slot."""
+    leader first with the leader named; a missing player name falls back to the team, never to an empty
+    slot; Italian and Spanish clubs take their article."""
     i = LANGS.index(lang)
     kind = story["kind"]
     facts = story["facts"]
     leader, s = m.lead(story["ts"])
+    lead_name = club(m.team_name(leader), lang)
     if kind == "recap":
         title = TITLES[story["phase"]][i]
         if leader is None:
             text = TEMPLATES["recap_level"][i].format(title=title, s=s)
         else:
             key = "recap_win" if story["phase"] == "ft" else "recap_lead"
-            text = TEMPLATES[key][i].format(title=title, leader=m.team_name(leader), s=s)
+            text = TEMPLATES[key][i].format(title=title, leader=lead_name, s=s)
         # the label's own whole percent: value 82.5 can be "83%" in the label, and the two must agree
         acc = {f["team_id"]: mt.group(1) for f in facts
                if f["kind"] == "pass_accuracy" and (mt := re.search(r"(\d+)%", f["label_en"]))}
@@ -858,23 +1280,40 @@ def template(m, story, lang):
                                                      acc_h=acc[h], acc_a=acc[a])
         return text
     t = story["team_id"]
-    team = m.team_name(t) or ""
+    team = club(m.team_name(t), lang)
+    names = {"team": team, "Team": team[:1].upper() + team[1:], "leader": lead_name, "s": s}
     if kind == "tactical_shift" and story.get("shape"):
         old, new = story["shape"]
-        return TEMPLATES["shape_shift"][i].format(team=team, old=old, new=new)
+        return TEMPLATES["shape_shift"][i].format(old=old, new=new, **names)
     main = [f for f in text_facts(story) if f["kind"] == MAIN_KIND.get(kind)]
     v = fmt(main[-1]["value"], lang) if main else ""
+    path = trend(m, story, lang)
+    if kind == "tactical_shift" and path:
+        kind = "line_" + path["shape"]
     player = m.player_name(story["player_id"]) or team
     if kind == "goal":
-        kind = "goal_level" if leader is None else "goal_up" if leader == t else "goal_behind"
+        was = m.lead(story["ts"] - 1e-3)[0]
+        kind = "goal_level" if leader is None else "goal_behind" if leader != t else \
+            "goal_up" if was is None else "goal_more"
     elif kind == "comeback":
         kind = "comeback_level" if leader is None else "comeback_up"
     outcome = OUTCOMES.get(story.get("outcome"), ("",) * 3)[i]
-    return TEMPLATES[kind][i].format(team=team, player=player, s=s, v=v, outcome=outcome)
+    return TEMPLATES[kind][i].format(player=player, v=v, outcome=outcome, trend=path["say"] if path else f"{v}/10", **names)
 
 
 def analysis_template(story):
     return " ".join(f"{display_label(f)}." for f in story["facts"][:4])  # the ids live in fact_ids
+
+
+# The analyst's own failure modes: its prompt's wording, and a score garbled from "<Team> lead 2-1"
+ANALYSIS_BAD = re.compile(r"\b(?:this|it|that) matter(?:s|ed) because\b|\bmatter(?:s|ed) because\b|"
+                          r"\b\d+-\d+ (?:[A-Z][\w']+ ){1,4}\d+\b|"
+                          r"\b(?:remain\w*|stay\w*|stood|kept the score at|score at) (?:[A-Z][\w']+ ){1,4}(?:lead )?\d+-\d+")
+
+
+def analysis_issues(text):
+    """Prompt wording or a garbled score in an analyst's note: the note falls back to the facts."""
+    return [f"jargon: '{hit.group(0)}'"] if (hit := ANALYSIS_BAD.search(text)) else []
 
 
 # --- risk ----------------------------------------------------------------------------------------

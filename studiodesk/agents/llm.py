@@ -6,6 +6,7 @@ answer each agent by schema name.
 import asyncio
 import json
 import os
+import re
 
 from agent_framework import (BaseChatClient, ChatMiddlewareLayer, ChatResponse, Content, FunctionInvocationLayer,
                              Message, UsageDetails)
@@ -131,10 +132,18 @@ class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClien
                             for s in p["stories"]]}
 
     @staticmethod
-    def _lines(p):
+    def _label(s):
+        """The first fact's label, with the club names as the card gives them (with the article in IT/ES)."""
+        label = s["facts"][0]["label"]
+        for named in (s["home"], s["away"]):
+            label = label.replace(re.sub(r"^(?:il |lo |l'|el )", "", named), named)
+        return label
+
+    @classmethod
+    def _lines(cls, p):
         return {"lines": [{"story_id": s["story_id"],
-                           "text": f"{s['phase']}, {s['score']['write']}." if s["kind"] == "recap" else
-                           f"{s['player'] or s['team']}, {s['minute']}': {s['facts'][0]['label']}."}
+                           "text": f"{s['phase']}, {s['score']['leader'] or ''} {s['score']['write']}." if s["kind"] == "recap" else
+                           f"{s['player'] or s['team']}, {s['minute']}': {cls._label(s)}."}
                           for s in p["stories"]]}
 
     @staticmethod

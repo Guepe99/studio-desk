@@ -102,6 +102,8 @@ the window.
     `not_checked` story is `needs_review` whatever its risk (feat/verifier3).
   - `texts` is `{"en": .., "it": .., "es": ..}`.
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
+    `flagged` is empty on `pass`; on `rewritten` it says what the earlier drafts got wrong, on
+    `template` why the drafts were not used (packs before feat/texts4 may hold other strings).
   - `safety` is `passed`, `flagged` or `not_checked`.
   - `fact_ids` holds the story's own facts plus the ones the analyst cited (`cited`). Templates,
     graphics and the `why_card` `fact_ids` use only the story's own facts.
@@ -285,8 +287,10 @@ Agents only learn about an event when the clock releases it, in replay generatio
   `analysis_en` joined,
   at most 100 calls per match; `flagged` when any category has severity 2 or more, `not_checked`
   when the call fails or the cap is reached.
-- Verifier notes (`stories.verifier.flagged`) are fixed reasons, `<lang>: <reason> (<fact id>)`,
-  never the judge's own words or a rejected number; at most 160 characters each. No
+- Verifier notes (`stories.verifier.flagged`) are plain sentences built from fixed reasons, such as
+  "Earlier Italian draft: a trend the values do not show." or "Fact-only sentence used in all three
+  languages.", never the judge's own words, a rejected number or a fact id; at most 160 characters
+  each. No
   agent string reaching the page (texts, analysis, angles, notes, trace summaries) carries em or
   en dashes or control characters.
 - AI replay packs: `replays/<match_id>/{stories,cues,traces}.json`, the export shapes of a real

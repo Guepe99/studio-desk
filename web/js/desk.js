@@ -16,6 +16,8 @@ const KIND = { goal: "Goal", key_pass: "Key pass", momentum_swing: "Momentum swi
 const STATUS = { auto_approved: "Auto-approved", needs_review: "Needs review", approved: "Approved",
   edited: "Edited and approved", rejected: "Rejected" };
 const VERIFIER = { pass: "Pass", rewritten: "Rewritten", template: "Template line" };
+// The notes describe the drafts the verifier sent back, not the text on screen (older packs: any note list).
+const NOTES_TITLE = { rewritten: "What the earlier drafts got wrong", template: "Why the fact-only sentence" };
 const SAFETY = { passed: "Passed", flagged: "Flagged", not_checked: "Not checked" };
 const AGENTS = [
   ["story_finder", "Story finder", "AI", "Picks moments from the events the match clock releases."],
@@ -367,7 +369,7 @@ export class Desk {
         h("div", {}, h("dt", {}, "Verifier"), h("dd", { className: `v-${v.status}` },
           `${VERIFIER[v.status] ?? v.status ?? "none"}`, v.attempts ? `, ${v.attempts} attempt${v.attempts > 1 ? "s" : ""}` : "")),
         h("div", {}, h("dt", {}, "Safety"), h("dd", { className: `s-${s.safety}` }, SAFETY[s.safety] ?? s.safety))),
-      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` }, `Verifier notes (${flagged.length})`),
+      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` }, `${NOTES_TITLE[v.status] ?? "Verifier notes"} (${flagged.length})`),
         h("ul", {}, flagged.map((f) => h("li", {}, flagText(f))))) : null,
       this.renderEvidence(s),
       editing ? null : h("div", { className: "actions" },
