@@ -21,7 +21,7 @@ const MAX_WARP = 3.0;            // m: farther than this from the ball, a player
 const PASS_DECEL = 4.0;          // m/s^2, ground pass: between turf rolling (0.45-1.5) and match fits (7.9)
 const LOFT_R = 0.85;             // end/start speed ratio of a lofted ball (air drag only)
 const PUSH_R = 0.3;              // end/start speed ratio of the ball between two dribble touches
-const SPIN_CAP = 2 * Math.PI * 6;   // rad/s drawn at most: faster reads as a frozen ball at 25 fps
+const SPIN_CAP = 2 * Math.PI * 6;   // rad/s drawn at most: faster reads as a frozen ball in the 30 fps capture
 const AIR_SPIN = 2 * Math.PI * 4;   // rad/s of a kicked ball at 20 m/s (straight kicks: 3.6-5.8 rev/s)
 const STEP = 0.02;               // s, ball rotation sampling
 
@@ -312,32 +312,83 @@ function nlerp(a, b, u) {
 // --- leg poses for the actions, as joint angles in degrees on a planar leg:
 // hip + = thigh forward, knee + = bent, ankle + = toes pointed down, ext + = toes turned out.
 // Keys [t, hip, knee, ankle, ext], t in seconds from foot-ball contact. Kick phases after the
-// biomechanics literature (docs/ball3d.md): backswing about 160 ms, cocking 40 ms, then the
-// forward swing; peak knee bend just before the forward swing, knee nearly straight at contact.
+// biomechanics literature (docs/ball3d.md, docs/motion3d.md): backswing about 160 ms, cocking 40 ms,
+// then the forward swing; peak knee bend just before the forward swing, knee nearly straight at
+// contact. The shot has the biggest backswing; the pass is a side-foot kick (thigh turned out
+// about 50 degrees, ankle locked up) with a compact swing; the long ball is an instep kick.
 const LEG_KEYS = {
-  shot: [[-0.5, 0, 20, 0, 0], [-0.3, -12, 50, 10, 5], [-0.11, -42, 105, 25, 8], [0, 22, 22, 38, 8], [0.14, 64, 18, 32, 6], [0.32, 42, 35, 15, 0], [0.5, 8, 28, 0, 0]],
-  long: [[-0.5, 0, 20, 0, 5], [-0.3, -10, 50, 8, 12], [-0.11, -38, 100, 22, 18], [0, 22, 24, 32, 18], [0.14, 58, 20, 28, 14], [0.32, 38, 35, 12, 5], [0.5, 8, 28, 0, 0]],
-  pass: [[-0.42, 0, 22, 0, 5], [-0.24, -8, 42, 0, 25], [-0.1, -24, 72, -5, 42], [0, 16, 24, -10, 42], [0.13, 32, 20, -10, 36], [0.4, 6, 26, 0, 8]],
+  shot: [[-0.5, 0, 20, 0, 0], [-0.3, -14, 55, 10, 5], [-0.11, -46, 110, 25, 8], [0, 22, 22, 38, 8], [0.14, 66, 16, 32, 6], [0.32, 44, 35, 15, 0], [0.5, 8, 28, 0, 0]],
+  long: [[-0.5, 0, 20, 0, 5], [-0.3, -10, 50, 8, 12], [-0.11, -40, 100, 22, 18], [0, 24, 30, 26, 18], [0.14, 60, 20, 28, 14], [0.32, 40, 35, 12, 5], [0.5, 8, 28, 0, 0]],
+  pass: [[-0.42, 0, 22, 0, 8], [-0.24, -8, 42, -5, 35], [-0.1, -22, 70, -10, 50], [0, 16, 26, -12, 50], [0.13, 30, 22, -10, 42], [0.4, 6, 26, 0, 8]],
   touch: [[-0.28, 4, 30, 0, 8], [-0.12, -6, 55, 0, 25], [0, 24, 30, -5, 28], [0.12, 18, 30, 0, 15], [0.28, 4, 30, 0, 4]],
   trap: [[-0.42, 4, 25, 0, 8], [-0.2, 32, 52, -12, 40], [-0.06, 36, 44, -15, 42], [0, 30, 40, -12, 42], [0.12, 18, 36, -5, 25], [0.32, 4, 26, 0, 4]],
 };
-const SUPPORT = [12, 28, 0, 0];   // the standing leg bends a little while the other one swings
-const SUPPORT_W = { shot: 0.8, long: 0.8, pass: 0.7, touch: 0.35, trap: 0.5 };
+// The standing leg. For the kicks it is the plant leg of the last, longer stride: it swings
+// through high, reaches out and lands heel first beside the ball about 0.1 s before contact, the
+// knee gives under the body, then the body rolls over it. Touches and traps only bend it a little.
+const STAND = [[-1, 12, 28, 0, 0], [1, 12, 28, 0, 0]];
+const SUPPORT_KEYS = {
+  shot: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 72, 0, 0], [-0.14, 32, 18, -5, 0], [-0.07, 24, 24, 0, 0], [0, 14, 34, 0, 0], [0.14, 2, 30, 8, 0], [0.32, -8, 34, 15, 0], [0.5, 4, 30, 0, 0]],
+  long: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 70, 0, 0], [-0.14, 34, 18, -5, 0], [-0.07, 26, 24, 0, 0], [0, 16, 34, 0, 0], [0.14, 4, 30, 8, 0], [0.32, -6, 32, 12, 0], [0.5, 4, 30, 0, 0]],
+  pass: [[-0.42, 0, 30, 0, 0], [-0.22, 20, 42, 0, 0], [-0.09, 18, 22, 0, 0], [0, 12, 27, 0, 0], [0.13, 6, 27, 0, 0], [0.4, 2, 26, 0, 0]],
+  touch: STAND, trap: STAND,
+};
+const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5 };
 
-// { swing: [hip, knee, ankle, ext], support: [..], w, ws } in radians, for leg action kind at t.
-export function legPose(kind, t) {
-  const keys = LEG_KEYS[kind], [pre, post] = LEG_WINDOW[kind];
-  const w = ramp(-pre, -pre + 0.16, t) * (1 - ramp(post - 0.16, post, t));
+// The rest of the body during a kick, for a kick with the right foot (the rig mirrors a left-foot
+// kick). Keys [t, pelvis, shoulders, lean, bend, freeAbd, freeFlex, kickAbd, kickFlex] in degrees:
+//   pelvis, shoulders  turn about the vertical, + = towards the standing-leg side (the kicking hip
+//                      forward; for the shoulders, the free arm's shoulder back), added to the clips;
+//   lean               trunk forward over the ball (+) or back (-), added to the clips;
+//   bend               trunk leaning sideways towards the standing leg, added to the clips;
+//   freeAbd, freeFlex  the arm opposite the kicking leg, a pose of its own: out from the side
+//                      (0 hanging, 90 level with the shoulder), forward (+) or back (-);
+//   kickAbd, kickFlex  the arm on the kicking side, the same way.
+// The "tension arc" (docs/motion3d.md): at the top of the backswing the kicking hip is back, the
+// shoulders turn the other way and the free arm is out wide and back; at release the pelvis turns
+// through, the trunk flexes over the ball and the free arm sweeps across. The pass keeps the trunk
+// upright and the arms close; the long ball leans back with the free arm out.
+const BODY_KEYS = {
+  shot: [[-0.5, 0, 0, 3, 0, 12, 0, 12, 0], [-0.3, -8, 6, 2, 4, 45, -15, 15, 15], [-0.11, -16, 12, -2, 8, 85, -35, 20, 25],
+    [0, 4, 2, 8, 10, 75, -15, 22, -5], [0.14, 18, -12, 10, 6, 45, 30, 25, -25], [0.32, 14, -8, 6, 3, 25, 15, 15, -10], [0.5, 0, 0, 3, 0, 12, 0, 12, 0]],
+  long: [[-0.5, 0, 0, 2, 0, 12, 0, 12, 0], [-0.3, -7, 5, -2, 5, 48, -15, 15, 12], [-0.11, -14, 10, -8, 10, 90, -30, 25, 15],
+    [0, 3, 2, -10, 14, 85, -12, 25, -5], [0.14, 14, -8, -6, 8, 55, 20, 25, -20], [0.32, 10, -5, 0, 3, 28, 12, 15, -10], [0.5, 0, 0, 2, 0, 12, 0, 12, 0]],
+  pass: [[-0.42, 0, 0, 3, 0, 12, 0, 12, 0], [-0.24, -4, 3, 3, 2, 20, -5, 12, 6], [-0.1, -7, 5, 4, 4, 28, -8, 14, 8],
+    [0, -3, 2, 5, 5, 26, 0, 14, -4], [0.13, 3, -3, 5, 3, 20, 8, 12, -8], [0.4, 0, 0, 3, 0, 12, 0, 12, 0]],
+  touch: [[-0.28, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -2, 2, 4, 2, 14, 0, 12, 0], [0, 0, 0, 5, 3, 15, 0, 12, 0], [0.12, 1, -1, 4, 2, 14, 0, 12, 0], [0.28, 0, 0, 2, 0, 12, 0, 12, 0]],
+  trap: [[-0.42, 0, 0, 2, 0, 12, 0, 12, 0], [-0.2, -2, 2, 6, 3, 18, 0, 12, 0], [0, -1, 1, 8, 4, 20, 0, 14, 0], [0.12, 0, 0, 6, 3, 16, 0, 12, 0], [0.32, 0, 0, 2, 0, 12, 0, 12, 0]],
+};
+// How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
+const ARM_W = { shot: 1, long: 1, pass: 0.7, touch: 0, trap: 0.35 };
+const ELBOW = [30, 55];   // degrees of elbow bend in the arm poses: free arm, kicking-side arm
+
+// Value j of keys [t, v1, v2, ...] at t, in radians: Catmull-Rom tangents, so the foot keeps its
+// speed through contact instead of stopping at a key.
+function spline(keys, t, j) {
   let k = 0;
   while (k < keys.length - 2 && t > keys[k + 1][0]) k++;
   const a = keys[k], b = keys[k + 1];
   const u = Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0]))), h = b[0] - a[0];
-  const swing = [1, 2, 3, 4].map((j) => {
-    // Catmull-Rom tangents: the foot keeps its speed through contact instead of stopping at a key
-    const m = (i) => (i <= 0 || i >= keys.length - 1 ? 0 : (keys[i + 1][j] - keys[i - 1][j]) / (keys[i + 1][0] - keys[i - 1][0]));
-    const u2 = u * u, u3 = u2 * u;
-    const v = (2 * u3 - 3 * u2 + 1) * a[j] + (u3 - 2 * u2 + u) * h * m(k) + (-2 * u3 + 3 * u2) * b[j] + (u3 - u2) * h * m(k + 1);
-    return (v * Math.PI) / 180;
-  });
-  return { swing, support: SUPPORT.map((d) => (d * Math.PI) / 180), w, ws: w * SUPPORT_W[kind] };
+  const m = (i) => (i <= 0 || i >= keys.length - 1 ? 0 : (keys[i + 1][j] - keys[i - 1][j]) / (keys[i + 1][0] - keys[i - 1][0]));
+  const u2 = u * u, u3 = u2 * u;
+  const v = (2 * u3 - 3 * u2 + 1) * a[j] + (u3 - 2 * u2 + u) * h * m(k) + (-2 * u3 + 3 * u2) * b[j] + (u3 - u2) * h * m(k + 1);
+  return (v * Math.PI) / 180;
+}
+
+// Weight of a leg action at t: in over 0.16 s at the start of its window, out over the last 0.16 s.
+const actionW = (kind, t) => { const [pre, post] = LEG_WINDOW[kind]; return ramp(-pre, -pre + 0.16, t) * (1 - ramp(post - 0.16, post, t)); };
+
+// { swing: [hip, knee, ankle, ext], support: [..], w, ws } in radians, for leg action kind at t.
+export function legPose(kind, t) {
+  const w = actionW(kind, t), at = (keys) => [1, 2, 3, 4].map((j) => spline(keys, t, j));
+  return { swing: at(LEG_KEYS[kind]), support: at(SUPPORT_KEYS[kind]), w, ws: w * SUPPORT_W[kind] };
+}
+
+// { pelvis, shoulders, lean, bend, free: [abd, flex, elbow], kick: [abd, flex, elbow], w, wa } in
+// radians, the whole-body layer of leg action kind at t for a right-foot kick (signs as BODY_KEYS),
+// with the leg's weight w and the arms' wa.
+export function bodyPose(kind, t) {
+  const v = [1, 2, 3, 4, 5, 6, 7, 8].map((j) => spline(BODY_KEYS[kind], t, j)), e = ELBOW.map((d) => (d * Math.PI) / 180);
+  const w = actionW(kind, t);
+  return { pelvis: v[0], shoulders: v[1], lean: v[2], bend: v[3], free: [v[4], v[5], e[0]], kick: [v[6], v[7], e[1]], w, wa: w * ARM_W[kind] };
 }

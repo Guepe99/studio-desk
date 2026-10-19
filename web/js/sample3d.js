@@ -173,7 +173,7 @@ async function main() {
   const teams = Object.fromEntries([match.home, match.away].map((tm) => [tm.side, { short: tm.short_name, name: tm.name, color: tm.color_primary }]));
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },
-    frameRate: capture ? 25 : 60,
+    frameRate: capture ? 30 : 60,   // the capture (tests/web/sample3d-video.mjs) renders 30 frames a second
     locate: (pid, now) => (match.index[pid] !== undefined ? scene.project(match.index[pid], now) : { x: 0, y: 0, visible: false }),
     vendorParams: () => ({ v_showFactIds: true, v_players: players, v_teams: teams }),
   });

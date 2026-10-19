@@ -1,12 +1,13 @@
 // Babylon side of the ball handling: puts the BallPlan of ball3d.js on the mannequins.
 // The scene asks it for the ball transform and each player's root offset and facing, and tells it
-// which leg action each player is in; the rig poses the legs after the locomotion clips have run,
-// then lifts any body whose sole went under the grass (grounding).
+// which leg action each player is in; the rig poses the legs and the rest of the body (pelvis,
+// trunk, arms: ball3d.bodyPose) after the locomotion clips have run, then lifts any body whose sole
+// went under the grass (grounding).
 //
 //   const rig = new BallRig(scene, match, span, probeRoot, scale, ballR);   // probe: an unposed mannequin
 //   rig.addPlayer(i, root);  rig.ball(ts) -> {x, y, h, q};  rig.pose(i, ts) -> {dx, dy, yaw, yawW, leg} | null
 //   rig.setLeg(i, leg)  (each frame, before the scene renders)
-import { BallPlan, legPose } from "./ball3d.js";
+import { BallPlan, legPose, bodyPose } from "./ball3d.js";
 
 const B = window.BABYLON;
 const KINDS = ["shot", "long", "pass", "touch", "trap"];
@@ -19,6 +20,7 @@ export class BallRig {
     this.soles = solePoints(probeRoot, L);   // before the reach poses below bend the probe's legs
     for (const kind of KINDS) for (const side of ["l", "r"]) {
       poseLegs(L, { kind, side, t: 0 }, true);
+      poseBody(L, { kind, side, t: 0 }, true);   // the pelvis turn moves the kicking hip
       const chain = [];
       for (let n = L[`ball_${side}`]; n; n = n.parent) chain.unshift(n);
       chain.forEach((n) => n.computeWorldMatrix(true));
@@ -28,11 +30,12 @@ export class BallRig {
     }
     this.plan = new BallPlan(match, span, { reach: (kind, side) => this.reach[kind + side], ballR });
     this.players = new Map();   // entity index -> { legs, leg }
+    this.body = true;   // the whole-body layer; tests switch it off to show the legs-only pose
     // leg actions go on top of the locomotion pose, once the animation groups have written it; then
     // the body is grounded
     scene.onAfterAnimationsObservable.add(() => {
       for (const p of this.players.values()) {
-        if (p.leg) poseLegs(p.legs, p.leg);
+        if (p.leg) { poseLegs(p.legs, p.leg); if (this.body) poseBody(p.legs, p.leg); }
         if (this.soles) ground(p, this.soles);
       }
     });
@@ -66,12 +69,15 @@ export function ballTexture(scene) {
   return tex;
 }
 
-// The leg bones of one mannequin (Quaternius UAL1 names), with their rest rotations.
+// The leg bones of one mannequin (Quaternius UAL1 names), and the pelvis, spine and upper arms
+// and arms that bodyPose turns, with their rest rotations.
 function legNodes(root) {
   const out = { rest: {} };
   for (const n of root.getChildTransformNodes(false)) {
-    const m = /(thigh|calf|foot|ball)_([lr])$/.exec(n.name);
-    if (m) { out[`${m[1]}_${m[2]}`] = n; out.rest[`${m[1]}_${m[2]}`] = n.rotationQuaternion.clone(); }
+    const m = /(?:(thigh|calf|foot|ball)_([lr])|(pelvis|spine_0[123]|upperarm_[lr]|lowerarm_[lr]))$/.exec(n.name);
+    if (!m || !n.rotationQuaternion) continue;
+    const key = m[3] ?? `${m[1]}_${m[2]}`;
+    out[key] = n; out.rest[key] = n.rotationQuaternion.clone();
   }
   return out;
 }
@@ -154,4 +160,59 @@ function poseLegs(L, leg, absolute = false) {
   };
   apply(leg.side, swing, absolute ? 1 : w);
   if (!absolute) apply(leg.side === "l" ? "r" : "l", support, ws);
+}
+
+// Axes of the character (left, up, forward) in each body bone's parent frame, in the rest pose of
+// the UAL1 skeleton (the footballer and the anime files share it). A turn about one of them is
+// applied before the bone's own rotation, so it adds to whatever the clips did.
+const V = (x, y, z) => new B.Vector3(x, y, z).normalize();
+const AXES = {
+  pelvis: { up: V(0, 0, 1) },
+  spine_01: { left: V(1, 0, 0), up: V(0, 0.97, -0.25), fwd: V(0, 0.25, 0.97), share: 0.3 },
+  spine_02: { left: V(1, 0, 0), up: V(0, 0.99, -0.12), fwd: V(0, 0.12, 0.99), share: 0.3 },
+  spine_03: { left: V(1, 0, 0), up: V(0, 1, 0), fwd: V(0, 0, 1), share: 0.4 },
+  upperarm_l: { left: V(0.51, 0.86, 0), fwd: V(0.86, -0.51, 0) },
+  upperarm_r: { left: V(0.51, -0.86, 0), fwd: V(-0.86, -0.51, 0) },
+  thigh: { up: V(0, 0.97, -0.25) },   // the pelvis's up, in the thighs' parent (the pelvis) frame
+};
+const qt = new B.Quaternion();
+function turn(n, axis, angle) {
+  if (!n || !angle) return;
+  B.Quaternion.RotationAxisToRef(axis, angle, qa);
+  qa.multiplyToRef(n.rotationQuaternion, qt);
+  n.rotationQuaternion.copyFrom(qt);
+}
+
+// The whole-body layer of a leg action (ball3d.bodyPose), on top of the clips and poseLegs: the
+// pelvis turns (the standing thigh turns back by as much, so the planted foot stays put), the spine
+// leans, twists and bends over its three bones, both arms take their pose. A left-foot kick is the
+// mirror of the right-foot keys. absolute: from the rest pose, only the pelvis (to measure reach).
+function poseBody(L, leg, absolute = false) {
+  if (!L.pelvis) return;
+  const b = bodyPose(leg.kind, leg.t), w = absolute ? 1 : b.w;
+  if (w <= 0) return;
+  const sk = leg.side === "r" ? 1 : -1, stand = leg.side === "r" ? "l" : "r";
+  if (absolute) { L.pelvis.rotationQuaternion.copyFrom(L.rest.pelvis); turn(L.pelvis, AXES.pelvis.up, b.pelvis * sk); return; }
+  turn(L.pelvis, AXES.pelvis.up, b.pelvis * sk * w);
+  turn(L[`thigh_${stand}`], AXES.thigh.up, -b.pelvis * sk * w);
+  for (const name of ["spine_01", "spine_02", "spine_03"]) {
+    const a = AXES[name], k = a.share * w;
+    turn(L[name], a.fwd, -b.bend * sk * k);
+    turn(L[name], a.left, b.lean * k);
+    turn(L[name], a.up, (b.shoulders - b.pelvis) * sk * k);
+  }
+  // the arms: a pose of their own from the rest pose (arms level, straight), blended over the clips
+  if (b.wa <= 0) return;
+  for (const [side, [abd, flex, elbow]] of [[stand, b.free], [leg.side, b.kick]]) {
+    const a = AXES[`upperarm_${side}`], up = L[`upperarm_${side}`], lo = L[`lowerarm_${side}`];
+    if (!up || !lo) continue;
+    B.Quaternion.RotationAxisToRef(a.fwd, (abd - Math.PI / 2) * (side === "l" ? 1 : -1), qa);
+    B.Quaternion.RotationAxisToRef(a.left, -flex, qb);
+    qb.multiplyToRef(qa, qc);
+    qc.multiplyToRef(L.rest[`upperarm_${side}`], qt);
+    B.Quaternion.SlerpToRef(up.rotationQuaternion, qt, b.wa, up.rotationQuaternion);
+    B.Quaternion.RotationAxisToRef(AX, elbow, qa);   // the elbow bends forward about the upper arm's X
+    qa.multiplyToRef(L.rest[`lowerarm_${side}`], qt);
+    B.Quaternion.SlerpToRef(lo.rotationQuaternion, qt, b.wa, lo.rotationQuaternion);
+  }
 }

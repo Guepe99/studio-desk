@@ -13,7 +13,8 @@ the tracking data, the 2D page, the export and the facts do not change.
   allows 1.5 m). On DEMO the worst gap is 1.00 m, on M001 1.12 m, and 0 at every event.
 - **Kicks** (passes, crosses, shots, set pieces, clearances): backswing, cocking, a fast swing
   through the ball and a follow-through, timed so the foot is on the ball at the event time.
-  The kicker is turned to face where the ball goes.
+  The kicker is turned to face where the ball goes. The run-up, the trunk, the pelvis and the arms
+  of the kicks are in `docs/motion3d.md` ("Kicks with the whole body").
 - **First touch**: when a kicked ball reaches a team-mate, he turns to face it and cushions it
   with the inside of the foot at the moment the tracking ball arrives.
 - **Dribbling**: a player who keeps the ball between events gets a touch every 0.6 to 1.0 s
@@ -50,7 +51,7 @@ Note on the numbers we bent on purpose:
   so a stronger deceleration is not available within the 1.2 m budget on most passes.
 - Between dribble touches the ball ends at 0.3 of its start speed, far more than turf rolling
   would give: it makes the touch readable at broadcast distance.
-- The drawn spin is capped at 6 rev/s. Above that, at 25 frames per second, the patches alias
+- The drawn spin is capped at 6 rev/s (72 degrees a frame in the 30 fps capture). Above that the patches alias
   and the ball looks still or turning backwards. Motion blur would be the real fix.
 
 ## Animation licences

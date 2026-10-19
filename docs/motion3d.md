@@ -134,3 +134,74 @@ them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
 - `scripts/with-lock.sh chromium tests/web/run-smoke.sh motion3d-shots.mjs`: the sheet, the two
   stills with and without the clips, frames/s twice per mode, and a sweep of the 20 s every 0.08 s
   that fails on any NaN bone.
+
+## Kicks with the whole body
+
+Until tappa 3 only the kicking leg moved (`LEG_KEYS` in `web/js/ball3d.js`), so a shot and a pass
+looked the same from the broadcast camera: the trunk and the arms kept the run. Now every leg
+action also has keys for the standing leg, the pelvis, the trunk and both arms (`SUPPORT_KEYS`,
+`BODY_KEYS`, `bodyPose`), driven by the same ball events and the same weight, which fades in over
+0.16 s at the start of the action window and out over the last 0.16 s. `ball3d-rig.js` applies
+them after the clips and the leg pose, before grounding.
+
+### What the research says
+
+| Phase | What happens | Source |
+| --- | --- | --- |
+| Approach | best at about 45 degrees to the kick line (30 to 60); accurate kicks are slower | Kellis and Katis 2007, https://pmc.ncbi.nlm.nih.gov/articles/PMC3786235 |
+| Last stride | longer than the others, and longer for a 45 m kick than a 25 m one; the run-up brakes into it | Shan and Westerhoff 2005 in https://pmc.ncbi.nlm.nih.gov/articles/PMC3224572/ ; https://hrcak.srce.hr/en/94562 ; https://lida.sport-iat.de/dfb/Record/4020407 |
+| Plant | standing foot 5 to 28 cm beside the ball and a little behind it, pointing along the kick | PMC3786235 (Hay 1993); https://arxiv.org/html/2407.14612v1 |
+| Backswing | kicking hip extended up to about 29 degrees, knee flexed past 100 | PMC3786235 (Levanon and Dapena 1998) |
+| Tension arc | at the top: kicking hip back, trunk turned the other way, the free arm out to the side and back | Shan and Westerhoff 2005, in PMC3224572 |
+| Release | the leg whips through; the upper trunk flexes and turns towards the kicking side, the free arm comes in and across | PMC3224572 |
+| Contact | hip flexed about 20 degrees, ankle plantarflexed for the instep | PMC3786235 |
+| Follow-through | the leg keeps rising and crosses, the kicker lands forward on it, often with a hop | PMC3224572 |
+| Side-foot pass | thigh turned out from the hip, pelvis more side-on at contact, slower foot (18.3 against 21.6 m/s), smaller knee share of the swing | Levanon and Dapena 1998, https://www.bisp-surf.de/Record/PU199807303122 ; https://ojs.ub.uni-konstanz.de/cpa/article/view/2248/2104 ; https://commons.nmu.edu/isbs/vol38/iss1/29 |
+| Lofted kick | little measured; the kicker leans back and gets under the ball | Browder 1991, Prassas 1990, cited in https://journal.kannuruniversity.ac.in/ijssp/common/viewarticle/7 |
+
+From game animation: anticipation (the wind-up) and follow-through are what make an action read
+(https://education.siggraph.org/static/HyperGraph/animation/character_animation/principles/anticipation.htm),
+and players of the football games complain first about kicks without a plant step
+(https://forums.ea.com/discussions/fc-27-general-discussion-en/game-play-autentic/13778715).
+
+### What we adopted
+
+Times are seconds from foot-ball contact, angles degrees, for a right-foot kick (a left-foot kick
+is mirrored). The windows are the ones of `docs/ball3d.md`: 0.5 s either side for the shot and
+the long ball, 0.42 and 0.4 for the pass.
+
+| | Shot | Long ball, cross | Short pass |
+| --- | --- | --- | --- |
+| Kicking leg | instep; backswing to hip -46, knee 110 at -0.11; leg up to hip 66 at +0.14 | instep; hip -40, knee 100; up to 60 | side foot, thigh turned out 50; hip -22, knee 70; up to 30 |
+| Plant leg | swings through high (-0.3), reaches out at -0.14, lands, knee gives to 34 at contact, the body rolls over it | the same | a short step, landing at -0.09 |
+| Pelvis | 16 back at the top, 18 through after contact | 14 back, 14 through | 7 back, side-on at contact, 3 through |
+| Shoulders | 12 the other way at the top, 12 through after | 10, 8 | 5, 3 |
+| Trunk | 8 over the ball at contact, 10 after; 10 to the plant side | 10 back at contact; 14 to the plant side | about 5 forward, upright |
+| Free arm | out to 85 and 35 back at the top, 75 at contact, sweeps 30 forward after | out to 90, 85 at contact | 28 out at most |
+| Kicking-side arm | 25 forward at the top, 25 back after | 15 forward, 20 back | 12 to 14 out, close to the body |
+
+Touches and traps keep small values: 2 to 8 degrees of trunk and pelvis, and the arms stay the
+clips' (a dribble keeps the running arm swing; a trap takes a third of the arm pose).
+The plant timing (landing about 0.1 s before contact) and every angle above that is not in the
+research table are our choices, set by looking at `tests/web/kick3d-shots.mjs`.
+
+How the layers combine: the pelvis, trunk turns and lean are added to whatever the clips did
+(the standing thigh turns back by the pelvis angle, so the planted foot does not twist); the arms
+and the plant leg are poses of their own, blended over the clips with the action weight. The
+awareness look-at and the keeper's arms still run after this layer. The pelvis angle at contact
+is part of the reach measured on the probe, so the foot still meets the ball.
+
+### Tests
+
+- `node --test tests/web/ball3d.test.mjs`: every layer is 0 at the window edges and full at
+  contact; no channel jumps more than 45 degrees (legs) or 20 (trunk, arms) between two 30 fps
+  frames; the shot has the biggest backswing and the pass the smallest; the pass turns the thigh
+  out by 45 or more; the free arm goes past 80 on the shot and the long ball and stays under 35
+  on the pass; trunk forward on the shot, back on the long ball, upright on the pass; hips and
+  shoulders turn opposite ways at the top of the shot backswing; the plant hip goes from ahead to
+  behind across contact.
+- `scripts/with-lock.sh chromium tests/web/run-smoke.sh kick3d-shots.mjs [match]` (LOOK=anime,
+  BEFORE=1 for the legs-only rows): `out/shots/motion3d-<kind>-close.png` and
+  `motion3d-<kind>-broadcast.png` for the first shot, pass and long ball of the clip.
+- `scripts/with-lock.sh chromium tests/web/run-smoke.sh feet3d.mjs`: the planted soles stay on the
+  grass with the layer on.
