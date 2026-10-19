@@ -47,13 +47,16 @@ INSTRUCTIONS = {
         "Reply with JSON: picks = [{candidate_id, confidence 0..1, angle}]."),
     "analyst": (
         "You are the analyst of a football broadcast desk. For each story in the JSON, explain in one or two "
-        "sentences of plain English why it matters, citing the fact ids you rely on in square brackets, e.g. "
+        "sentences of plain English what the numbers show, citing the fact ids you rely on in square brackets, e.g. "
         "[F-SHOT_SPEED-000031]. Use only numbers that appear in the facts, written with digits as they appear "
         "there, never in words. You may call the studiodesk tools (with match_id and a kind, player or time "
         "range) to find one more supporting fact; cite it if you use it. The citations are for the desk's "
         "evidence and are removed before anyone reads the text. Claim no detail the facts do not give (no "
         "post, cross, volley, deflection, assist, foot side, 'behind the defence'). `score_after` is the score after the "
-        "moment, leader first; mention it only for a goal, comeback or recap. Pass accuracy is the share of "
+        "moment, leader first; mention it only for a goal, comeback or recap, and then in the words of "
+        "`score_say` ('with Redwick Wanderers leading 2-1'), never as 'the score remained X lead 2-1'. Never "
+        "write 'this matters because' or 'why it matters'; state what happened. Claim no effect on the "
+        "opponent (forcing errors, leaving space, pinning them back): no fact measures one. Pass accuracy is the share of "
         "passes completed, never possession. `outcome` is what happened to the shot. `home` and `away` name "
         "the teams' roles. Say each thing once. No em or en dashes (a hyphen in a score like 2-1 is fine). "
         "Reply with JSON: stories = [{story_id, analysis_en, fact_ids}]."),
@@ -66,26 +69,39 @@ INSTRUCTIONS = {
         "'hat-trick', 'doppietta', 'tres'), no other units. Minutes as listed, in a full phrase ('in the "
         "41st minute', 'al minuto 41', 'en el minuto 41'; 45+2' is stoppage time).\n"
         "- Score: only when the story has `score`, once at most, written exactly as `score.write` (the "
-        "leader's goals first) with the leader named as in `score.after`. A story without `score` never "
-        "mentions it. A recap always gives it.\n"
+        "leader's goals first), with `score.leader` named right next to it ('Ostwick FC lead 2-1', 'il "
+        "Redwick passa in vantaggio, 1-0'); a level score needs no name. A story without `score` never "
+        "mentions it. A recap always gives it. A goal 'takes the lead' (passa in vantaggio, se pone por "
+        "delante) only when `score.before` is level; when the scorer already led it 'extends the lead' "
+        "(allunga, amplía la ventaja).\n"
         "- Name the player as in `name` (when the story has a player), otherwise the team. `home` and "
-        "`away` say which team is which: 'the visitors' is only ever the away team.\n"
+        "`away` say which team is which: 'the visitors' is only ever the away team. In Italian and Spanish "
+        "`team`, `home` and `away` come with their article (il Redwick Wanderers, l'Harbour Vale FC, el "
+        "Ostwick FC): keep it, and merge it with a preposition (del, al, dell'; del, al).\n"
         "- Say only what the story says. `outcome` is what happened to the shot (goal, saved, wide, over the "
-        "bar, blocked): say exactly that. A shot that did not go in never 'slides under', 'tucks in' or "
-        "'beats the keeper'. A shot's label says inside or outside the box, the body part and the outcome; "
-        "nothing else about it is known. A detail not in the facts is not allowed: no post or crossbar, top "
-        "corner, near or far post, cross, pull-back, volley, rebound, deflection, assist, which foot (unless "
-        "the label says left or right foot), 'behind the defence' or 'forcing errors'. `header` true means a "
-        "header, false means no header.\n"
-        "- Distance words must fit the shot distance: 'close range' up to 11 m, 'six-yard box' up to 5.5 m, "
-        "'edge of the box' 16 to 25 m, 'from distance' or 'from outside the box' only when the label says outside "
-        "the box. In Italian "
-        "and Spanish use your own words (area piccola, da pochi passi, dal limite, da fuori; área pequeña, a "
-        "bocajarro, desde la frontal, desde fuera), never English ones.\n"
+        "bar, blocked): say exactly that. A shot that did not go in never 'smashes in', 'slides under', "
+        "'tucks in' or 'beats the keeper'; a wide shot is not over the bar. `header` true means a header "
+        "(never 'fires' or 'strikes' it), false means a kick. Nothing else about the shot is known: no post "
+        "or crossbar, corner of the net, near or far post, cross, pull-back, volley, rebound, deflection, "
+        "assist, technique (side-foot, curler, toe-poke, di piatto, a giro, de rosca), which foot (destro, "
+        "sinistro, diestra, zurda; unless the label says left or right foot), 'behind the defence' or "
+        "'forcing errors'.\n"
+        "- Where the shot came from: say `place` (or nothing about it). 'Edge of the box' (dal limite, la "
+        "frontal) only when `place` says so; 'point-blank' (a bruciapelo, a bocajarro) only up to 6 m; "
+        "'close range' up to 11 m; 'from distance' or 'from outside the box' only when the label says outside "
+        "the box. In Italian and Spanish use your own words, never English ones.\n"
         "- Pass accuracy is the share of passes completed, never possession; tie each value to its team.\n"
-        "- Momentum is how much a team is on top, never possession; pressing is how hard it presses, with no "
-        "turnovers or 'carrier'. At most two values, in time order, each at its own fact's `minute`, with "
-        "words that match `trend` (never 'rose' or 'kept up' when it fell).\n"
+        "- Momentum is how much a team is on top (inerzia, inercia), never possession, domination or "
+        "pressing; pressing is how hard a team presses, never where on the pitch (no 'press high', 'pressa "
+        "alto', 'presión alta'), with no turnovers or 'carrier'. `trend` is the path of the values, ready "
+        "in your language: follow it, you may reword it but never change its direction. When it rose and "
+        "then fell, say both; never 'take control', 'sempre più' or 'toma el mando' for a run that ends "
+        "lower. At most two or three values, in time order.\n"
+        "- A defensive line: `line` says if it went higher (further from its own goal) or deeper; `width` "
+        "says if the team got wider or narrower (wider is never 'more compact').\n"
+        "- Claim no effect on the opponent (forcing mistakes, leaving defenders behind, pinning them back, "
+        "more shots, more space): no fact measures one.\n"
+        "- If you are not sure a phrase is what a native commentator says, leave it out.\n"
         "- Say each thing once: no word or idea twice in a line, no restating the story kind, no 'according "
         "to the data'. Loud verbs (rips, lashes, thunderbolt, rattles, che botta, bordata, trallazo) once a "
         "match at most.\n"
@@ -104,7 +120,11 @@ INSTRUCTIONS = {
         "accuracy is not possession), and invented events (a post, a cross or a header the story does not "
         "give; `outcome`, `header` and the shot label's box and body part come from the match events and count "
         "as facts; a post, top corner, cross, volley, deflection, assist, foot side, 'behind the defence' or "
-        "'forcing errors' the facts do not give is invented). Score-state words (leading, in front, trailing, "
+        "'forcing errors' the facts do not give is invented). An effect on the opponent (forcing mistakes, "
+        "leaving defenders behind, pinning them back, more space) is invented: no fact measures one. Momentum "
+        "and press intensity are different facts: momentum values told as pressing, or the reverse, are "
+        "wrong; press intensity says how hard a team presses, not where. A trend word must fit `trend`: a "
+        "run that ends lower never 'takes control'. Score-state words (leading, in front, trailing, "
         "in vantaggio, por delante) must agree with `score_after`. After a goal the scorer's "
         "team may still trail: 'pulls one back, 2-1' is right when `score_after` says the other team leads 2-1. "
         "Colour and interpretation (a fine strike, a big moment, a "
@@ -116,19 +136,27 @@ INSTRUCTIONS = {
 }
 STYLE = {
     "en": "Write in British English (pitch, keeper, nil, the box, colour), like a Saturday-afternoon TV "
-          "commentator: crisp, understated, active verbs.",
+          "commentator: crisp, understated, active verbs. Examples: 'Vellacott heads it wide from the middle "
+          "of the box.' 'Ostwick FC pull one back, but Redwick still lead 2-1.'",
     "it": "Scrivi in italiano da telecronista (rete, conclusione, palla, in vantaggio, area), con frasi native "
           "e non tradotte dall'inglese; i decimali con la virgola (96,4). Mai parole inglesi come win, blocked, "
           "pass accuracy, momentum: si dice vince, respinto, passaggi riusciti, inerzia della partita (pressing va "
-          "bene). Esempi: 'Colpo di testa di Ferrandi dentro l'area, il portiere para.' 'Il Calderwick prende in "
-          "mano l'inerzia della partita, da 4,1/10 a 7,3/10.'",
+          "bene). Le squadre hanno l'articolo: il Redwick, l'Harbour Vale, dello Sporting. Mai 'sul minuto', "
+          "'vs', 'mezzo tempo'. Esempi: 'Colpo di testa di Ferrandi dentro l'area, il portiere para.' "
+          "'Conclusione di Okowande da fuori area, centrale: para il portiere.' 'Gol di Duarte: il Redwick "
+          "accorcia, ma l'Ostwick resta avanti 2-1.' 'L'inerzia passa al Calderwick: da 4,1/10 al minuto 30 "
+          "a 7,3/10 al 40.' 'Il Tarnby alza la linea difensiva.'",
     "es": "Escribe en español de España como un narrador de televisión (gol, disparo, el área, por delante), "
           "con frases nativas, no traducidas del inglés; decimales con coma (96,4). Nunca palabras inglesas como "
-          "win, blocked, pass accuracy, momentum o pressing: se dice gana, rechazado, pases completados, dominio, "
-          "presión. Ejemplos: 'Remate de cabeza de Ferrandi dentro del área y para el portero.' 'El Calderwick "
-          "toma el mando del partido, de 4,1/10 a 7,3/10.'",
+          "win, blocked, pass accuracy, momentum o pressing: se dice gana, rechazado, pases completados, inercia "
+          "del partido, presión. Los equipos llevan artículo: el Redwick, del Harbour Vale, al Ostwick. Nunca "
+          "'dominio', 'vs' ni 'compactación'. Ejemplos: 'Remate de cabeza de Ferrandi dentro del área y para "
+          "el portero.' 'Disparo de Okowande desde fuera del área, centrado: lo para el portero.' 'Gol de "
+          "Duarte: el Redwick recorta distancias, pero el Ostwick sigue por delante, 2-1.' 'La inercia es "
+          "del Calderwick: de 4,1/10 en el minuto 30 a 7,3/10 en el 40.' 'El Tarnby adelanta su línea "
+          "defensiva.'",
 }
-LANGUAGE_NAMES = {"en": "English", "it": "Italian", "es": "Spanish"}
+LANGUAGE_NAMES = rules.LANGUAGES
 AGENT_TOOLS = {"story_finder": ["get_events", "get_facts", "get_player"], "analyst": ["get_facts", "get_fact"]}
 
 
@@ -324,6 +352,12 @@ class Desk:
         leader, s = self.m.lead(ts)
         return f"Level at {s}" if leader is None else f"{self.m.team_name(leader)} lead {s}"
 
+    def score_say(self, ts):
+        """The score as a clause for the analyst: "with Redwick Wanderers leading 2-1" or "with the score
+        level at 1-1"."""
+        leader, s = self.m.lead(ts)
+        return f"with the score level at {s}" if leader is None else f"with {self.m.team_name(leader)} leading {s}"
+
     def card(self, s, analysis=False, writer=None, judge=False):
         """A story for a prompt: who is home and away, what happened to the shot, which way the numbers
         went. For a commentator (writer=lang): the allowed numbers, the score only when it is the point of
@@ -331,20 +365,30 @@ class Desk:
         side = {self.m.home["team_id"]: "home", self.m.away["team_id"]: "away"}
         # writers get the values to read (a shot's label carries its box, body part and outcome)
         facts = rules.text_facts(s) if writer else rules.story_facts(s) if judge else s["facts"]
+        lang = writer or "en"
+        name = (lambda n: rules.club(n, writer)) if writer in ("it", "es") else (lambda n: n)  # noqa: E731
+        team = self.m.team_name(s["team_id"])
         c = {"story_id": s["story_id"], "kind": s["kind"], "minute": self.m.minute_label(s["ts"]),
-             "team": self.m.team_name(s["team_id"]), "team_side": side.get(s["team_id"]),
-             "player": self.m.player_name(s["player_id"]), "home": self.m.home["name"], "away": self.m.away["name"],
-             "angle": s.get("angle", ""), "facts": [self.brief(f) for f in facts]}
-        if s.get("outcome"):
-            words = rules.OUTCOMES.get(s["outcome"], (s["outcome"],) * 3)
-            c["outcome"] = words[rules.LANGS.index(writer)] if writer else words[0]
-            c["header"] = bool(s.get("header"))
-        if s["kind"] in ("momentum_swing", "pressing_spell") and len(tf := rules.text_facts(s)) >= 2:
-            d = tf[-1]["value"] - tf[0]["value"]
-            c["trend"] = "rising" if d > 0.2 else "falling" if d < -0.2 else "steady"
+             "team": name(team) if team else team, "team_side": side.get(s["team_id"]),
+             "player": self.m.player_name(s["player_id"]), "home": name(self.m.home["name"]),
+             "away": name(self.m.away["name"]), "angle": s.get("angle", ""), "facts": [self.brief(f) for f in facts]}
+        if (shot := rules.shot_info(s)) and shot["outcome"]:
+            words = rules.OUTCOMES.get(shot["outcome"], (shot["outcome"],) * 3)
+            c["outcome"] = words[rules.LANGS.index(lang)]
+            c["header"] = shot["header"]
+            if where := rules.place_text(shot["place"], lang):
+                c["place"] = where
+        # the path of the values as a ready phrase: the writers follow it, the judge checks against it
+        if path := rules.trend(self.m, s, lang):
+            c["trend"] = path["say"]
+        if line := rules.line_path(s):
+            c["line"] = line["direction"]
+        if width := rules.width_change(s):
+            c["width"] = width
         if writer is None:
             c["score_before"] = self.who_leads(s["ts"] - 1e-3)
             c["score_after"] = self.who_leads(s["ts"])
+            c["score_say"] = self.score_say(s["ts"])
         else:
             c["numbers"] = rules.number_list(self.m, s, writer)
             if s["player_id"]:
@@ -353,10 +397,10 @@ class Desk:
                 after = self.who_leads(s["ts"])
                 if s.get("phase") == "ft":  # the match is over: a win, not a lead
                     after = after.replace(" lead ", " win ").replace("Level at", "It ended")
-                c["score"] = {"before": self.who_leads(s["ts"] - 1e-3), "after": after,
-                              "write": self.m.lead(s["ts"])[1]}
+                leader, write = self.m.lead(s["ts"])
+                c["score"] = {"before": self.who_leads(s["ts"] - 1e-3), "after": after, "write": write,
+                              "leader": name(self.m.team_name(leader)) if leader else None}
         if s["kind"] == "recap":
-            lang = writer or "en"
             c["phase"] = rules.TITLES[s["phase"]][rules.LANGS.index(lang)]
             c["pass_accuracy"] = {self.m.team_name(f["team_id"]): f"{rules.fmt(f['value'], lang)}%"
                                   for f in s["facts"] if f["kind"] == "pass_accuracy"}
@@ -393,8 +437,10 @@ class Desk:
             self.m.update(await self.mcp("get_match_info"))
         cands = []
         for f in new:
-            if f["kind"] == "score":
-                cands += rules.goal_candidates(self.m, f)
+            if f["kind"] == "score":  # the shot that scored, for where it was taken from
+                shots = await self.mcp("get_events", from_ts=f["ts"] - 60.0, to_ts=f["ts"], type_name="shot")
+                cands += rules.goal_candidates(self.m, f, next(
+                    (e for e in shots if e["event_id"] in f["source_event_ids"]), None))
             elif f["kind"] == "sprint_speed":
                 cands += rules.sprint_candidates(f)
         window_end = max((f["ts"] for f in new if f["kind"] == "momentum"), default=None)
@@ -461,7 +507,8 @@ def template_story(desk, s, reason):
     for lang in rules.LANGS:
         s["texts"][lang] = rules.template(desk.m, s, lang)
     s["analysis_en"] = s["analysis_en"] or rules.analysis_template(s)
-    s["verifier"] = {"status": "template", "attempts": 0, "flagged": s["flagged"] + [rules.note(rules.reason(reason))]}
+    s["verifier"] = {"status": "template", "attempts": 0,
+                     "flagged": [rules.note(f"Fact-only sentence used: {rules.reason(reason)}.")]}
     return desk.finish(s)
 
 
@@ -516,6 +563,7 @@ def build_workflow(desk):
             got = {a.story_id: a for a in out.stories}
         except Exception as e:  # noqa: BLE001
             got, note = {}, f" fallback: {rules.brief_error(e)}"
+        fallback = 0  # analyses that fell back to the facts: counted in the trace, never a desk note
         for s in rnd.stories:
             a = got.get(s["story_id"])
             if a:
@@ -526,13 +574,14 @@ def build_workflow(desk):
                 text = rules.tidy(a.analysis_en)
                 bad = rules.check_text(m().without_names(text), rules.story_allowed(m(), s, cited=True), "en",
                                        rules.story_ids(s)) + rules.story_issues(
-                    m(), s, text, "en", on_air=False)  # the analyst's note may quote a goal's "who lead 1-0"
+                    m(), s, text, "en", on_air=False) + rules.analysis_issues(text)  # may quote "who lead 1-0"
                 s["analysis_en"] = rules.strip_citations(text) if not bad else rules.analysis_template(s)
-                s["flagged"] += [rules.note(f"analysis: {rules.reason(b, s)}") for b in bad]
+                fallback += bool(bad)
             else:
                 s["analysis_en"] = rules.analysis_template(s)
         desk.trace("analyst", "analyse", f"{len(rnd.stories)} stories",
-                   f"{len(got)} analyses" + note, [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
+                   f"{len(got)} analyses" + (f", {fallback} replaced by the facts" if fallback else "") + note,
+                   [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
         await ctx.send_message(rnd)
 
     def commentator(lang):
@@ -591,6 +640,7 @@ def build_workflow(desk):
         by_sid = {s["story_id"]: s for s in rnd.stories}
         allowed = {sid: rules.story_allowed(m(), s) for sid, s in by_sid.items()}
         texts, attempts, problems = {}, Counter(), defaultdict(list)
+        earlier = defaultdict(list)  # (sid, lang) -> plain reasons a draft was sent back for a fact
         factual = set()  # texts sent back for a fact, not only for style: these raise the risk
         for d in drafts:
             for sid in by_sid:
@@ -617,11 +667,11 @@ def build_workflow(desk):
                     problems[k] += g
                 for k, t in pending.items():
                     # problems is a defaultdict: no empty entries
-                    if k not in problems and (j := rules.jargon(t) + rules.english_words(t, k[1])):
+                    if k not in problems and (j := rules.jargon(t) + rules.english_words(t, k[1]) + rules.calques(t, k[1])):
                         problems[k] += j
             else:
                 style = {k: st for k, t in pending.items() if k not in problems and (st := gaps.get(k, []) + rules.style_issues(
-                    t, k[1], by_sid[k[0]]["kind"], desk.used[k[1]]))}
+                    t, k[1], by_sid[k[0]]["kind"], desk.used[k[1]], m()))}
             to_judge = {k: t for k, t in pending.items() if k not in problems and k not in style and k not in judged_ok}
             notes = {(sid, "analysis"): st["analysis_en"] for sid, st in by_sid.items()} if round_no == 0 else {}
             issues, judged, usage, failed = await judge(rnd, {**to_judge, **notes})
@@ -632,7 +682,6 @@ def build_workflow(desk):
             for sid, lang in [k for k in issues if k[1] == "analysis"]:  # a wrong analysis falls back to the facts
                 by_sid[sid]["analysis_en"] = rules.analysis_template(by_sid[sid])
                 issues.pop((sid, lang))
-                by_sid[sid]["flagged"].append(rules.note(f"analysis: {rules.reason('claim')}"))
             for k, issue in issues.items():
                 problems[k].append(f"claim: {issue}")
             fix = {k for k in problems if k in texts} | set(style)
@@ -641,8 +690,7 @@ def build_workflow(desk):
             for k in fix:
                 if problems.get(k):
                     factual.add(k)
-                for p in problems.get(k, []):
-                    by_sid[k[0]]["flagged"].append(rules.note(f"{k[1]}: {rules.reason(p, by_sid[k[0]])}"))
+                earlier[k] += [rules.reason(p) for p in problems.get(k, [])]
             jobs = {lang: {sid: problems.get((sid, l2), []) + style.get((sid, l2), []) for sid, l2 in fix if l2 == lang}
                     for lang in rules.LANGS}
             results = await asyncio.gather(*(rewrite(rnd, lang, todo) for lang, todo in jobs.items() if todo))
@@ -670,14 +718,13 @@ def build_workflow(desk):
                 status = "template"
                 for lang in rules.LANGS:
                     s["texts"][lang] = rules.template(m(), s, lang)
-                    s["flagged"] += [f"{lang}: {rules.reason(p, s)}" for p in problems.get((sid, lang), [])]
-                    if ok[lang]:
-                        s["flagged"].append(f"{lang}: template, as another language failed")
             s["unjudged"] = status != "template" and (sid not in analysis_judged or any(
                 (sid, lang) not in judged_ok for lang in rules.LANGS))
             unjudged_any |= s["unjudged"]
             s["style_only"] = not any((sid, lang) in factual for lang in rules.LANGS)
-            s["flagged"] = list(dict.fromkeys(rules.note(x) for x in s["flagged"]))
+            s["flagged"] = rules.desk_notes(status, {lang: earlier[(sid, lang)] for lang in rules.LANGS},
+                                            {lang: [rules.reason(p) for p in problems.get((sid, lang), [])]
+                                             for lang in rules.LANGS})
             s["verifier"] = {"status": status, "attempts": max(attempts[(sid, lang)] for lang in rules.LANGS),
                              "flagged": s["flagged"]}
             desk.finish(s)
