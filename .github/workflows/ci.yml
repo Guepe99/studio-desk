@@ -13,5 +13,5 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e '.[dev]'
+      - run: pip install -e '.[dev,agents]'  # tests/test_agents.py imports the Agent Framework
       - run: pytest -q
