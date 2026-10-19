@@ -33,7 +33,7 @@ match clock --event--> facts (MCP server) --batch--> story_finder -> analyst -> 
 - **Voice.** Azure AI Speech reads the verified English stories ahead of time. A clip plays only when its checksum matches the text on screen.
 - **Graphics.** Broadcast graphics in HTML, in the EBU OGraf open format (`web/graphics/`).
 
-The four replays in `replays/` were produced by real runs on Azure. Their files hold the stories and every agent step. One match costs between $0.10 and $0.17 in model calls (277,000 to 445,000 tokens), summed from the `traces.json` in each replay.
+The four replays in `replays/` were produced by real runs on Azure. Their files hold the stories and every agent step. One match costs between $0.10 and $0.17 in model calls (276,000 to 475,000 tokens), summed from the `traces.json` in each replay.
 
 The data contract, from the tables to the API, is in [docs/CONTRACT.md](docs/CONTRACT.md).
 
