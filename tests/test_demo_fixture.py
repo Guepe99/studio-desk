@@ -27,7 +27,8 @@ def test_demo_fixture_matches_export_shapes(tmp_path):
 
     cues = json.loads((out / "cues.json").read_text())
     assert {c["graphic"] for c in cues} == {"nameplate", "pass_shot", "momentum", "why_card"}
-    assert {c["audience"] for c in cues} == {"analyst", "casual"}
+    assert {c["audience"] for c in cues} >= {"analyst", "casual", "team:T01", "team:T02"}
+    assert any(c["audience"].startswith("player:") for c in cues)
     fact_ids = {f["fact_id"] for f in json.loads((out / "facts.json").read_text())}
     for c in cues:
         p = c["payload"]
