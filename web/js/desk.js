@@ -2,9 +2,11 @@
 // switch, the audit log and the agent traces (docs/CONTRACT.md, Runtime records and API).
 //
 // One rule decides what goes on air: a story below the risk threshold is auto-approved and plays
-// unless this visitor rejects it; a story that needs review is held until this visitor approves it.
-// With the AI switched off only template graphics (story_id null) play. Decisions come from the
-// API (per visitor, cookie sd_session); with static hosting they are kept in memory for the tab.
+// unless this visitor rejects it; a story that needs review, or that Content Safety flagged, is held
+// until this visitor approves it. Only auto_approved, approved and edited go on air: any other or
+// missing status is held. With the AI switched off only template graphics (story_id null) play.
+// Decisions come from the API (per visitor, cookie sd_session); with static hosting, or when the API
+// does not answer within API_TIMEOUT_MS, they are kept in memory for the tab.
 
 const LANGS = { en: "English", it: "Italian", es: "Spanish" };
 const KIND = { goal: "Goal", key_pass: "Key pass", momentum_swing: "Momentum swing", comeback: "Comeback",
@@ -22,6 +24,9 @@ const AGENTS = [
 ];
 const AGENT = Object.fromEntries(AGENTS.map(([id, name, how]) => [id, { name, how }]));
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
+const ON_AIR = ["auto_approved", "approved", "edited"];
+const API_TIMEOUT_MS = 4000;
+const RUN_MAX_FRAMES = 300; // a sprint run longer than 30 s is not a sprint: never draw a whole-match path
 const SVGNS = "http://www.w3.org/2000/svg";
 
 const kindName = (k) => KIND[k] ?? String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -40,14 +45,30 @@ function h(tag, attrs = {}, ...kids) {
   return el;
 }
 
-async function optionalJson(url) {
+// An array of row objects, or [] when the file is missing or malformed: bad data never stops the desk.
+async function optionalRows(url, key) {
   try {
     const r = await fetch(url);
-    return r.ok ? await r.json() : [];
+    const rows = r.ok ? await r.json() : [];
+    return Array.isArray(rows) ? rows.filter((x) => x && typeof x === "object" && (!key || typeof x[key] === "string")) : [];
   } catch {
     return [];
   }
 }
+
+const list = (v) => (Array.isArray(v) ? v : []);
+
+// A trace summary as shown: an exception's raw text becomes a short reason (the full text stays in the pack).
+export function summaryText(text) {
+  const s = String(text ?? "");
+  const i = s.search(/ fallback: | failed: /);
+  if (i < 0 || !/Exception|Error\(|Traceback|<class /.test(s.slice(i))) return s;
+  const code = s.slice(i).match(/Error code: (\d{3})/)?.[1] ?? (/Timeout/.test(s.slice(i)) ? "timeout" : null);
+  return `${s.slice(0, i)}${s.slice(i).startsWith(" fallback") ? " fallback" : " failed"}: model call failed${code ? ` (${code})` : ""}`;
+}
+
+// A failed step: the agents write " fallback: <why>" or "<what> failed: <why>", or log a "fallback" step.
+export const traceFailed = (t) => t.step === "fallback" || /(^| )fallback: |\bfailed: /.test(String(t.output_summary ?? ""));
 
 export class Desk {
   /** @param {HTMLElement} root  the #desk element
@@ -61,44 +82,63 @@ export class Desk {
     this.decisions = new Map(); // story_id -> {decision, edited_text, at}
     this.kill = false;
     this.online = false;
+    this.offline = "";   // why decisions stay in this tab, when the API refused or did not answer
+    this.loaded = false;
     this.auditRows = []; // from the API: this visitor's actions and the agents' rows
     this.localAudit = []; // without the API: this tab's actions
     this.tab = "stories";
     this.editing = null;
+    this.drafts = new Map(); // `${story_id}|${lang}` -> text typed in the editor, kept until saved or cancelled
     this.open = new Set(); // stories whose evidence is expanded
     this.note = "";
     this.factIndex = new Map(this.match.facts.map((f) => [f.fact_id, f]));
     this.eventIndex = new Map(this.match.events.map((e) => [e.event_id, e]));
   }
 
+  /** The replay's stories and traces: static files, no API. */
   async load() {
     const base = `data/${this.matchId}`;
-    [this.stories, this.traces] = await Promise.all([optionalJson(`${base}/stories.json`), optionalJson(`${base}/traces.json`)]);
+    [this.stories, this.traces] = await Promise.all([optionalRows(`${base}/stories.json`, "story_id"), optionalRows(`${base}/traces.json`)]);
     this.stories.sort((a, b) => a.ts - b.ts);
     this.byId = new Map(this.stories.map((s) => [s.story_id, s]));
+    this.loaded = true;
+    this.changed();
+  }
+
+  /** This visitor's decisions from the API. Without an answer the desk keeps working in the tab. */
+  async connect() {
     try {
       const s = await this.api("GET", "api/session");
       const d = await this.api("GET", `api/decisions?match_id=${encodeURIComponent(this.matchId)}`);
       this.online = true;
       this.kill = Boolean(d.kill_switch ?? s.kill_switch);
-      for (const x of d.decisions) this.decisions.set(x.story_id, x);
+      for (const x of list(d.decisions)) if (x && !this.decisions.has(x.story_id)) this.decisions.set(x.story_id, x);
       await this.refreshAudit();
-    } catch {
-      this.online = false; // static hosting: decisions live in this tab
+    } catch (e) {
+      this.online = false; // static hosting, a refusal or no answer: decisions live in this tab
+      this.offline = e.api ? e.message : e.timeout ? "The server did not answer in time." : "";
     }
-    this.render();
+    this.changed();
   }
 
   async api(method, path, body) {
-    const r = await fetch(path, {
-      method, credentials: "same-origin",
-      headers: body ? { "content-type": "application/json" } : {},
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let r;
+    try {
+      r = await fetch(path, {
+        method, credentials: "same-origin", signal: AbortSignal.timeout(API_TIMEOUT_MS),
+        headers: body ? { "content-type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      throw Object.assign(new Error(e.name === "TimeoutError" ? "the server did not answer in time" : "no connection"), { timeout: e.name === "TimeoutError" });
+    }
     let data = null;
     try { data = await r.json(); } catch { /* not JSON: no API here */ }
-    if (!r.ok || data === null) throw new Error(typeof data?.detail === "string" ? data.detail : `HTTP ${r.status}`);
-    return data;
+    if (r.ok && data !== null) return data;
+    // a list detail is FastAPI's validation error: the client already checks length and emptiness
+    const detail = typeof data?.detail === "string" ? data.detail
+      : Array.isArray(data?.detail) ? "the text has a character the desk does not accept" : null;
+    throw Object.assign(new Error(detail ?? `HTTP ${r.status}`), { api: detail !== null });
   }
 
   async refreshAudit() {
@@ -110,8 +150,10 @@ export class Desk {
 
   // ---- the rule -------------------------------------------------------------------------------
 
-  status(s) { return this.decisions.get(s.story_id)?.decision ?? s.default_status; }
-  onAir(s) { return !this.kill && this.status(s) !== "rejected" && this.status(s) !== "needs_review"; }
+  // A story Content Safety flagged never goes on air by itself, whatever its risk.
+  defaultStatus(s) { return s.safety === "flagged" ? "needs_review" : s.default_status; }
+  status(s) { return this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s); }
+  onAir(s) { return !this.kill && ON_AIR.includes(this.status(s)); }
   pending() { return this.stories.filter((s) => this.status(s) === "needs_review").length; }
 
   /** The cues to play for an audience and language, with this visitor's overlay applied. */
@@ -129,6 +171,8 @@ export class Desk {
     });
   }
 
+  /** The language the story text is shown in: the asked one, or English when it has no such text. */
+  textLang(s, lang) { return (this.decisions.get(s.story_id)?.edited_text?.[lang] ?? s.texts?.[lang]) ? lang : "en"; }
   text(s, lang) { return this.decisions.get(s.story_id)?.edited_text?.[lang] ?? s.texts?.[lang] ?? s.texts?.en ?? ""; }
 
   // ---- actions --------------------------------------------------------------------------------
@@ -136,22 +180,29 @@ export class Desk {
   async decide(s, decision, editedText = null) {
     const id = s.story_id, prev = this.decisions.get(id), at = new Date().toISOString();
     this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at });
-    this.editing = null;
     this.note = "";
     if (!this.online) {
       this.localAudit.unshift({ at, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
         detail: { langs: Object.keys(editedText ?? {}) } });
+      this.endEdit(id);
+      this.changed();
+      return;
     }
     this.changed();
-    if (!this.online) return;
     try {
       await this.api("POST", "api/decisions", { match_id: this.matchId, story_id: id, decision, ...(editedText ? { edited_text: editedText } : {}) });
+      this.endEdit(id); // the editor and its drafts go only once the server has the text
       await this.refreshAudit();
     } catch (e) {
       if (prev) this.decisions.set(id, prev); else this.decisions.delete(id);
       this.note = `Not saved: ${e.message}`;
     }
     this.changed();
+  }
+
+  endEdit(id) {
+    if (this.editing === id) this.editing = null;
+    for (const k of [...this.drafts.keys()]) if (k.startsWith(`${id}|`)) this.drafts.delete(k);
   }
 
   async setKill(on) {
@@ -179,7 +230,7 @@ export class Desk {
   showTrace(storyId) {
     this.tab = "traces";
     this.render();
-    const g = this.root.querySelector(`[data-trace="${storyId}"]`);
+    const g = this.root.querySelector(`[data-trace="${CSS.escape(storyId)}"]`);
     g?.scrollIntoView({ block: "start" });
     g?.focus({ preventScroll: true });
   }
@@ -192,7 +243,8 @@ export class Desk {
     this.shownTab = this.tab;
     const tabs = [["stories", `Stories`, this.stories.length], ["audit", "Audit log"], ["traces", "Traces"]];
     const tabButton = ([id, label, n]) => h("button", {
-      type: "button", role: "tab", id: `tab-${id}`, "aria-controls": `panel-${id}`, "aria-selected": String(this.tab === id),
+      // only the selected tab's panel exists, so only that tab names it
+      type: "button", role: "tab", id: `tab-${id}`, "aria-controls": this.tab === id ? `panel-${id}` : null, "aria-selected": String(this.tab === id),
       tabindex: this.tab === id ? 0 : -1, "data-focus": `tab:${id}`, onclick: () => { this.tab = id; this.render(); },
       onkeydown: (e) => this.tabKeys(e, tabs.map((t) => t[0])),
     }, label, n !== undefined ? h("span", { className: "count" }, n) : null);
@@ -215,7 +267,8 @@ export class Desk {
       h("div", { className: "desk-body", role: "tabpanel", id: `panel-${this.tab}`, "aria-labelledby": `tab-${this.tab}`, tabindex: 0 }, body),
       h("footer", { className: "desk-foot" }, this.online
         ? "Your decisions are saved for this browser only. Other visitors see the original replay."
-        : "No server: decisions are kept in this tab only."),
+        : this.offline ? `Decisions are kept in this tab only. ${this.offline.replace(/^./, (c) => c.toUpperCase()).replace(/([^.])$/, "$1.")}`
+          : "No server: decisions are kept in this tab only."),
     ].filter(Boolean)); // replaceChildren would print a null as "null"
     this.root.querySelector(".desk-body").scrollTop = scroll;
     document.querySelector("#ai-off")?.toggleAttribute("hidden", !this.kill);
@@ -235,6 +288,7 @@ export class Desk {
   }
 
   renderStories() {
+    if (!this.loaded) return h("p", { className: "empty" }, "Loading stories.");
     if (!this.stories.length) {
       return h("p", { className: "empty" }, "No AI stories in this replay yet. The template graphics play on their own; stories appear here once the agents have run on the match.");
     }
@@ -264,11 +318,12 @@ export class Desk {
         h("span", { className: "tally" }, tallyText)),
       h("div", { className: "story-meta" },
         h("span", { className: `status st-${st}` }, STATUS[st] ?? st),
-        decided ? h("span", { className: "default" }, `default: ${(STATUS[s.default_status] ?? s.default_status).toLowerCase()}`) : null,
+        decided ? h("span", { className: "default" }, `default: ${String(STATUS[this.defaultStatus(s)] ?? this.defaultStatus(s)).toLowerCase()}`) : null,
+        s.safety === "flagged" && s.default_status === "auto_approved" ? h("span", { className: "default" }, "held: flagged by Content Safety") : null,
         h("span", { className: "risk", title: "Below 0.35 a story goes on air by itself" },
           `Risk ${risk.toFixed(2)}`,
           h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` })))),
-      editing ? this.renderEditor(s) : h("p", { className: "story-text", lang }, this.text(s, lang)),
+      editing ? this.renderEditor(s) : h("p", { className: "story-text", lang: this.textLang(s, lang) }, this.text(s, lang)),
       h("dl", { className: "checks" },
         h("div", {}, h("dt", {}, "Verifier"), h("dd", { className: `v-${v.status}` },
           `${VERIFIER[v.status] ?? v.status ?? "none"}`, v.attempts ? `, ${v.attempts} attempt${v.attempts > 1 ? "s" : ""}` : "")),
@@ -278,7 +333,7 @@ export class Desk {
       this.renderEvidence(s),
       editing ? null : h("div", { className: "actions" },
         act("approved", "Approve"), act("edited", "Edit"), act("rejected", "Reject"),
-        h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, "Show trace")));
+        this.traceGroups().has(id) ? h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, "Show trace") : null));
   }
 
   startEdit(s) {
@@ -290,17 +345,22 @@ export class Desk {
     const lang = this.state.lang, id = s.story_id;
     const counter = h("span", { className: "counter", id: `count-${id}` });
     const area = h("textarea", { lang, maxlength: EDIT_MAX, rows: 4, "aria-label": `Story text in ${LANGS[lang]}`, "aria-describedby": `count-${id}` });
-    area.value = this.text(s, lang);
+    // a draft survives a language switch and a failed save; each language keeps its own
+    area.value = this.drafts.get(`${id}|${lang}`) ?? this.text(s, lang);
     const count = () => { counter.textContent = `${area.value.length}/${EDIT_MAX}, ${LANGS[lang]}`; };
     count();
     const save = () => {
       const value = area.value.trim();
       if (!value) { this.note = "The text cannot be empty. Reject the story to keep it off air."; this.render(); return; }
-      const prev = this.decisions.get(id)?.edited_text ?? {};
-      this.decide(s, "edited", { ...prev, [lang]: value });
+      const texts = { ...(this.decisions.get(id)?.edited_text ?? {}) };
+      for (const l of Object.keys(LANGS)) {
+        const d = this.drafts.get(`${id}|${l}`)?.trim();
+        if (d && d !== this.text(s, l)) texts[l] = d;
+      }
+      this.decide(s, "edited", { ...texts, [lang]: value });
     };
-    const cancel = () => { this.editing = null; this.render(); };
-    area.addEventListener("input", count);
+    const cancel = () => { this.endEdit(id); this.render(); };
+    area.addEventListener("input", () => { this.drafts.set(`${id}|${lang}`, area.value); count(); });
     area.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); cancel(); }
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
@@ -312,10 +372,22 @@ export class Desk {
   }
 
   renderEvidence(s) {
-    const facts = (s.fact_ids ?? []).map((id) => this.factIndex.get(id) ?? { fact_id: id, label_en: "not in the ledger", missing: true });
-    const events = (s.evidence_event_ids ?? []).map((id) => this.eventIndex.get(id) ?? { event_id: id, missing: true });
+    const facts = list(s.fact_ids).map((id) => this.factIndex.get(id) ?? { fact_id: id, label_en: "not in the ledger", missing: true });
+    const events = list(s.evidence_event_ids).map((id) => this.eventIndex.get(id) ?? { event_id: id, missing: true });
     const det = h("details", { className: "evidence", ...(this.open.has(s.story_id) ? { open: true } : {}) },
-      h("summary", { "data-focus": `${s.story_id}:evidence` }, `Evidence: ${facts.length} fact${facts.length === 1 ? "" : "s"}, ${events.length} event${events.length === 1 ? "" : "s"}`),
+      h("summary", { "data-focus": `${s.story_id}:evidence` }, `Evidence: ${facts.length} fact${facts.length === 1 ? "" : "s"}, ${events.length} event${events.length === 1 ? "" : "s"}`));
+    // the body (and its pitch map) is built only once the evidence is open
+    const fill = () => { if (det.open && det.children.length === 1) det.append(...this.evidenceBody(s, facts, events)); };
+    det.addEventListener("toggle", () => {
+      if (det.open) this.open.add(s.story_id); else this.open.delete(s.story_id);
+      fill();
+    });
+    fill();
+    return det;
+  }
+
+  evidenceBody(s, facts, events) {
+    return [
       h("div", { className: "ev-grid" },
         this.miniPitch(s, facts, events),
         h("table", { className: "facts" },
@@ -326,9 +398,8 @@ export class Desk {
             h("td", { className: "num" }, f.missing ? "" : valueText(f))))))),
       events.length ? h("p", { className: "events" }, "Events ", events.map((e) => h("span", { className: "eid", title: e.missing ? "not in events.json" : `${e.type_name}, ${this.match.players[e.player_id]?.name ?? e.player_id}` },
         e.missing ? `${e.event_id}?` : `${e.event_id} ${e.type_name.replace(/_/g, " ")}`))) : null,
-      s.analysis_en ? h("p", { className: "analysis", lang: "en" }, h("b", {}, "Analyst: "), s.analysis_en) : null);
-    det.addEventListener("toggle", () => (det.open ? this.open.add(s.story_id) : this.open.delete(s.story_id)));
-    return det;
+      s.analysis_en ? h("p", { className: "analysis", lang: "en" }, h("b", {}, "Analyst: "), s.analysis_en) : null,
+    ].filter(Boolean);
   }
 
   // Where the evidence happened: event arrows from start to end, and the run behind a speed fact.
@@ -343,8 +414,9 @@ export class Desk {
       h("svg:rect", { x: 0, y: 24.84, width: 5.5, height: 18.32 }), h("svg:rect", { x: 99.5, y: 24.84, width: 5.5, height: 18.32 }));
     const marks = [];
     for (const f of facts) {
-      const i = this.match.index[f.player_id];
-      if (f.missing || i === undefined || !Array.isArray(f.source_frames) || f.source_events_ids?.length) continue;
+      // only a sprint fact's frames are its run; distance and sprint counts span the whole match so far
+      const i = this.match.index[f.player_id], span = list(f.source_frames);
+      if (f.missing || f.kind !== "sprint_speed" || i === undefined || span.length !== 2 || !(span[1] - span[0] <= RUN_MAX_FRAMES)) continue;
       const pts = [];
       for (let k = f.source_frames[0]; k <= f.source_frames[1]; k++) {
         const p = this.match.at(i, k / this.match.meta.fps);
@@ -373,7 +445,7 @@ export class Desk {
     const agents = fromApi.length ? fromApi : this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
       story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }));
     const directorAt = new Map(this.traces.filter((t) => t.agent === "director").flatMap((t) => this.traceStories(t).map((id) => [id, t.at])));
-    const auto = fromApi.some((r) => r.actor === "auto") ? [] : this.stories.filter((s) => s.default_status === "auto_approved")
+    const auto = fromApi.some((r) => r.actor === "auto") ? [] : this.stories.filter((s) => this.defaultStatus(s) === "auto_approved")
       .map((s) => ({ at: directorAt.get(s.story_id) ?? "", actor: "auto", action: "auto_approved", story_id: s.story_id, model: null,
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
     const humans = this.online ? this.auditRows.filter((r) => r.actor === "human") : this.localAudit;
@@ -412,43 +484,58 @@ export class Desk {
   // A trace row belongs to the stories in its story_ids; older replays without them fall back to
   // its story_id, else a story id named in its summaries, else the first story citing one of its facts.
   traceStories(t) {
-    const ids = (t.story_ids ?? []).filter((id) => this.byId.has(id));
+    const ids = list(t.story_ids).filter((id) => this.byId.has(id));
     if (ids.length) return ids;
     if (t.story_id) return [t.story_id];
     const named = `${t.input_summary} ${t.output_summary}`.match(/S-\d{6}/)?.[0];
     if (named && this.byId.has(named)) return [named];
-    return [this.stories.find((s) => (t.fact_ids ?? []).some((f) => s.fact_ids.includes(f)))?.story_id ?? null];
+    return [this.stories.find((s) => list(t.fact_ids).some((f) => list(s.fact_ids).includes(f)))?.story_id ?? null];
   }
 
   traceStory(t) { return this.traceStories(t)[0]; }
+
+  /** story_id ("" for the whole run) -> {rows, sum}. A hand-off shared by n stories is listed in each
+   *  group, and each group counts 1/n of its tokens, cost and time, so the groups add up to the run. */
+  traceGroups() {
+    if (this._groups?.traces === this.traces && this._groups.stories === this.stories) return this._groups.map;
+    const map = new Map();
+    for (const t of this.traces) {
+      const ids = this.traceStories(t).map((id) => id ?? "");
+      for (const k of ids) {
+        if (!map.has(k)) map.set(k, { rows: [], sum: { tokens: 0, cost: 0, ms: 0 } });
+        const g = map.get(k);
+        g.rows.push({ t, shared: ids.length });
+        g.sum.tokens += ((t.tokens_in ?? 0) + (t.tokens_out ?? 0)) / ids.length;
+        g.sum.cost += (t.cost_usd ?? 0) / ids.length;
+        g.sum.ms += (t.latency_ms ?? 0) / ids.length;
+      }
+    }
+    for (const g of map.values()) g.rows.sort((a, b) => a.t.seq - b.t.seq);
+    this._groups = { traces: this.traces, stories: this.stories, map };
+    return map;
+  }
 
   renderTraces() {
     const legend = h("ol", { className: "pipeline", "aria-label": "How a story is made" },
       AGENTS.map(([id, name, how, role]) => h("li", { "data-agent": id }, h("b", {}, name), h("span", { className: "how" }, how), h("span", { className: "role" }, role))));
     if (!this.traces.length) return [legend, h("p", { className: "empty" }, "No agent traces in this replay yet.")];
-    const groups = new Map();
-    for (const t of this.traces) {
-      for (const k of this.traceStories(t).map((id) => id ?? "")) {
-        if (!groups.has(k)) groups.set(k, []);
-        groups.get(k).push(t);
-      }
-    }
-    return [legend, [...groups].map(([sid, rows]) => {
-      rows.sort((a, b) => a.seq - b.seq);
+    return [legend, [...this.traceGroups()].map(([sid, { rows, sum }]) => {
       const s = this.byId.get(sid);
-      const sum = (k) => rows.reduce((n, r) => n + (r[k] ?? 0), 0);
+      const shared = rows.filter((x) => x.shared > 1).length;
       return h("section", { className: "trace", "data-trace": sid, tabindex: -1, "aria-labelledby": `t-${sid || "run"}` },
         h("h3", { id: `t-${sid || "run"}` }, s ? `${this.match.clock(s.ts).minute}' ${kindName(s.kind)}` : "Whole run",
           s ? h("button", { type: "button", className: "link", onclick: () => this.showStory(sid) }, "Show story") : null),
-        h("p", { className: "trace-sum" }, `${rows.length} hand-offs, ${int(sum("tokens_in") + sum("tokens_out"))} tokens, ${usd(sum("cost_usd"))}, ${(sum("latency_ms") / 1000).toFixed(1)} s`),
-        h("ol", { className: "chain" }, rows.map((r) => h("li", { "data-agent": r.agent, className: /fail/.test(r.output_summary) ? "failed" : "" },
+        h("p", { className: "trace-sum" }, `${rows.length} hand-offs, ${int(Math.round(sum.tokens))} tokens, ${usd(sum.cost)}, ${(sum.ms / 1000).toFixed(1)} s`,
+          shared ? `, counting this story's share of the ${shared} shared with other stories` : ""),
+        h("ol", { className: "chain" }, rows.map(({ t: r, shared: n }) => h("li", { "data-agent": r.agent, className: traceFailed(r) ? "failed" : "" },
           h("div", { className: "step-head" }, h("b", {}, AGENT[r.agent]?.name ?? r.agent), h("span", { className: "step" }, r.step),
             h("span", { className: "how" }, r.model ?? (AGENT[r.agent]?.how === "Rules" ? "rules, no model" : "code, no model"))),
-          h("p", { className: "io" }, h("span", { className: "io-k" }, "In"), r.input_summary),
-          h("p", { className: "io" }, h("span", { className: "io-k" }, "Out"), r.output_summary),
+          h("p", { className: "io" }, h("span", { className: "io-k" }, "In"), summaryText(r.input_summary)),
+          h("p", { className: "io" }, h("span", { className: "io-k" }, "Out"), summaryText(r.output_summary)),
           h("p", { className: "step-meta" },
-            r.tokens_in ? `${int(r.tokens_in)} in, ${int(r.tokens_out)} out` : "0 tokens", `, ${int(r.latency_ms)} ms`, r.cost_usd ? `, ${usd(r.cost_usd)}` : ""),
-          r.fact_ids?.length ? h("p", { className: "fids" }, r.fact_ids.map((f) => h("span", { className: "fid" }, f))) : null))));
+            r.tokens_in ? `${int(r.tokens_in)} in, ${int(r.tokens_out)} out` : "0 tokens", `, ${int(r.latency_ms)} ms`, r.cost_usd ? `, ${usd(r.cost_usd)}` : "",
+            n > 1 ? `, shared by ${n} stories` : ""),
+          list(r.fact_ids).length ? h("p", { className: "fids" }, list(r.fact_ids).map((f) => h("span", { className: "fid" }, f))) : null))));
     })];
   }
 
@@ -460,8 +547,16 @@ export class Desk {
     el?.querySelector(".minute")?.focus({ preventScroll: true });
   }
 
+  /** The drawer (narrow screens) is modal: the page behind leaves the tab order while it is open. */
+  setDrawer(open) {
+    document.body.classList.toggle("desk-open", open);
+    document.querySelector("#app").inert = open;
+    for (const [k, v] of [["role", "dialog"], ["aria-modal", "true"]]) if (open) this.root.setAttribute(k, v); else this.root.removeAttribute(k);
+    document.querySelector("#desk-open")?.setAttribute("aria-expanded", String(open));
+  }
+
   closeDrawer() {
-    document.body.classList.remove("desk-open");
+    this.setDrawer(false);
     const b = document.querySelector("#desk-open");
     b?.setAttribute("aria-expanded", "false");
     b?.focus();

@@ -14,4 +14,6 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e '.[dev,agents]'  # tests/test_agents.py imports the Agent Framework
+      # the seed build lets tests/test_replays.py check the committed packs (it fails, not skips, under CI)
+      - run: python -m studiodesk.sim build --matches 4 --seed 7 && python -m studiodesk.facts build --all
       - run: pytest -q
