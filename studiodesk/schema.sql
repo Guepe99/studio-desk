@@ -175,11 +175,15 @@ CREATE TABLE IF NOT EXISTS audit (
   detail     TEXT NOT NULL DEFAULT '{}'
 ) STRICT;
 
+-- each desk POST counts the session's actions; the agents' rows are read per match
+CREATE INDEX IF NOT EXISTS audit_session ON audit(session_id, actor);
+
 CREATE TABLE IF NOT EXISTS sessions (
   session_id  TEXT PRIMARY KEY,
   created_at  TEXT NOT NULL,
   kill_switch INTEGER NOT NULL DEFAULT 0
 ) STRICT;
+CREATE INDEX IF NOT EXISTS sessions_created ON sessions(created_at);
 
 CREATE TABLE IF NOT EXISTS session_decisions (
   session_id  TEXT NOT NULL REFERENCES sessions(session_id),

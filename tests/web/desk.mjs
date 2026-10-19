@@ -7,7 +7,9 @@
 // until approved and is after; reject takes an auto-approved story off air; an edit replaces the
 // why-card body; the AI switch leaves only template graphics; Space inside the desk never toggles
 // play; Italian and Spanish texts on the desk and the graphic; decisions survive a reload and do
-// not reach another visitor; the audit log lists them. Screenshots: out/shots/desk-*.png.
+// not reach another visitor; the audit log lists them; the editor shows all three languages and an
+// unchanged save is an approval; controls are disabled while a save is in flight; the Approve, Edit
+// and Reject buttons name their story. Screenshots: out/shots/desk-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -50,11 +52,14 @@ const onAirAt = async (page, s, audience = "analyst") => {
   return (await live(page)).find((x) => x.story === s.story_id) ?? null;
 };
 const card = (s) => `#story-${s.story_id}`;
+// the desk is connected and no save is in flight: its controls are enabled again
+const settled = (page) => page.waitForFunction(() => { const d = window.studioDesk.desk; return d.ready && !d.busy; }, null, { timeout: 5000 });
 const decide = async (page, s, cls) => {
   await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"),
     page.click(`${card(s)} .${cls}`),
   ]);
+  await settled(page);
 };
 
 async function scenario(browser, w, h) {
@@ -95,7 +100,11 @@ async function scenario(browser, w, h) {
   if (phone) {
     expect(await page.$eval("#desk", (el) => getComputedStyle(el).visibility) === "hidden", `${tag}: drawer open before the Desk button`);
     expect(await page.$eval("#desk-open .count", (el) => el.textContent) === "3", `${tag}: Desk badge does not say 3 waiting`);
+    expect(await page.$eval("#desk-open", (el) => el.getAttribute("aria-label")) === "Desk, 3 waiting for review", `${tag}: Desk button name`);
+    expect(await page.$eval("#desk-open .off", (el) => el.hidden), `${tag}: Desk button says offline while online`);
   }
+  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Approve: Key pass at minute \d+/.test(l)),
+    `${tag}: Approve does not name its story`);
 
   // 1. held until approved
   expect(!(await onAirAt(page, HELD)), `${tag}: ${HELD.story_id} needs review but its graphic is on air`);
@@ -117,17 +126,22 @@ async function scenario(browser, w, h) {
   expect(await page.$$eval(`${card(HELD)} .mini line.ev`, (n) => n.length) > 0, `${tag}: evidence pitch has no event arrow`);
   await decide(page, HELD, "act-approved");
   expect((await onAirAt(page, HELD)) !== null, `${tag}: ${HELD.story_id} approved but its graphic is not on air`);
+  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "On air", `${tag}: approved story not marked On air`);
   await shoot("approved");
   await shootAir("approved");
 
   // 2. edit replaces the why-card body for this visitor
   await openDesk();
   await page.click(`${card(AUTO)} .act-edited`);
-  await page.fill(`${card(AUTO)} textarea`, EDIT);
+  const areas = await page.$$eval(`${card(AUTO)} textarea`, (n) => n.map((x) => [x.lang, x.value]));
+  expect(JSON.stringify(areas) === JSON.stringify(["en", "it", "es"].map((l) => [l, AUTO.texts[l]])), `${tag}: editor languages ${JSON.stringify(areas)}`);
+  expect(await page.evaluate(() => document.activeElement?.lang) === "en", `${tag}: Edit did not focus the English text`);
+  await page.fill(`${card(AUTO)} textarea[lang="en"]`, EDIT);
   await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"),
     page.click(`${card(AUTO)} .ctl.primary`),
   ]);
+  await settled(page);
   const edited = await onAirAt(page, AUTO);
   expect(edited?.body === EDIT, `${tag}: edited body not on the graphic (${edited?.body})`);
   expect(await page.$eval(`${card(AUTO)} .story-text`, (el) => el.textContent) === EDIT, `${tag}: edited text not on the card`);
@@ -151,6 +165,7 @@ async function scenario(browser, w, h) {
 
   // 5. AI off: only template graphics
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/kill")), page.click("#ai-switch")]);
+  await settled(page);
   expect(!(await onAirAt(page, HELD)), `${tag}: AI off but approved ${HELD.story_id} on air`);
   for (const ts of [whyCue(SWING).ts + 2, TEMPLATE_TS]) {
     await seekTo(page, ts);
@@ -164,6 +179,7 @@ async function scenario(browser, w, h) {
   await shootAir("kill");
   await openDesk();
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/kill")), page.click("#ai-switch")]);
+  await settled(page);
   expect((await onAirAt(page, HELD)) !== null, `${tag}: AI back on but ${HELD.story_id} not on air`);
 
   // 6. traces from a story card
@@ -249,32 +265,43 @@ async function edges(browser) {
   await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
   expect(await page.evaluate(() => window.studioDesk.state.ts > 0.5 && !window.studioDesk.desk.online) && Date.now() - t0 < 4000,
     "edges: the replay waits for a hanging API");
-  await page.waitForFunction(() => /did not answer in time/.test(document.querySelector(".desk-foot")?.textContent ?? ""), null, { timeout: 8000 })
+  // until the desk knows this visitor's decisions, nothing can be pressed
+  expect(await page.$eval("#ai-switch", (el) => el.disabled) && await page.$eval(`${card(AUTO)} .act-rejected`, (el) => el.disabled),
+    "edges: desk controls enabled before the server answered");
+  // three tries of 4 s with short pauses between them
+  await page.waitForFunction(() => /did not answer in time/.test(document.querySelector(".desk-foot")?.textContent ?? ""), null, { timeout: 25000 })
     .catch(() => fail("edges: no timeout note in the desk footer"));
+  expect(Date.now() - t0 > 11000, "edges: the desk went offline after a single try");
+  expect(!(await page.$eval("#ai-switch", (el) => el.disabled)), "edges: offline desk stays disabled");
   await page.context().close();
 
   // 2. a refused edit keeps the editor and the draft, with a readable reason; a draft survives a language switch
   page = await newPage();
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
+  // an unchanged save is an approval, not an edit
+  let sent = null;
+  page.on("request", (r) => { if (r.url().includes("/api/decisions") && r.method() === "POST") sent = r.postDataJSON(); });
+  await page.click(`${card(SWING)} .act-edited`);
+  await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(SWING)} .ctl.primary`)]);
+  await settled(page);
+  expect(sent?.decision === "approved" && !sent?.edited_text, `edges: unchanged save sent ${JSON.stringify(sent)}`);
   await page.click(`${card(AUTO)} .act-edited`);
-  await page.fill(`${card(AUTO)} textarea`, "Draft in English");
-  await page.selectOption("#lang", "it");
-  await page.fill(`${card(AUTO)} textarea`, "Bozza in italiano");
-  await page.selectOption("#lang", "en");
-  expect(await page.inputValue(`${card(AUTO)} textarea`) === "Draft in English", "edges: the English draft did not survive a language switch");
+  await page.fill(`${card(AUTO)} textarea[lang="en"]`, "Draft in English");
+  await page.fill(`${card(AUTO)} textarea[lang="it"]`, "Bozza in italiano");
+  await page.selectOption("#lang", "es");
+  expect(await page.inputValue(`${card(AUTO)} textarea[lang="en"]`) === "Draft in English", "edges: the English draft did not survive a language switch");
   await page.route("**/api/decisions", (r) => (r.request().method() === "POST"
     ? r.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: [{ msg: "pattern" }] }) }) : r.continue()));
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
-  await page.waitForTimeout(200);
-  expect(await page.inputValue(`${card(AUTO)} textarea`).catch(() => null) === "Draft in English", "edges: a refused edit lost the editor or the draft");
+  await settled(page);
+  expect(await page.inputValue(`${card(AUTO)} textarea[lang="en"]`).catch(() => null) === "Draft in English", "edges: a refused edit lost the editor or the draft");
   expect(/character the desk does not accept/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
   expect(await rule(page, "return d.status(s)", AUTO.story_id) === "auto_approved", "edges: a refused edit stayed as a decision");
   await page.unroute("**/api/decisions");
-  let sent = null;
-  page.on("request", (r) => { if (r.url().includes("/api/decisions") && r.method() === "POST") sent = r.postDataJSON(); });
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
-  expect(sent?.edited_text?.en === "Draft in English" && sent?.edited_text?.it === "Bozza in italiano", `edges: saved texts ${JSON.stringify(sent?.edited_text)}`);
+  expect(sent?.edited_text?.en === "Draft in English" && sent?.edited_text?.it === "Bozza in italiano" && !("es" in sent.edited_text),
+    `edges: saved texts ${JSON.stringify(sent?.edited_text)}`);
   // the response reaches Playwright before the page has handled it
   expect(await page.waitForSelector(`${card(AUTO)} textarea`, { state: "detached", timeout: 3000 }).then(() => true, () => false),
     "edges: editor still open after a saved edit");

@@ -56,7 +56,7 @@ Tests run offline and never call a paid service: `.venv/bin/pytest -q` (196 test
 
 ## Deployment
 
-One container on Azure Container Apps (consumption plan, one replica), with its image on GitHub Container Registry. The container reaches Foundry through a managed identity. Live agent runs are disabled for visitors: the replays show agent output recorded on Azure.
+One container on Azure Container Apps (consumption plan, one replica), with its image on GitHub Container Registry. The container reaches Foundry through a managed identity. Live agent runs are disabled for visitors: the replays show agent output recorded on Azure. Visitors' desk decisions are kept per session inside the container (runtime.sqlite), so a new revision starts them afresh.
 
 ## How it was built
 

@@ -7,7 +7,8 @@
 // at 1x a clip starts when an auto-approved story's cue goes on air; seeking stops it; a held
 // story stays silent until approved on the desk, then speaks; the AI switch stops a clip; an
 // edited story and 4x stay silent; a stale text_sha1 is never played; one Audio element plays every
-// clip; a language switch stops the clip; a flagged story never speaks; a refused play() turns the
+// clip; a language switch stops the clip; a casual-fan card in other words stays silent; a flagged
+// story never speaks; a refused play() turns the
 // button off; the speaker icon is painted, off and on (convex paths, pixels in the icon colour).
 // The fake clips are removed at the end. Screenshots of the controls bar at 1440 and 390 px:
 // out/shots/voice-*.png.
@@ -49,7 +50,9 @@ const cleanup = () => {
   rmSync(path.join(demo, "voice"), { recursive: true, force: true });
 };
 process.on("exit", cleanup);
-const firstCue = (s) => Math.min(...cues.filter((c) => c.story_id === s.story_id && c.audience === "analyst" && c.lang === "en").map((c) => c.ts));
+// a story speaks on its card: the why_card that shows the text its clip says
+const card = (s, audience = "analyst") => cues.find((c) => c.story_id === s.story_id && c.graphic === "why_card" && c.audience === audience && c.lang === "en");
+const firstCue = (s) => card(s).ts;
 
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
@@ -185,6 +188,14 @@ await playFrom(firstCue(AUTO), 1);
 v = await voice();
 expect(v.sid === AUTO.story_id && v.playing && await page.evaluate(() => window.studioDesk.voice.audio === window.firstAudio),
   "the same Audio element plays the next clip");
+
+// the casual fan's card says the story in other words: the clip would not match it, so silence
+const casual = card(AUTO, "casual");
+if (casual?.payload.body === AUTO.texts.en) throw new Error("DEMO casual card now says the story text: update voice.mjs");
+await page.click('[data-audience="casual"]');
+await playFrom(casual.ts, 1);
+expect((await voice()).sid === null, "casual audience: a card in other words stays silent");
+await page.click('[data-audience="analyst"]');
 
 // a language switch stops the clip; the story has no Italian clip, so it stays silent in Italian
 await page.selectOption("#lang", "it");
