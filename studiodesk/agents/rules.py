@@ -9,7 +9,7 @@ import unicodedata
 
 from .. import config, names
 from ..export import DURATION
-from ..facts.engine import formation_name
+from ..facts.engine import formation_name, shot_outcome
 
 LANGS = ("en", "it", "es")
 MUST_TELL = {"goal", "comeback", "recap"}
@@ -70,7 +70,7 @@ TEMPLATES = {
                    "Grande occasione per {player}: tiro a {v} km/h, {outcome}.",
                    "Ocasión clara para {player}: disparo a {v} km/h, {outcome}."),
     "top_sprint": ("{player} sprints at {v} km/h.", "{player} scatta a {v} km/h.", "{player} esprinta a {v} km/h."),
-    "momentum_swing": ("{team} take over: momentum {v}/10.", "{team} prende il controllo: momentum {v}/10.",
+    "momentum_swing": ("{team} take over: momentum {v}/10.", "{team} prende in mano l'inerzia della partita: {v}/10.",
                        "{team} toma el control: dominio {v}/10."),
     "pressing_spell": ("{team} press high: intensity {v}/10.", "{team} pressa alto: intensità {v}/10.",
                        "{team} presiona arriba: intensidad {v}/10."),
@@ -86,10 +86,10 @@ TEMPLATES = {
                   " Passaggi riusciti: {home} {acc_h}%, {away} {acc_a}%.",
                   " Pases completados: {home} {acc_h}%, {away} {acc_a}%."),
 }
-# What happened to a shot that did not go in, from its events (shot_outcome); writers get the English word.
-OUTCOMES = {"saved": ("saved", "parato", "parado por el portero"), "wide": ("wide", "a lato", "desviado"),
-            "over": ("over the bar", "alto", "por encima del larguero"), "blocked": ("blocked", "murato", "bloqueado")}
-GOAL_Y = (34 - 3.66, 34 + 3.66)  # the posts
+# What happened to a shot, from its events (facts.engine.shot_outcome), in each writer's language.
+OUTCOMES = {"goal": ("goal", "gol", "gol"), "saved": ("saved", "parato", "parado por el portero"),
+            "wide": ("wide", "a lato", "desviado"), "over": ("over the bar", "alto", "por encima del larguero"),
+            "blocked": ("blocked", "respinto da un difensore", "rechazado por un defensa")}
 MAIN_KIND = {"goal": "shot_speed", "big_chance": "shot_speed", "top_sprint": "sprint_speed",
              "momentum_swing": "momentum", "pressing_spell": "press_intensity", "tactical_shift": "line_height"}
 
@@ -204,7 +204,9 @@ def _cand(kind, ts, facts, team_id=None, player_id=None, note="", **extra):
 
 
 def goal_candidates(m, score_fact):
-    """A goal, and a comeback when the scoring team had been behind and is now level or ahead."""
+    """A goal, and a comeback when the scoring team trailed just before this goal and is now level
+    (RULES: a team that was behind is now level or ahead). One goal moves the score by one, so a
+    comeback fires once per deficit, at the equaliser, and never again on the goals after it."""
     shot = [f for kind in ("shot_speed", "shot_distance") for f in m.kind(kind)
             if f["source_event_ids"] == score_fact["source_event_ids"]]
     out = [_cand("goal", score_fact["ts"], [score_fact, *shot], score_fact["team_id"], score_fact["player_id"],
@@ -212,8 +214,8 @@ def goal_candidates(m, score_fact):
     tid = score_fact["team_id"]
     other = next(t for t in m.teams if t != tid)
     now, goals = m.score_at(score_fact["ts"])
-    was_behind = any(m.score_at(g["ts"])[0][tid] < m.score_at(g["ts"])[0][other] for g in goals if g is not score_fact)
-    if was_behind and now[tid] - now[other] in (0, 1):
+    was_behind = now[tid] - 1 < now[other]  # the score just before this goal
+    if was_behind and now[tid] >= now[other]:
         out.append(_cand("comeback", score_fact["ts"], goals, tid, None,
                          note=f"was behind, now {now[tid]}-{now[other]}"))
     return out
@@ -231,17 +233,6 @@ def _line_delta(line, w):
     if len(line) < 5 or line[-1]["ts"] != w:
         return None
     return (line[-1]["value"] + line[-2]["value"]) / 2 - sum(f["value"] for f in line[-5:-2]) / 3
-
-
-def shot_outcome(shot, saves=()):
-    """What happened to a shot that did not go in: saved (a keeper_save answers it), wide or over (it
-    reached the goal line outside or between the posts), or blocked (it stopped short)."""
-    if any(s.get("related_player_id") == shot["player_id"] and 0 <= s["ts"] - shot["ts"] <= 5 for s in saves):
-        return "saved"
-    line = 105.0 if shot["end_x"] > 52.5 else 0.0
-    if abs(shot["end_x"] - line) < 0.05:
-        return "over" if GOAL_Y[0] <= shot["end_y"] <= GOAL_Y[1] else "wide"
-    return "blocked"
 
 
 def window_candidates(m, w0, w, shots, shifted, saves=()):
@@ -264,7 +255,7 @@ def window_candidates(m, w0, w, shots, shifted, saves=()):
     for f, d, e in sorted(chances, key=lambda c: -c[0]["value"])[:2]:
         outcome = shot_outcome(e, saves)
         out.append(_cand("big_chance", f["ts"], [f] + ([d] if d else []), f["team_id"], f["player_id"],
-                         note=f["label_en"] + (f", {d['label_en'].lower()}" if d else "") + f", {OUTCOMES[outcome][0]}",
+                         note=f["label_en"] + (f", {d['label_en'].lower()}" if d else f", {OUTCOMES[outcome][0]}"),
                          outcome=outcome, header=e.get("bodypart_name") == "head"))
     period = 2 if m.p1 is not None and w > m.p1 + 1e-6 else 1
     in_period = lambda f: f["period"] == period  # noqa: E731
@@ -333,14 +324,18 @@ _UNIT.update(dict.fromkeys(("per cent", "percent", "per cento", "por ciento"), "
 _UNIT.update(dict.fromkeys(("out of 10", "su 10", "sobre 10"), "ten"))
 _FAMILY = {"km/h": "speed", "m": "m", "%": "pct", "/10": "ten"}
 _ORDINAL = ("st", "nd", "rd", "th", "º", "ª", "°")
+# a number starts at any digit that does not continue another number ("No.7" and "x3" are numbers)
+_LB = r"(?<!\d)(?<!\d[.,])"
 _NUM = re.compile(
-    r"(?<![\w.,])(\d+(?:[.,]\d+)?)(?:st|nd|rd|th|º|ª|°)?\s*("
+    _LB + r"(\d+(?:[.,]\d+)?)(?:st|nd|rd|th|º|ª|°)?\s*("
     + "|".join(sorted(map(re.escape, _UNIT), key=len, reverse=True)).replace(r"/10", r"/\s?10")
     + r")?(?![\w])", re.IGNORECASE)
 # a digit run glued to letters ("96kmh") hides its unit from _NUM; only ordinals and known units may touch it
-_GLUED = re.compile(r"(?<![\w.,])\d+(?:[.,]\d+)?([^\W\d_]+)")
+_GLUED = re.compile(_LB + r"\d+(?:[.,]\d+)?([^\W\d_]+)")
+# letters glued in front of a number ("x3", "No7"): a count or a shirt number no fact gives
+_LEAD_GLUED = re.compile(r"[^\W\d_]+\.?\d")
 # a unit the ledger never uses: the number is a claim the code cannot check
-_ALIEN = re.compile(r"(?<![\w.,])\d+(?:[.,]\d+)?\s*(mph|miles?|yards?|yds?|feet|foot|ft|m/s|kmh|km/hr|goals?|goles|"
+_ALIEN = re.compile(_LB + r"\d+(?:[.,]\d+)?\s*(mph|miles?|yards?|yds?|feet|foot|ft|m/s|kmh|km/hr|goals?|goles|"
                     r"seconds?|secs?|segundos?|secondi)\b", re.IGNORECASE)
 # numbers written in words: the code cannot check them, so the writers use digits only
 _TENS = {"it": "venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta",
@@ -362,81 +357,132 @@ _SPELLED = {lang: re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, w.split()))
 # football words that hold a number word but claim no number
 _NOT_A_NUMBER = re.compile(r"\bsix-yard\b|\b(?:final|attacking|defensive|middle) third\b|\bultimo terzo\b", re.IGNORECASE)
 # three or more numbers joined by hyphens: a formation (single digits adding up to 10) or a glued mess ("73-2-2")
-_CHAIN = re.compile(r"(?<![\w.,])\d+(?:-\d+){2,}(?![\w.,]\d)")
-GENERIC = (0.0, 45.0, 90.0)
-_FACT_ID = re.compile(r"F-[A-Z_]+-\d+")
+_CHAIN = re.compile(_LB + r"\d+(?:-\d+){2,}(?![\w.,]\d)")
+_FACT_ID = re.compile(r"F-[A-Z_]+-\d+", re.IGNORECASE)
+_CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]", re.IGNORECASE)
 
 
 def _family(unit):
     return _UNIT[re.sub(r"\s+", " ", unit.lower()).replace("/ 10", "/10")] if unit else None
 
 
+def _formation(chain):
+    """442.0 for "4-4-2"; None when the chain is not a formation (single digits adding up to 10)."""
+    parts = chain.split("-")
+    return float("".join(parts)) if all(len(p) == 1 for p in parts) and sum(map(int, parts)) == 10 else None
+
+
+def normalise(text):
+    """NFKC (superscript and full-width digits become plain digits) and every decimal digit as ASCII,
+    keeping the Spanish ordinals º and ª, which NFKC would turn into letters."""
+    text = "".join(ch if ch in "ºª" else unicodedata.normalize("NFKC", ch) for ch in str(text))
+    return re.sub(r"\d", lambda mt: str(unicodedata.decimal(mt.group(0), 0)), text)
+
+
+def strip_citations(text):
+    """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
+    text = _FACT_ID.sub("", _CITATION.sub("", text))
+    return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*\)|\[\s*\]", "", text)).strip()
+
+
 def allowed_numbers(facts, minutes=()):
-    """(value, family) pairs a text about these facts may contain. Family None means unitless only.
+    """(value, family) pairs a text about these facts may contain. Family None means a bare number,
+    which must match exactly; "formation" is a shape like 4-4-2 (value 442).
     `minutes` are (display minute, period); one in stoppage time is allowed as "45+2" (45 and 2), not as 47."""
-    out = [(v, None) for v in GENERIC]
+    out = []
     for mi, period in minutes:
         out += [(float(x), None) for x in stoppage(mi, period).split("+")]
     for f in facts:
-        fam = _FAMILY.get(f["unit"])
+        fam = "formation" if f["unit"] == "formation" else _FAMILY.get(f["unit"])
         out.append((f["value"], fam))
         if fam == "m":
             out.append((f["value"] / 1000, "km"))
         if fam == "ten":
             out.append((10.0, None))
-        for mt in _NUM.finditer(_FACT_ID.sub("", display_label(f))):  # label numbers keep their own unit
+        label = _CHAIN.sub("", _FACT_ID.sub("", display_label(f)))  # a formation in a label is not three numbers
+        for mt in _NUM.finditer(label):  # label numbers keep their own unit
             out.append((float(mt.group(1).replace(",", ".")), _family(mt.group(2))))
     return out
 
 
-def check_numbers(text, allowed, lang="en"):
-    """Flags for every number in text that is not in the ledger, with rounding tolerance and units,
-    and for numbers written in words, glued to letters or followed by a unit the ledger does not use."""
+def check_numbers(text, allowed, lang="en", ids=()):
+    """Flags for every number in text that is not in the ledger: a number with a unit within rounding of
+    a fact with that unit, a bare number exactly equal to one, a formation exactly one of the story's.
+    Also numbers written in words, glued to letters or followed by a unit the ledger does not use, and
+    cited fact ids that are not among the story's (`ids`). Every flag starts with a fixed reason."""
+    text = normalise(text)
+    flags = [f"cited fact not in the story: '{mt.group(0)}'" for mt in _FACT_ID.finditer(text)
+             if mt.group(0).upper() not in ids]
     text = _FACT_ID.sub("", text)  # cited fact ids are not numbers
-    flags = [f"number in words: '{w}' (write digits from the facts)"
-             for w in _SPELLED[lang].findall(_NOT_A_NUMBER.sub("", text))]
-    flags += [f"garbled numbers: '{mt.group(0)}'" for mt in _CHAIN.finditer(text)
-              if not (all(len(p) == 1 for p in mt.group(0).split("-")) and sum(map(int, mt.group(0).split("-"))) == 10)]
+    flags += [f"number in words: '{w}' (write digits from the facts)"
+              for w in _SPELLED[lang].findall(_NOT_A_NUMBER.sub("", text))]
+    shapes = {v for v, fam in allowed if fam == "formation"}
+    chains = list(_CHAIN.finditer(text))
+    for mt in chains:
+        shape = _formation(mt.group(0))
+        if shape is None:
+            flags.append(f"garbled numbers: '{mt.group(0)}'")
+        elif shape not in shapes:
+            flags.append(f"formation not in the facts: '{mt.group(0)}'")
     alien = list(_ALIEN.finditer(text))
     flags += [f"unit not in the facts: '{mt.group(0)}'" for mt in alien]
     skip = {mt.start() for mt in alien}
+    in_chain = lambda i: any(c.start() <= i < c.end() for c in chains)  # noqa: E731
     flags += [f"unit glued to a number: '{mt.group(0)}'" for mt in _GLUED.finditer(text)
               if mt.start() not in skip and mt.group(1).lower() not in _ORDINAL and mt.group(1).lower() not in _UNIT]
+    flags += [f"letters glued to a number: '{mt.group(0)}'" for mt in _LEAD_GLUED.finditer(text)]
     for mt in _NUM.finditer(text):
-        if mt.start() in skip:
+        if mt.start() in skip or in_chain(mt.start()):
             continue
         raw, unit = mt.group(1), mt.group(2)
         x = float(raw.replace(",", "."))
         decimals = len(raw.split(",")[-1] if "," in raw else raw.split(".")[-1]) if re.search(r"[.,]", raw) else 0
         tol = 0.5 * 10 ** -decimals + 1e-9
         fam = _family(unit)
-        near = [(v, f) for v, f in allowed if abs(x - v) <= tol]
-        if fam is None and near:
+        if fam is None:  # a bare number claims nothing about what it measures: it must be one of the story's
+            if any(f not in ("formation", "km") and abs(x - v) < 1e-6 for v, f in allowed):
+                continue
+            flags.append(f"number not in the facts: '{mt.group(0).strip()}'")
             continue
-        if fam is not None and any(f == fam for _, f in near):
+        near = [(v, f) for v, f in allowed if abs(x - v) <= tol]
+        if any(f == fam for _, f in near):
             continue
         shown = mt.group(0).strip()
-        if fam is not None and any(f for _, f in near):
+        if any(f for _, f in near):
             flags.append(f"unit mismatch: '{shown}' (ledger: {', '.join(sorted({f for _, f in near if f}))})")
         else:
             flags.append(f"number not in the facts: '{shown}'")
     return flags
 
 
-def check_text(text, allowed, lang="en"):
-    """All rule checks on one text: numbers against the ledger, then forbidden real names. The flag
-    never repeats the name, because flags are shown to people."""
-    return check_numbers(text, allowed, lang) + ["forbidden name (real person or club)"] * bool(names.find_forbidden(text))
+def check_text(text, allowed, lang="en", ids=()):
+    """All rule checks on one text: numbers against the ledger, cited fact ids against the story's
+    (`ids`), then forbidden real names. The flag never repeats the name, because flags are shown to people."""
+    return check_numbers(text, allowed, lang, ids) + ["forbidden name (real person or club)"] * bool(
+        names.find_forbidden(text))
 
 
-def story_minutes(m, story):
-    return {(m.minute_of(f), f["period"]) for f in story["facts"]} | {(story["minute"], m.period_of(story["ts"]))}
+def story_facts(story, cited=True):
+    """The story's own facts and the ones the analyst cited (the analysis may quote those; the lines,
+    graphics and templates use only the story's own)."""
+    return story["facts"] + (story.get("cited", []) if cited else [])
 
 
-def story_allowed(m, story):
-    """Numbers a text about this story may use: its facts, its minutes and the score at that moment."""
+def story_minutes(m, story, cited=False):
+    return ({(m.minute_of(f), f["period"]) for f in story_facts(story, cited)}
+            | {(story["minute"], m.period_of(story["ts"]))})
+
+
+def story_allowed(m, story, cited=False):
+    """Numbers a text about this story may use: its facts (and, for the analysis, the cited ones), their
+    minutes and the score at that moment (also 0-0, which has no goal fact)."""
     _, goals = m.score_at(story["ts"])
-    return allowed_numbers(story["facts"] + goals, story_minutes(m, story))
+    score = [(float(x), None) for x in m.lead(story["ts"])[1].split("-")]
+    return allowed_numbers(story_facts(story, cited) + goals, story_minutes(m, story, cited)) + score
+
+
+def story_ids(story):
+    return {f["fact_id"] for f in story_facts(story)}
 
 
 def text_facts(story):
@@ -481,22 +527,34 @@ def number_list(m, story, lang="en"):
     return list(dict.fromkeys(out))
 
 
-# Distance words and the shot distances (m from the goal centre) at which they are true.
+# Distance words and the shot distances (m from the goal centre) at which they are true. Long-range
+# words also need the shot label to say "outside the box" (a shot from 18 m out wide can be inside it).
 DISTANCE_WORDS = [
     (r"six[- ]yard|area piccola|área pequeña|área chica", 0.0, 7.0),
     (r"close[- ]range|point[- ]blank|tap[- ]in|ravvicinat\w*|bruciapelo|da pochi passi|bocajarro|quemarropa|boca de gol",
      0.0, 11.0),
     (r"edge of the (?:box|area)|dal limite|limite dell'area|borde del área|frontal del área", 14.0, 26.0),
-    (r"from (?:distance|range|outside)|long[- ]range|outside the (?:box|area)|da fuori|dalla distanza|da lontano|"
-     r"fuori area|fuori dall'area|desde fuera|desde lejos|lejano|larga distancia|media distancia|fuera del área",
-     16.5, 999.0),
 ]
+LONG_RANGE = (r"from (?:distance|range|outside)|long[- ]range|outside the (?:box|area)|da fuori|dalla distanza|"
+              r"da lontano|fuori area|fuori dall'area|desde fuera|desde lejos|lejano|larga distancia|media distancia|"
+              r"fuera del área")
+IN_THE_BOX = r"inside the (?:box|area)|in the (?:box|area)|dentro l'area|in area|dentro del área|en el área"
 # where the ball went and how the chance was made: no fact or event field gives these, so they are invented
 INVENTED = {"en": r"near[- ]post|far[- ]post|top corner|bottom corner|corner of the net|top bins|pull[- ]back|cross|"
-                  r"crossed|volley\w*|rebound|scramble|deflect\w*|turnovers?|knock[- ]?down|lay[- ]?off|assist\w*|wind",
+                  r"crossed|volley\w*|rebound|scramble|deflect\w*|turnovers?|knock[- ]?down|lay[- ]?off|assist\w*|wind|"
+                  r"(?:the|a) post|woodwork|behind the (?:defen[cs]e|line|back line)|in behind|forc\w* (?:an )?errors?",
             "it": r"primo palo|secondo palo|incrocio|angolino|cross|al volo|tiro-volley|ribattuta|deviazion\w*|"
-                  r"palle recuperate|recuper\w+ palla|sponda|assist\w*|vento",
-            "es": r"primer palo|segundo palo|escuadra|centro al área|volea|rechace|desv[ií]o|p[eé]rdidas?|robos?|asistencia|dejada|viento"}
+                  r"palle recuperate|recuper\w+ palla|sponda|assist\w*|vento|palo|traversa|"
+                  r"(?:alle spalle|dietro) (?:della|la) difesa|costring\w* (?:all')?error\w*|forzando (?:gli )?error\w*",
+            "es": r"primer palo|segundo palo|escuadra|centro al área|volea|rechace|desv[ií]o|p[eé]rdidas?|robos?|asistencia|"
+                  r"dejada|viento|poste|a la espalda de la defensa|forz\w* errores"}
+# which foot: a side is invented unless the shot label names it
+FOOT = {"en": r"(?:left|right)[- ]foot\w*|weaker foot", "it": r"di destro|di sinistro|mancino|col destro|col sinistro",
+        "es": r"zurdazo|derechazo|con la (?:zurda|diestra|izquierda|derecha)|pierna (?:izquierda|derecha)"}
+# score-state words: a story whose point is not the score may use them only when they agree with it
+LEADING = {"en": r"leading|in front", "it": r"in vantaggio", "es": r"por delante|en ventaja"}
+TRAILING = {"en": r"trailing|behind on the scoreboard", "it": r"in svantaggio|sotto nel punteggio",
+            "es": r"por detrás en el marcador|en desventaja"}
 STILL_PLAYING = {"en": r"(?:leads?|leading) \d+-\d+|in front", "it": r"(?:in vantaggio|avanti|conduce) (?:per )?\d+-\d+",
                  "es": r"(?:manda|mandan|lidera) (?:por )?\d+-\d+"}
 POSSESSION = r"possession|bossed|kept the ball|possesso|posesión|domina(?:n|ba)? el balón|dominio del balón"
@@ -512,35 +570,55 @@ def _has(pattern, text):
 
 
 def story_issues(m, story, text, lang, on_air=True):
-    """Claims the ledger contradicts: distance words against the shot distance, pass accuracy told as
-    possession, a score with the trailing side first, and momentum or press values out of order, more
-    than two of them, or a rising word for a falling trend."""
+    """Claims the ledger contradicts: distance and box words against the shot, a foot no fact names,
+    pass accuracy told as possession, score words against the score, a score with the trailing side
+    first, formations in the wrong order, and momentum or press values out of order, more than two of
+    them, or a rising word for a falling trend. Every issue starts with a fixed reason."""
     out = []
-    dist = next((f["value"] for f in story["facts"] if f["kind"] == "shot_distance"), None)
+    shot = next((f for f in story["facts"] if f["kind"] == "shot_distance"), None)
+    dist, label = (shot["value"], shot["label_en"]) if shot else (None, "")
+    where = f"a shot from {fmt(dist)} m" if shot else "no shot distance in the facts"
     for pattern, lo, hi in DISTANCE_WORDS:
         if (hit := _has(pattern, text)) and (dist is None or not lo <= dist <= hi):
-            out.append(f"'{hit.group(0)}' does not fit " + (f"a shot from {fmt(dist)} m" if dist is not None
-                                                            else "the facts (no shot distance)"))
+            out.append(f"distance word does not fit the shot: '{hit.group(0)}', {where}")
+    if (hit := _has(LONG_RANGE, text)) and (dist is None or dist < 16.5 or "inside the box" in label):
+        out.append(f"distance word does not fit the shot: '{hit.group(0)}', {where}"
+                   + (", inside the box" if "inside the box" in label else ""))
+    if (hit := _has(IN_THE_BOX, text)) and "outside the box" in label:
+        out.append(f"distance word does not fit the shot: '{hit.group(0)}', the shot was outside the box")
+    if (hit := _has(FOOT[lang], text)) and not re.search(r"left foot|right foot", label):
+        out.append(f"detail not in the facts: '{hit.group(0)}' (the facts do not say which foot)")
     if hit := _has(POSSESSION, text):
-        out.append(f"'{hit.group(0)}': there is no possession fact, and pass accuracy is not possession")
+        out.append(f"possession claim: '{hit.group(0)}', there is no possession fact and pass accuracy is not possession")
     if hit := _has(INVENTED.get(lang, INVENTED["en"]), text):
-        out.append(f"'{hit.group(0)}' is not in the facts")
+        out.append(f"detail not in the facts: '{hit.group(0)}'")
     if on_air and story["kind"] == "recap" and story.get("phase") == "ft" and (hit := _has(STILL_PLAYING[lang], text)):
-        out.append(f"'{hit.group(0)}' at full time: the match is over, say who won or that it ended level")
+        out.append(f"lead at full time: '{hit.group(0)}', the match is over, say who won or that it ended level")
     leader, s = m.lead(story["ts"])
+    if story["kind"] not in SCORE_KINDS and story["team_id"]:
+        state = f"{m.team_name(leader)} lead {s}" if leader else f"it is level at {s}"
+        if (hit := _has(LEADING[lang], text)) and leader != story["team_id"]:
+            out.append(f"score word against the score: '{hit.group(0)}' but {state}")
+        elif (hit := _has(TRAILING[lang], text)) and leader in (story["team_id"], None):
+            out.append(f"score word against the score: '{hit.group(0)}' but {state}")
     hi, lo = s.split("-")
     if leader and story["kind"] in SCORE_KINDS and f"{lo}-{hi}" in [x.replace(" ", "") for x in score_mentions(text)]:
-        out.append(f"write the score leader first: {s}, not {lo}-{hi}")
+        out.append(f"score order: write the leader first, {s}, not {lo}-{hi}")
+    if story.get("shape"):
+        old, new = story["shape"]
+        if old in text and new in text and text.index(new) < text.index(old):
+            out.append(f"formation order: the change is from {old} to {new}")
     if story["kind"] in ("momentum_swing", "pressing_spell"):
         values = [float(v.replace(",", ".")) for v in _TEN.findall(text)]
         order = [next((i for i, f in enumerate(story["facts"]) if abs(f["value"] - v) <= 0.051), None) for v in values]
         if len(values) > 2:
-            out.append(f"{len(values)} values out of 10: give two at most, the start and the end")
+            out.append(f"too many values out of 10: {len(values)}, give two at most, the start and the end")
         elif None not in order and order != sorted(order):
-            out.append("the values are not in time order")
+            out.append("time order: the values are not in time order")
         tf = text_facts(story)
         if len(tf) >= 2 and tf[-1]["value"] < tf[0]["value"] - 0.2 and (hit := _has(RISING[lang], text)):
-            out.append(f"'{hit.group(0)}' but the value fell from {fmt(tf[0]['value'])} to {fmt(tf[-1]['value'])}")
+            out.append(f"trend word against the facts: '{hit.group(0)}' but the value fell from "
+                       f"{fmt(tf[0]['value'])} to {fmt(tf[-1]['value'])}")
     return out
 
 
@@ -617,6 +695,34 @@ def note(text):
     return prefix + first
 
 
+# What a desk note may say about a problem: its fixed reason (the head before the first colon of a
+# flag) and the fact it concerns. Never the judge's words or the rejected text, which a model wrote.
+REASONS = {
+    "cited fact not in the story": None, "number in words": None, "garbled numbers": None,
+    "formation not in the facts": None, "unit not in the facts": None, "unit glued to a number": None,
+    "letters glued to a number": None, "number not in the facts": None, "unit mismatch": None,
+    "forbidden name (real person or club)": None, "distance word does not fit the shot": ("shot_distance",),
+    "detail not in the facts": ("shot_distance",), "possession claim": ("pass_accuracy",),
+    "lead at full time": ("score",), "score word against the score": ("score",), "score order": ("score",),
+    "formation order": ("formation",), "too many values out of 10": ("momentum", "press_intensity"),
+    "time order": ("momentum", "press_intensity"), "trend word against the facts": ("momentum", "press_intensity"),
+    "name the player": None, "name the team": None, "give the score": ("score",), "jargon": None,
+    "English word": None, "claim": None, "no text": None, "no rewrite": None, "rewrite failed": None,
+    "workflow error": None, "template, as another language failed": None,
+}
+_SHOWN = {"claim": "claim the AI judge found unsupported"}
+
+
+def reason(problem, story=None):
+    """The desk's words for one problem: "distance word does not fit the shot (F-SHOT_DISTANCE-000012)"."""
+    head = problem.split(":", 1)[0].strip()
+    if head not in REASONS:
+        return "check failed"
+    kinds = REASONS[head] or ()
+    fid = next((f["fact_id"] for f in (story or {}).get("facts", []) if f["kind"] in kinds), None)
+    return _SHOWN.get(head, head) + (f" ({fid})" if fid else "")
+
+
 def brief_error(e):
     """A failure as people read it in a trace or a note: never the raw exception text."""
     text = f"{type(e).__name__} {e}".lower()
@@ -656,11 +762,20 @@ BANNED = (r"heel-to-toe|bossed|according to the data|minuziosamente|[^\W\d_]{2,}
 
 def jargon(text):
     """Analyst jargon a viewer should never read: a style issue first, a fallback to the template in the last round."""
-    return [f"'{hit.group(0)}' is not broadcast copy"] if (hit := _has(BANNED, text)) else []
+    return [f"jargon: '{hit.group(0)}' is not broadcast copy"] if (hit := _has(BANNED, text)) else []
 
 
-# English football words copied into an Italian or Spanish line
-ENGLISH = r"close[- ]range|six[- ]yard|edge of the box|from distance|wide|header|keeper|the box|strike|shot|away"
+# English football words copied into an Italian or Spanish line ("pressing" is Italian too)
+ENGLISH = (r"close[- ]range|six[- ]yard|edge of the box|from distance|wide|header|keeper|the box|strike|shot|away|"
+           r"wins?|blocked|pass accuracy|momentum")
+
+
+def english_words(text, lang):
+    """English words in an Italian or Spanish line: a style issue first, a fallback to the template in the last round."""
+    if lang == "en":
+        return []
+    hit = _has(ENGLISH + ("|pressing" if lang == "es" else ""), text)
+    return [f"English word: '{hit.group(0)}', say it in your language"] if hit else []
 _SCORE = re.compile(r"(?<![\w.,/+-])\d{1,2}\s?-\s?\d{1,2}(?![\d/]|[.,]\d|-\d)")
 _WORD = re.compile(r"[^\W\d_]+")
 
@@ -704,9 +819,7 @@ def style_issues(text, lang, kind, used=None):
     sentences = len([x for x in re.split(r"(?<=[.!?])\s+", text) if x.strip()])
     if sentences > longest:
         out.append(f"{sentences} sentences: keep it to {longest}")
-    out += jargon(text)
-    if lang != "en" and (hit := _has(ENGLISH, text)):
-        out.append(f"'{hit.group(0)}' is English: say it in your language")
+    out += jargon(text) + english_words(text, lang)
     if lang == "en" and (hit := re.search(r"(?<!\bthe )\b\d+(?:st|nd|rd|th) minute\b", text)):
         out.append(f"'{hit.group(0)}' without 'the': say 'in the {hit.group(0)}'")
     tail = [p for p in re.split(r"[,;:]", text.rstrip(" .!"))][-2:]
@@ -736,11 +849,13 @@ def template(m, story, lang):
         else:
             key = "recap_win" if story["phase"] == "ft" else "recap_lead"
             text = TEMPLATES[key][i].format(title=title, leader=m.team_name(leader), s=s)
-        acc = {f["team_id"]: f["value"] for f in facts if f["kind"] == "pass_accuracy"}
+        # the label's own whole percent: value 82.5 can be "83%" in the label, and the two must agree
+        acc = {f["team_id"]: mt.group(1) for f in facts
+               if f["kind"] == "pass_accuracy" and (mt := re.search(r"(\d+)%", f["label_en"]))}
         h, a = m.home["team_id"], m.away["team_id"]
         if h in acc and a in acc:
             text += TEMPLATES["recap_acc"][i].format(home=m.team_word(h), away=m.team_word(a),
-                                                     acc_h=f"{acc[h]:.0f}", acc_a=f"{acc[a]:.0f}")
+                                                     acc_h=acc[h], acc_a=acc[a])
         return text
     t = story["team_id"]
     team = m.team_name(t) or ""
@@ -759,7 +874,7 @@ def template(m, story, lang):
 
 
 def analysis_template(story):
-    return " ".join(f"{display_label(f)} [{f['fact_id']}]." for f in story["facts"][:4])
+    return " ".join(f"{display_label(f)}." for f in story["facts"][:4])  # the ids live in fact_ids
 
 
 # --- risk ----------------------------------------------------------------------------------------
@@ -832,7 +947,7 @@ class Director:
         if graphic == "why_card":
             title = TITLES[story["phase"] if story["kind"] == "recap" else story["kind"]][LANGS.index(lang)]
             return {"kind": "recap" if story["kind"] == "recap" else "why", "title": title,
-                    "body": story["texts"][lang], "fact_ids": story["fact_ids"]}
+                    "body": story["texts"][lang], "fact_ids": [f["fact_id"] for f in facts]}
         if graphic == "pass_shot":
             shot = next((f for f in facts if f["kind"] == "shot_speed"), None)
             if not shot:

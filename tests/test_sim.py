@@ -87,6 +87,17 @@ def test_no_forbidden_names(built):
     assert texts and not [t for t in texts if is_forbidden(t)]
 
 
+def test_no_two_players_of_a_fixture_share_a_surname(built):
+    from studiodesk.sim.squads import LAST
+    _, conn = built
+    for mid, home, away in conn.execute("SELECT match_id, home_team_id, away_team_id FROM matches"):
+        surnames = [r[0].rsplit(" ", 1)[1] for r in conn.execute(
+            "SELECT name FROM players WHERE team_id IN (?, ?)", (home, away))]
+        assert len(surnames) == len(set(surnames)), mid
+    old = {"Adeyemi", "Castellanos", "Marchetti", "Benali", "Petrov"}  # real players' surnames, replaced
+    assert not old & set(LAST) and not any(is_forbidden(n) for n in LAST)
+
+
 def test_every_planted_kind_and_two_comebacks(built):
     _, conn = built
     kinds = [r[0] for r in conn.execute("SELECT kind FROM storylines")]

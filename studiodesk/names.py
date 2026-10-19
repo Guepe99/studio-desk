@@ -8,13 +8,18 @@ from . import config
 
 # letters NFKD does not split into base + accent
 _LATIN = str.maketrans({"ø": "o", "æ": "ae", "œ": "oe", "ł": "l", "đ": "d", "ð": "d", "þ": "th", "ı": "i"})
+# Cyrillic and Greek letters that look Latin ("Harry Kаne" with a Cyrillic а); applied after casefold
+_HOMOGLYPHS = str.maketrans(dict(zip("аеорсухкмтнвіјѕԁӏџѵαοεικνρτυχβηγ", "aeopcyxkmthbijsdluvaoeiknptuxbny")))
+# capitals that look Latin but lower to a different shape (Greek Η lowers to η, which reads n): before casefold
+_CAPITALS = str.maketrans(dict(zip("АВЕКМНОРСТХІЈЅΑΒΕΖΗΙΚΜΝΟΡΤΥΧ", "ABEKMHOPCTXIJSABEZHIKMNOPTYX")))
 
 
 def _fold(text: str) -> str:
     # "Mbappé", "Ødegaard", "Arsenal’s", "Alexander–Arnold": compare plain lowercase words joined by
     # one space, so accents, curly apostrophes, dashes and line breaks cannot hide a name.
-    text = unicodedata.normalize("NFKD", text.casefold().translate(_LATIN))
-    return " ".join(re.findall(r"[a-z0-9]+", "".join(c for c in text if not unicodedata.combining(c))))
+    text = unicodedata.normalize("NFKD", unicodedata.normalize("NFKC", text).translate(_CAPITALS).casefold())
+    text = "".join(c for c in text if not unicodedata.combining(c)).translate(_LATIN).translate(_HOMOGLYPHS)
+    return " ".join(re.findall(r"[a-z0-9]+", text))
 
 
 @lru_cache(maxsize=1)

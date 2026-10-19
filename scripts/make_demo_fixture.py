@@ -50,7 +50,7 @@ FIRST = ["Ren", "Tobin", "Arlo", "Caspian", "Dario", "Emrys", "Fenn", "Gideon", 
          "Jory", "Kael", "Lorcan", "Milo", "Nils", "Osric", "Pim", "Quill", "Rafe", "Soren", "Tamsin",
          "Ulric", "Vane", "Wren", "Yannick", "Zeb", "Alder", "Brannoc", "Corwin", "Desmond", "Elio",
          "Faro", "Gael", "Hale", "Isko", "Jarek"]
-LAST = ["Halloway", "Marchetti", "Okonkwo-Bell", "Strand", "Pellow", "Varga", "Lindqvist", "Ashdown",
+LAST = ["Halloway", "Orvanelli", "Okonkwo-Bell", "Strand", "Pellow", "Varga", "Lindqvist", "Ashdown",
         "Corvel", "Tamberlin", "Quayle", "Rosmund", "Fairweather", "Ibarrola", "Kessling", "Dunmore",
         "Petrakis", "Wexford", "Saltire", "Brightwater", "Nakamura-Fox", "Oduya", "Teague", "Morrow",
         "Vellacott", "Harrowgate", "Esterly", "Grieve", "Lannon", "Merriweather", "Pocklington",

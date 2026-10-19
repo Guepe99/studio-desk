@@ -89,14 +89,16 @@ def verdict(analysis):
 def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print, deadline_s=DEADLINE_S):
     """Set stories.safety for every story of the match; returns the count per status.
 
-    A flagged story also gets default_status 'needs_review'. The cap counts HTTP requests when the
-    analyzer counts them (`analyze.requests`), calls otherwise.
+    Only a story that passed gets the default_status its risk gives (rules.default_status); every
+    other status (flagged, not_checked) means needs_review. The analyst's note is checked with the
+    lines. The cap counts HTTP requests when the analyzer counts them (`analyze.requests`), calls otherwise.
     """
-    stories = rt.execute("SELECT story_id, texts FROM stories WHERE match_id = ? ORDER BY ts", (match_id,)).fetchall()
+    stories = rt.execute("SELECT story_id, texts, analysis_en, risk FROM stories WHERE match_id = ? ORDER BY ts",
+                         (match_id,)).fetchall()
     counts, calls, failures, end = Counter(), 0, 0, time.monotonic() + deadline_s
-    for story_id, texts in stories:
+    for story_id, texts, analysis, risk in stories:
         texts = json.loads(texts)
-        text = "\n".join(t for t in (texts.get(lang, "") for lang in rules.LANGS) if t.strip())
+        text = "\n".join(t for t in [texts.get(lang, "") for lang in rules.LANGS] + [analysis or ""] if t.strip())
         status = "not_checked"
         if (text and getattr(analyze, "requests", calls) < max_calls and failures < MAX_FAILURES
                 and time.monotonic() < end):
@@ -107,12 +109,11 @@ def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print, deadline_
                 status = verdict(analysis) if analysis else "not_checked"
                 if status == "flagged":
                     log(f"{story_id} flagged: {analysis}")
-                    rt.execute("UPDATE stories SET default_status = 'needs_review' WHERE match_id = ? AND story_id = ?",
-                               (match_id, story_id))
             except Exception as e:  # noqa: BLE001 - quota, network or auth: the story stays not_checked
                 failures += 1
                 log(f"{story_id} not checked: {type(e).__name__}")
-        rt.execute("UPDATE stories SET safety = ? WHERE match_id = ? AND story_id = ?", (status, match_id, story_id))
+        rt.execute("UPDATE stories SET safety = ?, default_status = ? WHERE match_id = ? AND story_id = ?",
+                   (status, rules.default_status(risk) if status == "passed" else "needs_review", match_id, story_id))
         counts[status] += 1
     rt.commit()
     return dict(counts) | {"calls": calls}
