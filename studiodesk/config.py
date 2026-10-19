@@ -12,3 +12,12 @@ MAX_GRAPHICS_ON_SCREEN = 2
 LIVE_RUNS_PER_SESSION_PER_DAY = 2
 LIVE_RUNS_PER_DAY = 20
 DAILY_COST_STOP_USD = 25.0
+
+# Agents (studiodesk/agents): gpt-5-mini on Azure AI Foundry, reasoning effort minimal.
+MODEL_DEPLOYMENT = "gpt-5-mini"
+# USD per 1M tokens, Azure OpenAI Global Standard, gpt-5-mini: input 0.25, cached input 0.025, output 2.00.
+# Sources: https://azure.microsoft.com/en-us/pricing/details/azure-openai/ and
+# https://www.azurespeed.com/AzureAiModelPricing/Models/openai-gpt-5-mini (checked 19 Oct 2026).
+MODEL_PRICE_PER_M = {"input": 0.25, "cached_input": 0.025, "output": 2.00}
+AGENT_TIMEOUT_S = 45.0
+MAX_REWRITES = 2

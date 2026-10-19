@@ -189,9 +189,10 @@ if __name__ == "__main__":
     ap.add_argument("match_id")
     ap.add_argument("--db", type=Path, default=config.MATCHES_DB)
     ap.add_argument("--out", type=Path, default=config.ROOT / "web" / "data")
+    ap.add_argument("--runtime", type=Path, default=config.RUNTIME_DB, help="runtime.sqlite written by the agents")
     args = ap.parse_args()
     with closing(db.connect(args.db, readonly=True)) as conn:
-        rt = db.connect(config.RUNTIME_DB, readonly=True) if config.RUNTIME_DB.exists() else None
+        rt = db.connect(args.runtime, readonly=True) if args.runtime.exists() else None
         print(export(args.match_id, conn, args.out, rt))
         if rt:
             rt.close()

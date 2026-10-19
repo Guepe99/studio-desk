@@ -1,4 +1,5 @@
 """The only way to open the two SQLite files (docs/CONTRACT.md, Storage)."""
+import json
 import sqlite3
 from pathlib import Path
 
@@ -26,3 +27,9 @@ def matches(readonly: bool = True) -> sqlite3.Connection:
 
 def runtime() -> sqlite3.Connection:
     return connect(config.RUNTIME_DB)
+
+
+def insert(conn: sqlite3.Connection, table: str, row: dict) -> None:
+    """INSERT one row; dict and list values go in as JSON text. Table and keys come from our code only."""
+    conn.execute(f"INSERT INTO {table} ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",
+                 [json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v for v in row.values()])
