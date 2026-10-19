@@ -601,6 +601,8 @@ def text_facts(story):
     back, the last window; for a pressing spell its last two windows; for a moved defensive line where
     it started (the lowest or highest of the windows before) and where it ended; otherwise all of them."""
     facts = story["facts"]
+    if story["kind"] in ("momentum_swing", "pressing_spell"):  # a goal fact in the story is not a window
+        facts = [f for f in facts if f["kind"] in ("momentum", "press_intensity")]
     if story["kind"] == "momentum_swing" and len(facts) >= 4:
         low, peak = min(facts[:2], key=lambda f: f["value"]), max(facts[2:], key=lambda f: f["value"])
         return [low, peak] + ([facts[-1]] if peak is not facts[-1] else [])
@@ -1513,6 +1515,8 @@ def risk(story):
     """0..1: how much a person should look before this goes on air. A story whose claims the AI judge
     did not check always goes to review."""
     r = 0.05
+    if story.get("kind") == "recap" and story["verifier"]["status"] == "template":
+        return r  # the score and pass accuracy written by code: the half-time and full-time card always airs
     r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
           "template": 0.3}[story["verifier"]["status"]]  # a rewrite for style alone fixed no fact
     r += config.AUTO_APPROVE_RISK if story.get("unjudged") else 0.0  # claims without numbers not checked

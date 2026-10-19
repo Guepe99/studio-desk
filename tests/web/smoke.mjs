@@ -346,7 +346,8 @@ try {
   if (!(await onScreen(page)).live.some((x) => x.graphic === "why_card" && x.step === 0)) fail("full-time recap not on screen after the last frame");
   await page.screenshot({ path: `${shots}/web2d-fulltime.png` });
   const shot = cues.find((c) => c.audience === "analyst" && c.graphic === "pass_shot" && c.payload.mode === "shot");
-  await seekTo(page, shot.ts + 2);
+  const shotAt = shot ? shot.ts + 2 : 40;  // a match whose shot stories all wait for review has no shot on air
+  await seekTo(page, shotAt);
   await page.screenshot({ path: `${shots}/web-fixes-1280x720.png` });
   await seekTo(page, 40);
   await page.screenshot({ path: `${shots}/web2d-overview.png` });
@@ -408,7 +409,7 @@ try {
           if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} ${graphic}: horizontal scroll`);
         }
       }
-      await seekTo(phone, shot.ts + 2);
+      await seekTo(phone, shotAt);
       await phone.screenshot({ path: `${shots}/web-fixes-${w}x${h}.png` });
       await phone.context().close();
     });

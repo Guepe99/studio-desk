@@ -74,6 +74,8 @@ def test_risk_maps_to_default_status():
     clean = {"verifier": {"status": "pass"}, "confidence": 0.9, "fact_ids": ["F-1"], "player_id": None}
     assert rules.default_status(rules.risk(clean)) == "auto_approved"
     assert rules.default_status(rules.risk({**clean, "verifier": {"status": "template"}})) == "needs_review"
+    # a half-time or full-time card the code wrote from the facts still airs
+    assert rules.default_status(rules.risk({**clean, "kind": "recap", "verifier": {"status": "template"}})) == "auto_approved"
     assert rules.default_status(rules.risk({**clean, "fact_ids": []})) == "needs_review"
     assert 0 <= rules.risk({**clean, "verifier": {"status": "template"}, "fact_ids": [], "confidence": 0}) <= 1
 
@@ -137,7 +139,7 @@ def test_rewrites_at_most_twice_then_template(desk_db):
         assert s["verifier"]["status"] == "template" and s["verifier"]["attempts"] == 1 + config.MAX_REWRITES
         assert "999" not in s["texts"]["it"]  # and English, though fine, is the template too: one story in all three
         assert s["verifier"]["flagged"] == ["Italian draft not used: a number the facts do not give."]
-        assert rules.default_status(s["risk"]) == "needs_review"
+        assert rules.default_status(s["risk"]) == ("auto_approved" if s["kind"] == "recap" else "needs_review")
 
 
 def test_one_rewrite_fixes_it_and_passed_texts_are_judged_once(desk_db):
@@ -189,7 +191,8 @@ def test_agent_failure_falls_back_and_never_blocks(desk_db, monkeypatch, failing
     for s in st:
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values()) and s["analysis_en"]
         if failing in ("Lines", "all", "timeout"):
-            assert s["verifier"]["status"] == "template" and rules.default_status(s["risk"]) == "needs_review"
+            assert s["verifier"]["status"] == "template"  # only the code's half-time and full-time card airs
+            assert rules.default_status(s["risk"]) == ("auto_approved" if s["kind"] == "recap" else "needs_review")
         if failing == "Verdicts":  # numbers checked, claims not judged: nothing airs without a person
             assert s["verifier"]["status"] == "pass" and rules.default_status(s["risk"]) == "needs_review"
     tr = rows(rt, "traces")
@@ -228,7 +231,7 @@ def test_run_stops_calling_the_model_at_its_ceiling(desk_db, monkeypatch):
     summary = run(rt, FakeChatClient())
     assert summary["model_calls"] == 3 and summary["stories"] > 0
     assert any("run budget reached" in t["output_summary"] for t in rows(rt, "traces"))
-    assert all(rules.default_status(s["risk"]) == "needs_review" for s in stories(rt))
+    assert all(rules.default_status(s["risk"]) == "needs_review" for s in stories(rt) if s["kind"] != "recap")
 
 
 def test_director_never_shows_more_than_two_graphics(desk_db):

@@ -1,6 +1,7 @@
 """The facts a line depends on, computed by code (club articles, shot place, value paths, defensive line
 and width), and the checks that reject words against them. The reviewer's bad lines from the committed
-replays must be rejected and a correct line must pass (positive control). Tests on the real facts skip
+replays must be rejected and a correct line must pass (positive control); those lines and story ids
+come from the packs the reviewer read, frozen in tests/review_tappa4, not from today's replays. Tests on the real facts skip
 when data/matches.sqlite (or STUDIODESK_MATCHES_DB) is missing, as in test_replays."""
 import json
 import math
@@ -15,6 +16,7 @@ from studiodesk import mcp_server as srv
 from studiodesk.agents import rules
 
 REPLAYS = Path(__file__).resolve().parents[1] / "replays"
+REVIEWED = Path(__file__).resolve().parent / "review_tappa4"
 
 
 # --- computations, offline -----------------------------------------------------------------------
@@ -56,6 +58,10 @@ def test_trend_line_and_width_paths():
     assert rules.width_change(shift) == "wider"
     assert rules.width_change({"facts": width[:1]}) is None
     m = rules.Match(INFO)
+    # a goal inside a momentum story is not a window: 2.6 to 8.6 then 6.9, not "fell to 2"
+    swing = [fact("momentum", k, 4800 + 300 * k, v, "/10", f"Momentum {v}/10") for k, v in enumerate((6.8, 2.6, 8.6, 6.9), 1)]
+    swing = _story(m, "momentum_swing", swing + [fact("score", 1, 4919, 2, "goal", "Goal 0-2", "T02")])
+    assert [f["value"] for f in rules.text_facts(swing)] == [2.6, 8.6, 6.9]
     say = rules.trend(m, _story(m, "tactical_shift", line), "it")
     assert say["shape"] == "higher" and say["say"].startswith("da 15,7 m al minuto")
 
@@ -105,6 +111,15 @@ def test_the_crossbar_of_an_over_the_bar_outcome_is_not_invented():
 
 @pytest.fixture(scope="module")
 def packs():
+    return _packs(REVIEWED)
+
+
+@pytest.fixture(scope="module")
+def live_packs():
+    return _packs(REPLAYS)
+
+
+def _packs(root):
     if not srv.DB_PATH.exists():
         _missing("data/matches.sqlite not built")
     srv.set_clock(None)
@@ -115,7 +130,7 @@ def packs():
         m = rules.Match(srv.get_match_info(mid))
         m.facts = {f["fact_id"]: f for f in srv.get_facts(mid)}
         events = {e["event_id"]: e for e in srv.get_events(mid, 0.0, math.inf)}
-        stories = {s["story_id"]: s for s in json.loads((REPLAYS / mid / "stories.json").read_text())}
+        stories = {s["story_id"]: s for s in json.loads((root / mid / "stories.json").read_text())}
         out[mid] = (m, {sid: rules.pack_story(m, s, events) for sid, s in stories.items()})
     return out
 
@@ -343,8 +358,9 @@ def test_the_real_facts_give_the_paths_the_writers_follow(packs):
     assert rules.template(m3, s3["S-000017"], "en") == "Goal! Malik Szabo extends the lead for Tarnby Harriers, 2-0."
 
 
-def test_every_template_on_the_real_packs_passes_every_check(packs):
-    for mid, (m, stories) in packs.items():
+@pytest.mark.parametrize("which", ["packs", "live_packs"])
+def test_every_template_on_the_real_packs_passes_every_check(which, request):
+    for mid, (m, stories) in request.getfixturevalue(which).items():
         for sid, s in stories.items():
             for lang in rules.LANGS:
                 t = rules.template(m, s, lang)
