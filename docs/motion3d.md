@@ -280,3 +280,16 @@ so the reactions start in it.
   clears it, and eases on and off.
 - `CLOCKS=... scripts/with-lock.sh chromium tests/web/run-smoke.sh goal3d-stills.mjs M001 <name>`:
   contact sheets of the clip camera and of a camera by the goal (`GOALCAM=...`).
+
+### Results
+
+Looked at frame by frame in `out/shots/goal3d-clip.mp4` (M001, clock 8 to 14, high profile):
+the keeper is set as the shot is struck, dives low to his left and stays down; the ball runs
+into the goal at speed and rolls to a stop inside it; the shooter's foot and the ball are clear
+of the nearest defender at contact; the cut to camera 2 at clock 13 has no repeated or frozen
+frame and the scorer is already celebrating, arms up, with the defenders hands on head.
+From camera 1, 70 m away, the net pocket (about 0.7 m deep on a thin net) is hard to see; it
+reads from the goal camera and in the replay.
+
+Performance, `scene3d-perf.mjs high` with WebGL 2: 0.28 fps, 330 meshes, 431,806 vertices
+before; 0.29 fps (runs 0.3, 0.3, 0.4), 332 meshes, 434,314 vertices after.
