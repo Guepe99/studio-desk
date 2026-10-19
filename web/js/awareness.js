@@ -29,6 +29,17 @@ const OPEN_MAX = 45 * D;                         // R9 receivers keep the ball w
 // m between two bodies' centres after a goal: team-mates' shoulders touch, never merge; an
 // opponent keeps out of reach of a celebrating arm
 const APART = { mate: 0.9, rival: 1.5 };
+const BODY_GAP = 1.0;   // m from any point of a body lying on the grass (the beaten keeper)
+// the nearest team-mate (within reach m) sprints over to the scorer from `lead` s before the goal:
+// his own path plus an offset that brings him `beside` m from the scorer, at `speed` m/s over the
+// track (eased in and out over `ease` s), held until `hold` s after the goal, eased back over `back` s
+const JOIN = { reach: 30, lead: 0.3, beside: 1, speed: 7.5, ease: 0.4, hold: 8, back: 4 };
+// share 0..1 of a move over u = 0..1 that speeds up over the first a, slows down over the last a
+export function trapezoid(u, a) {
+  u = clamp(u, 0, 1);
+  const v = 1 / (1 - a);
+  return u < a ? 0.5 * v * u * u / a : u < 1 - a ? v * (u - a / 2) : 1 - 0.5 * v * (1 - u) ** 2 / a;
+}
 // R10..R16: emotions. Clip lengths in seconds (the SD_ clips are built by awareness-rig.js).
 export const CLIPS = { SD_ArmsUp: 1.0, SD_Clap: 0.6, SD_HandsOnHead: 2.0, SD_HandsOnHips: 2.0, SD_Dejected: 2.0,
   SD_Appeal: 1.2, SD_Palms: 1.5, SD_ArmUp: 1.0, SD_Point: 2.0, Yes: 2.5, Idle_No_Loop: 2.5 };
@@ -69,6 +80,8 @@ export class Awareness {
     this.role = this.ents.map((p) => m.players[p]?.position ?? "MF");
     this.home = m.home.team_id;
     this.events = [...m.events].sort((a, b) => a.ts - b.ts);
+    this.joins = [];   // team-mates running to a scorer: {i, si, t0, T, t1, side}
+    this.bodyOf = null;   // (i, ts) -> [[x, y, w?], ...] points of a body lying on the grass (w: 0..1 going down), or null (keeper3d-rig.js)
     this.emotions = this._emotions();
     // after a goal the players bunch round the scorer: bodies are kept apart then (see _apart)
     this.apart = m.goals.map((g) => [g.ts, g.ts + 14]);
@@ -125,21 +138,34 @@ export class Awareness {
       add(scorer, "celebrate", "SD_ArmsUp", g + 0.15, 9, src);
       // teammates react nearest first, each with one of the three common gestures, facing the scorer
       const mates = onPitch(f.team_id, g).filter((i) => i !== si).sort((a, b) => dist(a, si, g) - dist(b, si, g));
+      // the nearest outfield team-mate runs over and joins in on arrival (the tracks part as they
+      // run on, so the distance is the larger of now and 2 s on)
+      const run = mates.find((i) => this.role[i] !== "GK");
+      let arrive = null;
+      if (run !== undefined && m.at(run, g - JOIN.lead) && dist(run, si, g) < JOIN.reach) {
+        const d = Math.max(dist(run, si, g), m.at(run, g + 2) && m.at(si, g + 2) ? dist(run, si, g + 2) : 0);
+        const T = clamp(d / JOIN.speed + JOIN.ease, 1.2, 4), a = m.at(run, g), b = m.at(si, g), n = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1;
+        this.joins.push({ i: run, si, t0: g - JOIN.lead, T, t1: g + JOIN.hold, side: [(a[0] - b[0]) / n * JOIN.beside, (a[1] - b[1]) / n * JOIN.beside] });
+        arrive = g - JOIN.lead + T;
+      }
       mates.forEach((i, k) => {
-        const gk = this.role[i] === "GK";
-        add(this.ents[i], "join", gk ? "Yes" : ["SD_ArmsUp", "Yes", "SD_Clap"][k % 3], g + 0.3 + 0.05 * k, 8, src, gk ? {} : { face: si });
+        const gk = this.role[i] === "GK", t0 = i === run && arrive !== null ? arrive - 0.2 : g + 0.3 + 0.05 * k;
+        add(this.ents[i], "join", gk ? "Yes" : ["SD_ArmsUp", "Yes", "SD_Clap"][k % 3], t0, 8, src, gk ? {} : { face: si });
       });
       // the conceding side: hands on head or hips, arms down, staggered from the goal outwards
       const ct = other(f.team_id), gx = this.goalX(ct, g);
       const down = onPitch(ct, g).sort((a, b) => Math.abs(m.at(a, g)[0] - gx) - Math.abs(m.at(b, g)[0] - gx));
+      // neighbours never share a gesture or a beat: the gestures go round in turn from a start
+      // picked per goal, each player a little later than the one nearer the goal
+      const DOWN = ["SD_HandsOnHead", "SD_HandsOnHips", "SD_Dejected", "SD_Palms"], k0 = Math.floor(hash(src, 3) * DOWN.length);
+      let n = 0;
       down.forEach((i, k) => {
         const pid = this.ents[i], u = hash(pid, Math.round(g));
         if (this.role[i] === "GK") {
           add(pid, "dejected", "Idle_No_Loop", g + 0.8, 2.5, src);
           add(pid, "dejected", "SD_HandsOnHips", g + 3.3, 3.5, src);
         } else {
-          const clip = u < 0.35 ? "SD_HandsOnHead" : u < 0.7 ? "SD_HandsOnHips" : "SD_Dejected";
-          add(pid, "dejected", clip, g + 0.35 + 0.05 * k, 3 + 3 * hash(pid, k + 7), src);
+          add(pid, "dejected", DOWN[(k0 + n++) % DOWN.length], g + 0.35 + 0.07 * k + 0.15 * u, 3 + 3 * hash(pid, k + 7), src);
         }
       });
     }
@@ -370,25 +396,57 @@ export class Awareness {
     const { o0, o1, a } = s;
     const mode = MODES[this.mode[s.near]];
     const yawW = mode === "backpedal" ? 1 : this.fw[o0] + (this.fw[o1] - this.fw[o0]) * a;
-    const [dx, dy] = this._apart(i, ts);
-    return { yaw: this.fy[o0] + angleDiff(this.fy[o0], this.fy[o1]) * a, yawW, mode, emotion: this.emotion(i, ts), dx, dy };
+    const [ax, ay] = this._apart(i, ts), j = this._join(i, ts);
+    // running to the scorer: the body faces the run, whatever the tracking's own heading
+    const run = j && j.e > 0 && j.e < 1;
+    return { yaw: this.fy[o0] + angleDiff(this.fy[o0], this.fy[o1]) * a, yawW: run ? 0 : yawW, mode: run ? "forward" : mode,
+      emotion: this.emotion(i, ts), dx: ax + (j?.dx ?? 0), dy: ay + (j?.dy ?? 0) };
+  }
+
+  // Offset {dx, dy, e} of a team-mate running over to the scorer (JOIN), or null.
+  _join(i, ts) {
+    const J = this.joins.find((q) => q.i === i && ts > q.t0 && ts < q.t1 + JOIN.back);
+    const p = J && this.match.at(i, ts), s = J && this.match.at(J.si, ts);
+    if (!p || !s) return null;
+    const e = ts < J.t1 ? trapezoid((ts - J.t0) / J.T, JOIN.ease / J.T) : 1 - trapezoid((ts - J.t1) / JOIN.back, JOIN.ease / JOIN.back);
+    return { dx: (s[0] + J.side[0] - p[0]) * e, dy: (s[1] + J.side[1] - p[1]) * e, e };
+  }
+
+  // Where player i is drawn on the grass before the push apart: tracking plus a run to the scorer.
+  _pos(i, ts) {
+    const p = this.match.at(i, ts), j = p && this._join(i, ts);
+    return j ? [p[0] + j.dx, p[1] + j.dy] : p;
   }
 
   // Root offset that keeps player i at least APART metres from everyone else (more from opponents) (each of a pair moves
-  // half the overlap), faded in and out over 0.5 s at the edges of a post-goal window; else zero.
+  // half the overlap, a running joiner all of it), faded in and out over 0.5 s at the edges of a post-goal window; else zero.
   _apart(i, ts) {
     const win = this.apart.find(([a, b]) => ts >= a && ts < b);
     if (!win) return [0, 0];
-    const w = clamp(Math.min(ts - win[0], win[1] - ts) / 0.5, 0, 1), m = this.match, p = m.at(i, ts);
-    if (!p) return [0, 0];
+    const w = clamp(Math.min(ts - win[0], win[1] - ts) / 0.5, 0, 1), p = this._pos(i, ts);
+    if (!p || this.bodyOf?.(i, ts)) return [0, 0];
+    // a team-mate sprinting to the scorer steps round whoever stands in his way (a player kneeling
+    // in his path is not shoved off his knees)
+    const running = (j) => { const r = this._join(j, ts); return !!r && r.e > 0 && r.e < 1; };
+    const runI = running(i);
     let dx = 0, dy = 0;
     for (let j = 1; j < this.ents.length; j++) {
-      const q = j !== i && m.at(j, ts);
+      // a body on the grass does not move aside: whoever stands on it steps off all the way
+      const body = j !== i && this.bodyOf?.(j, ts);
+      if (body) {
+        for (const b of body) {
+          const ex = p[0] - b[0], ey = p[1] - b[1], d = Math.hypot(ex, ey), gap = BODY_GAP * (b[2] ?? 1);
+          if (d < gap && d > 1e-3) { dx += ex / d * (gap - d); dy += ey / d * (gap - d); }
+        }
+        continue;
+      }
+      const q = j !== i && this._pos(j, ts);
       if (!q) continue;
       const ex = p[0] - q[0], ey = p[1] - q[1], d = Math.hypot(ex, ey), gap = this.team[i] === this.team[j] ? APART.mate : APART.rival;
       if (d >= gap) continue;
       const ux = d > 1e-3 ? ex / d : (i < j ? 1 : -1), uy = d > 1e-3 ? ey / d : 0;   // stacked: split along x
-      dx += ux * (gap - d) / 2; dy += uy * (gap - d) / 2;
+      const runJ = running(j), share = runI === runJ ? 0.5 : runI ? 1 : 0;
+      dx += ux * (gap - d) * share; dy += uy * (gap - d) * share;
     }
     return [dx * w, dy * w];
   }

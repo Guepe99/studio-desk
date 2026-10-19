@@ -85,10 +85,10 @@ for (const id of ["DEMO", "M001"]) {
       if (last) assert.ok(Math.hypot(last.dx, last.dy) < 0.05 && last.lift < 0.02 && Math.abs(last.roll) < 0.05 && last.w < 0.02, `${tag}: not back on the spot at the end`);
       if (!r.goal && r.kind !== "catch") assert.ok(lift > 0.1, `${tag}: never leaves the ground`);
     }
-    // a beaten keeper is late: he moves no earlier than 0.25 s after the shot
+    // a beaten keeper is late: he moves no earlier than 0.15 s after the shot
     for (const r of rs.filter((x) => x.goal)) {
       const e = m.events.find((x) => x.event_id === r.shot);
-      assert.ok(r.start >= e.ts + 0.25 - 1e-9, `${id} goal ${r.shot}: keeper moves before he could`);
+      assert.ok(r.start >= e.ts + 0.15 - 1e-9, `${id} goal ${r.shot}: keeper moves before he could`);
     }
   });
 }

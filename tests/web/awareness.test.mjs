@@ -10,7 +10,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Match } from "../../web/js/match.js";
-import { Awareness, headYaw, CLIPS, STEP, HEAD_YAW_MAX } from "../../web/js/awareness.js";
+import { Awareness, headYaw, CLIPS, STEP, HEAD_YAW_MAX, trapezoid } from "../../web/js/awareness.js";
 
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/data");
 const D = Math.PI / 180;
@@ -139,6 +139,37 @@ test("pose and look are pure functions of time and stay in the neck range", { sk
     assert.ok(Math.abs(angleDiff(p.yaw, headYaw(p.yaw, a.look(i, t).yaw))) <= HEAD_YAW_MAX + 1e-9);
   }
   assert.equal(STEP, 0.05);
+});
+
+test("after a goal the nearest team-mate runs over; nobody stands on a body on the grass", { skip: !demo && "no web/data/DEMO" }, () => {
+  assert.ok(trapezoid(0, 0.2) === 0 && Math.abs(trapezoid(0.5, 0.2) - 0.5) < 1e-9 && Math.abs(trapezoid(1, 0.2) - 1) < 1e-9);
+  const aw = new Awareness(demo, [0, demo.duration]);
+  assert.ok(aw.joins.length > 0, "no team-mate runs to a scorer");
+  const shown = (i, t) => { const p = demo.at(i, t), q = aw.pose(i, t); return [p[0] + q.dx, p[1] + q.dy]; };
+  for (const J of aw.joins) {
+    const s = demo.at(J.si, J.t0 + J.T), a = shown(J.i, J.t0 + J.T), d = Math.hypot(a[0] - s[0], a[1] - s[1]);
+    assert.ok(d < 1.6, `mate ${J.i} ends ${d.toFixed(2)} m from the scorer`);
+    let vmax = 0;   // never faster than a sprint
+    for (let t = J.t0; t < J.t0 + J.T; t += 0.1) { const p = shown(J.i, t), q = shown(J.i, t + 0.1); vmax = Math.max(vmax, Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.1); }
+    assert.ok(vmax < 10.5, `mate ${J.i} runs at ${vmax.toFixed(1)} m/s`);
+  }
+  // a player with nobody within 3 m and a body lying 0.2 m from him steps off it to BODY_GAP
+  const t = demo.goals[0].ts + 2, on = [...Array(demo.n).keys()].filter((i) => i > 0 && demo.at(i, t));
+  const near = (i) => Math.min(...on.filter((j) => j !== i).map((j) => Math.hypot(demo.at(i, t)[0] - demo.at(j, t)[0], demo.at(i, t)[1] - demo.at(j, t)[1])));
+  const i = on.find((k) => near(k) > 3 && !aw.joins.some((J) => J.i === k)), other = on.find((k) => k !== i && near(k) > 3);
+  const p = demo.at(i, t), b = [p[0] + 0.2, p[1]];
+  aw.bodyOf = (j) => (j === other ? [b] : null);
+  const q = shown(i, t);
+  assert.ok(Math.hypot(q[0] - b[0], q[1] - b[1]) > 1 - 1e-6, `still on the body: ${Math.hypot(q[0] - b[0], q[1] - b[1])}`);
+  assert.deepEqual(aw.pose(other, t).dx, 0);   // the body itself is not pushed
+  // a team-mate running to the scorer steps round a player in his path: that player is not shoved
+  aw.bodyOf = null;
+  const J = aw.joins[0], tr = J.t0 + J.T / 2, pos = aw._pos.bind(aw);
+  const k = on.find((x) => x !== J.i && demo.at(x, tr) && !aw._join(x, tr)), pk = pos(k, tr);
+  const runnerAt = (dx) => { aw._pos = (x, ts) => (x === J.i ? [pk[0] + dx, pk[1]] : pos(x, ts)); return [aw._apart(k, tr), aw._apart(J.i, tr)]; };
+  const [kFar, rFar] = runnerAt(50), [kNear, rNear] = runnerAt(0.3);
+  assert.deepEqual(kNear, kFar);
+  assert.ok(rNear[0] - rFar[0] > 0.3, `the runner does not step round: ${rNear[0] - rFar[0]}`);
 });
 
 // web/vendor/motion (docs/motion3d.md): the same events and facts, played with the real clips
