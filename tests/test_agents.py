@@ -282,6 +282,8 @@ FIRST_RUN_ISSUES = [  # what the judge said about true lines in the first run
     "factually correct. The actual issue: none.",
     "Claim 'Redwick Wanderers lead 2-1 after the goal.' is redundant/misleading: score after is Redwick Wanderers 2, "
     "Ostwick FC 1, so phrasing is correct but repetitive. No factual error. (Remove this issue if strict.)",
+    "claim: Says 'grande occasione' (big chance), claims an event size; but facts label is big_chance so that's okay.",
+    "claim: Text implies 'golazo' is stylistic but acceptable; however it doesn't name minute, that's fine.",
 ]
 
 
@@ -330,6 +332,7 @@ def test_judge_gets_the_score_in_words():
     assert "score" not in desk.card({**story, "kind": "big_chance"}, writer="en")
     assert all(rules.no_issue(i) for i in FIRST_RUN_ISSUES)
     assert not rules.no_issue("The text says Ostwick FC lead, but Redwick Wanderers lead 2-1.")
+    assert not rules.no_issue("Calling the drive unstoppable is not fine.")
 
 
 def test_a_true_score_line_passes_when_the_judge_contradicts_itself(desk_db):
@@ -418,7 +421,9 @@ def test_tactical_shift_from_a_change_of_formation():
     story = {**found[0][1], "minute": 75, "player_id": None}
     text = rules.template(m, story, "en")
     assert text == "Redwick Wanderers switch from 4-3-3 to 4-4-2." and not rules.check_text(text, rules.story_allowed(m, story))
-    assert {"4-3-3", "4-4-2"} <= set(rules.number_list(m, story))
+    assert {"4-3-3", "4-4-2", "minute 75"} <= set(rules.number_list(m, story))
+    assert "minuto 75" in rules.number_list(m, story, "it")
+    assert rules.fmt(6.25, "es") == "6,2" and rules.fmt(96.0, "it") == "96"
 
 
 def test_a_line_pushed_back_by_the_other_team_is_not_a_shift():

@@ -256,7 +256,7 @@ class Desk:
             c["score_after"] = self.score_text(s["ts"])
             c["who_leads"] = self.who_leads(s["ts"])
         else:
-            c["numbers"] = rules.number_list(self.m, s)
+            c["numbers"] = rules.number_list(self.m, s, writer)
             if s["kind"] in rules.SCORE_KINDS:
                 c["score"] = {"before": self.who_leads(s["ts"] - 1e-3), "after": self.score_text(s["ts"]),
                               "who_leads": self.who_leads(s["ts"])}

@@ -83,8 +83,9 @@ def minute(ts, period, p1):
     return math.floor(t / 60) + (45 if period == 2 else 0) + 1
 
 
-def fmt(v):
-    return f"{v:.1f}".rstrip("0").rstrip(".")
+def fmt(v, lang="en"):
+    text = f"{v:.1f}".rstrip("0").rstrip(".")
+    return text if lang == "en" else text.replace(".", ",")
 
 
 # --- candidates -------------------------------------------------------------------------------
@@ -301,25 +302,31 @@ def story_allowed(m, story):
     return allowed_numbers(story["facts"] + goals, mins)
 
 
-def number_list(m, story):
+MINUTE = {"en": "minute", "it": "minuto", "es": "minuto"}
+
+
+def number_list(m, story, lang="en"):
     """The numbers a commentator may write about this story, as strings for the prompt ("96 km/h",
-    "6 m", "4-4-2", "minute 13"). The score is listed only for a story whose point is the score."""
-    out = [f"minute {mi}" for mi in sorted({m.minute_of(f) for f in story["facts"]} | {story["minute"]})]
+    "6 m", "4-4-2", "minute 13"), with the decimal comma in Italian and Spanish and long distances in km.
+    The score is listed only for a story whose point is the score."""
+    out = [f"{MINUTE[lang]} {mi}" for mi in sorted({m.minute_of(f) for f in story["facts"]} | {story["minute"]})]
     for f in story["facts"]:
-        u = f["unit"]
+        u, v = f["unit"], f["value"]
+        if u == "m" and v >= 1000:
+            u, v = "km", v / 1000
         if u == "formation":
-            out.append(formation_name(f["value"]))
+            out.append(formation_name(v))
         elif u in ("%", "/10"):
-            out.append(f"{fmt(f['value'])}{u}")
+            out.append(fmt(v, lang) + u)
         elif u and f["kind"] != "score":
-            out.append(f"{fmt(f['value'])} {u}")
+            out.append(f"{fmt(v, lang)} {u}")
     if story["kind"] in SCORE_KINDS:
         score, _ = m.score_at(story["ts"])
         out.append(f"{score[m.home['team_id']]}-{score[m.away['team_id']]}")
     return list(dict.fromkeys(out))
 
 
-_NO_ISSUE = re.compile(r"issue\s*:\s*none|\(no issue|^\s*(none|n/?a|ok|no issues?)\W*$"
+_NO_ISSUE = re.compile(r"(stylistic|is|are|that's) (but )?(acceptable|okay|fine)\W*$|issue\s*:\s*none|\(no issue|^\s*(none|n/?a|ok|no issues?)\W*$"
                        r"|no factual (issue|problem|error|mismatch|contradiction)"
                        r"|no (issue|problem|error|mismatch|contradiction)s?( found| here)?\W*$", re.IGNORECASE)
 
@@ -428,7 +435,7 @@ def template(m, story, lang):
         old, new = story["shape"]
         return TEMPLATES["shape_shift"][i].format(team=m.team_name(story["team_id"]) or "", old=old, new=new)
     main = [f for f in facts if f["kind"] == MAIN_KIND.get(kind)]
-    v = fmt(main[-1]["value"]) if main else ""
+    v = fmt(main[-1]["value"], lang) if main else ""
     score, _ = m.score_at(story["ts"])
     t = story["team_id"]
     other = next((x for x in m.teams if x != t), None)
