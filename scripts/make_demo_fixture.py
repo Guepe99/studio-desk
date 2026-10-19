@@ -2,7 +2,7 @@
 
 The web page is built against this fixture while the real simulator and export do not exist yet.
 Two 3-minute periods at 10 fps, a 4-4-2 each side, passes, a goal for each team, a saved shot and
-a cue sheet that uses all four graphics for both audiences. Every number in a cue is the value of
+a cue sheet that uses all four graphics for both audiences, plus team and player cues. Every number in a cue is the value of
 a fact it cites; the recaps come from studiodesk/export.py. Stories, their why cards in en, it and
 es, and the agent traces come from scripts/demo_stories.py. Stdlib + numpy only.
 
@@ -370,7 +370,8 @@ def main(out_dir: Path) -> Path:
                 "fact_ids": [f["fact_id"] for f in h + a]}
 
     for (e, fs, fg), fsp in zip(shot_facts, sprint_facts):
-        for aud in both:
+        # the shooter's team and the shooter get the same nameplate and shot graphic
+        for aud in both + (f"team:{e['team_id']}", f"player:{e['player_id']}"):
             if fsp["value"] >= 25:  # a nameplate only for a real sprint
                 cue(fsp["ts"] - 1.0, 5.0, "nameplate", aud, nameplate(fsp))
             cue(e["ts"] + 1.0, 6.0, "pass_shot", aud, {"mode": "shot", "player_id": e["player_id"],
@@ -398,7 +399,7 @@ def main(out_dir: Path) -> Path:
     # as studiodesk/export.py: the same recap for both audiences at half-time and full time, 12 s,
     # the full-time one past the last tracking frame
     for end, label in ((P1_S, "Half-time"), (P1_S + P2_S, "Full time")):
-        for aud in both:
+        for aud in both + tuple(f"team:{t['team_id']}" for t in TEAMS):
             cue(end, 12.0, "why_card", aud, recap({"teams": TEAMS, "players": players}, facts, end, label))
     cues.sort(key=lambda c: (c["ts"], c["audience"]))
     for i, c in enumerate(cues, 1):
@@ -417,7 +418,7 @@ def main(out_dir: Path) -> Path:
     for text in [VENUE] + [t["name"] for t in TEAMS] + [p["name"] for p in players] + texts + [
             v for s in stories for v in s["texts"].values()]:
         assert not find_forbidden(text), f"real name in fixture: {text}"
-    for aud in both:
+    for aud in sorted({c["audience"] for c in cues}):
         for lang in ("en", "it", "es"):
             mine = sheet(cues, aud, lang)
             for c in mine:

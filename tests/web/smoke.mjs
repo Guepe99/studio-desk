@@ -4,7 +4,8 @@
 //   node tests/web/smoke.mjs http://127.0.0.1:8765/          (page already served; CDP_URL to
 //                                                             connect to a running Chromium)
 //
-// Fails on any console error. Checks: every cue of both audiences on screen (the nameplate on its
+// Fails on any console error. Checks: every cue of both audiences on screen, and of every team and
+// player audience picked in the My team and Player modes (the nameplate on its
 // player, mapped from tracking by this file); never more than 2 graphics in the DOM, also while
 // playing at 16x and 64x, and none past its cue; the real-time path; Space toggling exactly once;
 // the clock frozen at the end of each period; the score bug and seek-bar goals against the score
@@ -208,6 +209,49 @@ try {
     console.log(`checked ${cues.length} cues`);
   });
 
+  // My team and Player: the picker offers exactly the audiences of cues.json, and for each one the
+  // graphics on screen are that audience's cues and nobody else's.
+  await check("modes", async () => {
+    const all = await page.evaluate(() => window.studioDesk.match.cues);
+    for (const kind of ["team", "player"]) {
+      const auds = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith(`${kind}:`)))].sort();
+      if (!auds.length) { fail(`modes: ${MATCH} has no ${kind} cues`); continue; }
+      await page.click(`[data-audience="${kind}"]`);
+      const offered = (await page.$$eval("#audience-pick option", (os) => os.map((o) => o.value))).sort();
+      if (offered.join() !== auds.join()) fail(`${kind}: picker offers ${offered.join()}, cues.json has ${auds.join()}`);
+      let seen = 0;
+      for (const aud of auds) {
+        await page.selectOption("#audience-pick", aud);
+        const [got, on] = await page.evaluate((k) => [window.studioDesk.state.audience,
+          document.querySelector(`[data-audience="${k}"]`).getAttribute("aria-pressed")], kind);
+        if (got !== aud || on !== "true") fail(`${aud}: state ${got}, aria-pressed ${on}`);
+        const mine = cues.filter((x) => x.audience === aud), ids = new Set(mine.map((x) => x.cue_id));
+        for (const c of mine) {
+          await seekTo(page, c.ts + Math.min(2, c.duration_s / 2));
+          const { live } = await onScreen(page);
+          const g = live.find((x) => x.cue === c.cue_id);
+          if (!g) { fail(`${aud} ${c.cue_id} ${c.graphic}: not on screen`); continue; }
+          if (g.facts > 0) fail(`${aud} ${c.cue_id}: ${g.facts} fact ids shown`);
+          for (const x of live) if (!ids.has(x.cue)) fail(`${aud}: ${x.cue} (${x.graphic}) of another audience on screen`);
+          if (!seen++) await page.screenshot({ path: `${shots}/web2d-${kind}.png` });
+        }
+      }
+      if (!seen) fail(`${kind}: no cue on air to check`);
+      console.log(`${kind}: ${auds.length} audiences, ${seen} cues checked`);
+    }
+    // keyboard: Enter on the button, arrows in the picker
+    await page.focus('[data-audience="team"]');
+    await page.keyboard.press("Enter");
+    const before = await page.evaluate(() => window.studioDesk.state.audience);
+    await page.focus("#audience-pick");
+    const lastTeam = await page.$eval("#audience-pick option:last-child", (o) => o.value);
+    await page.keyboard.press(before === lastTeam ? "ArrowUp" : "ArrowDown");
+    const after = await page.evaluate(() => [window.studioDesk.state.audience, document.querySelector('[data-audience="team"]').getAttribute("aria-pressed")]);
+    if (!before.startsWith("team:") || after[0] === before || !after[0].startsWith("team:") || after[1] !== "true") fail(`keyboard: team ${before} -> ${after.join(" ")}`);
+    await page.click('[data-audience="analyst"]');
+    if (!(await page.$eval("#audience-pick", (el) => el.hidden))) fail("picker still shown for the analyst audience");
+  });
+
   await check("real-time path", async () => {
     await page.click('[data-audience="analyst"]');
     const first = cues.find((c) => c.audience === "analyst");
@@ -409,6 +453,14 @@ try {
           if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} ${graphic}: horizontal scroll`);
         }
       }
+      // the Player picker, the widest the controls get, still fits
+      await phone.click('[data-audience="player"]');
+      await phone.waitForTimeout(100);
+      const lostPick = await unreachable(phone);
+      if (lostPick.length) fail(`${w}x${h} player mode: controls out of reach: ${lostPick.join(", ")}`);
+      if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} player mode: horizontal scroll`);
+      await phone.screenshot({ path: `${shots}/web-modes-${w}x${h}.png` });
+      await phone.click('[data-audience="analyst"]');
       await seekTo(phone, shotAt);
       await phone.screenshot({ path: `${shots}/web-fixes-${w}x${h}.png` });
       await phone.context().close();

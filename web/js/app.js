@@ -13,6 +13,16 @@ const STRINGS = {
     p1: "1H", p2: "2H", loading: "Loading match", error: "Could not load match {m}. {e}",
     minute: "Minute {n}, {p}", h1: "first half", h2: "second half", goal: "Goal",
     nographic: "Some graphics could not load: {g}.",
+    myteam: "My team", player: "Player", pickteam: "Choose the team", pickplayer: "Choose the player",
+  },
+  // only the audience control is translated so far; every other key falls back to English
+  it: {
+    audience: "Pubblico", analyst: "Analista", casual: "Tifoso", myteam: "La mia squadra", player: "Giocatore",
+    pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
+  },
+  es: {
+    audience: "Público", analyst: "Analista", casual: "Aficionado", myteam: "Mi equipo", player: "Jugador",
+    pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
   },
 };
 
@@ -153,13 +163,38 @@ function wireControls() {
   for (const b of document.querySelectorAll("[data-speed]")) {
     b.addEventListener("click", () => { state.speed = Number(b.dataset.speed); pressed("data-speed", state.speed); });
   }
+  // "team" and "player" need a pick: the select lists the ones the cue sheet has cues for
+  const auds = new Set(match.cues.map((c) => c.audience)), last = {};
+  const choices = {
+    team: [match.home, match.away].filter((tm) => auds.has(`team:${tm.team_id}`)).map((tm) => [`team:${tm.team_id}`, tm.name]),
+    player: match.meta.players.filter((p) => auds.has(`player:${p.player_id}`))
+      .map((p) => [`player:${p.player_id}`, `${p.name} (${match.teams[p.team_id]?.short_name ?? ""} ${p.shirt})`]),
+  };
+  const pick = $("#audience-pick");
+  const setAudience = (aud) => {
+    const kind = aud.split(":")[0], list = choices[kind];
+    state.audience = aud;
+    pressed("data-audience", kind);
+    if (list) {
+      last[kind] = aud;
+      const key = kind === "team" ? "pickteam" : "pickplayer";
+      if (pick.dataset.i18nAria !== key || !pick.options.length) {
+        // names come from the data: Option sets them as text, never as markup
+        pick.replaceChildren(...list.map(([v, label]) => new Option(label, v)));
+        pick.dataset.i18nAria = key;
+        pick.setAttribute("aria-label", t(key));
+      }
+      pick.value = aud;
+    }
+    if (pick.hidden !== !list) { pick.hidden = !list; layout(); } // the controls may wrap differently
+    refreshCues();
+  };
   for (const b of document.querySelectorAll("[data-audience]")) {
-    b.addEventListener("click", () => {
-      state.audience = b.dataset.audience;
-      pressed("data-audience", state.audience);
-      refreshCues();
-    });
+    const list = choices[b.dataset.audience];
+    if (list) b.hidden = !list.length;
+    b.addEventListener("click", () => setAudience(list ? last[b.dataset.audience] ?? list[0][0] : b.dataset.audience));
   }
+  pick.addEventListener("change", () => setAudience(pick.value));
   $("#half2").addEventListener("click", () => seek(match.meta.period1_s));
   $("#seek-range").addEventListener("input", (e) => seek(Number(e.target.value)));
   // the range keeps a fine step for dragging; keys move by useful match time instead
