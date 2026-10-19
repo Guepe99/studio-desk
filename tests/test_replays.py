@@ -4,6 +4,7 @@ database is a failure, not a skip."""
 import json
 import os
 import re
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -13,8 +14,11 @@ from studiodesk import config, db
 REPLAYS = Path(__file__).resolve().parents[1] / "replays"
 PACKS = sorted(p for p in REPLAYS.glob("M*") if p.is_dir()) if REPLAYS.exists() else []
 DASH = re.compile("[‒-―]")
-# same set the API refuses in edited text (studiodesk/api.py NO_CONTROL_CHARS), newline allowed
-CONTROL = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f​-‏‪-‮⁦-⁩]")
+# same rule the API applies to edited text (studiodesk/api.py): no Cc, Cf, Zl, Zp but newline
+def has_control(text):
+    return any(c != "\n" and unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") for c in text)
+
+
 NOTE_MAX = 160
 
 
@@ -79,7 +83,7 @@ def test_pack_ids_exist_in_the_seed_build(pack):
     for name, data in (("stories", stories), ("cues", cues), ("traces", traces)):
         for where, text in _strings(data, name):
             assert not DASH.search(text), f"{pack.name} {where}: dash in {text!r}"
-            assert not CONTROL.search(text), f"{pack.name} {where}: control character in {text!r}"
+            assert not has_control(text), f"{pack.name} {where}: control character in {text!r}"
 
 
 def test_a_missing_seed_fails_in_ci_and_skips_locally(monkeypatch, tmp_path):

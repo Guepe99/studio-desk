@@ -26,7 +26,8 @@ it stops and asks the lead session; nobody changes the contract inside a feature
 - `story_id`: `S-<6 digits>`. `cue_id`: `C-<6 digits>`.
 - All names (clubs, players, stadiums) are invented. Every generated name is checked against
   `data/forbidden_names.txt` (real clubs, players, grounds, broadcasters; one per line,
-  case-insensitive, matched as whole words) with `studiodesk.names.is_forbidden`.
+  case-insensitive, matched as whole words after NFKC, accent stripping and mapping Cyrillic and
+  Greek lookalikes; a line may be a bare surname) with `studiodesk.names.is_forbidden`.
 - Goals are SPADL shots (`shot`, `shot_freekick`, `shot_penalty`) with `result_name = 'success'`;
   own goals have `result_name = 'owngoal'`.
 - `M001` is the demo match shipped in the container image and opened by default.
@@ -62,7 +63,7 @@ control of the ball, or NULL.
 | `tactical_shift` | formation or line height changes around 60' |
 | `high_press` | a spell of high pressing by one team |
 | `top_sprint` | a sprint above 34 km/h |
-| `comeback` | a team goes from losing to drawing or winning |
+| `comeback` | a team that trailed draws level: once per deficit, at the equaliser |
 
 The table is only read by the evaluation script and the dataset export. The MCP server and the
 agents never read it.
@@ -97,10 +98,14 @@ the window.
 - `stories`: the candidate moments with their evidence.
   - `risk` runs 0..1. Below `AUTO_APPROVE_RISK` (0.35, in `studiodesk/config.py`) the default
     status is `auto_approved`; otherwise it is `needs_review`.
-    A story Content Safety flagged gets `needs_review` whatever its risk (feat/verifier2).
+    The risk rule applies only when Content Safety returned `passed`: a `flagged` or
+    `not_checked` story is `needs_review` whatever its risk (feat/verifier3).
   - `texts` is `{"en": .., "it": .., "es": ..}`.
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
   - `safety` is `passed`, `flagged` or `not_checked`.
+  - `fact_ids` holds the story's own facts plus the ones the analyst cited (`cited`). Templates,
+    graphics and the `why_card` `fact_ids` use only the story's own facts.
+  - No text that reaches the desk (`texts`, `analysis_en`) carries fact-id citations.
 - `cues`: what a graphic shows, when and for whom.
 - `traces`: one row per hand-off between agents, kept with the replay so judges can see it.
 - `audit`: who did what, when, with which model, tokens and cost.
@@ -194,7 +199,9 @@ and an automatic stop once the day's cost passes $25.
   for the match (404 otherwise); `edited_text` is required with `edited` and only with it, keys
   `en`/`it`/`es`, 1..600 characters, no control characters; unknown fields 422; bodies over 16 KB
   413. A later decision replaces the earlier one; `approved` clears an edit.
-- Caps: 300 actions (decisions and kill switch) per session, 5000 new sessions per day, then 429.
+- Caps: 300 actions (decisions and kill switch) per session, 5000 new sessions per day, 50 new
+  sessions per client address per day (the last `X-Forwarded-For` entry, else the client host;
+  kept in the process, so one replica), then 429.
 - Every decision and kill-switch change writes an `audit` row: `actor` `human`, `action` the
   decision or `ai_off`/`ai_on`, `detail` `{"langs": [..]}` for an edit.
 - `POST /api/live` and its stream answer 501 until the live run exists.
@@ -223,8 +230,18 @@ These refine the feat/desk rules above; where they differ, these win.
   sha1 of the edited text}}` with one. The edited text itself is never in the audit.
 - Bodies: a non-numeric `Content-Length` is 400; a body over 16 KB is 413, also when it is sent
   chunked without a `Content-Length`. Error responses carry the same security headers as the rest.
-- Edited text also refuses tab, C1 controls (U+0080..U+009F), zero-width and bidi characters
-  (U+200B..U+200F, U+202A..U+202E, U+2066..U+2069). Newline is allowed.
+- Edited text refuses every control, format and separator character (Unicode Cc, Cf, Zl, Zp:
+  tab, U+2028, U+FEFF, U+2060, U+061C, bidi marks, soft hyphen and the rest). Newline is allowed.
+- An edit sends the languages that changed; the desk editor shows all three, so saving an edit
+  means all three were reviewed. Saving unchanged text is an `approved` decision.
+- A 500 answers `{"detail": "internal error"}` with the security headers. The headers include
+  `Permissions-Policy` (camera, microphone, geolocation, payment, usb off); `script-src` has no
+  `blob:` (only `worker-src` does).
+- `GET /api/audit` also returns `actor: "auto"`, `action: "auto_approved"` rows for the stories
+  the risk rule put on air, worked out from the replay's `stories.json` when read, with
+  `detail.risk` and the director trace's time.
+- The schema in `studiodesk/schema.sql` runs once per version (SQLite `user_version`), with
+  indexes on `audit(session_id, actor)` and `sessions(created_at)`.
 - The page loads the replay without waiting for the API: API calls time out after 4 s and the desk
   then works offline, with the reason in its footer.
 
@@ -248,7 +265,9 @@ Agents only learn about an event when the clock releases it, in replay generatio
 
 - New fact kinds from B, same columns as the others:
   - `shot_distance`: metres from the shot location to the centre of the goal attacked, one per
-    shot, `source_event_ids` = the shot event. Label `Shot from 6 m`.
+    shot, `source_event_ids` = the shot event. Label `Shot from 6 m, inside the box, header,
+    saved`: inside or outside the box, body part (`header`, `foot`, or the foot side when stored),
+    outcome (`goal`, `saved`, `wide`, `over`, `blocked`).
   - `team_width` and `team_length`: metres between the widest and between the deepest and highest
     outfield players, mean over a 5-minute window, one per team per window (`ts` = window end, like
     `momentum`). Label `Team width 37.2 m, min 56-60`.
@@ -262,10 +281,12 @@ Agents only learn about an event when the clock releases it, in replay generatio
   `story_id`, then to the summaries, when it is missing or empty.
 - `stories.safety` is set by Azure AI Content Safety (text:analyze, api-version 2024-09-01) after
   `python -m studiodesk.agents run` (skip with `--no-safety`; `--fake` skips it) or with
-  `python -m studiodesk.agents safety <match_id>`: one call per story with its three texts joined,
+  `python -m studiodesk.agents safety <match_id>`: one call per story with its three texts and
+  `analysis_en` joined,
   at most 100 calls per match; `flagged` when any category has severity 2 or more, `not_checked`
   when the call fails or the cap is reached.
-- Verifier notes (`stories.verifier.flagged`) are one sentence of at most 160 characters each. No
+- Verifier notes (`stories.verifier.flagged`) are fixed reasons, `<lang>: <reason> (<fact id>)`,
+  never the judge's own words or a rejected number; at most 160 characters each. No
   agent string reaching the page (texts, analysis, angles, notes, trace summaries) carries em or
   en dashes or control characters.
 - AI replay packs: `replays/<match_id>/{stories,cues,traces}.json`, the export shapes of a real
