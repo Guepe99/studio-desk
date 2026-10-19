@@ -4,6 +4,7 @@ replays must be rejected and a correct line must pass (positive control). Tests 
 when data/matches.sqlite (or STUDIODESK_MATCHES_DB) is missing, as in test_replays."""
 import json
 import math
+import re
 from pathlib import Path
 
 import pytest
@@ -76,6 +77,28 @@ def test_club_without_article_in_italian_and_spanish():
     assert rules.bare_clubs(m, "L'Ostwick FC rimonta e pareggia.", "it") == []
     assert rules.bare_clubs(m, "Pases completados: Redwick Wanderers 84%, Ostwick FC 80%.", "es") == []
     assert rules.bare_clubs(m, "Ostwick FC level it.", "en") == []
+
+
+def test_an_article_on_top_of_a_merged_one_is_sent_back():
+    doubled = lambda t, lang: [x for x in rules.style_issues(t, lang, "momentum_swing") if x.startswith("article twice")]  # noqa: E731
+    for text in ("La inercia del el Wrenmouth Sporting Club sube de 1,8/10 a 7,5/10.",  # M002 S-000004, 19/10
+                 "Remate de Lindqvist desde en el área pequeña, a bocajarro.",  # M004 S-000025
+                 "Sostuvo la presión el del Harbour Vale: 4,6/10."):  # M004 S-000029
+        assert doubled(text, "es"), text
+    assert doubled("L'inerzia di il Redwick Wanderers sale.", "it")
+    assert doubled("La inercia del Wrenmouth Sporting Club sube, desde el área pequeña.", "es") == []
+    assert doubled("L'inerzia del Redwick Wanderers sale, per il Redwick è il momento.", "it") == []
+
+
+def test_the_crossbar_of_an_over_the_bar_outcome_is_not_invented():
+    m = rules.Match(INFO)
+    shot = [fact("shot_speed", 2, 3000, 119.2, "km/h", "Shot at 119.2 km/h")]
+    over = _story(m, "big_chance", shot, outcome="over")
+    text = "Ocasión clara para Rossi: disparo a 119,2 km/h, por encima del larguero."
+    assert not [x for x in rules.story_issues(m, over, text, "es") if "larguero" in x]
+    saved = _story(m, "big_chance", shot, outcome="saved")
+    assert [x for x in rules.story_issues(m, saved, "Disparo de Rossi que se estrella en el larguero.", "es")
+            if "larguero" in x]
 
 
 # --- the reviewer's lines, on the real facts ---------------------------------------------------
@@ -206,5 +229,9 @@ def test_every_template_on_the_real_packs_passes_every_check(packs):
                 t = rules.template(m, s, lang)
                 bad = (rules.check_text(m.without_names(t), rules.story_allowed(m, s), lang, rules.story_ids(s))
                        + rules.story_issues(m, s, t, lang) + rules.story_gaps(m, s, t) + rules.jargon(t)
-                       + rules.english_words(t, lang) + rules.calques(t, lang) + rules.bare_clubs(m, t, lang))
+                       + rules.english_words(t, lang) + rules.calques(t, lang) + rules.bare_clubs(m, t, lang)
+                       + [x for x in rules.style_issues(t, lang, s["kind"]) if x.startswith("article twice")])
+                if s["kind"] == "pressing_spell" and lang != "en":
+                    assert re.match(r"(?:Pressing intenso d|Presión intensa del )", t) and " per " not in t \
+                        and " para " not in t, t  # "dell'Ostwick FC", "del Ostwick FC"
                 assert bad == [], (mid, sid, lang, t, bad)

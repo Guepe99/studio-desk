@@ -57,6 +57,7 @@ def test_azure_request_shape_and_key_fallback(monkeypatch):
     monkeypatch.setattr(safety.urllib.request, "urlopen", urlopen)
     monkeypatch.setattr(safety, "_az", lambda *a: "k3y" if "keys" in a else "https://x.example/")
     monkeypatch.setattr(safety, "MIN_INTERVAL_S", 0.0)
+    monkeypatch.delenv("AZURE_CONTENT_SAFETY_ENDPOINT", raising=False)  # the endpoint must come from az here
     s = safety.AzureSafety()
     s.credential = type("Cred", (), {"get_token": lambda self, scope: Token()})()
     assert s("a line") == {"Hate": 0, "Violence": 4} and safety.verdict(s("a line")) == "flagged"

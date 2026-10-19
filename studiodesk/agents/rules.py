@@ -77,8 +77,8 @@ TEMPLATES = {
     "top_sprint": ("{player} sprints at {v} km/h.", "{player} scatta a {v} km/h.", "{player} esprinta a {v} km/h."),
     "momentum_swing": ("Momentum for {team}: {trend}.", "Inerzia della partita per {team}: {trend}.",
                        "Inercia del partido para {team}: {trend}."),
-    "pressing_spell": ("{team} press hard, intensity {trend}.", "Pressing intenso per {team}: l'intensità {trend}.",
-                       "Presión intensa para {team}: la intensidad {trend}."),
+    "pressing_spell": ("{team} press hard, intensity {trend}.", "Pressing intenso {team_di}: l'intensità {trend}.",
+                       "Presión intensa {team_de}: la intensidad {trend}."),
     "tactical_shift": ("{team} hold their defensive line at {v} m from their own goal.",
                        "{Team} tiene la linea difensiva a {v} m dalla propria porta.",
                        "{Team} sitúa su línea defensiva a {v} m de su portería."),
@@ -606,6 +606,7 @@ def trend_shape(values):
 
 
 # a value path as a commentator says it; {0} {1} {2} are "value at minute" in time order
+SINGLE_VALUE = ("{}/10", "è di {}/10", "es de {}/10")  # a pressing spell of one window, no path
 TREND_WORDS = {
     "rising": ("up from {0} to {1}", "sale da {0} a {1}", "sube de {0} a {1}"),
     "falling": ("down from {0} to {1}", "scende da {0} a {1}", "baja de {0} a {1}"),
@@ -757,6 +758,7 @@ SHOT_WORDS = {
              "it": r"a lato|sul fondo|di poco fuori|fuori di poco|fuori bersaglio|non inquadra",
              "es": r"desviad\w*|se marcha fuera|se va fuera|fuera por poco"},
 }
+OVER_BAR = r"(?:por encima del? |sopra la |over the )(?:larguero|travesaño|traversa|(?:cross)?bar)"
 HEAD = {"en": r"header|headed|heads|nods?|nodded|with (?:his|her|the) head",
         "it": r"di testa|colpo di testa|testa|incorna\w*|inzucca\w*", "es": r"cabez\w*|cabece\w*|testarazo|de cabeza"}
 KICK = {"en": r"foot\w*|volley\w*|drill\w*|curl\w*|fires?|fired|lash\w*|thump\w*",
@@ -909,7 +911,9 @@ def story_issues(m, story, text, lang, on_air=True):
         out.append(f"possession claim: '{hit.group(0)}', there is no possession fact and pass accuracy is not possession")
     elif hit := _has(DOMINATION, text):
         out.append(f"domination claim: '{hit.group(0)}', no fact measures domination")
-    if hit := _has(INVENTED.get(lang, INVENTED["en"]), text):
+    # the crossbar is named by the over-the-bar outcome itself ("por encima del larguero")
+    scan = re.sub(OVER_BAR, "", text, flags=re.IGNORECASE) if story.get("outcome") == "over" else text
+    if hit := _has(INVENTED.get(lang, INVENTED["en"]), scan):
         out.append(f"detail not in the facts: '{hit.group(0)}'")
     if hit := _has(PRESS_HIGH, text):
         out.append(f"press position: '{hit.group(0)}', press intensity says how hard a team presses, not where")
@@ -1221,6 +1225,11 @@ def loud_words(text, lang):
     return {w.lower() for w in re.findall(rf"(?<!\w)(?:{RATIONED[lang]})(?!\w)", text, re.IGNORECASE)}
 
 
+# an article on top of a merged one: "del el Wrenmouth", "desde en el área", "di il Redwick"
+DOUBLED = {"it": r"(?:di|a|da|in|su|del|al|dal|nel|sul|il|lo) (?:il|lo|l['’])|(?:dell|all|dall|nell|sull)['’]\s*(?:il|lo)",
+           "es": r"(?:del|al|de|a|el) el|el del|desde en(?: el)?"}
+
+
 def style_issues(text, lang, kind, used=None, m=None):
     """What a TV commentator would not do: say the score twice, or where it is not the point of the
     story; use the same word twice; run past two sentences; reuse a loud word or an opening already
@@ -1240,6 +1249,8 @@ def style_issues(text, lang, kind, used=None, m=None):
     if sentences > longest:
         out.append(f"{sentences} sentences: keep it to {longest}")
     out += jargon(text) + english_words(text, lang) + calques(text, lang) + bare_clubs(m, text, lang)
+    if lang in DOUBLED and (hit := _has(DOUBLED[lang], text)):
+        out.append(f"article twice: '{hit.group(0)}', the club's article merges with the word before")
     if lang == "en" and (hit := re.search(r"(?<!\bthe )\b\d+(?:st|nd|rd|th) minute\b", text)):
         out.append(f"'{hit.group(0)}' without 'the': say 'in the {hit.group(0)}'")
     tail = [p for p in re.split(r"[,;:]", text.rstrip(" .!"))][-2:]
@@ -1281,7 +1292,8 @@ def template(m, story, lang):
         return text
     t = story["team_id"]
     team = club(m.team_name(t), lang)
-    names = {"team": team, "Team": team[:1].upper() + team[1:], "leader": lead_name, "s": s}
+    names = {"team": team, "Team": team[:1].upper() + team[1:], "leader": lead_name, "s": s,
+             "team_di": club(m.team_name(t), lang, "di"), "team_de": club(m.team_name(t), lang, "de")}
     if kind == "tactical_shift" and story.get("shape"):
         old, new = story["shape"]
         return TEMPLATES["shape_shift"][i].format(old=old, new=new, **names)
@@ -1298,7 +1310,7 @@ def template(m, story, lang):
     elif kind == "comeback":
         kind = "comeback_level" if leader is None else "comeback_up"
     outcome = OUTCOMES.get(story.get("outcome"), ("",) * 3)[i]
-    return TEMPLATES[kind][i].format(player=player, v=v, outcome=outcome, trend=path["say"] if path else f"{v}/10", **names)
+    return TEMPLATES[kind][i].format(player=player, v=v, outcome=outcome, trend=path["say"] if path else SINGLE_VALUE[i].format(v), **names)
 
 
 def analysis_template(story):
