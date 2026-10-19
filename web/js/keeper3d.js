@@ -24,6 +24,8 @@ export const TIMING = {
 const REACT = 0.12;          // s after the shot before the keeper moves (none earlier: no anticipation)
 const MIN_PRE = 0.15;        // s: a reflex save still shows this much movement before contact
 const LATE = 0.25;           // s after the shot: a beaten keeper's first move
+const SET_S = 0.6;           // s before the shot the keeper is in his set position (docs/motion3d.md)
+const SET_IN = 0.3;          // s to settle into it
 const MAX_SHIFT = 2.0;       // m the feet leave the tracked spot, at most
 const LIE_LIFT = 0.18;       // m: holder height of a body lying on its side (shoulder half-width)
 const DEG = Math.PI / 180;
@@ -87,7 +89,8 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     const d = (b.x - K[0]) * u[0] + (b.y - K[1]) * u[1];
     const f = (b.x - K[0]) * fw[0] + (b.y - K[1]) * fw[1];
     const h = b.h + ballR;
-    const kind = goal ? (h < 0.6 ? "low" : "dive")
+    // a beaten keeper always throws himself full length at it (a crouching drop reads as giving up)
+    const kind = goal ? "dive"
       : h > 2.0 ? "tip" : Math.abs(d) < 0.7 && h >= 0.45 ? "catch" : h < 0.6 && Math.abs(d) < 1.6 ? "low" : "dive";
     const T = TIMING[kind];
     let start = goal ? Math.max(e.ts + LATE, tc - T.pre) : Math.max(e.ts + REACT, tc - T.pre);
@@ -96,17 +99,17 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     const reach = goal ? clamp((tc - start) / 1.0, 0.25, 0.6) : 1;
     const side = d >= 0 ? 1 : -1;   // +1: his right
     const target = { d: d * reach, h: goal ? Math.max(0.3, h * reach) : h, f: Math.max(0, f) };
-    const r = { i, pid: kpid, shot: e.event_id, goal, kind, side, clip: CLIPS[kind][side > 0 ? 1 : 0], tc, start,
+    const r = { i, pid: kpid, shot: e.event_id, goal, kind, side, clip: CLIPS[kind][side > 0 ? 1 : 0], tc, start, set0: e.ts - SET_S,
       end: tc + T.fall + T.lie + T.rise, yaw, u, fw, ball: [b.x, b.y, h], d, h, ...solve(kind, target, body) };
     const c = real[r.clip];
-    if (c) fitClip(r, c, { earliest: goal ? e.ts + LATE : e.ts + REACT, want: [-target.d, target.h, f] });
+    if (c) fitClip(r, c, { earliest: goal ? e.ts + LATE : e.ts + REACT, want: [-target.d, target.h, f], goal });
     out.push(r);
   }
   // one at a time per keeper: a later reaction cuts the earlier short
   out.sort((a, b) => a.start - b.start);
   for (let k = 0; k + 1 < out.length; k++) {
     const n = out.slice(k + 1).find((r) => r.i === out[k].i);
-    if (n) out[k].end = Math.min(out[k].end, n.start);
+    if (n) { out[k].end = Math.min(out[k].end, n.start); n.set0 = Math.max(n.set0, out[k].end); }
   }
   return out;
 }
@@ -118,7 +121,9 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
 const RATE_MAX = 2.5;   // fastest run-up, times the clip's own (a reflex save)
 const DOWN_S = 0.9;     // s of clip after contact before the hold
 const RISE_S = 0.8;     // s to blend back up onto the tracking
-function fitClip(r, c, { earliest, want }) {
+const GOAL_RATE = 1.2;  // a beaten keeper's dive, times the clip's own speed
+function fitClip(r, c, { earliest, want, goal = false }) {
+  if (goal) return fitBeaten(r, c, earliest, want);
   // a dive's contact frame follows the ball's height: on the way down from the hands' highest
   // point to their widest, the first frame the hands are no higher than the ball
   if (c.hands && (r.kind === "dive" || r.kind === "low")) {
@@ -145,6 +150,22 @@ function fitClip(r, c, { earliest, want }) {
   r.end = r.real.tHold + RISE_S;
 }
 
+// A beaten keeper: from the set position (the clip's last frame before the push) the dive plays
+// at about its own speed from his late start; he does not reach the ball, lands and stays down.
+function fitBeaten(r, c, start, want) {
+  const sg = Math.sign(c.root.at(-1)[0]) || 1, far = c.root.at(-1)[0] * sg;
+  const push = Math.max(0, c.root.findIndex((q) => q[0] * sg > 0.05));
+  const landed = Math.max(push, c.root.findIndex((q) => q[0] * sg > 0.97 * far));
+  const c0 = Math.max(0, push / c.fps - 0.1), contact = c0 + GOAL_RATE * (r.tc - start);
+  const at = rootAt(c, contact), hand = c.hands?.[Math.min(c.hands.length - 1, Math.round(contact * c.fps))] ?? c.hand;
+  const hold = Math.min(c.len, Math.max(contact, landed / c.fps + 0.5));
+  r.start = start;
+  r.real = { rate: GOAL_RATE, c0, contact, hold, tHold: r.tc + (hold - contact) / GOAL_RATE + 0.6, root: c.root, fps: c.fps,
+    // most of the clip's flight towards the ball, never past it
+    lat: clamp(Math.abs(at[0]) > 0.3 ? (want[0] - (hand[0] - at[0])) / at[0] : 1, 0.6, 1), shift: 0, up: 0, fwd: 0, beaten: true };
+  r.end = r.real.tHold + RISE_S;
+}
+
 // Root of clip c at clip time t: [left, up, forward], linear between frames.
 function rootAt(c, t) {
   const f = clamp(t * c.fps, 0, c.root.length - 1), k = Math.min(Math.floor(f), c.root.length - 2), a = f - k;
@@ -153,18 +174,24 @@ function rootAt(c, t) {
 
 // Root offset of reaction r with a real clip at ts, like keeperRoot (roll 0: the clip turns the body).
 export function realRoot(r, ts) {
-  if (ts < r.start || ts >= r.end) return null;
+  if (ts < (r.set0 ?? r.start) || ts >= r.end) return null;
   const q = r.real;
-  const clipT = ts < r.tc ? q.c0 + (ts - r.start) * q.rate : Math.min(q.hold, q.contact + ts - r.tc);
+  if (ts < r.start) return { dx: 0, dy: 0, lift: 0, roll: 0, w: setW(r, ts), clipT: q.c0 };   // set position
+  const clipT = ts < r.tc ? q.c0 + (ts - r.start) * q.rate : Math.min(q.hold, q.contact + (ts - r.tc) * (q.beaten ? q.rate : 1));
   // the shifts come in before contact and stay (so does the travel a late start skipped);
   // everything goes back during the rise
   const g = smooth((ts - r.start) / (r.tc - r.start)), back = 1 - smooth((ts - q.tHold) / RISE_S);
   const skip = rootAt(q, q.c0), [l, u, f] = rootAt(q, clipT).map((x, j) => x - skip[j] * (1 - g));
   const around = g * (1 - smooth((ts - r.tc - 0.2) / 0.4));   // height and depth only near contact
   const left = (l * q.lat + q.shift * g) * back, ahead = (f + q.fwd * around) * back;
-  const w = Math.max(0, Math.min(1, (ts - r.start) / 0.1, back));
+  const w = Math.max(0, Math.min(rampIn(r, ts), back));
   return { dx: -r.u[0] * left + r.fw[0] * ahead, dy: -r.u[1] * left + r.fw[1] * ahead, lift: (u + q.up * around) * back, roll: 0, w, clipT };
 }
+
+// Weight of the set position, and of the reaction from its start: a keeper already set is at full
+// weight when he moves, else the reaction blends in over 0.1 s.
+const setW = (r, ts) => smooth((ts - r.set0) / SET_IN);
+const rampIn = (r, ts) => Math.min(1, r.start - r.set0 >= SET_IN ? 1 : (ts - r.start) / 0.1);
 
 // First time in [a, b] the drawn ball comes nearest to point p.
 function closest(ball, a, b, p) {
@@ -203,7 +230,8 @@ export function solve(kind, { d, h, f }, { shoulder, arm }) {
 // Root offset of reaction r at ts, or null outside it. dx, dy contract metres; lift metres;
 // roll radians for holder.rotation.z; w the weight of the whole reaction; clipT the clip time.
 export function keeperRoot(r, ts) {
-  if (ts < r.start || ts >= r.end) return null;
+  if (ts < (r.set0 ?? r.start) || ts >= r.end) return null;
+  if (ts < r.start) return { dx: 0, dy: 0, lift: 0, roll: 0, w: setW(r, ts), clipT: 0 };   // set position (the stance key)
   const T = TIMING[r.kind];
   const marks = [r.start, r.tc, r.tc + T.fall, r.tc + T.fall + T.lie, r.tc + T.fall + T.lie + T.rise];
   // clip time: piecewise linear between the phase marks
@@ -225,7 +253,7 @@ export function keeperRoot(r, ts) {
     const p = smooth((ts - marks[3]) / T.rise);
     g = 1 - p; roll = rollLie * (1 - p); lift = liftLie * (1 - p);
   }
-  const w = Math.min(1, (ts - r.start) / 0.1, (r.end - ts) / 0.3);
+  const w = Math.min(rampIn(r, ts), (r.end - ts) / 0.3);
   const across = r.s * g * r.side, ahead = r.fwd * g;
   return {
     dx: r.u[0] * across + r.fw[0] * ahead, dy: r.u[1] * across + r.fw[1] * ahead,

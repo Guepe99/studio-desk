@@ -142,7 +142,7 @@ export function buildStadium(scene, match, profile, rnd) {
   const roofMat = mat(scene, "roof", [0.55, 0.57, 0.6], 0.5);
   roofMat.backFaceCulling = false;
 
-  const tiers = [], shells = [], roofs = [];
+  const tiers = [], shells = [], roofs = [], fronts = [];
   const people = [];   // [worldX, worldY, worldZ, rotY, end, row]
   // gantry: the near side, where the broadcast camera sits; no crowd in front of it
   const stand = (len, front, depth, rotY, end, gantry = false) => {
@@ -153,7 +153,7 @@ export function buildStadium(scene, match, profile, rnd) {
     t.parent = root; t.rotation.x = Math.PI / 2 - rake; t.position.set(0, 1.5 + 7.75, front + depth / 2);
     tiers.push(t);
     const wall = B.MeshBuilder.CreateBox("w", { width: len, height: 1.5, depth: 0.4 }, scene);
-    wall.parent = root; wall.position.set(0, 0.75, front); shells.push(wall);
+    wall.parent = root; wall.position.set(0, 0.75, front); fronts.push(wall);
     const back = B.MeshBuilder.CreateBox("bk", { width: len, height: 27, depth: 1 }, scene);
     back.parent = root; back.position.set(0, 13.5, front + depth + 0.5); shells.push(back);
     // roof from 0.2 to 1 of the depth, flat so its edges meet the corners' exactly
@@ -215,7 +215,9 @@ export function buildStadium(scene, match, profile, rnd) {
     out.material = m; out.freezeWorldMatrix(); out.doNotSyncBoundingInfo = true;
     return out;
   };
-  merge(tiers, seatMat); merge(shells, concrete); merge(roofs, roofMat);
+  // the front walls painted dark like the seats: in concrete grey they were a flat band right
+  // behind the boards in every close-up
+  merge(tiers, seatMat); merge(shells, concrete); merge(roofs, roofMat); merge(fronts, mat(scene, "front", [0.05, 0.06, 0.1], 1));
 
   // crowd: a torso and a head per seat. Shirts lean to the two kits, by end of the ground.
   // Silhouettes as raw pixels, not canvas drawings: small canvas textures came out empty under

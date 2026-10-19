@@ -175,7 +175,8 @@ async function main() {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: capture ? 30 : 60,   // the capture (tests/web/sample3d-video.mjs) renders 30 frames a second
     locate: (pid, now) => (match.index[pid] !== undefined ? scene.project(match.index[pid], now) : { x: 0, y: 0, visible: false }),
-    vendorParams: () => ({ v_showFactIds: true, v_players: players, v_teams: teams }),
+    // the TV view: no fact id chips (the 2D analyst page keeps them)
+    vendorParams: () => ({ v_showFactIds: false, v_players: players, v_teams: teams }),
   });
   await Promise.all(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
   host.setCues(match.cues.filter((c) => c.audience === "analyst" && c.lang === "en"), tl.at(0).ts);

@@ -171,3 +171,30 @@ test("M001: defenders face and watch the ball", { skip: !m001 && "no web/data/M0
     assert.equal(g.scorer, 1);
   }
 });
+
+// after a goal the drawn bodies (tracking plus the pose offset) never merge: team-mates keep their
+// shoulders apart, opponents stay out of a celebrating arm's reach
+for (const [id, mt] of [["DEMO", demo], ["M001", m001]]) {
+  test(`${id}: no two bodies overlap in the seconds after a goal`, { skip: !mt && `no web/data/${id}` }, () => {
+    const aw = new Awareness(mt, [0, mt.duration]);
+    let worst = Infinity, raw = Infinity;
+    for (const g of mt.goals) {
+      for (let ts = g.ts + 1; ts < g.ts + 13; ts += 0.5) {
+        const at = [];
+        for (let i = 1; i < mt.n; i++) {
+          const p = mt.at(i, ts);
+          if (!p) continue;
+          const o = aw.pose(i, ts);
+          at.push([i, p[0], p[1], p[0] + (o.dx ?? 0), p[1] + (o.dy ?? 0)]);
+        }
+        for (let a = 0; a < at.length; a++) for (let b = a + 1; b < at.length; b++) {
+          raw = Math.min(raw, Math.hypot(at[a][1] - at[b][1], at[a][2] - at[b][2]));
+          worst = Math.min(worst, Math.hypot(at[a][3] - at[b][3], at[a][4] - at[b][4]));
+        }
+      }
+    }
+    // one push per pair can be undone by a third body, so allow a little under the 0.9 m target
+    assert.ok(worst > 0.7, `${id}: two bodies ${worst.toFixed(2)} m apart (tracking ${raw.toFixed(2)})`);
+    if (id === "M001") assert.ok(raw < 0.7, `M001: the tracking never brings two bodies within 0.7 m (${raw.toFixed(2)}): the check measures nothing`);
+  });
+}
