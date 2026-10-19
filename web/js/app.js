@@ -4,6 +4,8 @@ import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
+import { Moments } from "./moments.js";
+import { Activity } from "./activity.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -14,15 +16,18 @@ const STRINGS = {
     minute: "Minute {n}, {p}", h1: "first half", h2: "second half", goal: "Goal",
     nographic: "Some graphics could not load: {g}.",
     myteam: "My team", player: "Player", pickteam: "Choose the team", pickplayer: "Choose the player",
+    next: "Next key moment", nonext: "No more key moments",
   },
   // only the audience control is translated so far; every other key falls back to English
   it: {
     audience: "Pubblico", analyst: "Analista", casual: "Tifoso", myteam: "La mia squadra", player: "Giocatore",
     pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
+    next: "Prossimo momento chiave", nonext: "Nessun altro momento chiave",
   },
   es: {
     audience: "Público", analyst: "Analista", casual: "Aficionado", myteam: "Mi equipo", player: "Jugador",
     pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
+    next: "Siguiente momento clave", nonext: "No hay más momentos clave",
   },
 };
 
@@ -32,9 +37,9 @@ const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
-const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
+const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, end = 0;
+let match = null, host = null, desk = null, voice = null, end = 0, moments = null, activity = null;
 // Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
 let portrait = false, scale = 1;
 
@@ -44,23 +49,30 @@ function layout() {
   const W = $("#app").clientWidth || window.innerWidth;
   const cw = Math.min(W - 32, 860);
   controls.style.width = `${cw}px`;
-  const ch = controls.offsetHeight + 24;
+  const ch = controls.offsetHeight + 24 + strip.offsetHeight + 10;
   const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
   const s = Math.min(w / STAGE_W, h / STAGE_H);
   frame.style.width = `${Math.round(STAGE_W * s)}px`;
   frame.style.height = `${Math.round(STAGE_H * s)}px`;
   stage.style.transform = `scale(${s})`;
   controls.style.width = `${Math.max(Math.round(STAGE_W * s), cw)}px`;
+  strip.style.width = frame.style.width;
   pitch.resize(s * Math.min(window.devicePixelRatio || 1, 2));
   scale = s;
   portrait = window.innerHeight > W;
   document.body.classList.toggle("portrait", portrait);
   if (portrait) {
     deck.style.width = frame.style.width;
-    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s) - controls.offsetHeight - 36)}px`;
+    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s) - controls.offsetHeight - strip.offsetHeight - 46)}px`;
   }
   state.seeked = true; // graphics are rebuilt for the new size
+  laidOut = `${controls.offsetHeight}|${strip.offsetHeight}`;
 }
+// a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
+let laidOut = "";
+const relayout = new ResizeObserver(() => { if (`${controls.offsetHeight}|${strip.offsetHeight}` !== laidOut) layout(); });
+relayout.observe(controls);
+relayout.observe(strip);
 
 function applyStrings() {
   // the page chrome is English; the graphics and story texts carry the chosen language
@@ -92,7 +104,9 @@ function cueSheet() {
 }
 
 function refreshCues() {
-  host.setCues(cueSheet(), state.ts);
+  const sheet = cueSheet();
+  host.setCues(sheet, state.ts);
+  moments.setSheet(sheet);
 }
 
 let lastBug = "";
@@ -151,6 +165,8 @@ function tick(now) {
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
   voice?.update(state.ts, end); // null until its clips are checked
+  moments.update(state.ts);
+  activity.update(state.ts, state.seeked);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -268,6 +284,8 @@ async function main() {
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   desk.render();
+  moments = new Moments($("#next-moment"), { state, seek, t });
+  activity = new Activity(strip, desk);
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
