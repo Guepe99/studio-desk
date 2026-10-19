@@ -20,6 +20,7 @@ export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
 import { smoothMatch } from "./scene3d/track.js";
+import { GoalNets } from "./scene3d/net.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -132,7 +133,7 @@ export class Scene3D {
     net.diffuseColor = new B.Color3(0, 0, 0);
     net.emissiveColor = new B.Color3(0.82, 0.82, 0.82);
     const GW = 7.32, GH = 2.44, D = 2.2, cell = 0.12 * 4;   // one texture tile = 4 net cells
-    const posts = [], nets = [];
+    const posts = [];
     for (const s of [-1, 1]) {
       const x = s * HALF_L;
       for (const z of [-GW / 2, GW / 2]) {
@@ -141,20 +142,10 @@ export class Scene3D {
       }
       const bar = B.MeshBuilder.CreateCylinder("b", { diameter: 0.12, height: GW + 0.12, tessellation: 10 }, scene);
       bar.rotation.x = Math.PI / 2; bar.position.set(x, GH, 0); posts.push(bar);
-      const plane = (w, h, pos, rotY, rotX = 0) => {
-        const m = B.MeshBuilder.CreatePlane("n", { width: w, height: h, sideOrientation: B.Mesh.DOUBLESIDE }, scene);
-        const uv = m.getVerticesData(B.VertexBuffer.UVKind);
-        for (let i = 0; i < uv.length; i += 2) { uv[i] *= w / cell; uv[i + 1] *= h / cell; }
-        m.setVerticesData(B.VertexBuffer.UVKind, uv);
-        m.position.copyFrom(pos); m.rotation.y = rotY; m.rotation.x = rotX;
-        nets.push(m);
-      };
-      plane(GW, GH * 0.9, new B.Vector3(x + s * D, GH * 0.45, 0), Math.PI / 2);                 // back
-      plane(GW, Math.hypot(D, GH * 0.1), new B.Vector3(x + s * D / 2, GH * 0.95, 0), Math.PI / 2, s * (Math.PI / 2 - Math.atan2(GH * 0.1, D)));
-      for (const z of [-GW / 2, GW / 2]) plane(D, GH, new B.Vector3(x + s * D / 2, GH / 2, z), 0); // sides
     }
     const mp = B.Mesh.MergeMeshes(posts, true); mp.material = white; mp.freezeWorldMatrix();
-    const mn = B.Mesh.MergeMeshes(nets, true); mn.material = net; mn.freezeWorldMatrix();
+    // one grid per goal, so a scored ball can push a pocket into it (scene3d/net.js)
+    this.nets = new GoalNets(B, scene, net, HALF_L, { GW, GH, D }, cell);
   }
 
   _ball() {
@@ -260,6 +251,8 @@ export class Scene3D {
     }
     this.ball.setEnabled(!!b);
     this.ballShadow.setEnabled(!!b);
+    const np = this.rig.plan.net(ts);   // a scored ball pressing the netting
+    this.nets.update(np && { end: np.end, plane: np.plane, at: [np.at[0] - HALF_L, np.at[2], np.at[1] - HALF_W], depth: np.depth });
 
     const gr = this.grounding;
     gr.frame();

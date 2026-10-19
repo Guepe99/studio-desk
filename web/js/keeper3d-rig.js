@@ -44,7 +44,7 @@ export class KeeperRig {
 
   at(i, ts) {
     if (!this.enabled) return null;
-    for (const r of this.by.get(i) ?? []) if (ts >= r.start && ts < r.end) return r;
+    for (const r of this.by.get(i) ?? []) if (ts >= r.set0 && ts < r.end) return r;
     return null;
   }
 

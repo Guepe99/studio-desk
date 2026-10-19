@@ -42,9 +42,10 @@ test("shot, short pass and long ball read as different actions", () => {
   assert.ok(back("shot") > back("long") && back("long") > back("pass") + 10);
   // the pass is a side-foot kick: the kicking thigh turned out much more than in the instep kicks
   assert.ok(legPose("pass", 0).swing[3] * D >= 45 && legPose("shot", 0).swing[3] * D < 15);
-  // the free arm goes out wide on the shot and the long ball, stays close on the pass and the touches
+  // the free arm goes out wide on the shot and the long ball, half as wide on the pass (a counter-swing
+  // all the same), and stays close on the touches
   const arm = (kind) => peak(kind, (t) => bodyPose(kind, t).free[0] * D);
-  assert.ok(arm("shot") >= 80 && arm("long") >= 80 && arm("pass") < 35 && arm("touch") < 20);
+  assert.ok(arm("shot") >= 80 && arm("long") >= 80 && arm("pass") >= 40 && arm("pass") < 65 && arm("touch") < 20);
   // trunk over the ball on the shot, back on the long ball, upright on the pass
   assert.ok(at0("shot").lean * D > 5 && at0("long").lean * D < -5 && Math.abs(at0("pass").lean * D) < 8);
   // the tension arc: at the top of the backswing the hips and the shoulders turn opposite ways,

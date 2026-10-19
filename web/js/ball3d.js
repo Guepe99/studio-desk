@@ -24,6 +24,13 @@ const PUSH_R = 0.3;              // end/start speed ratio of the ball between tw
 const SPIN_CAP = 2 * Math.PI * 6;   // rad/s drawn at most: faster reads as a frozen ball in the 30 fps capture
 const AIR_SPIN = 2 * Math.PI * 4;   // rad/s of a kicked ball at 20 m/s (straight kicks: 3.6-5.8 rev/s)
 const STEP = 0.02;               // s, ball rotation sampling
+// the goal (contract metres) and its netting: a soft, heavily damped spring that swallows the ball
+// in about 0.2 s and gives it back slowly (docs/motion3d.md)
+export const PITCH_L = 105, GOAL_W = 7.32, GOAL_H = 2.44, NET_D = 2.2;
+const NET_W = 14;                // rad/s, natural frequency of the net on the ball
+const NET_Z = 0.7;               // damping ratio: most of the energy stays in the cords
+const NET_GRIP = 6;              // 1/s, the cords drag on the ball along the net
+const ROLL_DECEL = 1.5;          // m/s^2, the ball rolling on the turf inside the goal
 
 const KICKS = { pass: "pass", cross: "long", shot: "shot", shot_freekick: "shot", shot_penalty: "shot",
   freekick_crossed: "long", freekick_short: "pass", corner_crossed: "long", corner_short: "pass",
@@ -56,7 +63,9 @@ export class BallPlan {
     this.zGround = Number.isFinite(zg) ? Math.max(0, zg) : 0;
     this.segs = [];      // { t0, t1, r }: clock bends
     this.actors = new Map();   // entity index -> { warp: [], yaw: [], legs: [], face: [] }
+    this.nets = [];      // { t0, t1, s: samples }: a scored ball carried on into the netting
     this._plan();
+    this._nets();
     this._spin();
   }
 
@@ -182,6 +191,101 @@ export class BallPlan {
     return true;
   }
 
+  // A scored ball: the tracking ball stops on the line, so from the crossing on the drawn ball keeps
+  // its speed and is simulated into the netting (a damped spring per net plane, gravity, a bounce
+  // and a roll), then rests in the goal until the next event or the ball's reset.
+  _nets() {
+    const ids = new Set(this.match.goals.flatMap((g) => g.source_event_ids ?? []));
+    const r = this.ballR, H = 1 / 240;
+    for (const e of this.match.events) {
+      if (!ids.has(e.event_id) || e.ts < this.t0 - 1 || e.ts > this.t1) continue;
+      const end = e.end_x > PITCH_L / 2 ? 1 : -1, gx = end > 0 ? PITCH_L : 0;
+      let tc = null;
+      // take over 2.5 m short of the line: the tracking ball already brakes for its stop there
+      for (let t = e.ts; t < e.ts + 4; t += 0.005) { const b = this.ball(t); if (b && (b.x - gx) * end > -2.5) { tc = t; break; } }
+      if (tc === null || tc - 0.25 < e.ts) continue;
+      const a = this.ball(tc - 0.25), c = this.ball(tc);
+      const p = [c.x, c.y, c.h + r], v = [(c.x - a.x) / 0.25, (c.y - a.y) / 0.25, (c.h - a.h) / 0.25];
+      if ((v[0] * end) < 3) continue;   // a ball dribbled over the line: nothing to carry
+      // the window: up to the next event or a jump of the tracking ball (the reset for the kick-off)
+      let t1 = Math.min(tc + 30, this.t1 + 1);
+      const next = this.match.events.find((x) => x.ts > tc + 0.05);
+      if (next) t1 = Math.min(t1, next.ts);
+      for (let t = tc; t < t1; t += 0.1) {
+        const q0 = this.raw(t), q1 = this.raw(t + 0.1);
+        if (q0 && q1 && Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) > 3) { t1 = t; break; }
+      }
+      // planes as [axis, sign, position(p)]: the ball's front surface past the plane presses it
+      const planes = [
+        ["back", (q) => (q[0] - gx) * end + r - NET_D, [end, 0, 0]],
+        ["side", (q) => q[1] - (34 + GOAL_W / 2) + r, [0, 1, 0]],
+        ["side", (q) => (34 - GOAL_W / 2) - q[1] + r, [0, -1, 0]],
+        ["roof", (q) => q[2] + r - (GOAL_H - 0.1 * GOAL_H * Math.min(1, Math.max(0, (q[0] - gx) * end / NET_D))), [0, 0, 1]],
+      ];
+      const s = [];
+      let hit = null, peak = 0, released = null;
+      for (let k = 0, t = tc; t < t1; k++, t = tc + k * H) {
+        if (k % 2 === 0) {
+          let depth = 0, plane = hit?.name ?? null, at = hit?.at ?? null;
+          if (hit) depth = Math.max(0, hit.d);
+          else if (released) {   // the cords spring back past rest and settle
+            const u = t - released.t;
+            depth = -0.25 * released.peak * Math.exp(-5 * u) * Math.sin(2 * Math.PI * 2.2 * u);
+            plane = released.name; at = released.at;
+          }
+          s.push([p[0], p[1], Math.max(0, p[2] - r), depth, plane, at]);
+        }
+        // forces: gravity, the pressed net, the turf
+        const f = [0, 0, -9.81];
+        let touching = null;
+        for (const [name, pen, n] of planes) {
+          const d = (p[0] - gx) * end > 0 ? pen(p) : 0;   // the netting starts at the goal line
+          if (d <= 0) continue;
+          const vn = v[0] * n[0] + v[1] * n[1] + v[2] * n[2];
+          // per unit mass, along -n; the damping also brakes the way back (the cords hold the ball)
+          const fn = NET_W * NET_W * d + 2 * NET_Z * NET_W * vn;
+          for (let j = 0; j < 3; j++) f[j] -= fn * n[j] + NET_GRIP * (v[j] - vn * n[j]);
+          if (!touching || d > touching.d) touching = { name, d, n };
+        }
+        if (touching) {
+          hit = { name: touching.name, at: [p[0], p[1], p[2]], d: touching.d };   // the pocket follows the ball
+          peak = Math.max(peak, touching.d);
+        } else if (hit) { released = { t, name: hit.name, at: hit.at, peak }; hit = null; }
+        for (let j = 0; j < 3; j++) v[j] += f[j] * H;
+        if (p[2] - r < 0 && v[2] < 0) {   // bounce, then roll
+          p[2] = r; v[2] = -v[2] * 0.5;
+          if (v[2] < 0.3) v[2] = 0;
+        }
+        if (p[2] - r < 0.01 && v[2] === 0) {
+          const sp = Math.hypot(v[0], v[1]), dv = Math.min(sp, ROLL_DECEL * H);
+          if (sp > 0) { v[0] -= (v[0] / sp) * dv; v[1] -= (v[1] / sp) * dv; }
+        }
+        for (let j = 0; j < 3; j++) p[j] += v[j] * H;
+        if (released && t - released.t > 1.5 && Math.hypot(...v) < 0.02 && p[2] - r < 0.01) { s.push([p[0], p[1], 0, 0, null, null]); break; }
+      }
+      this.nets.push({ t0: tc, t1, end, s, dt: 2 * H });
+    }
+  }
+
+  // the net window holding ts and its sample index, or null
+  _net(ts) {
+    for (const n of this.nets) {
+      if (ts < n.t0 || ts >= n.t1) continue;
+      const f = Math.min((ts - n.t0) / n.dt, n.s.length - 1), k = Math.min(Math.floor(f), n.s.length - 2);
+      return { n, k: Math.max(0, k), u: Math.max(0, Math.min(1, f - k)) };
+    }
+    return null;
+  }
+
+  // the net pressed by a scored ball at ts: { end, plane, at: [x, y, hCentre], depth } or null
+  net(ts) {
+    const w = this._net(ts);
+    if (!w) return null;
+    const a = w.n.s[w.k], b = w.n.s[w.k + 1] ?? a;
+    if (!a[4]) return null;
+    return { end: w.n.end, plane: a[4], at: a[5], depth: a[3] + ((b[4] === a[4] ? b[3] : a[3]) - a[3]) * w.u };
+  }
+
   // Ball rotation, integrated once from the start of the stretch so any frame can be drawn alone.
   _spin() {
     const n = Math.ceil((this.t1 - this.t0) / STEP) + 2;
@@ -219,15 +323,23 @@ export class BallPlan {
   }
 
   ball(ts) {
-    const p = this.raw(this.bent(ts));
-    if (!p) return null;
+    let x, y, h;
+    const w = this._net(ts);
+    if (w) {
+      const a = w.n.s[w.k], b = w.n.s[w.k + 1] ?? a;
+      [x, y, h] = [0, 1, 2].map((j) => a[j] + (b[j] - a[j]) * w.u);
+    } else {
+      const p = this.raw(this.bent(ts));
+      if (!p) return null;
+      [x, y, h] = [p[0], p[1], Math.max(0, p[2] - this.zGround)];
+    }
     let q = [0, 0, 0, 1];
     if (this.quats) {
       const f = Math.min(Math.max((ts - this.t0) / STEP, 0), this.quats.length / 4 - 1.001);
       const k = Math.floor(f), u = f - k;
       q = nlerp(this.quats.subarray(4 * k, 4 * k + 4), this.quats.subarray(4 * k + 4, 4 * k + 8), u);
     }
-    return { x: p[0], y: p[1], h: Math.max(0, p[2] - this.zGround), q };
+    return { x, y, h, q };
   }
 
   pose(i, ts) {
@@ -271,10 +383,12 @@ export class BallPlan {
     return { dx, dy, yaw, yawW, leg };
   }
 
-  // largest distance from the tracking ball over [from, to] and at the event times, for the tests
+  // largest distance from the tracking ball over [from, to] and at the event times, for the tests;
+  // a scored ball in the netting is left out (the tracking ball stops on the line)
   check(from = this.t0 + 1, to = this.t1 - 1) {
     let worst = 0, atEvents = 0;
     for (let t = from; t <= to; t += 0.01) {
+      if (this._net(t)) continue;
       const p = this.raw(t), b = this.ball(t);
       if (p && b) worst = Math.max(worst, Math.hypot(p[0] - b.x, p[1] - b.y, p[2] - this.zGround - b.h));
     }
@@ -319,7 +433,7 @@ function nlerp(a, b, u) {
 const LEG_KEYS = {
   shot: [[-0.5, 0, 20, 0, 0], [-0.3, -14, 55, 10, 5], [-0.11, -46, 110, 25, 8], [0, 22, 22, 38, 8], [0.14, 66, 16, 32, 6], [0.32, 44, 35, 15, 0], [0.5, 8, 28, 0, 0]],
   long: [[-0.5, 0, 20, 0, 5], [-0.3, -10, 50, 8, 12], [-0.11, -40, 100, 22, 18], [0, 24, 30, 26, 18], [0.14, 60, 20, 28, 14], [0.32, 40, 35, 12, 5], [0.5, 8, 28, 0, 0]],
-  pass: [[-0.42, 0, 22, 0, 8], [-0.24, -8, 42, -5, 35], [-0.1, -22, 70, -10, 50], [0, 16, 26, -12, 50], [0.13, 30, 22, -10, 42], [0.4, 6, 26, 0, 8]],
+  pass: [[-0.42, 0, 22, 0, 8], [-0.24, -10, 45, -5, 35], [-0.1, -26, 72, -10, 50], [0, 16, 26, -12, 50], [0.13, 40, 18, -10, 42], [0.25, 28, 24, -5, 25], [0.4, 6, 26, 0, 8]],
   touch: [[-0.28, 4, 30, 0, 8], [-0.12, -6, 55, 0, 25], [0, 24, 30, -5, 28], [0.12, 18, 30, 0, 15], [0.28, 4, 30, 0, 4]],
   trap: [[-0.42, 4, 25, 0, 8], [-0.2, 32, 52, -12, 40], [-0.06, 36, 44, -15, 42], [0, 30, 40, -12, 42], [0.12, 18, 36, -5, 25], [0.32, 4, 26, 0, 4]],
 };
@@ -330,7 +444,7 @@ const STAND = [[-1, 12, 28, 0, 0], [1, 12, 28, 0, 0]];
 const SUPPORT_KEYS = {
   shot: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 72, 0, 0], [-0.14, 32, 18, -5, 0], [-0.07, 24, 24, 0, 0], [0, 14, 34, 0, 0], [0.14, 2, 30, 8, 0], [0.32, -8, 34, 15, 0], [0.5, 4, 30, 0, 0]],
   long: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 70, 0, 0], [-0.14, 34, 18, -5, 0], [-0.07, 26, 24, 0, 0], [0, 16, 34, 0, 0], [0.14, 4, 30, 8, 0], [0.32, -6, 32, 12, 0], [0.5, 4, 30, 0, 0]],
-  pass: [[-0.42, 0, 30, 0, 0], [-0.22, 20, 42, 0, 0], [-0.09, 18, 22, 0, 0], [0, 12, 27, 0, 0], [0.13, 6, 27, 0, 0], [0.4, 2, 26, 0, 0]],
+  pass: [[-0.42, -12, 42, 8, 0], [-0.22, 22, 48, 0, 0], [-0.09, 18, 22, 0, 0], [0, 12, 27, 0, 0], [0.13, 6, 27, 0, 0], [0.4, 2, 26, 0, 0]],
   touch: STAND, trap: STAND,
 };
 const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5 };
@@ -347,19 +461,19 @@ const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5 };
 // The "tension arc" (docs/motion3d.md): at the top of the backswing the kicking hip is back, the
 // shoulders turn the other way and the free arm is out wide and back; at release the pelvis turns
 // through, the trunk flexes over the ball and the free arm sweeps across. The pass keeps the trunk
-// upright and the arms close; the long ball leans back with the free arm out.
+// upright with a smaller arc of its own (free arm out to about 50 degrees, then forward); the long ball leans back with the free arm out.
 const BODY_KEYS = {
   shot: [[-0.5, 0, 0, 3, 0, 12, 0, 12, 0], [-0.3, -8, 6, 2, 4, 45, -15, 15, 15], [-0.11, -16, 12, -2, 8, 85, -35, 20, 25],
     [0, 4, 2, 8, 10, 75, -15, 22, -5], [0.14, 18, -12, 10, 6, 45, 30, 25, -25], [0.32, 14, -8, 6, 3, 25, 15, 15, -10], [0.5, 0, 0, 3, 0, 12, 0, 12, 0]],
   long: [[-0.5, 0, 0, 2, 0, 12, 0, 12, 0], [-0.3, -7, 5, -2, 5, 48, -15, 15, 12], [-0.11, -14, 10, -8, 10, 90, -30, 25, 15],
     [0, 3, 2, -10, 14, 85, -12, 25, -5], [0.14, 14, -8, -6, 8, 55, 20, 25, -20], [0.32, 10, -5, 0, 3, 28, 12, 15, -10], [0.5, 0, 0, 2, 0, 12, 0, 12, 0]],
-  pass: [[-0.42, 0, 0, 3, 0, 12, 0, 12, 0], [-0.24, -4, 3, 3, 2, 20, -5, 12, 6], [-0.1, -7, 5, 4, 4, 28, -8, 14, 8],
-    [0, -3, 2, 5, 5, 26, 0, 14, -4], [0.13, 3, -3, 5, 3, 20, 8, 12, -8], [0.4, 0, 0, 3, 0, 12, 0, 12, 0]],
+  pass: [[-0.42, 0, 0, 3, 0, 12, 0, 12, 0], [-0.24, -6, 4, 3, 3, 32, -12, 14, 10], [-0.1, -10, 8, 4, 6, 52, -22, 16, 14],
+    [0, -2, 3, 5, 6, 48, -2, 16, -6], [0.13, 6, -5, 5, 4, 36, 22, 14, -14], [0.25, 4, -3, 4, 2, 24, 12, 12, -6], [0.4, 0, 0, 3, 0, 12, 0, 12, 0]],
   touch: [[-0.28, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -2, 2, 4, 2, 14, 0, 12, 0], [0, 0, 0, 5, 3, 15, 0, 12, 0], [0.12, 1, -1, 4, 2, 14, 0, 12, 0], [0.28, 0, 0, 2, 0, 12, 0, 12, 0]],
   trap: [[-0.42, 0, 0, 2, 0, 12, 0, 12, 0], [-0.2, -2, 2, 6, 3, 18, 0, 12, 0], [0, -1, 1, 8, 4, 20, 0, 14, 0], [0.12, 0, 0, 6, 3, 16, 0, 12, 0], [0.32, 0, 0, 2, 0, 12, 0, 12, 0]],
 };
 // How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
-const ARM_W = { shot: 1, long: 1, pass: 0.7, touch: 0, trap: 0.35 };
+const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35 };
 const ELBOW = [30, 55];   // degrees of elbow bend in the arm poses: free arm, kicking-side arm
 
 // Value j of keys [t, v1, v2, ...] at t, in radians: Catmull-Rom tangents, so the foot keeps its

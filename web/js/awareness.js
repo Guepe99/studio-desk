@@ -26,6 +26,9 @@ const NEAR = 15, FAR = 25;                       // R5 defenders face the ball i
 const BACKPEDAL_MAX = 4.5;                       // R7 faster than this backwards: turn and run
 const JOCKEY_D = 3.5, JOCKEY_V = 3.5, SIDE_ON = 35 * D;   // R8 the closing defender goes side-on
 const OPEN_MAX = 45 * D;                         // R9 receivers keep the ball within 45 deg of the chest
+// m between two bodies' centres after a goal: team-mates' shoulders touch, never merge; an
+// opponent keeps out of reach of a celebrating arm
+const APART = { mate: 0.9, rival: 1.5 };
 // R10..R16: emotions. Clip lengths in seconds (the SD_ clips are built by awareness-rig.js).
 export const CLIPS = { SD_ArmsUp: 1.0, SD_Clap: 0.6, SD_HandsOnHead: 2.0, SD_HandsOnHips: 2.0, SD_Dejected: 2.0,
   SD_Appeal: 1.2, SD_Palms: 1.5, SD_ArmUp: 1.0, SD_Point: 2.0, Yes: 2.5, Idle_No_Loop: 2.5 };
@@ -33,7 +36,8 @@ const ONCE = new Set(["Idle_No_Loop"]);
 // With the retargeted motion clips (docs/motion3d.md) each stand-in becomes a real clip, picked
 // per player and event among the variants the clip file has. Key: "<kind>:<clip>", then "<clip>".
 const MOTION = {
-  "celebrate:SD_ArmsUp": ["M_celeb_knee_slide", "M_celeb_arms_wide", "M_celeb_jump_fist", "M_celeb_arms_up"],
+  // the scorer: arms out or up first (they read on a running body), the knee slide last
+  "celebrate:SD_ArmsUp": ["M_celeb_arms_wide", "M_celeb_arms_up", "M_celeb_jump_fist", "M_celeb_knee_slide"],
   "join:SD_ArmsUp": ["M_join_hug", "M_join_high_five", "M_celeb_jump_fist", "M_celeb_arms_up"],
   SD_Clap: ["M_clap"], SD_HandsOnHead: ["M_hands_on_head"], SD_HandsOnHips: ["M_dejected_hips"],
   SD_Dejected: ["M_crouch_head_down"], SD_Appeal: ["M_appeal_arms_out"], SD_Palms: ["M_palms_shrug"],
@@ -66,6 +70,8 @@ export class Awareness {
     this.home = m.home.team_id;
     this.events = [...m.events].sort((a, b) => a.ts - b.ts);
     this.emotions = this._emotions();
+    // after a goal the players bunch round the scorer: bodies are kept apart then (see _apart)
+    this.apart = m.goals.map((g) => [g.ts, g.ts + 14]);
     this.byPlayer = new Map();
     for (const e of this.emotions) (this.byPlayer.get(e.i) ?? this.byPlayer.set(e.i, []).get(e.i)).push(e);
     this.receives = this._receives();
@@ -90,7 +96,9 @@ export class Awareness {
       const opts = this.motion && (MOTION[`${kind}:${clip}`] ?? MOTION[clip])?.filter((c) => this.motion.clips[c]);
       if (opts?.length) {
         // a one-shot clip covers its own length; a longer window chains the next variants
-        let k = Math.floor(hash(pid, Math.round(t0 * 10)) * opts.length), t = t0;
+        // a scorer opens with arms out wide, which no one reads as anything but joy (hands raised to
+        // the head can read as despair); the other variants follow
+        let k = kind === "celebrate" ? 0 : Math.floor(hash(pid, Math.round(t0 * 10)) * opts.length), t = t0;
         while (t < t0 + dur - 0.5) {
           const c = opts[k++ % opts.length], mc = this.motion.clips[c];
           const d = mc.loop ? t0 + dur - t : Math.min(mc.len, t0 + dur - t);
@@ -113,12 +121,13 @@ export class Awareness {
       const g = f.ts, ev = (f.source_event_ids ?? []).map((id) => byId.get(id)).find(Boolean);
       const scorer = f.player_id ?? ev?.player_id, si = idx(scorer), src = f.fact_id;
       if (si === null || !m.at(si, g)) continue;
-      add(scorer, "celebrate", "SD_ArmsUp", g + 0.3, 9, src);
+      // the first second decides how a goal reads: the scorer at once, everyone within about 0.5 s
+      add(scorer, "celebrate", "SD_ArmsUp", g + 0.15, 9, src);
       // teammates react nearest first, each with one of the three common gestures, facing the scorer
       const mates = onPitch(f.team_id, g).filter((i) => i !== si).sort((a, b) => dist(a, si, g) - dist(b, si, g));
       mates.forEach((i, k) => {
         const gk = this.role[i] === "GK";
-        add(this.ents[i], "join", gk ? "Yes" : ["SD_ArmsUp", "Yes", "SD_Clap"][k % 3], g + 0.5 + 0.12 * k, 8, src, gk ? {} : { face: si });
+        add(this.ents[i], "join", gk ? "Yes" : ["SD_ArmsUp", "Yes", "SD_Clap"][k % 3], g + 0.3 + 0.05 * k, 8, src, gk ? {} : { face: si });
       });
       // the conceding side: hands on head or hips, arms down, staggered from the goal outwards
       const ct = other(f.team_id), gx = this.goalX(ct, g);
@@ -130,7 +139,7 @@ export class Awareness {
           add(pid, "dejected", "SD_HandsOnHips", g + 3.3, 3.5, src);
         } else {
           const clip = u < 0.35 ? "SD_HandsOnHead" : u < 0.7 ? "SD_HandsOnHips" : "SD_Dejected";
-          add(pid, "dejected", clip, g + 0.6 + 0.1 * k, 3 + 3 * hash(pid, k + 7), src);
+          add(pid, "dejected", clip, g + 0.35 + 0.05 * k, 3 + 3 * hash(pid, k + 7), src);
         }
       });
     }
@@ -361,7 +370,27 @@ export class Awareness {
     const { o0, o1, a } = s;
     const mode = MODES[this.mode[s.near]];
     const yawW = mode === "backpedal" ? 1 : this.fw[o0] + (this.fw[o1] - this.fw[o0]) * a;
-    return { yaw: this.fy[o0] + angleDiff(this.fy[o0], this.fy[o1]) * a, yawW, mode, emotion: this.emotion(i, ts) };
+    const [dx, dy] = this._apart(i, ts);
+    return { yaw: this.fy[o0] + angleDiff(this.fy[o0], this.fy[o1]) * a, yawW, mode, emotion: this.emotion(i, ts), dx, dy };
+  }
+
+  // Root offset that keeps player i at least APART metres from everyone else (more from opponents) (each of a pair moves
+  // half the overlap), faded in and out over 0.5 s at the edges of a post-goal window; else zero.
+  _apart(i, ts) {
+    const win = this.apart.find(([a, b]) => ts >= a && ts < b);
+    if (!win) return [0, 0];
+    const w = clamp(Math.min(ts - win[0], win[1] - ts) / 0.5, 0, 1), m = this.match, p = m.at(i, ts);
+    if (!p) return [0, 0];
+    let dx = 0, dy = 0;
+    for (let j = 1; j < this.ents.length; j++) {
+      const q = j !== i && m.at(j, ts);
+      if (!q) continue;
+      const ex = p[0] - q[0], ey = p[1] - q[1], d = Math.hypot(ex, ey), gap = this.team[i] === this.team[j] ? APART.mate : APART.rival;
+      if (d >= gap) continue;
+      const ux = d > 1e-3 ? ex / d : (i < j ? 1 : -1), uy = d > 1e-3 ? ey / d : 0;   // stacked: split along x
+      dx += ux * (gap - d) / 2; dy += uy * (gap - d) / 2;
+    }
+    return [dx * w, dy * w];
   }
 
   look(i, ts) {

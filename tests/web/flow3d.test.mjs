@@ -116,7 +116,14 @@ test("real clips: the contact frame lands on the crossing time and the hands on 
   assert.ok(rs.length > 0, "no reaction took a real clip");
   for (const r of rs) {
     const k = realRoot(r, r.tc), q = r.real, sg = r.clip.endsWith("_L") ? 1 : -1;
-    assert.ok(Math.abs(k.clipT - 0.6) < 1e-6, `shot ${r.shot}: clip at ${k.clipT} at contact`);
+    // a save meets the ball on the clip's contact frame; a beaten keeper never touches it: his
+    // dive plays at about its own speed from the set position and he is still down 1 s later
+    if (!r.goal) assert.ok(Math.abs(k.clipT - 0.6) < 1e-6, `shot ${r.shot}: clip at ${k.clipT} at contact`);
+    else {
+      assert.ok(q.beaten && q.rate <= 1.5, `goal ${r.shot}: dive at ${q.rate}x`);
+      assert.ok(realRoot(r, r.set0 + 0.5).w > 0.9 && realRoot(r, r.set0 + 0.5).clipT === q.c0, `goal ${r.shot}: not set before the shot`);
+      assert.ok(realRoot(r, r.tc + 1).lift < -0.5, `goal ${r.shot}: up again 1 s after the ball went past`);
+    }
     assert.ok(q.rate <= 2.5 + 1e-9, `shot ${r.shot}: run-up ${q.rate}x`);
     // hands to the left at contact: the scaled root plus the hands' reach beyond it in the clip
     const hands = -(k.dx * r.u[0] + k.dy * r.u[1]) + sg * 0.5;

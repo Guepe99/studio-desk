@@ -172,16 +172,18 @@ the long ball, 0.42 and 0.4 for the pass.
 
 | | Shot | Long ball, cross | Short pass |
 | --- | --- | --- | --- |
-| Kicking leg | instep; backswing to hip -46, knee 110 at -0.11; leg up to hip 66 at +0.14 | instep; hip -40, knee 100; up to 60 | side foot, thigh turned out 50; hip -22, knee 70; up to 30 |
-| Plant leg | swings through high (-0.3), reaches out at -0.14, lands, knee gives to 34 at contact, the body rolls over it | the same | a short step, landing at -0.09 |
-| Pelvis | 16 back at the top, 18 through after contact | 14 back, 14 through | 7 back, side-on at contact, 3 through |
-| Shoulders | 12 the other way at the top, 12 through after | 10, 8 | 5, 3 |
+| Kicking leg | instep; backswing to hip -46, knee 110 at -0.11; leg up to hip 66 at +0.14 | instep; hip -40, knee 100; up to 60 | side foot, thigh turned out 50; hip -26, knee 72; up to 40 at +0.13, still 28 at +0.25 (follow-through) |
+| Plant leg | swings through high (-0.3), reaches out at -0.14, lands, knee gives to 34 at contact, the body rolls over it | the same | pushes off behind (-0.42), a short step, landing at -0.09 |
+| Pelvis | 16 back at the top, 18 through after contact | 14 back, 14 through | 10 back, side-on at contact, 6 through |
+| Shoulders | 12 the other way at the top, 12 through after | 10, 8 | 8, 5 |
 | Trunk | 8 over the ball at contact, 10 after; 10 to the plant side | 10 back at contact; 14 to the plant side | about 5 forward, upright |
-| Free arm | out to 85 and 35 back at the top, 75 at contact, sweeps 30 forward after | out to 90, 85 at contact | 28 out at most |
-| Kicking-side arm | 25 forward at the top, 25 back after | 15 forward, 20 back | 12 to 14 out, close to the body |
+| Free arm | out to 85 and 35 back at the top, 75 at contact, sweeps 30 forward after | out to 90, 85 at contact | a smaller tension arc: out to 52 and 22 back at -0.1, 48 at contact, 22 forward after |
+| Kicking-side arm | 25 forward at the top, 25 back after | 15 forward, 20 back | 14 to 16 out, 14 forward at the top, 14 back after |
 
 Touches and traps keep small values: 2 to 8 degrees of trunk and pelvis, and the arms stay the
-clips' (a dribble keeps the running arm swing; a trap takes a third of the arm pose).
+clips' (a dribble keeps the running arm swing; a trap takes a third of the arm pose). The pass
+arms replace the clip's arms fully since the goal review (they were at 0.7 and 28 degrees, and
+the pass read as a leg moving on its own).
 The plant timing (landing about 0.1 s before contact) and every angle above that is not in the
 research table are our choices, set by looking at `tests/web/kick3d-shots.mjs`.
 
@@ -196,8 +198,8 @@ is part of the reach measured on the probe, so the foot still meets the ball.
 - `node --test tests/web/ball3d.test.mjs`: every layer is 0 at the window edges and full at
   contact; no channel jumps more than 45 degrees (legs) or 20 (trunk, arms) between two 30 fps
   frames; the shot has the biggest backswing and the pass the smallest; the pass turns the thigh
-  out by 45 or more; the free arm goes past 80 on the shot and the long ball and stays under 35
-  on the pass; trunk forward on the shot, back on the long ball, upright on the pass; hips and
+  out by 45 or more; the free arm goes past 80 on the shot and the long ball and to 40 to 65 on
+  the pass; trunk forward on the shot, back on the long ball, upright on the pass; hips and
   shoulders turn opposite ways at the top of the shot backswing; the plant hip goes from ahead to
   behind across contact.
 - `scripts/with-lock.sh chromium tests/web/run-smoke.sh kick3d-shots.mjs [match]` (LOOK=anime,
@@ -205,3 +207,76 @@ is part of the reach measured on the probe, so the foot still meets the ball.
   `motion3d-<kind>-broadcast.png` for the first shot, pass and long ball of the clip.
 - `scripts/with-lock.sh chromium tests/web/run-smoke.sh feet3d.mjs`: the planted soles stay on the
   grass with the layer on.
+
+## The goal
+
+The review of the tappa 3 clip found that the goal did not read as a goal: the ball stopped on
+the line (the tracking ball ends at about 104.77 m), the net stayed flat, the keeper crouched,
+nobody reacted for a second and the camera cut to a frozen close-up. This section is the research
+behind the fix and what was built. The data and the simulator are unchanged: everything here is
+how the 3D view draws them.
+
+### What the research says
+
+| Topic | Finding | Source |
+| --- | --- | --- |
+| Keeper set position | feet about shoulder width, knees bent, weight forward on the balls of the feet, hands relaxed in front with elbows bent | https://sportsessionplanner.com/s/tzDYh/Positioning.html ; https://sportsessionplanner.com/s/cM5fb/2-Yard-Goal-2.0.html |
+| Keeper set timing | the keeper is still and set as the shot is struck; a keeper whose feet are moving or in the air cannot push off in time | https://learn.rushsoccer.com/?p=17715 |
+| Lateral dive | 15 keepers, 213 dives: the keeper moves after choosing a side; the leg opposite the dive drives the centre of mass across; the trunk leans towards the dive for low balls | https://lida.sport-iat.de/ta/Record/4056953 |
+| Lateral dive | the preparatory foot position changes the dive; the contralateral leg produces most of the lateral velocity | Monteiro et al. 2022, Scientific Reports, doi:10.1038/s41598-022-21508-6 (https://scilabiocom.eeferp.usp.br/pdf/Monterio_SciReports.pdf) |
+| Net in games | a net drawn as a grid of particles (Verlet) that the ball pushes; a canned net animation looks wrong | EA patent US 8,000,947, https://patents.justia.com/patent/8000947 |
+| Net in games | the ball enters the cloth, carries it back, then the cloth throws it off and it drops | https://people.engr.tamu.edu/sueda/courses/CSC474/2015W/demos/baujla/index.html ; https://discussions.unity.com/t/soccer-game-more-realistic-net/147596 |
+| Net in Babylon | the cloth impostor (physics soft body) is too slow on phones | https://forum.babylonjs.com/t/whats-the-best-way-to-create-cloth-soft-body-animations-and-how-to-import-from-blender-cinema-4d/16451 |
+| Celebration | 366 goals: outstretched arms in 33.6%, a fist in 29.8%, team-mates join in 90.4%; 61.6% combine a solo act and a team act; on average 24.9 s | Lev et al. 2020, PLOS One, https://pmc.ncbi.nlm.nih.gov/articles/PMC7494092/ |
+| Joy | winners across cultures raise their arms, push the chest out and tip the head back | https://www.scientificamerican.com/podcast/episode/winning-athletes-raise-arms-x-cultures/ |
+| Conceding | players who are losing show it at once: head down, shoulders in, hands on the head or the hips | Furley and Schweizer 2014, J Nonverbal Behav, doi:10.1007/s10919-013-0168-7, via https://bps.org.uk/research-digest/no-need-look-score-athletes-body-language-gives-away-whos-winning-and-losing |
+| TV after a goal | the director goes to close-ups of the celebration (steadicams are allowed on the pitch for it) and the replays follow | https://insidersport.com/2025/05/08/premier-league-goal-celebration/ ; https://www.champions-journal.com/1000/directors-cut |
+
+No written rule on how long after a goal the cut comes was found; we keep the wide shot for 1 s
+so the reactions start in it.
+
+### What we built
+
+- **The ball into the net** (`BallPlan._nets` in `web/js/ball3d.js`). For every goal the plan
+  takes the ball over 2.5 m before the line, with the velocity the tracking had there, and
+  integrates it at 240 Hz: gravity, and four net planes (back, roof, two sides) as damped springs
+  (natural frequency 14 rad/s, damping ratio 0.7) with tangential grip, so the net catches the
+  ball, carries it back about 0.7 m and lets it drop; then a bounce at 0.5, rolling friction and,
+  after the release, a small ripple in the net. The ball ends on the grass about 1.6 m inside the
+  goal on M001. `plan.net(ts)` says which panel is pressed, where and how deep; `check()` leaves
+  the net window out because the tracking ball is no longer the reference there.
+- **The bulging net** (`web/js/scene3d/net.js`). Each goal's netting is one grid mesh (a vertex
+  every 0.2 m); the pressed panel's vertices move along its normal in a Gaussian pocket (sigma
+  0.6 m) that is pinned at the frame and looser at the pegged bottom edge. No physics engine.
+- **The keeper** (`web/js/keeper3d.js`). Every reaction now starts with a set position 0.6 s
+  before the shot (blended in over 0.3 s): with the real clips it is the frame just before the
+  dive pushes off, otherwise the stance. A beaten keeper always takes the lateral dive towards
+  the ball side (not the crouch), at most 1.2 times the clip's own speed, and stays down until
+  0.5 s after the clip has landed.
+- **The first second** (`web/js/awareness.js`). The scorer starts celebrating 0.15 s after the
+  goal, with arms wide first (they read on a running body), then arms up; team-mates join from
+  0.3 s, the conceding side slumps from 0.35 s, and the beaten keeper stays down after his dive. For 14 s after a
+  goal bodies are pushed apart: team-mates' centres at least 0.9 m, opponents 1.5 m (out of reach
+  of a celebrating arm).
+- **No fact chips on TV** (`web/js/sample3d.js`): the 3D page asks the graphics for
+  `v_showFactIds: false`; the 2D analyst page keeps them.
+- **Cameras** (`web/js/scene3d/camera.js`, `web/js/scene3d/sightline.js`). Camera 1 tightens to
+  30 m and leans towards the goal mouth inside 30 m of a goal line. Around a kick it slides up to
+  10 m along a rail when another player's head would hide the kicker's foot (kicks less than 3 s
+  apart share one slide, so the pass and the shot do not swing it from side to side). Camera 2,
+  the close-up, stands 18 m away at 2.2 m, frames 4.5 m (the whole body), averages the aim over
+  2 s, and steps round up to 45 degrees until nobody walks between it and the scorer.
+
+### Tests
+
+- `node --test tests/web/net3d.test.mjs`: on M001 the scored ball crosses the line above
+  10 m/s, pushes the net more than 0.3 m and rests inside the goal; the four panels lie behind
+  the line; the pocket is full at the ball and zero at the frame.
+- `node --test tests/web/flow3d.test.mjs`: a beaten keeper is set 0.5 s into the set phase, dives
+  at no more than 1.5 times the clip speed and is still down 1 s after the ball went past.
+- `node --test tests/web/awareness.test.mjs`: after a goal no two drawn bodies come within 0.7 m
+  (the tracking alone does, on M001).
+- `node --test tests/web/sightline3d.test.mjs`: a head on the line of sight is found, the rail
+  clears it, and eases on and off.
+- `CLOCKS=... scripts/with-lock.sh chromium tests/web/run-smoke.sh goal3d-stills.mjs M001 <name>`:
+  contact sheets of the clip camera and of a camera by the goal (`GOALCAM=...`).

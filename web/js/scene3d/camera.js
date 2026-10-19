@@ -12,8 +12,11 @@
 //   inertia, nothing snaps or overshoots);
 // - keeps 24 to 42 m of pitch across the frame at the aim point (a horizontal angle of 19 to 33
 //   degrees), tighter when play bunches; a small frame (a phone) zooms in further so players stay
-//   readable;
-// - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does.
+//   readable; on an attack inside 30 m of goal it narrows to 30 m and leans towards the goal
+//   mouth, so the shot, the keeper and the net read (docs/motion3d.md, "The goal");
+// - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does;
+// - around a kick it slides up to 10 m along a rail when another player's head would hide the
+//   kicker's foot from the lens (sightline.js).
 // Cuts happen only at a stoppage: after a goal the director cuts to camera 2, a pitchside handheld
 // on a long lens, for a tight shot of the scorer (CELEBRATION seconds from 1 s after the goal),
 // then back to camera 1; the ball rule is off meanwhile. A foul or a keeper's save gets the same
@@ -23,6 +26,8 @@
 // axis, line of sight 13.5 degrees, OP-32 2.2.7), a pitch-level camera in line with the 18-yard
 // line, the reverse angle from the far stand, and a high tactical view. They are stateless (a
 // Gaussian-smoothed ball) so any frame renders alone.
+import { railPlan, railAt, hidden } from "./sightline.js";
+
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
 const DEG = Math.PI / 180;
@@ -37,9 +42,15 @@ const DEAD = [2.5, 1.5];              // dead zone half-axes, metres (along, acr
 const OMEGA_PAN = 2.4, OMEGA_ZOOM = 1.2;
 export const WIDTH = [24, 42];        // metres of pitch across the frame at the aim point
 const SAFE = 0.8;                     // the ball stays within +-80% of the frame
+// attack on goal: full effect inside 30 - 12 = 18 m of the goal line, none past 30 m; the aim goes
+// most of the way to a point 7 m out from the goal, and the frame narrows to 30 m
+const ATTACK = [30, 12, 7, 30];
+const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 // camera 2, pitchside: 18 m from the player, 2.2 m up (a handheld at shoulder height on a low
-// step), 3.2 m across the frame at him, aimed 1.2 m up: knees to head, nearly level, stand behind
-const TIGHT = { dist: 18, height: 2.2, width: 3.2, aim: 1.2 };
+// step), 4.5 m across the frame at him, aimed 0.95 m up: head to feet with room for arms up and a
+// team-mate arriving, nearly level, stand behind; the aim is his position averaged over 2 s, so
+// the handheld drifts with him instead of chasing each stride
+const TIGHT = { dist: 18, height: 2.2, width: 4.5, aim: 0.95, avg: 10 };
 const GOAL_CAM = { back: 14, tilt: 13.5 * DEG };   // metres behind the goal line, sight line to the penalty mark
 export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
 const STOP_EVENTS = new Set(["foul", "keeper_save"]);
@@ -78,12 +89,17 @@ export function broadcastGoal(match, ts) {
   let spread = 0;
   for (const [p, w] of near) spread += w * ((p[0] - cx) ** 2 + (p[1] - cy) ** 2);
   spread = sw > 1e-6 ? Math.sqrt(spread / sw) : 10;
-  const ax = BALL_SHARE * bx + (1 - BALL_SHARE) * cx + lx, ay = BALL_SHARE * by + (1 - BALL_SHARE) * cy + ly;
-  return {
-    x: Math.min(Math.max(ax - HALF_L, -44), 44),
-    z: (ay - HALF_W) * DEPTH,
-    width: Math.min(Math.max(14 + 2 * spread, WIDTH[0]), WIDTH[1]),
-  };
+  let ax = BALL_SHARE * bx + (1 - BALL_SHARE) * cx + lx, ay = BALL_SHARE * by + (1 - BALL_SHARE) * cy + ly;
+  let width = Math.min(Math.max(14 + 2 * spread, WIDTH[0]), WIDTH[1]);
+  // an attack on goal: inside about 30 m of a goal line the operator tightens and draws the frame
+  // towards the goal mouth, so the shot, the keeper and the net are all in it, large enough to read
+  const gx = bx > HALF_L ? 2 * HALF_L : 0, box = smooth01((ATTACK[0] - Math.abs(bx - gx)) / ATTACK[1]) * smooth01((30 - Math.abs(by - HALF_W)) / 8);
+  if (box > 0) {
+    ax += (gx - Math.sign(gx - HALF_L) * ATTACK[2] - ax) * box * 0.8;
+    ay += (HALF_W - ay) * box * 0.3;
+    width += (Math.min(width, ATTACK[3]) - width) * box;
+  }
+  return { x: Math.min(Math.max(ax - HALF_L, -44), 44), z: (ay - HALF_W) * DEPTH, width };
 }
 
 // One step of a critically damped spring on [pos, vel] towards target.
@@ -121,6 +137,8 @@ export class Cameras {
       const next = match.events[k + 1]?.ts ?? match.duration;
       if (STOP_EVENTS.has(e.type_name) && idx(e.player_id) > 0 && next - 0.5 - (e.ts + 1) >= 2) this.stops.push([e.ts + 1, Math.min(e.ts + 6, next - 0.5), idx(e.player_id)]);
     });
+    // camera 1's slides along its rail so no kick hides behind a head (sightline.js)
+    this.rail = railPlan(match, [HALF_L + BROADCAST_POS.x, BROADCAST_POS.y, HALF_W + BROADCAST_POS.z]);
     scene.activeCamera = this.tv;
   }
 
@@ -151,12 +169,12 @@ export class Cameras {
   // Camera 2 on the player at a stoppage: a pitchside handheld that stands where the player was
   // when the stoppage began, seen from the near touchline side and a little towards the halfway
   // line (never on the pitch beyond 4 m from its lines), so the far stand is behind him. It stays
-  // put for the shot; the aim follows his position averaged over a second. Depth of field on the
+  // put for the shot; the aim follows his position averaged over two seconds. Depth of field on the
   // high profile, as on a long lens.
-  _celebrate(ts, [from, , i]) {
+  _celebrate(ts, [from, to, i]) {
     const avg = (t) => {
       let x = 0, y = 0, n = 0;
-      for (let k = -5; k <= 5; k++) {
+      for (let k = -TIGHT.avg; k <= TIGHT.avg; k++) {
         const p = this.match.at(i, Math.min(Math.max(t + k * 0.1, 0), this.match.duration));
         if (p) { x += p[0]; y += p[1]; n++; }
       }
@@ -164,10 +182,25 @@ export class Cameras {
     };
     const now = avg(ts), start = avg(from);
     if (!now || !start) return false;
-    const dir = new B.Vector3(-Math.sign(start[0]) * 0.35, 0, -1).normalize();
+    // the operator steps round, up to 45 degrees, until nobody walks between him and the player
+    // more than 3 m in front of him during the shot (sightline.js); chosen once per stoppage
+    if (this.cam2For !== from) {
+      const base = Math.atan2(-Math.sign(start[0]) * 0.35, -1), place = (a) => [
+        Math.min(Math.max(start[0] + Math.sin(a) * TIGHT.dist, -HALF_L - 4), HALF_L + 4),
+        Math.max(start[1] + Math.cos(a) * TIGHT.dist, -HALF_W - 4)];
+      const clear = (a) => {
+        const [x, z] = place(a), lens = [x + HALF_L, TIGHT.height, z + HALF_W];
+        for (let t = from; t <= to; t += 0.25) {
+          const p = this.match.at(i, Math.min(t, this.match.duration));
+          if (p && hidden(this.match, lens, p, i, t, 1 - 3 / Math.hypot(lens[0] - p[0], lens[2] - p[1]))) return false;
+        }
+        return true;
+      };
+      const a = [0, 15, -15, 30, -30, 45, -45].map((d) => base + d * DEG).find(clear) ?? base;
+      this.cam2For = from; this.cam2At = place(a);
+    }
     const cam = this.cam2;
-    cam.position.set(Math.min(Math.max(start[0] + dir.x * TIGHT.dist, -HALF_L - 4), HALF_L + 4), TIGHT.height,
-      Math.max(start[1] + dir.z * TIGHT.dist, -HALF_W - 4));
+    cam.position.set(this.cam2At[0], TIGHT.height, this.cam2At[1]);
     const aim = new B.Vector3(now[0], TIGHT.aim, now[1]);
     cam.setTarget(aim);
     const dist = B.Vector3.Distance(cam.position, aim);
@@ -203,7 +236,8 @@ export class Cameras {
     } else this._step(ts, dt);
     const s = this.state, cam = this.tv;
     const target = new B.Vector3(s.x[0], 0, s.z[0]);
-    const dist = B.Vector3.Distance(BROADCAST_POS, target);
+    cam.position.set(BROADCAST_POS.x + railAt(this.rail, ts), BROADCAST_POS.y, BROADCAST_POS.z);
+    const dist = B.Vector3.Distance(cam.position, target);
     const tanH = s.w[0] * this._zoom() / 2 / dist;
     cam.fov = 2 * Math.atan(tanH / this._aspect(cam));
     cam.setTarget(target);
