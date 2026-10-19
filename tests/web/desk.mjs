@@ -61,8 +61,11 @@ async function scenario(browser, w, h) {
   const phone = w < 1100, tag = `${w}`;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone });
   const page = await ctx.newPage();
-  page.on("console", (m) => { if (m.type() === "error") fail(`${tag} console: ${m.text()}`); });
+  // voice.json is optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
+  const optional = (u) => u.endsWith("/voice.json");
+  page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
+  page.on("response", (r) => { if (r.status() >= 400 && !optional(r.url())) fail(`${tag} ${r.status()} ${r.url()}`); });
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);

@@ -250,3 +250,13 @@ Agents only learn about an event when the clock releases it, in replay generatio
   replays/<match_id>`. The image build copies them over the template files in `web/data/<match_id>/`
   for every match that has a pack. Every `fact_id` and `event_id` in a pack exists in the data
   rebuilt from the seed (`sim build --matches 4 --seed 7`, then `facts build --all`).
+
+## Voice additions (feat/voice, additive)
+
+- Optional per match: `replays/<match_id>/voice.json` and `replays/<match_id>/voice/<story_id>.<lang>.mp3`,
+  written by `python -m studiodesk.voice <match_id>` (details in `docs/voice.md`) and copied with the
+  pack into `web/data/<match_id>/`.
+- `voice.json` is an array of `{story_id, lang, file, duration_s, text_sha1, voice}`; `file` is
+  relative to the match folder, `text_sha1` is the SHA-1 of the story's `texts[lang]`.
+- The page plays a clip only when its `text_sha1` matches the story text it shows. A match with no
+  `voice.json` (404) plays silent.
