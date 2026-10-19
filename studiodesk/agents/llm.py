@@ -141,8 +141,11 @@ class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClien
 
     @classmethod
     def _lines(cls, p):
+        def score(s):  # the score as the card asks for it: score.write, in the writer's order, with the leader
+            return " ".join(x for x in (s["score"]["leader"], s["score"]["write"]) if x)
         return {"lines": [{"story_id": s["story_id"],
-                           "text": f"{s['phase']}, {s['score']['leader'] or ''} {s['score']['write']}." if s["kind"] == "recap" else
+                           "text": f"{s['phase']}, {score(s)}." if s["kind"] == "recap" else
+                           f"{score(s)} after {s['player'] or s['team']} scores in the {s['minute']}'." if "score" in s else
                            f"{s['player'] or s['team']}, {s['minute']}': {cls._label(s)}."}
                           for s in p["stories"]]}
 

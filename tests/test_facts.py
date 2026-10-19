@@ -129,3 +129,19 @@ def test_cli_build(tmp_path):
     out = subprocess.run([sys.executable, "-m", "studiodesk.facts", "build", "--all", "--db", str(info["path"])],
                          cwd=root, capture_output=True, text=True, check=True)
     assert out.stdout.startswith("M001: ")
+
+
+def test_window_labels_never_overlap_and_name_stoppage_time():
+    from studiodesk.facts.engine import window_label
+    p1 = 2763.4
+    # windows() adds 300.0 s steps: the sixth second-half window starts 1499.9999999999995 s into the half
+    a = p1
+    for _ in range(5):
+        a += 300.0
+    assert a - p1 < 1500.0
+    assert window_label(a, a + 300.0, 2, p1) == "min 71-75"
+    assert window_label(p1 + 1200.0, p1 + 1500.0, 2, p1) == "min 66-70"
+    assert window_label(2400.0, 2700.0, 1, p1) == "min 41-45"
+    assert window_label(2700.0, p1, 1, p1) == "first-half stoppage time"
+    assert window_label(2580.0, 2760.0, 1, p1) == "min 44-45+1"
+    assert window_label(p1 + 2700.0, p1 + 2880.0, 2, p1) == "second-half stoppage time"
