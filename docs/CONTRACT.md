@@ -97,6 +97,7 @@ the window.
 - `stories`: the candidate moments with their evidence.
   - `risk` runs 0..1. Below `AUTO_APPROVE_RISK` (0.35, in `studiodesk/config.py`) the default
     status is `auto_approved`; otherwise it is `needs_review`.
+    A story Content Safety flagged gets `needs_review` whatever its risk (feat/verifier2).
   - `texts` is `{"en": .., "it": .., "es": ..}`.
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
   - `safety` is `passed`, `flagged` or `not_checked`.
