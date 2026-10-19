@@ -93,6 +93,7 @@ export class Scene3D {
         scaleBy: (f) => { this.scale *= f; this.resize(); },
         dropPost: () => this.post.drop(),
         dropShadows: () => { this.light.dropShadows(); this._useBlobs(true); },
+        held: () => this.held,
       });
     }
   }

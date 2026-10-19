@@ -199,7 +199,7 @@ export class BallPlan {
     const ids = new Set(this.match.goals.flatMap((g) => g.source_event_ids ?? []));
     const r = this.ballR, H = 1 / 240;
     for (const e of this.match.events) {
-      if (!ids.has(e.event_id) || e.ts < this.t0 - 1 || e.ts > this.t1) continue;
+      if (!ids.has(e.event_id) || e.ts + 35 < this.t0 || e.ts > this.t1) continue;   // a ball rests in the net up to 30 s after a goal, so a later plan keeps it
       const end = e.end_x > PITCH_L / 2 ? 1 : -1, gx = end > 0 ? PITCH_L : 0;
       let tc = null;
       // take over 2.5 m short of the line: the tracking ball already brakes for its stop there

@@ -82,7 +82,7 @@ const measure = (page) => page.evaluate(() => {
       lower: graphics.some((g) => !g.nameplate) } };
   if (!v.scene || v.shown === "2d") return res;
   const s = v.scene, vts = v.last.ts;
-  res.view = { ts: vts, replay: v.last.replay, badge: document.querySelector("#replay-badge").classList.contains("on") };
+  res.view = { ts: vts, replay: v.last.replay, badge: ((b) => b.classList.contains("on") && b.textContent === "Replay")(document.querySelector("#replay-badge")) };
   const want = new Set();
   for (let i = 1; i < m.n; i++) if (m.at(i, vts)) want.add(i);
   const on = s.players.filter((p) => p.holder.isEnabled());
@@ -191,6 +191,37 @@ try {
       });
       console.log(`3D at 1280x720 playing 1x: ${fps.fps.toFixed(1)} fps (profile ${fps.profile}, WebGL ${fps.renderer})`);
 
+      // the 3D canvas is no tab stop; a pause ends a run of play for the frame-rate watch (a pause
+      // inside the window must not read as a slow frame rate), and the quality steps wait while paused
+      const pause = await page.evaluate(async (floor) => {
+        const sd = window.studioDesk, v = sd.view3d, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        v.floor = floor;
+        sd.seek(1500); sd.setPlaying(true); await wait(4000);
+        sd.setPlaying(false); await wait(500);
+        const paused = { held: v.scene.held, scale: v.scene.scale };
+        await wait(2500);
+        paused.after = v.scene.scale;
+        sd.setPlaying(true); await wait(4000);
+        const out = { tab: document.querySelector("#view3d").tabIndex, paused, shown: v.shown, notice: v.notice };
+        sd.setPlaying(false); v.floor = 0;
+        return out;
+      }, fps.fps * 0.6);
+      console.log(`pause and resume: ${JSON.stringify(pause)}`);
+      if (pause.tab !== -1) fail(`the 3D canvas is a tab stop (tabIndex ${pause.tab})`);
+      if (!pause.paused.held || pause.paused.scale !== pause.paused.after) fail(`the quality steps ran while the picture was paused: ${JSON.stringify(pause)}`);
+      if (pause.shown !== "3d" || pause.notice) fail(`a 3 s pause sent the page back to 2D: ${JSON.stringify(pause)}`);
+
+      // the 3D notice gives the page's own notice back when it clears
+      const kept = await page.evaluate(() => {
+        const v = window.studioDesk.view3d, n = document.querySelector("#notice");
+        n.textContent = "page notice"; n.hidden = false;
+        v._notice("Loading the 3D view"); v._notice("");
+        const out = n.hidden ? null : n.textContent;
+        n.textContent = ""; n.hidden = true; v.prior = "";
+        return out;
+      });
+      if (kept !== "page notice") fail(`the 3D notice wiped the page's notice (now ${JSON.stringify(kept)})`);
+
       // seek sweep over the whole match, twice: after the first (players clone their motion clips
       // lazily, scene3d/players.js) the second must leave the heap and the scene the same size
       const cdp = await page.context().newCDPSession(page);
@@ -236,6 +267,18 @@ try {
       console.log(`floor at 1000 fps: back to ${slow.shown} after ${slow.after.toFixed(1)} s ("${slow.notice}"); 3D picked again: ${slow.kept}`);
       if (slow.shown !== "2d" || !slow.notice || !slow.pitch) fail(`no fall back under the frame-rate floor: ${JSON.stringify(slow)}`);
       if (slow.kept !== "3d") fail("3D picked by hand after the fall back did not stay");
+
+      // a lost WebGL context: back to the 2D pitch with a notice, 3D and Radar off
+      const lost = await page.evaluate(async () => {
+        const v = window.studioDesk.view3d;
+        v.scene.engine._gl.getExtension("WEBGL_lose_context").loseContext();
+        await new Promise((r) => setTimeout(r, 500));
+        const pitch = document.querySelector("#pitch"), n = document.querySelector("#notice");
+        return { shown: v.mode, pitch: !pitch.hidden && pitch.parentElement.id === "stage", notice: n.hidden ? null : n.textContent,
+          disabled: [...document.querySelectorAll("[data-view]")].filter((b) => b.disabled).map((b) => b.dataset.view) };
+      });
+      console.log(`context lost: ${JSON.stringify(lost)}`);
+      if (lost.shown !== "2d" || !lost.pitch || !lost.notice || lost.disabled.join() !== "3d,split") fail(`no fall back after a lost WebGL context: ${JSON.stringify(lost)}`);
     }
     if (view !== "2d") await page.context().close();
   }

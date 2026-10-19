@@ -1,6 +1,6 @@
 /* The 3D views of the broadcast page (web/js/view3d.js): the 3D canvas under the stage, the 2D pitch
    in the Radar box, the replay badge. */
-#view3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+#view3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #pitch[hidden] { display: none; }
 /* Radar (the "split" view): the small picture in a box at the bottom centre of the frame, as in a
    football game; a click swaps the two. 440 x 291 stage px = the pitch and a margin (1420 x 940 from
@@ -20,9 +20,9 @@
 .radar-yield #radar:not(:focus-visible) { opacity: 0; transform: translateY(60px); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #radar { transition: none; } }
 
-#replay-badge { position: absolute; right: 56px; top: 40px; height: 66px; display: none; align-items: center;
+/* top centre: the graphics take the corners. Always in the page (empty when off) so the word is read out */
+#replay-badge { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); height: 66px; display: flex; align-items: center;
   padding: 0 34px 0 30px; background: var(--signal); color: var(--ink); font: 800 42px/1 var(--font);
   letter-spacing: .1em; text-transform: uppercase; clip-path: polygon(16px 0, 100% 0, 100% 100%, 0 100%); }
-#replay-badge.on { display: flex; }
-#ai-off:not([hidden]) ~ #replay-badge { top: 120px; }
+#replay-badge:not(.on) { padding: 0; }
 .ctl:disabled { opacity: .45; cursor: not-allowed; }

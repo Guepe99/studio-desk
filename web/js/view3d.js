@@ -16,8 +16,9 @@
 // The page falls back to 2D when the scene cannot start, or when it draws fewer than FPS_FLOOR
 // frames a second over FPS_WINDOW_S seconds of play (after FPS_GRACE_S for the shaders): 12 fps is
 // the "on twos" rate of TV animation, the slowest at which movement still reads as movement, and
-// the page clock stops keeping real time under 10 fps (app.js caps a frame at 0.1 s). By then the
-// SceneOptimizer of scene3d/quality.js has had three of its 2 s steps to lower the quality.
+// the page clock stops keeping real time under 1 fps (app.js takes a longer gap as a pause). By then
+// the SceneOptimizer of scene3d/quality.js has had three of its 2 s steps to lower the quality; it
+// holds its steps while the 3D picture is paused, since a paused picture draws no frames to count.
 const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
 const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4 };
@@ -126,6 +127,13 @@ export class View3D {
     const m = this.match, entities = [];
     for (let i = 1; i < m.n; i++) for (let f = 0; f < m.meta.frames; f += 10) if (!Number.isNaN(m.pos[(f * m.n + i) * 3])) { entities.push(i); break; }
     const s = await Scene3D.create(this.els.canvas, m, { entities, span: this._span(this.clock ?? 0) });
+    this.els.canvas.tabIndex = -1;   // Babylon makes the canvas a tab stop; nothing in it takes keys
+    s.engine.onContextLostObservable.add(() => {
+      this.lost = true;
+      for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
+      this.set("2d");
+      this._notice("The browser stopped the 3D view. Showing the 2D pitch.");
+    });
     await loadMotion(s).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
     new AwarenessRig(s);
     new KeeperRig(s);
@@ -147,18 +155,28 @@ export class View3D {
     radar.hidden = !small;
     radar.classList.toggle("is-3d", small === canvas);
     radar.setAttribute("aria-label", small === canvas ? "Swap: show the 3D picture large" : "Swap: show the 2D pitch large");
-    document.body.dataset.view = v;
-    if (v === "2d") this.els.badge.classList.remove("on");
+    document.body.dataset.shownView = v;
+    if (v === "2d") this._badge(false);
     this.last = null;   // draw the next frame whatever the clock does
     this.onChange();
   }
 
+  // The 3D view's own notice; the page's notice (a missing graphic) comes back when it clears.
   _notice(text) {
     const n = this.els.notice;
+    if (text && !this.notice) this.prior = n.hidden ? "" : n.textContent;
     this.notice = !!text;
-    n.textContent = text;
-    n.hidden = !text;
+    n.textContent = text || this.prior || "";
+    n.hidden = !n.textContent;
     this.onChange();
+  }
+
+  // The replay badge, read out once when it comes on.
+  _badge(on) {
+    const b = this.els.badge;
+    if (b.classList.contains("on") === on) return;
+    b.classList.toggle("on", on);
+    b.textContent = on ? "Replay" : "";
   }
 
   resize() { this.scene?.resize(); this.last = null; }
@@ -167,7 +185,12 @@ export class View3D {
   frame(ts, speed, seeked, playing) {
     this.clock = ts;
     const s = this.scene;
-    if (!s || this.mode === "2d") return;
+    // the quality steps wait while the picture is paused, and for 2 s after, while the engine's
+    // frame-rate average still holds the pause
+    const now = performance.now();
+    if (!(playing && this.mode !== "2d")) this.playing = null; else this.playing ??= now;
+    if (s) s.held = this.playing == null || now - this.playing < 2000;
+    if (!s || this.mode === "2d" || this.lost) return;
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
     const [a, b] = s.span, end = this.match.duration;
@@ -175,7 +198,11 @@ export class View3D {
     const l = this.last;
     // a jump (seek, replay cut, or more than the camera spring takes in one step) starts the
     // camera and the turns afresh
-    const jumped = seeked || !l || v.replay !== l.replay || v.ts < l.ts || v.ts - l.ts > 1;
+    const half = this.match.meta.period1_s;   // the half-time break is a cut, not a second of play
+    const jumped = seeked || !l || v.replay !== l.replay || v.ts < l.ts || v.ts - l.ts > 1 || (v.ts > half) !== (l.ts > half);
+    // a pause also ends a run of play for the frame-rate watch
+    this._watch(playing);
+    if (this.mode === "2d") return;
     // paused: nothing new to draw, once the shaders a seek needed have compiled (until then a
     // paused picture would stay without its players) and unless the quality steps resized the
     // canvas, which clears it
@@ -190,8 +217,7 @@ export class View3D {
     s.render();
     this.ready = ready;
     this.last = v;
-    this.els.badge.classList.toggle("on", v.replay);
-    this._watch(playing);
+    this._badge(v.replay);
   }
 
   // Screen position of a player in the 3D picture, in 1920 x 1080 stage pixels (OGraf locate).
@@ -210,7 +236,8 @@ export class View3D {
     if (this.since == null) { this.since = now; this.frames = []; }
     if (now - this.since < FPS_GRACE_S * 1000) return;
     this.frames.push(now);
-    while (now - this.frames[0] > FPS_WINDOW_S * 1000) this.frames.shift();
+    // keep one frame older than the window, or at a few fps the window never fills
+    while (this.frames.length > 1 && now - this.frames[1] > FPS_WINDOW_S * 1000) this.frames.shift();
     const span = (now - this.frames[0]) / 1000;
     if (span < FPS_WINDOW_S - 0.5) return;
     this.fps = (this.frames.length - 1) / span;

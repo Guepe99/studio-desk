@@ -166,7 +166,8 @@ function buildSeekMarks() {
 
 let lastFrame = null;
 function tick(now) {
-  const dt = lastFrame === null ? 0 : Math.min(0.1, (now - lastFrame) / 1000);
+  // a stall of the page (a 3D replan) keeps the clock in real time; a gap over 1 s is a hidden tab
+  const gap = lastFrame === null ? 0 : (now - lastFrame) / 1000, dt = gap > 1 ? 0.1 : gap;
   lastFrame = now;
   if (state.playing) {
     state.ts += dt * state.speed;
