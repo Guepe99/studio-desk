@@ -46,6 +46,7 @@ def test_colour_only_when_its_fact_is_true(packs):
             assert not ids & pb.POWER or rules.shot_info(s)["outcome"] in ("goal", "saved")  # no "What a hit!" on a block
             for opener, form, texts in _variants(m, s):
                 assert opener not in pb.POWER or "km/h" in texts["en"], texts["en"]  # the line gives the speed
+                assert opener != "save" or "saved" not in texts["en"], texts["en"]  # not "What a save! ... it's saved"
                 if form == 2 and s["kind"] == "big_chance":
                     assert pb.tried_before(m, s), texts["en"]  # "tries again" only after an earlier shot
                 if "fastest sprint of the match" in texts["en"]:

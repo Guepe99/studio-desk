@@ -52,6 +52,11 @@ FORMATION_GAP_M = 6.0
 FORMATION_RATIO = 1.5
 
 
+def half_up(v):
+    """The whole number a viewer reads for a stored value: 113.5 is 114, as the phrasebook says it."""
+    return math.floor(v + 0.5)
+
+
 def clip01(v):
     return min(max(v, 0.0), 1.0)
 
@@ -209,13 +214,13 @@ class Match:
                 v = self.xt(e["end_x"], e["end_y"], sign) - self.xt(e["start_x"], e["start_y"], sign)
                 self.add("xt_added", ts, round(v, 4), "xT", f"xT {v:+.3f}", team, pid, [eid])
             if kind in SHOT_TYPES:
-                d = math.hypot(e["start_x"] - (LENGTH if sign > 0 else 0.0), e["start_y"] - WIDTH / 2)
+                d = round(math.hypot(e["start_x"] - (LENGTH if sign > 0 else 0.0), e["start_y"] - WIDTH / 2), 1)
                 detail = shot_detail(e, sign, self.saves_after(i))
-                self.add("shot_distance", ts, round(d, 1), "m", f"Shot from {d:.0f} m, {detail}", team, pid, [eid])
+                self.add("shot_distance", ts, d, "m", f"Shot from {half_up(d)} m, {detail}", team, pid, [eid])
             if kind in SHOT_TYPES and f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
-                v = self.peak_ball_kmh(f0, f1)
-                self.add("shot_speed", ts, round(v, 1), "km/h", f"Shot at {v:.0f} km/h", team, pid, [eid], (f0, f1))
+                v = round(self.peak_ball_kmh(f0, f1), 1)
+                self.add("shot_speed", ts, v, "km/h", f"Shot at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
             if kind not in PASS_TYPES:
                 continue
             dist = math.hypot(e["end_x"] - e["start_x"], e["end_y"] - e["start_y"])

@@ -202,7 +202,8 @@ WITH_SHOT = ("with a shot at {} km/h", "con un tiro a {} km/h", "con un disparo 
 def outcome(m, story, lang, out, opener):
     k = turn(m, story)
     if out == "saved":
-        ways = SAVED[lang][1:] if opener == "save" and lang != "en" else SAVED[lang]
+        # after "What a save!" the outcome must not say "save" again
+        ways = [w for w in SAVED[lang] if not re.search(r"sav|para", w)] if opener == "save" else SAVED[lang]
         return ways[k % len(ways)]
     if out == "over" and lang == "es":
         return OVER_ES[k % 2]
