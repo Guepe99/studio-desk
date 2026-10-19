@@ -68,8 +68,8 @@ export default class PassShot extends SdGraphic {
     return [
       [$(".kicker"), [{ transform: "translateY(30px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 240, delay: 260 }],
       [$(".card"), [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: 420 }],
-      [$(".who"), [{ opacity: 0, transform: "translateX(-24px)" }, { opacity: 1, transform: "none" }], { duration: 280, delay: 200 }],
-      [$(".val"), [{ opacity: 0, transform: "translateX(40px)" }, { opacity: 1, transform: "none" }], { duration: 300, delay: 300 }],
+      [$(".who"), [{ opacity: 0.5, transform: "translateX(-24px)" }, { opacity: 1, transform: "none" }], { duration: 240 }],   // the text rides in with the wipe: no empty bar
+      [$(".val"), [{ opacity: 0, transform: "translateX(40px)" }, { opacity: 1, transform: "none" }], { duration: 260, delay: 140 }],
       [$(".q"), [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: 220, delay: 420 }],
       [$(".bar"), [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 600, delay: 520 }],
       [$(".factslot"), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 600 }],

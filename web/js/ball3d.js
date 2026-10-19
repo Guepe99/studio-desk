@@ -30,6 +30,7 @@ export const PITCH_L = 105, GOAL_W = 7.32, GOAL_H = 2.44, NET_D = 2.2;
 const NET_W = 14;                // rad/s, natural frequency of the net on the ball
 const NET_Z = 0.7;               // damping ratio: most of the energy stays in the cords
 const NET_GRIP = 6;              // 1/s, the cords drag on the ball along the net
+const NET_HOLD = 0.4;            // s, the stretched cords sag back slower than the ball rebounds
 const ROLL_DECEL = 1.5;          // m/s^2, the ball rolling on the turf inside the goal
 
 const KICKS = { pass: "pass", cross: "long", shot: "shot", shot_freekick: "shot", shot_penalty: "shot",
@@ -223,7 +224,7 @@ export class BallPlan {
         ["roof", (q) => q[2] + r - (GOAL_H - 0.1 * GOAL_H * Math.min(1, Math.max(0, (q[0] - gx) * end / NET_D))), [0, 0, 1]],
       ];
       const s = [];
-      let hit = null, peak = 0, released = null;
+      let hit = null, peak = 0, tPeak = 0, released = null;
       for (let k = 0, t = tc; t < t1; k++, t = tc + k * H) {
         if (k % 2 === 0) {
           let depth = 0, plane = hit?.name ?? null, at = hit?.at ?? null;
@@ -233,6 +234,8 @@ export class BallPlan {
             depth = -0.25 * released.peak * Math.exp(-5 * u) * Math.sin(2 * Math.PI * 2.2 * u);
             plane = released.name; at = released.at;
           }
+          // the pocket outlasts the ball's push: it billows to the peak and relaxes over NET_HOLD
+          if (plane) depth = Math.max(depth, peak * Math.exp(-(t - tPeak) / NET_HOLD));
           s.push([p[0], p[1], Math.max(0, p[2] - r), depth, plane, at]);
         }
         // forces: gravity, the pressed net, the turf
@@ -249,7 +252,7 @@ export class BallPlan {
         }
         if (touching) {
           hit = { name: touching.name, at: [p[0], p[1], p[2]], d: touching.d };   // the pocket follows the ball
-          peak = Math.max(peak, touching.d);
+          if (touching.d > peak) { peak = touching.d; tPeak = t; }
         } else if (hit) { released = { t, name: hit.name, at: hit.at, peak }; hit = null; }
         for (let j = 0; j < 3; j++) v[j] += f[j] * H;
         if (p[2] - r < 0 && v[2] < 0) {   // bounce, then roll
@@ -431,7 +434,7 @@ function nlerp(a, b, u) {
 // contact. The shot has the biggest backswing; the pass is a side-foot kick (thigh turned out
 // about 50 degrees, ankle locked up) with a compact swing; the long ball is an instep kick.
 const LEG_KEYS = {
-  shot: [[-0.5, 0, 20, 0, 0], [-0.3, -14, 55, 10, 5], [-0.11, -46, 110, 25, 8], [0, 22, 22, 38, 8], [0.14, 66, 16, 32, 6], [0.32, 44, 35, 15, 0], [0.5, 8, 28, 0, 0]],
+  shot: [[-0.5, 0, 20, 0, 0], [-0.3, -14, 55, 10, 5], [-0.11, -46, 110, 25, 8], [0, 22, 22, 38, 8], [0.1, 64, 14, 32, 6], [0.2, 50, 26, 22, 3], [0.32, 24, 36, 10, 0], [0.5, 8, 28, 0, 0]],
   long: [[-0.5, 0, 20, 0, 5], [-0.3, -10, 50, 8, 12], [-0.11, -40, 100, 22, 18], [0, 24, 30, 26, 18], [0.14, 60, 20, 28, 14], [0.32, 40, 35, 12, 5], [0.5, 8, 28, 0, 0]],
   pass: [[-0.42, 0, 22, 0, 8], [-0.24, -10, 45, -5, 35], [-0.1, -26, 72, -10, 50], [0, 16, 26, -12, 50], [0.13, 40, 18, -10, 42], [0.25, 28, 24, -5, 25], [0.4, 6, 26, 0, 8]],
   touch: [[-0.28, 4, 30, 0, 8], [-0.12, -6, 55, 0, 25], [0, 24, 30, -5, 28], [0.12, 18, 30, 0, 15], [0.28, 4, 30, 0, 4]],
@@ -442,7 +445,7 @@ const LEG_KEYS = {
 // knee gives under the body, then the body rolls over it. Touches and traps only bend it a little.
 const STAND = [[-1, 12, 28, 0, 0], [1, 12, 28, 0, 0]];
 const SUPPORT_KEYS = {
-  shot: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 72, 0, 0], [-0.14, 32, 18, -5, 0], [-0.07, 24, 24, 0, 0], [0, 14, 34, 0, 0], [0.14, 2, 30, 8, 0], [0.32, -8, 34, 15, 0], [0.5, 4, 30, 0, 0]],
+  shot: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 72, 0, 0], [-0.14, 32, 18, -5, 0], [-0.07, 24, 24, 0, 0], [0, 14, 34, 0, 0], [0.1, 2, 30, 8, 0], [0.32, -8, 34, 15, 0], [0.5, 4, 30, 0, 0]],
   long: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 70, 0, 0], [-0.14, 34, 18, -5, 0], [-0.07, 26, 24, 0, 0], [0, 16, 34, 0, 0], [0.14, 4, 30, 8, 0], [0.32, -6, 32, 12, 0], [0.5, 4, 30, 0, 0]],
   pass: [[-0.42, -12, 42, 8, 0], [-0.22, 22, 48, 0, 0], [-0.09, 18, 22, 0, 0], [0, 12, 27, 0, 0], [0.13, 6, 27, 0, 0], [0.4, 2, 26, 0, 0]],
   touch: STAND, trap: STAND,
@@ -464,7 +467,7 @@ const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5 };
 // upright with a smaller arc of its own (free arm out to about 50 degrees, then forward); the long ball leans back with the free arm out.
 const BODY_KEYS = {
   shot: [[-0.5, 0, 0, 3, 0, 12, 0, 12, 0], [-0.3, -8, 6, 2, 4, 45, -15, 15, 15], [-0.11, -16, 12, -2, 8, 85, -35, 20, 25],
-    [0, 4, 2, 8, 10, 75, -15, 22, -5], [0.14, 18, -12, 10, 6, 45, 30, 25, -25], [0.32, 14, -8, 6, 3, 25, 15, 15, -10], [0.5, 0, 0, 3, 0, 12, 0, 12, 0]],
+    [0, 4, 2, 8, 10, 75, -15, 22, -5], [0.1, 18, -12, 10, 6, 45, 30, 25, -25], [0.32, 14, -8, 6, 3, 25, 15, 15, -10], [0.5, 0, 0, 3, 0, 12, 0, 12, 0]],
   long: [[-0.5, 0, 0, 2, 0, 12, 0, 12, 0], [-0.3, -7, 5, -2, 5, 48, -15, 15, 12], [-0.11, -14, 10, -8, 10, 90, -30, 25, 15],
     [0, 3, 2, -10, 14, 85, -12, 25, -5], [0.14, 14, -8, -6, 8, 55, 20, 25, -20], [0.32, 10, -5, 0, 3, 28, 12, 15, -10], [0.5, 0, 0, 2, 0, 12, 0, 12, 0]],
   pass: [[-0.42, 0, 0, 3, 0, 12, 0, 12, 0], [-0.24, -6, 4, 3, 3, 32, -12, 14, 10], [-0.1, -10, 8, 4, 6, 52, -22, 16, 14],

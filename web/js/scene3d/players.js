@@ -242,6 +242,24 @@ export function applyUpper(p) {
   }
 }
 
+// After the animation step: a run loop's flight phase lifts both feet well clear of the grass
+// while the contact shadow stays on it, so the runner seemed to float. A player on the ground
+// (p.free: no action, no ball contact, no lift) drops until his lower ankle is FLIGHT_MAX up.
+// shortcut: lowers the whole body instead of retiming the loops' flight, fine at broadcast range.
+const FLIGHT_MAX = 0.2;   // m: the ankle bone stands about 0.1 m up
+export function settleFeet(p) {
+  if (!p.free) return;
+  let low = Infinity;
+  for (const name of ["foot_l", "foot_r"]) {
+    const c = [];
+    for (let n = p.anim.node(name); n; n = n.parent) c.unshift(n);
+    if (!c.length) return;
+    c.forEach((n) => n.computeWorldMatrix(true));
+    low = Math.min(low, c.at(-1).getAbsolutePosition().y);
+  }
+  if (low > FLIGHT_MAX) p.holder.position.y -= low - FLIGHT_MAX;
+}
+
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last
 // frame) from the resolved driver answers r. r.runL: the run direction in the character's frame
 // (motion loops). motion: the loaded clips.json, or null for the procedural stand-ins.

@@ -172,7 +172,7 @@ the long ball, 0.42 and 0.4 for the pass.
 
 | | Shot | Long ball, cross | Short pass |
 | --- | --- | --- | --- |
-| Kicking leg | instep; backswing to hip -46, knee 110 at -0.11; leg up to hip 66 at +0.14 | instep; hip -40, knee 100; up to 60 | side foot, thigh turned out 50; hip -26, knee 72; up to 40 at +0.13, still 28 at +0.25 (follow-through) |
+| Kicking leg | instep; backswing to hip -46, knee 110 at -0.11; leg up to hip 64 at +0.1, coming down at once (50 at +0.2, 24 at +0.32) | instep; hip -40, knee 100; up to 60 | side foot, thigh turned out 50; hip -26, knee 72; up to 40 at +0.13, still 28 at +0.25 (follow-through) |
 | Plant leg | swings through high (-0.3), reaches out at -0.14, lands, knee gives to 34 at contact, the body rolls over it | the same | pushes off behind (-0.42), a short step, landing at -0.09 |
 | Pelvis | 16 back at the top, 18 through after contact | 14 back, 14 through | 10 back, side-on at contact, 6 through |
 | Shoulders | 12 the other way at the top, 12 through after | 10, 8 | 8, 5 |
@@ -242,26 +242,31 @@ so the reactions start in it.
   integrates it at 240 Hz: gravity, and four net planes (back, roof, two sides) as damped springs
   (natural frequency 14 rad/s, damping ratio 0.7) with tangential grip, so the net catches the
   ball, carries it back about 0.7 m and lets it drop; then a bounce at 0.5, rolling friction and,
-  after the release, a small ripple in the net. The ball ends on the grass about 1.6 m inside the
+  after the release, a small ripple in the net. The pocket outlasts the ball's push: it billows
+  to its deepest and relaxes over 0.4 s while the ball drops. The ball ends on the grass about 1.6 m inside the
   goal on M001. `plan.net(ts)` says which panel is pressed, where and how deep; `check()` leaves
   the net window out because the tracking ball is no longer the reference there.
 - **The bulging net** (`web/js/scene3d/net.js`). Each goal's netting is one grid mesh (a vertex
   every 0.2 m); the pressed panel's vertices move along its normal in a Gaussian pocket (sigma
-  0.6 m) that is pinned at the frame and looser at the pegged bottom edge. No physics engine.
+  0.8 m, wide enough to read from camera 1) that is pinned at the frame and looser at the pegged bottom edge. No physics engine.
 - **The keeper** (`web/js/keeper3d.js`). Every reaction now starts with a set position 0.6 s
   before the shot (blended in over 0.3 s): with the real clips it is the frame just before the
   dive pushes off, otherwise the stance. A beaten keeper always takes the lateral dive towards
-  the ball side (not the crouch), at most 1.2 times the clip's own speed, and stays down until
+  the ball side (not the crouch), 1.5 times the clip's own speed from 0.15 s after the shot (in the air as the ball passes), and stays down until
   0.5 s after the clip has landed.
 - **The first second** (`web/js/awareness.js`). The scorer starts celebrating 0.15 s after the
-  goal, with arms wide first (they read on a running body), then arms up; team-mates join from
+  goal, with arms wide first (they read on a running body), then arms up; the nearest team-mate
+  sprints over from 0.3 s before the goal (an offset on his track); the others join from
   0.3 s, the conceding side slumps from 0.35 s, and the beaten keeper stays down after his dive. For 14 s after a
   goal bodies are pushed apart: team-mates' centres at least 0.9 m, opponents 1.5 m (out of reach
-  of a celebrating arm).
+  of a celebrating arm); the team-mate sprinting over steps round whoever is in his way, so a
+  player kneeling in his path is not shoved off his knees.
 - **No fact chips on TV** (`web/js/sample3d.js`): the 3D page asks the graphics for
   `v_showFactIds: false`; the 2D analyst page keeps them.
 - **Cameras** (`web/js/scene3d/camera.js`, `web/js/scene3d/sightline.js`). Camera 1 tightens to
-  30 m and leans towards the goal mouth inside 30 m of a goal line. Around a kick it slides up to
+  30 m and leans towards the goal mouth inside 30 m of a goal line; on a goal it punches in from
+  1.6 s before (the strike) to 16 m across, aimed 4 m out from where the ball enters the net, so the
+  strike, the keeper's dive and the bulge read large until the cut. Around a kick it slides up to
   10 m along a rail when another player's head would hide the kicker's foot (kicks less than 3 s
   apart share one slide, so the pass and the shot do not swing it from side to side). Camera 2,
   the close-up, stands 18 m away at 2.2 m, frames 4.5 m (the whole body), averages the aim over
@@ -275,7 +280,9 @@ so the reactions start in it.
 - `node --test tests/web/flow3d.test.mjs`: a beaten keeper is set 0.5 s into the set phase, dives
   at no more than 1.5 times the clip speed and is still down 1 s after the ball went past.
 - `node --test tests/web/awareness.test.mjs`: after a goal no two drawn bodies come within 0.7 m
-  (the tracking alone does, on M001).
+  (the tracking alone does, on M001); the nearest team-mate runs to the scorer; a player standing
+  on the keeper lying on the grass steps 1 m off him; the running team-mate steps round a player
+  in his path and that player does not move.
 - `node --test tests/web/sightline3d.test.mjs`: a head on the line of sight is found, the rail
   clears it, and eases on and off.
 - `CLOCKS=... scripts/with-lock.sh chromium tests/web/run-smoke.sh goal3d-stills.mjs M001 <name>`:
@@ -283,13 +290,14 @@ so the reactions start in it.
 
 ### Results
 
-Looked at frame by frame in `out/shots/goal3d-clip.mp4` (M001, clock 8 to 14, high profile):
-the keeper is set as the shot is struck, dives low to his left and stays down; the ball runs
-into the goal at speed and rolls to a stop inside it; the shooter's foot and the ball are clear
-of the nearest defender at contact; the cut to camera 2 at clock 13 has no repeated or frozen
-frame and the scorer is already celebrating, arms up, with the defenders hands on head.
-From camera 1, 70 m away, the net pocket (about 0.7 m deep on a thin net) is hard to see; it
-reads from the goal camera and in the replay.
+Looked at frame by frame in `out/shots/goal3d-clip.mp4` (M001, clock 8 to 14, high profile).
+At the strike camera 1 has punched in and the players stand about 90 px tall on a 1280 px frame;
+the shooter's foot and the ball are clear of the nearest defender at contact. The keeper is in
+the air sideways towards the ball before it passes him and stays down. The ball runs into the
+goal and the net billows for about 0.4 s, visible but modest from camera 1. The lower third
+arrives with its text. The cut to camera 2 at clock 13 has no repeated frame; the scorer
+celebrates, the nearest team-mate is running in (he arrives after the clip ends), and the
+defenders slump in different poses at different times.
 
 Performance, `scene3d-perf.mjs high` with WebGL 2: 0.28 fps, 330 meshes, 431,806 vertices
-before; 0.29 fps (runs 0.3, 0.3, 0.4), 332 meshes, 434,314 vertices after.
+before; 0.29 fps (runs 0.3, 0.3, 0.4), 332 meshes, 434,314 vertices after the first pass; 0.48 fps (runs 0.5, 0.5, 0.5), 332 meshes, 434,314 vertices after the third (the machine was less loaded).

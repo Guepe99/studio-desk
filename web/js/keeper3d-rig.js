@@ -40,6 +40,19 @@ export class KeeperRig {
     for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
     s.addDriver({ priority: 30, pose: (i, ts) => this.pose(i, ts) });
     s.scene.onAfterAnimationsObservable.add(() => this._arms());
+    // the awareness layer keeps the others off a keeper lying on the grass after his dive
+    if (s.awareness?.aw) s.awareness.aw.bodyOf = (i, ts) => this.body(i, ts);
+  }
+
+  // Three points along a keeper lying on the grass after a dive (feet, hips, head), as [x, y, w]
+  // in contract metres, or null when he is not down.
+  body(i, ts) {
+    const r = this.at(i, ts), k = r && (r.real ? realRoot(r, ts) : keeperRoot(r, ts)), p = k && this.s.match.at(i, ts);
+    // weight 0..1 as he goes down, so whoever stands there is eased off, not thrown
+    const w = !p ? 0 : r.real ? smooth((-k.lift - 0.15) / 0.35) : smooth((Math.abs(k.roll) - 0.3) / 0.6);
+    if (w <= 0) return null;
+    const n = Math.hypot(k.dx, k.dy), u = n > 0.3 ? [k.dx / n, k.dy / n] : r.u;   // he lies along his dive
+    return [-0.8, 0, 0.8].map((a) => [p[0] + k.dx + u[0] * a, p[1] + k.dy + u[1] * a, w]);
   }
 
   at(i, ts) {

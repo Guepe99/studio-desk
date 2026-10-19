@@ -13,15 +13,16 @@ const WAVE_T = 200 * Math.PI / 7;
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
+const FIRST_Y = 1.0;   // m: front wall and first row, just over the 0.9 m boards (no dark band between)
 
 // Seats of one stand, in the stand's own frame: x along the stand, d outwards from the front
 // wall, h above the ground, row from the front (0). A single tier rising 15.5 m over its depth,
-// first row 1.5 m up.
+// first row FIRST_Y up.
 export function seatGrid(len, depth, density, rnd) {
   const seats = [];
   const rowStep = 0.85 / Math.sqrt(density), seatStep = 0.55 / Math.sqrt(density);
   for (let d = 0.9, row = 0; d < depth - 0.4; d += rowStep, row++) {
-    const h = 1.5 + 15.5 * (d / depth);
+    const h = FIRST_Y + 15.5 * (d / depth);
     for (let x = -len / 2 + 0.3; x < len / 2 - 0.3; x += seatStep) {   // the corner stands continue the rows
       if (Math.abs(((x + len / 2) % 20) - 10) < 0.8) continue;   // aisles every 20 m
       if (rnd() < 0.1) continue;                                   // empty seats
@@ -150,10 +151,10 @@ export function buildStadium(scene, match, profile, rnd) {
     root.rotation.y = rotY;
     const rake = Math.atan2(15.5, depth), slope = Math.hypot(15.5, depth);
     const t = B.MeshBuilder.CreatePlane("tier", { width: len, height: slope }, scene);
-    t.parent = root; t.rotation.x = Math.PI / 2 - rake; t.position.set(0, 1.5 + 7.75, front + depth / 2);
+    t.parent = root; t.rotation.x = Math.PI / 2 - rake; t.position.set(0, FIRST_Y + 7.75, front + depth / 2);
     tiers.push(t);
-    const wall = B.MeshBuilder.CreateBox("w", { width: len, height: 1.5, depth: 0.4 }, scene);
-    wall.parent = root; wall.position.set(0, 0.75, front); fronts.push(wall);
+    const wall = B.MeshBuilder.CreateBox("w", { width: len, height: FIRST_Y, depth: 0.4 }, scene);
+    wall.parent = root; wall.position.set(0, FIRST_Y / 2, front); fronts.push(wall);
     const back = B.MeshBuilder.CreateBox("bk", { width: len, height: 27, depth: 1 }, scene);
     back.parent = root; back.position.set(0, 13.5, front + depth + 0.5); shells.push(back);
     // roof from 0.2 to 1 of the depth, flat so its edges meet the corners' exactly
@@ -184,7 +185,7 @@ export function buildStadium(scene, match, profile, rnd) {
       return new B.Vector3(C[0] + o.dx * rr, typeof y === "function" ? y(o) : y, C[1] + o.dz * rr);
     });
     const ribbon = (name, paths, list, side = B.Mesh.DOUBLESIDE) => list.push(B.MeshBuilder.CreateRibbon(name, { pathArray: paths, sideOrientation: side }, scene));
-    ribbon("ctier", [path(0.05, 1.5), path((o) => o.depth, 17)], tiers);
+    ribbon("ctier", [path(0.05, FIRST_Y), path((o) => o.depth, FIRST_Y + 15.5)], tiers);
     ribbon("cback", [path((o) => o.depth + 0.5, 0), path((o) => o.depth + 0.5, 27)], shells);
     // the roof material draws both faces, so top and underside are two one-sided sheets (a
     // double-sided one fights itself and flickers)
@@ -199,7 +200,7 @@ export function buildStadium(scene, match, profile, rnd) {
         const k = (i + 0.5) / n, o = at(k);
         if (d > o.depth - 0.4 || rnd() < 0.1) continue;
         const end = k < 0.5 ? "side" : sx > 0 ? "away" : "home";
-        people.push([C[0] + o.dx * d, 1.5 + 15.5 * d / o.depth, C[1] + o.dz * d, Math.atan2(o.dx, o.dz), end, row]);
+        people.push([C[0] + o.dx * d, FIRST_Y + 15.5 * d / o.depth, C[1] + o.dz * d, Math.atan2(o.dx, o.dz), end, row]);
       }
     }
   };
@@ -316,19 +317,21 @@ export function buildStadium(scene, match, profile, rnd) {
 
   // banners over the front walls: the home end and the long stand in home colours (one away banner
   // there), the away end in away colours
-  const BW = 7, BH = 1.3;
+  const BW = 7, BH = 0.9;
   const banners = { home: [], away: [] };
   const bm = new B.Matrix();
   const banner = (team, front, rotY, along) => {
     const ox = Math.sin(rotY), oz = Math.cos(rotY), tx = Math.cos(rotY), tz = -Math.sin(rotY);
     const cx = ox * (front - 0.4) + tx * along, cz = oz * (front - 0.4) + tz * along;   // clear of the 0.4 m wall as it waves
     // rows: local X (down), local Y (the normal, towards the pitch), local Z (along the wall)
-    B.Matrix.FromValuesToRef(0, -1, 0, 0, -ox, 0, -oz, 0, tx, 0, tz, 0, cx, 1.55 - BH / 2, cz, 1, bm);
+    B.Matrix.FromValuesToRef(0, -1, 0, 0, -ox, 0, -oz, 0, tx, 0, tz, 0, cx, FIRST_Y + 0.05 - BH / 2, cz, 1, bm);
     banners[team].push(...bm.m);
   };
   for (const z of [-17, 17]) { banner("home", FRONT_E, -Math.PI / 2, z); banner("away", FRONT_E, Math.PI / 2, z); }
   for (const [x, team] of [[-34, "home"], [-8, "away"], [20, "home"], [44, "home"]]) banner(team, FRONT_S, 0, x);
-  for (const [team, rgb] of [["home", home.toGammaSpace()], ["away", away.toGammaSpace()]]) {
+  // a near-white kit flies its second colour: a plain white cloth read as a blank glowing board
+  const flag = (t, c) => (Math.min(c.r, c.g, c.b) > 0.6 && t.color_secondary ? lin(t.color_secondary) : c).toGammaSpace();
+  for (const [team, rgb] of [["home", flag(match.home, home)], ["away", flag(match.away, away)]]) {
     const f = B.MeshBuilder.CreateGround(`banner-${team}`, { width: BH, height: BW, subdivisionsX: 4, subdivisionsY: 14 }, scene);
     // cloth lets light through: the ramp's edges move towards the shade, so a banner with its back
     // to the sun still shows its folds as bands
@@ -358,13 +361,16 @@ export function buildStadium(scene, match, profile, rnd) {
   const board = (len, x, z, rotY) => {
     const b = B.MeshBuilder.CreatePlane("bd", { width: len, height: 0.9 }, scene);
     const uv = b.getVerticesData(B.VertexBuffer.UVKind);
-    for (let i = 0; i < uv.length; i += 2) uv[i] *= len / 16;
+    // a whole number of texture repeats: a board never ends part way through its text
+    for (let i = 0; i < uv.length; i += 2) uv[i] *= Math.max(1, Math.round(len / 16));
     b.setVerticesData(B.VertexBuffer.UVKind, uv);
     b.position.set(x, 0.45, z); b.rotation.y = rotY; boards.push(b);
   };
-  board(110, 0, HALF_W + 5, 0);
-  board(110, 0, -HALF_W - 5, Math.PI);
-  for (const s of [-1, 1]) for (const z of [-20, 20]) board(28, s * (HALF_L + 4), z, s * Math.PI / 2);
+  // the end boards run from beside the goal to the side boards, so the two meet at each corner
+  const SB = HALF_W + 5, EB = HALF_L + 4;
+  board(2 * EB, 0, SB, 0);
+  board(2 * EB, 0, -SB, Math.PI);
+  for (const s of [-1, 1]) for (const z of [-1, 1]) board(SB - 6, s * EB, z * (SB + 6) / 2, s * Math.PI / 2);
   merge(boards, boardMat);
 
   // floodlight masts, lamps off in daylight

@@ -193,6 +193,10 @@ async function main() {
   window.__setTime = async (c) => {
     state.c = ((c % LOOP_S) + LOOP_S) % LOOP_S;
     show(state.c);
+    // a camera cut that switches depth of field rebuilds the post effects, and until they compile
+    // nothing new is drawn: the captured frame would repeat the last one
+    const post = () => (scene.scene.activeCamera?._postProcesses ?? []).every((p) => !p || p.isReady());
+    for (let k = 0; k < 50 && !post(); k++) { await new Promise((r) => setTimeout(r, 20)); scene.render(); }
     await Promise.all([...host.live.values()].map((i) => i.chain));
     host.sync(tl.at(state.c).ts, false);   // place the graphics again now that they are loaded
     return tl.at(state.c);

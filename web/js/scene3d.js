@@ -15,7 +15,7 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset, applyUpper } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset, applyUpper, settleFeet } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
@@ -230,7 +230,7 @@ export class Scene3D {
     this.drivers = [];
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
-    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) applyUpper(p); });
+    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p); } });
 
     // contact darkening under every player, and blob shadows for the lights without a shadow map
     this.grounding = new Grounding(scene, this.players.length, this.light);
@@ -269,6 +269,7 @@ export class Scene3D {
       const vx = (c[0] - a[0]) / (2 * VEL_H), vy = (c[1] - a[1]) / (2 * VEL_H), v = Math.hypot(vx, vy);
       p.holder.position.copyFrom(P(shown[0], shown[1], r.dz));
       p.holder.rotation.z = r.roll;
+      p.free = !r.action && !r.leg && Math.abs(r.dz) < 1e-3 && !r.emotion?.full;
       // face the run (away from it when backpedalling); when nearly still, face the ball unless it
       // is at his feet, where its bearing swings at random
       let want = p.want ?? p.yaw;

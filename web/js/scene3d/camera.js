@@ -13,7 +13,8 @@
 // - keeps 24 to 42 m of pitch across the frame at the aim point (a horizontal angle of 19 to 33
 //   degrees), tighter when play bunches; a small frame (a phone) zooms in further so players stay
 //   readable; on an attack inside 30 m of goal it narrows to 30 m and leans towards the goal
-//   mouth, so the shot, the keeper and the net read (docs/motion3d.md, "The goal");
+//   mouth, so the shot, the keeper and the net read (docs/motion3d.md, "The goal"); on a goal it
+//   punches in on the goal mouth from the strike until the cut (PUNCH);
 // - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does;
 // - around a kick it slides up to 10 m along a rail when another player's head would hide the
 //   kicker's foot from the lens (sightline.js).
@@ -53,6 +54,9 @@ const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * 
 const TIGHT = { dist: 18, height: 2.2, width: 4.5, aim: 0.95, avg: 10 };
 const GOAL_CAM = { back: 14, tilt: 13.5 * DEG };   // metres behind the goal line, sight line to the penalty mark
 export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
+// punch-in on a goal: starts `lead` s before it, full after `ramp` s, `width` m across the frame,
+// aimed `front` m out from where the ball crosses into the net
+const PUNCH = { lead: 1.6, ramp: 1.4, width: 16, front: 4 };
 const STOP_EVENTS = new Set(["foul", "keeper_save"]);
 
 // Zoom factor for the size of the frame on screen: 1 from 1000 CSS px wide, down to 0.65 on a phone.
@@ -234,11 +238,11 @@ export class Cameras {
       this.state = { x: [g.x, 0], z: [g.z, 0], w: [g.width, 0] };
       for (let t = Math.max(0, ts - 3) + 0.1; t <= ts + 1e-6; t += 0.1) this._step(t, 0.1);
     } else this._step(ts, dt);
-    const s = this.state, cam = this.tv;
-    const target = new B.Vector3(s.x[0], 0, s.z[0]);
+    const s = this.state, cam = this.tv, [px, pz, pw] = this._punch(ts, s);
+    const target = new B.Vector3(px, 0, pz);
     cam.position.set(BROADCAST_POS.x + railAt(this.rail, ts), BROADCAST_POS.y, BROADCAST_POS.z);
     const dist = B.Vector3.Distance(cam.position, target);
-    const tanH = s.w[0] * this._zoom() / 2 / dist;
+    const tanH = pw * this._zoom() / 2 / dist;
     cam.fov = 2 * Math.atan(tanH / this._aspect(cam));
     cam.setTarget(target);
     // hard limit: pan until the ball (as drawn, not smoothed) is inside the safe area; a lofted
@@ -253,12 +257,25 @@ export class Cameras {
         const oy = Math.abs(ny) > SAFE ? (ny - Math.sign(ny) * SAFE) * Math.tan(cam.fov / 2) * dist * 1.6 : 0;
         if (!ox && !oy) break;
         // the aim never leaves the pitch for the stands
-        s.x[0] = Math.max(-HALF_L, Math.min(HALF_L, s.x[0] + ox)); s.z[0] = Math.max(-HALF_W, Math.min(HALF_W, s.z[0] + oy));
-        target.set(s.x[0], 0, s.z[0]);
+        const tx = Math.max(-HALF_L, Math.min(HALF_L, target.x + ox)), tz = Math.max(-HALF_W, Math.min(HALF_W, target.z + oy));
+        s.x[0] += tx - target.x; s.z[0] += tz - target.z;
+        target.set(tx, 0, tz);
         cam.setTarget(target);
       }
     }
     this.scene.activeCamera = cam;
+  }
+
+  // The operator's punch-in on a goal: from 1.6 s before it he zooms in towards the goal mouth
+  // where the ball ends up, PUNCH.width across at the full, so the strike, the keeper and the net's
+  // bulge read large; held until the cut to camera 2. Returns the shown [x, z, width].
+  _punch(ts, s) {
+    const g = this.goals.find((q) => ts > q.ts - PUNCH.lead && ts < q.ts + CELEBRATION[0]);
+    const b = g && this.match.at(0, g.ts);
+    if (!b) return [s.x[0], s.z[0], s.w[0]];
+    const p = smooth01((ts - g.ts + PUNCH.lead) / PUNCH.ramp), end = Math.sign(b[0] - HALF_L) || 1;
+    const ax = b[0] - HALF_L - end * PUNCH.front, az = (b[1] - HALF_W) * DEPTH;
+    return [s.x[0] + (ax - s.x[0]) * p, s.z[0] + (az - s.z[0]) * p, s.w[0] + (Math.min(s.w[0], PUNCH.width) - s.w[0]) * p];
   }
 
   _replay(ts, angle) {

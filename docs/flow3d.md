@@ -64,7 +64,7 @@ reaction:
 | catch at the chest | within 0.7 m sideways and at least 0.45 m up |
 | low dive | under 0.6 m and within 1.6 m sideways |
 | full-stretch dive | everything else |
-| beaten keeper | a goal: a low or full dive that starts 0.25 s after the shot and reaches only 25 to 60% of the way (the share of a 1 s dive he has time for) |
+| beaten keeper | a goal: a low or full dive that starts 0.15 s after the shot and reaches only 25 to 60% of the way (the share of a 1 s dive he has time for) |
 
 Timing: the keeper moves 0.12 s after the shot at the earliest, never before. When the clip's
 natural run-up does not fit between that and the contact, it is played faster, up to 2.5 times; a

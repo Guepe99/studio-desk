@@ -23,7 +23,7 @@ export const TIMING = {
 };
 const REACT = 0.12;          // s after the shot before the keeper moves (none earlier: no anticipation)
 const MIN_PRE = 0.15;        // s: a reflex save still shows this much movement before contact
-const LATE = 0.25;           // s after the shot: a beaten keeper's first move
+const LATE = 0.15;           // s after the shot: a beaten keeper's first move (REACT is the floor)
 const SET_S = 0.6;           // s before the shot the keeper is in his set position (docs/motion3d.md)
 const SET_IN = 0.3;          // s to settle into it
 const MAX_SHIFT = 2.0;       // m the feet leave the tracked spot, at most
@@ -121,7 +121,7 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
 const RATE_MAX = 2.5;   // fastest run-up, times the clip's own (a reflex save)
 const DOWN_S = 0.9;     // s of clip after contact before the hold
 const RISE_S = 0.8;     // s to blend back up onto the tracking
-const GOAL_RATE = 1.2;  // a beaten keeper's dive, times the clip's own speed
+const GOAL_RATE = 1.5;  // a beaten keeper's dive, times the clip's own speed
 function fitClip(r, c, { earliest, want, goal = false }) {
   if (goal) return fitBeaten(r, c, earliest, want);
   // a dive's contact frame follows the ball's height: on the way down from the hands' highest
@@ -156,7 +156,7 @@ function fitBeaten(r, c, start, want) {
   const sg = Math.sign(c.root.at(-1)[0]) || 1, far = c.root.at(-1)[0] * sg;
   const push = Math.max(0, c.root.findIndex((q) => q[0] * sg > 0.05));
   const landed = Math.max(push, c.root.findIndex((q) => q[0] * sg > 0.97 * far));
-  const c0 = Math.max(0, push / c.fps - 0.1), contact = c0 + GOAL_RATE * (r.tc - start);
+  const c0 = push / c.fps, contact = c0 + GOAL_RATE * (r.tc - start);
   const at = rootAt(c, contact), hand = c.hands?.[Math.min(c.hands.length - 1, Math.round(contact * c.fps))] ?? c.hand;
   const hold = Math.min(c.len, Math.max(contact, landed / c.fps + 0.5));
   r.start = start;

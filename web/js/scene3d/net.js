@@ -5,7 +5,7 @@
 // Scene axes as scene3d.js: X = x - 52.5, Y up, Z = y - 34.
 
 const STEP = 0.2;        // m between grid vertices
-const SIGMA = 0.6;       // m, width of the pocket
+const SIGMA = 0.8;       // m, width of the pocket (wide enough to read from the broadcast camera)
 const PIN = 0.5;         // m from the frame over which the cords are free to move
 const PIN_PEG = 0.25;    // m, the same at the pegged bottom edge, which sits looser
 
