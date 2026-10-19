@@ -1,0 +1,114 @@
+[
+ {
+  "story_id": "S-000001",
+  "lang": "en",
+  "file": "voice/S-000001.en.mp3",
+  "duration_s": 6.5,
+  "text_sha1": "648c6c1d6e73d4fa0d24ac60c7f3d69afa912ad2",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000002",
+  "lang": "en",
+  "file": "voice/S-000002.en.mp3",
+  "duration_s": 8.47,
+  "text_sha1": "a0757042314e16f743c8df7d1499cb6ff9433281",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000003",
+  "lang": "en",
+  "file": "voice/S-000003.en.mp3",
+  "duration_s": 10.7,
+  "text_sha1": "7edbb644427d7a4b72019b65c4699baa7d0a5f9c",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000004",
+  "lang": "en",
+  "file": "voice/S-000004.en.mp3",
+  "duration_s": 8.62,
+  "text_sha1": "07af3f801b89f8545581df31c14335d6611eee9e",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000005",
+  "lang": "en",
+  "file": "voice/S-000005.en.mp3",
+  "duration_s": 21.55,
+  "text_sha1": "8667925680813994baffbea2c7ce6b12317e55e5",
+  "voice": "en-GB-SoniaNeural"
+ },
+ {
+  "story_id": "S-000006",
+  "lang": "en",
+  "file": "voice/S-000006.en.mp3",
+  "duration_s": 11.35,
+  "text_sha1": "ac289bc52070a9f8cc6d4910e3ae33d2576411eb",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000007",
+  "lang": "en",
+  "file": "voice/S-000007.en.mp3",
+  "duration_s": 15.91,
+  "text_sha1": "389fb38cb0851235f9fc712080f50f7daae2a6dc",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000008",
+  "lang": "en",
+  "file": "voice/S-000008.en.mp3",
+  "duration_s": 4.9,
+  "text_sha1": "3931e2d498952773cae85bfcec87cc3ba472a7e2",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000009",
+  "lang": "en",
+  "file": "voice/S-000009.en.mp3",
+  "duration_s": 7.92,
+  "text_sha1": "59d14799de4558e2b20e4c58951615b4987a759a",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000010",
+  "lang": "en",
+  "file": "voice/S-000010.en.mp3",
+  "duration_s": 9.84,
+  "text_sha1": "3ce75a3d9575adcfe3c41436f9fb16098e67916a",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000011",
+  "lang": "en",
+  "file": "voice/S-000011.en.mp3",
+  "duration_s": 11.21,
+  "text_sha1": "6b2434a2f1fb6cd845b025652eca45162c65ef47",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000012",
+  "lang": "en",
+  "file": "voice/S-000012.en.mp3",
+  "duration_s": 8.52,
+  "text_sha1": "0e580ced3a545d325789b54a36e23f7ff4f10d6c",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000013",
+  "lang": "en",
+  "file": "voice/S-000013.en.mp3",
+  "duration_s": 9.55,
+  "text_sha1": "172ba7126e3fdc823794faa597f87c155e03d723",
+  "voice": "en-GB-RyanNeural"
+ },
+ {
+  "story_id": "S-000014",
+  "lang": "en",
+  "file": "voice/S-000014.en.mp3",
+  "duration_s": 20.81,
+  "text_sha1": "b53d3be9a38b09afbf8c7335c49f2920985a3f4a",
+  "voice": "en-GB-SoniaNeural"
+ }
+]

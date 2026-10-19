@@ -8,10 +8,14 @@ COPY studiodesk ./studiodesk
 COPY web ./web
 RUN gzip -k -9 web/vendor/babylonjs/*/*.js
 COPY data/forbidden_names.txt ./data/
-# The demo matches are rebuilt from the seed at image build: no data files in git.
+# What cannot be rebuilt without Azure (AI packs, voice clips) is committed in replays/<match>/.
+COPY replays ./replays
+# The demo matches are rebuilt from the seed at image build: no data files in git. Then each
+# replays/<match>/ is laid over its export, so a committed pack replaces the template files.
 RUN set -e; python -m studiodesk.sim build --matches 4 --seed 7 \
  && python -m studiodesk.facts build --all \
  && for m in M001 M002 M003 M004; do python -m studiodesk.export "$m" && gzip -k -6 "web/data/$m/tracking.f32"; done \
+ && for d in replays/*/; do m=$(basename "$d"); mkdir -p "web/data/$m" && cp -r "$d". "web/data/$m/"; done \
  && chown -R app /app/data
 USER app
 EXPOSE 8000

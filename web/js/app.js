@@ -3,6 +3,7 @@ import { loadMatch } from "./match.js";
 import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
+import { Voice } from "./voice.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -23,7 +24,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, end = 0;
+let match = null, host = null, desk = null, voice = null, end = 0;
 // Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
 let portrait = false, scale = 1;
 
@@ -69,6 +70,7 @@ function setPlaying(on) {
 function seek(ts) {
   state.ts = Math.min(Math.max(ts, 0), end);
   state.seeked = true;
+  voice?.reset();
 }
 
 function pressed(group, attr, value) {
@@ -138,6 +140,7 @@ function tick(now) {
   pitch.draw(match, Math.min(state.ts, match.duration));
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
+  voice.update(state.ts, end);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -227,12 +230,14 @@ async function main() {
   }
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   await desk.load();
+  voice = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
+  await voice.load();
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, voice, seek, setPlaying, get end() { return end; } };
   requestAnimationFrame(tick);
 }
 
