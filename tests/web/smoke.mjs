@@ -10,8 +10,9 @@
 // playing at 16x and 64x, and none past its cue; the real-time path; Space toggling exactly once;
 // the clock frozen at the end of each period; the score bug and seek-bar goals against the score
 // facts; seek keys and aria-valuetext; shirt-number contrast; the pass bar scale; why-card text
-// never cut; reduced motion; a manifest that fails; hostile data; phone landscape and portrait
-// (every control reachable, graphic text at least 11 px in portrait). Screenshots go to out/shots/.
+// never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
+// phone landscape and portrait (every control reachable, graphic text at least 11 px in portrait).
+// Screenshots go to out/shots/.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -161,6 +162,23 @@ const unreachable = (page) => page.evaluate(() => [...document.querySelectorAll(
     const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     return !(hit && (hit === el || el.contains(hit) || hit.contains(el)));
   }).map((el) => el.id || el.dataset.speed || el.dataset.audience || el.tagName));
+
+// POST api/ask stubbed (the static site has no API): {} is the page's probe, "limit" and "offline" the error paths.
+const askStub = (sent = []) => (p) => p.route("**/api/ask", (r) => {
+  const b = JSON.parse(r.request().postData() || "{}");
+  if (!b.question) return r.fulfill({ status: 422, json: { detail: [] } });
+  sent.push(b);
+  if (b.question === "limit") return r.fulfill({ status: 429, json: { status: "limit", reason: "questions per visitor" } });
+  if (b.question === "offline") return r.abort();
+  return r.fulfill({ json: { status: "answered", answer: '<img src=x onerror="window.__xss=2">The quickest sprint was 32 km/h.',
+    fact_ids: ["F-SPRINT_SPEED-000001"], questions_left: 9 } });
+});
+// The Ask panel inside the viewport, its question box the topmost element at its centre.
+const askFits = (page) => page.evaluate(() => {
+  const r = document.querySelector("#ask").getBoundingClientRect(), q = document.querySelector("#ask-q").getBoundingClientRect();
+  const hit = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+  return r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && hit?.id === "ask-q";
+});
 
 // Smallest rendered text (CSS px) inside the graphics on screen.
 const smallestText = (page) => page.evaluate((sel) => {
@@ -444,9 +462,53 @@ try {
     await broken.context().close();
   });
 
+  await check("ask the studio", async () => {
+    if (!(await page.evaluate(() => document.querySelector("#ask-open").hidden))) fail("ask: button shown without a model behind it");
+    const sent = [];
+    const p = await open(browser, { viewport: { width: 1280, height: 720 } }, { route: askStub(sent) });
+    await p.waitForSelector("#ask-open:not([hidden])", { timeout: 5000 });
+    await seekTo(p, 125.37);
+    await p.click("#ask-open");
+    if (!(await p.evaluate(() => document.activeElement?.id === "ask-q"))) fail("ask: focus not on the question box");
+    if (!(await askFits(p))) fail("ask: panel out of the viewport or covered");
+    await p.keyboard.type("Who is the fastest so far?");
+    if (await p.evaluate(() => window.studioDesk.state.playing)) fail("ask: a typed space toggled play");
+    await p.keyboard.press("Enter");
+    await p.waitForSelector("#ask-log li", { timeout: 5000 });
+    const b = sent.at(-1);
+    if (b.match_id !== MATCH || b.ts !== 125.3 || b.lang !== "en" || b.question !== "Who is the fastest so far?") fail(`ask: sent ${JSON.stringify(b)}`);
+    const seen = () => p.evaluate(() => ({ img: !!document.querySelector("#ask img"), xss: window.__xss,
+      you: document.querySelector(".ask-you").textContent, answer: document.querySelector(".ask-a").textContent,
+      live: document.querySelector("#ask-live").textContent, facts: document.querySelector(".ask-facts")?.textContent ?? "",
+      status: document.querySelector("#ask-status").textContent, title: document.querySelector("#ask-title").textContent }));
+    let got = await seen();
+    if (got.img || got.xss) fail("ask: the answer ran as markup");
+    if (!got.answer.startsWith("<img") || got.live !== got.answer) fail(`ask: answer "${got.answer}", live region "${got.live}"`);
+    if (!got.you.endsWith("Who is the fastest so far?")) fail(`ask: question echo "${got.you}"`);
+    if (!got.facts.includes("F-SPRINT_SPEED-000001")) fail(`ask: no fact ids in Analyst mode ("${got.facts}")`);
+    if (!/9/.test(got.status)) fail(`ask: questions left not shown ("${got.status}")`);
+    await p.click('[data-audience="casual"]');
+    if ((await seen()).facts) fail("ask: fact ids shown to the casual fan");
+    await p.click('[data-audience="analyst"]');
+    await p.selectOption("#lang", "it");
+    if ((await seen()).title !== "Chiedi allo studio") fail(`ask: Italian title "${(await seen()).title}"`);
+    await p.selectOption("#lang", "en");
+    for (const [q, msg] of [["limit", /limit is reached/], ["offline", /could not be reached/]]) {
+      await p.fill("#ask-q", q);
+      await p.press("#ask-q", "Enter");
+      await p.waitForFunction((src) => new RegExp(src).test(document.querySelector("#ask-status").textContent), msg.source, { timeout: 5000 })
+        .catch(() => fail(`ask ${q}: no plain message`));
+    }
+    await p.screenshot({ path: `${shots}/web-ask-1280x720.png` });
+    await p.press("#ask-q", "Escape");
+    if (!(await p.evaluate(() => document.querySelector("#ask").hidden && document.activeElement?.id === "ask-open"))) fail("ask: Escape did not close the panel back to its button");
+    await p.context().close();
+  });
+
   for (const [w, h] of [[844, 390], [390, 844]]) {
     await check(`phone ${w}x${h}`, async () => {
-      const phone = await open(browser, { viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true });
+      const phone = await open(browser, { viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true }, { route: askStub() });
+      await phone.waitForSelector("#ask-open:not([hidden])", { timeout: 5000 }); // the Ask button counts among the controls
       // the voice button and the desk's offline label are shown by now, and the layout has followed them
       await phone.waitForFunction(() => window.studioDesk?.voice && window.studioDesk.desk.ready);
       await phone.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -472,6 +534,10 @@ try {
       if (lostPick.length) fail(`${w}x${h} player mode: controls out of reach: ${lostPick.join(", ")}`);
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} player mode: horizontal scroll`);
       await phone.screenshot({ path: `${shots}/web-modes-${w}x${h}.png` });
+      await phone.click("#ask-open");
+      if (!(await askFits(phone))) fail(`${w}x${h}: Ask panel out of the viewport or covered`);
+      await phone.screenshot({ path: `${shots}/web-ask-${w}x${h}.png` });
+      await phone.press("#ask-q", "Escape");
       await phone.click('[data-audience="analyst"]');
       await seekTo(phone, shotAt);
       await phone.screenshot({ path: `${shots}/web-fixes-${w}x${h}.png` });

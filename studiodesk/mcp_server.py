@@ -5,7 +5,9 @@ Run: `python -m studiodesk.mcp_server` (stdio transport).
 Clock: when a clock value is set, every tool only returns rows with `ts <= clock`, and match
 info hides what has not happened yet (final score, later substitutions). In-process, call
 `set_clock(ts)` after each event a `MatchClock` releases (`set_clock(None)` stops filtering);
-a separate server process reads its starting value from the env var `STUDIODESK_CLOCK`.
+a separate server process reads its starting value from the env var `STUDIODESK_CLOCK`. Code that
+calls the tool functions directly for one request (Ask the studio) uses `clock_at(ts)` instead: it
+holds for the current task or thread only and wins over the shared clock.
 The database is `DB_PATH` (env `STUDIODESK_MATCHES_DB`, default `data/matches.sqlite`), always
 opened read-only.
 
@@ -14,7 +16,8 @@ The tool functions are plain functions: agents and tests can call them directly.
 import json
 import math
 import os
-from contextlib import closing
+from contextlib import closing, contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -26,6 +29,7 @@ DB_PATH = Path(os.environ.get("STUDIODESK_MATCHES_DB", config.MATCHES_DB))
 # shortcut: one clock per process, so one live run per process; give each run its own clock when the
 # tappa 3 agents run two matches in the same process.
 _clock = float(os.environ["STUDIODESK_CLOCK"]) if os.environ.get("STUDIODESK_CLOCK") else None
+_local_clock = ContextVar("studiodesk_clock", default=None)  # per request: concurrent visitors at different times
 
 
 def set_clock(ts):
@@ -33,8 +37,23 @@ def set_clock(ts):
     _clock = None if ts is None else float(ts)
 
 
+@contextmanager
+def clock_at(ts):
+    """Every tool called inside this block, in this task or thread, sees the match up to ts only."""
+    token = _local_clock.set(float(ts))
+    try:
+        yield
+    finally:
+        _local_clock.reset(token)
+
+
+def _clock_now():
+    local = _local_clock.get()
+    return _clock if local is None else local
+
+
 def _now():
-    return math.inf if _clock is None else _clock
+    return math.inf if _clock_now() is None else _clock_now()
 
 
 def _rows(sql, args=()):
@@ -75,7 +94,7 @@ def get_match_info(match_id: str) -> dict:
     p1, end = m["period1_s"], m["period1_s"] + m["period2_s"]
     m["period1_s"] = p1 if p1 <= _now() else None
     m["period2_s"] = m["period2_s"] if end <= _now() else None
-    return {**m, "clock": _clock, "score": score,
+    return {**m, "clock": _clock_now(), "score": score,
             "teams": [{**t, "side": sides[t["team_id"]]} for t in teams],
             "players": [_hide_future(p) for p in players]}
 

@@ -5,6 +5,7 @@ import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { View3D, probe, defaultView } from "./view3d.js";
+import { Ask } from "./ask.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -15,15 +16,33 @@ const STRINGS = {
     minute: "Minute {n}, {p}", h1: "first half", h2: "second half", goal: "Goal",
     nographic: "Some graphics could not load: {g}.",
     myteam: "My team", player: "Player", pickteam: "Choose the team", pickplayer: "Choose the player",
+    ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
+    askHint: "Answers use only the match data up to the replay time.", askWait: "The studio is checking the match data.",
+    askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts",
+    askLimit: "No more questions for now: the limit is reached. Try again tomorrow.",
+    askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
+    askBad: "The studio could not take that question. Try a shorter one about this match.",
   },
   // only the audience control is translated so far; every other key falls back to English
   it: {
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
     pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
+    ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
+    askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
+    askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
+    askLimit: "Per ora non si possono fare altre domande: il limite è raggiunto. Riprova domani.",
+    askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
+    askBad: "Lo studio non può prendere questa domanda. Provane una più breve su questa partita.",
   },
   es: {
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
     pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
+    ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
+    askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
+    askYou: "Preguntaste", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Hechos",
+    askLimit: "Por ahora no se pueden hacer más preguntas: se alcanzó el límite. Inténtalo mañana.",
+    askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se pudo contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
+    askBad: "El estudio no puede aceptar esa pregunta. Prueba con una más corta sobre este partido.",
   },
 };
 
@@ -35,7 +54,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, end = 0;
+let match = null, host = null, desk = null, voice = null, ask = null, end = 0;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
 let portrait = false, scale = 1;
@@ -105,6 +124,7 @@ function cueSheet() {
 
 function refreshCues() {
   host.setCues(cueSheet(), state.ts);
+  ask?.render();
 }
 
 let lastBug = "";
@@ -235,11 +255,11 @@ function wireControls() {
   });
   // Space toggles play anywhere; keyup is swallowed too so a focused button does not click as well.
   window.addEventListener("keydown", (e) => {
-    if (e.code !== "Space" || e.target.tagName === "SELECT" || e.target.closest?.("#desk")) return;
+    if (e.code !== "Space" || e.target.tagName === "SELECT" || e.target.closest?.("#desk, #ask")) return;
     e.preventDefault();
     if (!e.repeat) setPlaying(!state.playing);
   }, true);
-  window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk")) e.preventDefault(); }, true);
+  window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk, #ask")) e.preventDefault(); }, true);
   window.addEventListener("resize", layout);
   new ResizeObserver(layout).observe(controls); // a button that appears late (voice, desk offline) may wrap the controls
 }
@@ -290,6 +310,7 @@ async function main() {
   buildSeekMarks();
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
+  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
   window.studioDesk = { state, match, host, desk, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
@@ -301,7 +322,7 @@ async function main() {
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
-  await Promise.all([v.load().then(() => { voice = v; }), desk.connect()]); // the voice button may appear
+  await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
 }
 
 main();

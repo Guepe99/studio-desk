@@ -16,13 +16,14 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
-from . import __version__, db
+from . import __version__, config, db
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.openai.azure.com
@@ -83,6 +84,12 @@ async def security_headers(request, call_next):
         response = JSONResponse({"detail": "internal error"}, status_code=500)
     response.headers.update(SECURITY_HEADERS)
     return response
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request, exc):
+    # FastAPI's own 422 echoes the input, and a NaN in it ({"ts": NaN}) cannot be written as JSON: a 500
+    return JSONResponse({"detail": [{k: e.get(k) for k in ("type", "loc", "msg")} for e in exc.errors()]}, status_code=422)
 _credential = None
 
 
@@ -370,6 +377,82 @@ def get_audit(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)):
     if auto:
         rows = sorted(rows + auto, key=lambda r: r["at"], reverse=True)[:500]  # stable: ties keep id order
     return {"match_id": match_id, "rows": rows}
+
+
+# --- Ask the studio (docs/CONTRACT.md): a visitor's question at replay time, answered by studio_host -
+
+def _question(text: str) -> str:
+    """Control and separator characters become spaces, invisible format characters go; 1..280 characters left."""
+    kept = "".join(" " if unicodedata.category(c) in ("Cc", "Zl", "Zp") else c for c in text
+                   if unicodedata.category(c) != "Cf")
+    text = " ".join(kept.split())
+    if not 1 <= len(text) <= 280:
+        raise ValueError("a question has 1 to 280 characters")
+    return text
+
+
+class Question(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    match_id: str = Field(pattern=MATCH_PATTERN)
+    ts: float = Field(ge=0, allow_inf_nan=False)
+    question: Annotated[str, AfterValidator(_question)]
+    lang: Literal["en", "it", "es"]
+
+
+def _ask_ready():
+    # A dependency runs before the body is read: the page probes with {} and shows the box only on a 422.
+    if not ENDPOINT:
+        raise HTTPException(503, "no model on this site")
+    try:
+        from .agents import ask  # noqa: F401 - needs the agents extra (Agent Framework, MCP)
+    except ImportError:
+        raise HTTPException(503, "no model on this site") from None
+
+
+def _limit(reason: str) -> JSONResponse:
+    return JSONResponse({"status": "limit", "reason": reason}, status_code=429)
+
+
+@app.post("/api/ask", dependencies=[Depends(_ask_ready)])
+async def post_ask(q: Question, request: Request, response: Response):
+    from .agents import ask
+    times = ask.match_times(q.match_id)
+    if times is None:
+        raise HTTPException(404, "unknown match")
+    if q.ts > times[1]:
+        raise HTTPException(422, "ts is after the end of the match")
+    day = _now()[:10]
+    with _runtime(write=True) as conn:  # no await inside: the caps are counted in one transaction
+        spent = conn.execute("SELECT cost_usd FROM usage_daily WHERE day = ? AND session_id = '*'", (day,)).fetchone()
+        site = conn.execute("SELECT questions FROM questions_daily WHERE day = ? AND session_id = '*'", (day,)).fetchone()
+        if spent and spent[0] >= config.DAILY_COST_STOP_USD:
+            return _limit("the studio has reached today's spending limit")
+        if site and site[0] >= config.ASK_PER_DAY:
+            return _limit("the studio has answered all the questions it can today")
+        try:
+            sid = _session(conn, request, response)
+        except HTTPException as e:
+            return _limit(e.detail)
+        mine = conn.execute("SELECT questions FROM questions_daily WHERE day = ? AND session_id = ?", (day, sid)).fetchone()
+        mine = mine[0] if mine else 0
+        if mine >= config.ASK_PER_SESSION_PER_DAY:
+            return _limit(f"this session has asked its {config.ASK_PER_SESSION_PER_DAY} questions today")
+        for who in (sid, "*"):
+            conn.execute("INSERT INTO questions_daily (day, session_id, questions) VALUES (?, ?, 1) "
+                         "ON CONFLICT (day, session_id) DO UPDATE SET questions = questions + 1", (day, who))
+    out = await ask.answer(ask.client(ENDPOINT), q.match_id, q.ts, q.question, q.lang, times[0])
+    u = out["usage"]
+    with _runtime(write=True) as conn:
+        db.insert(conn, "audit", {
+            "session_id": sid, "at": _now(), "actor": "studio_host", "action": "ask", "match_id": q.match_id,
+            "model": DEPLOYMENT if u["calls"] else None, "tokens_in": u["tokens_in"], "tokens_out": u["tokens_out"],
+            "cost_usd": round(u["cost_usd"], 6), "detail": {"question": q.question, "lang": q.lang, "ts": q.ts,
+                                                            "status": out["status"], "reason": out["reason"],
+                                                            "fact_ids": out["fact_ids"]}})
+        conn.execute("INSERT INTO usage_daily (day, session_id, cost_usd) VALUES (?, '*', ?) ON CONFLICT (day, session_id) "
+                     "DO UPDATE SET cost_usd = cost_usd + excluded.cost_usd", (day, u["cost_usd"]))
+    return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"],
+            "questions_left": config.ASK_PER_SESSION_PER_DAY - mine - 1}
 
 
 @app.post("/api/live")

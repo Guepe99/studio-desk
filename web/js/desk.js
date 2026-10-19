@@ -510,8 +510,10 @@ export class Desk {
   // Audit: the agents' rows (from the API, or from the replay traces) and this visitor's actions.
   auditData() {
     const fromApi = this.auditRows.filter((r) => r.actor !== "human" && r.actor !== "auto");
-    const agents = fromApi.length ? fromApi : this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
-      story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }));
+    // the visitor's own questions (studio_host, POST api/ask) are no reason to drop the replay's traces
+    const asks = fromApi.filter((r) => r.actor === "studio_host");
+    const agents = fromApi.length > asks.length ? fromApi : [...asks, ...this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
+      story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }))];
     const directorAt = new Map(this.traces.filter((t) => t.agent === "director").flatMap((t) => this.traceStories(t).map((id) => [id, t.at])));
     // the API lists the risk rule's approvals itself; without it the desk derives them from the replay
     const auto = this.online ? this.auditRows.filter((r) => r.actor === "auto") : this.stories.filter((s) => this.defaultStatus(s) === "auto_approved")
@@ -525,10 +527,11 @@ export class Desk {
     const { rows, agents, humans } = this.auditData();
     const calls = agents.filter((r) => r.model);
     const tokens = agents.reduce((n, r) => n + r.tokens_in + r.tokens_out, 0), cost = agents.reduce((n, r) => n + r.cost_usd, 0);
-    const actorName = (a) => (a === "human" ? "You" : a === "auto" ? "Risk rule" : AGENT[a]?.name ?? a);
+    const actorName = (a) => (a === "human" ? "You" : a === "auto" ? "Risk rule" : a === "studio_host" ? "Studio host" : AGENT[a]?.name ?? a);
     const what = (r) => {
       if (r.action === "ai_off") return "switched AI graphics off";
       if (r.action === "ai_on") return "switched AI graphics on";
+      if (r.action === "ask") return `your question, ${r.detail?.status ?? "asked"}`;
       if (r.action === "auto_approved") return `auto-approved, risk ${Number(r.detail?.risk).toFixed(2)} below 0.35`;
       return String(r.action).replace(/_/g, " ") + (r.detail?.langs?.length ? ` (${r.detail.langs.join(", ")})` : "");
     };
