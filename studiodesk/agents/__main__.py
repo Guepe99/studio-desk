@@ -1,8 +1,11 @@
-"""`python -m studiodesk.agents run <match_id> [--speed N] [--from-ts S --to-ts S] [--fake] [--runtime PATH]`
+"""`python -m studiodesk.agents run <match_id> [--speed N] [--from-ts S --to-ts S] [--fake] [--no-safety] [--runtime PATH]`
+`python -m studiodesk.agents safety <match_id> [--runtime PATH]`
 
-Replays the match on the MatchClock (speed 0 = as fast as possible), runs the agents and writes
+`run` replays the match on the MatchClock (speed 0 = as fast as possible), runs the agents and writes
 stories, cues, traces and audit rows to runtime.sqlite. Earlier stories, cues and traces of the
-match are replaced; audit rows are kept. Prints tokens, cost and latency per agent at the end.
+match are replaced; audit rows are kept. Then Azure AI Content Safety checks every story (skipped
+with --fake or --no-safety). Prints tokens, cost and latency per agent at the end.
+`safety` runs only the Content Safety step on the stories already in runtime.sqlite.
 """
 import argparse
 import asyncio
@@ -11,6 +14,7 @@ import logging
 from pathlib import Path
 
 from .. import config, db
+from . import safety
 from .llm import FakeChatClient, azure_client
 from .workflow import run_match
 
@@ -24,18 +28,30 @@ def main(argv=None):
     run.add_argument("--from-ts", type=float, default=None)
     run.add_argument("--to-ts", type=float, default=None)
     run.add_argument("--fake", action="store_true", help="offline fake model, no Azure")
+    run.add_argument("--no-safety", action="store_true", help="skip the Content Safety step")
     run.add_argument("--runtime", type=Path, default=config.RUNTIME_DB)
+    check = sub.add_parser("safety", help="Content Safety on the stories of a match already in runtime.sqlite")
+    check.add_argument("match_id")
+    check.add_argument("--runtime", type=Path, default=config.RUNTIME_DB)
     args = ap.parse_args(argv)
     logging.disable(logging.INFO)  # framework, MCP and HTTP chatter; warnings still show
 
-    client = FakeChatClient() if args.fake else azure_client()
     rt = db.connect(args.runtime)
-    for table in ("stories", "cues", "traces"):
-        rt.execute(f"DELETE FROM {table} WHERE match_id = ?", (args.match_id,))
-    rt.commit()
     try:
+        if args.cmd == "safety":
+            print(json.dumps({"safety": safety.check_match(rt, args.match_id, safety.AzureSafety())}, indent=2))
+            return
+        client = FakeChatClient() if args.fake else azure_client()
+        for table in ("stories", "cues", "traces"):
+            rt.execute(f"DELETE FROM {table} WHERE match_id = ?", (args.match_id,))
+        rt.commit()
         summary = asyncio.run(run_match(args.match_id, client, rt, speed=args.speed, from_ts=args.from_ts,
                                         to_ts=args.to_ts, model_name="fake" if args.fake else None))
+        if not (args.fake or args.no_safety):
+            try:
+                summary["safety"] = safety.check_match(rt, args.match_id, safety.AzureSafety())
+            except Exception as e:  # noqa: BLE001 - no endpoint or no az: the stories stay not_checked
+                summary["safety"] = {"not_checked": summary["stories"], "error": f"{e!r}"[:200]}
     finally:
         rt.close()
     print(json.dumps(summary, indent=2))
