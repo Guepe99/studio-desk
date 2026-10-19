@@ -1,4 +1,4 @@
-"""English voice-over for the replay, generated beforehand with Azure Speech (docs/voice.md).
+"""Voice-over for the replay in English, Italian and Spanish, generated beforehand with Azure Speech (docs/voice.md).
 
 `python -m studiodesk.voice M001 [--lang en] [--src DIR] [--out DIR] [--dry-run]` reads the
 stories of a replay (a `replays/<match>/` pack when it has stories.json, else the static export in
@@ -36,16 +36,28 @@ MIN_INTERVAL_S = 3.1  # 60 s / 20 requests, plus a margin
 ELIGIBLE_VERIFIER = {"pass", "rewritten", "template"}
 ELIGIBLE_STATUS = {"auto_approved", "needs_review"}
 
-# Per language: one voice for every story. Ava HD picks its tone from the text itself; it does not
-# take mstts:express-as styles, so goals and recaps differ only in what they say (docs/voice.md).
+# Per language: one voice for every story. The HD voices pick their tone from the text itself; they
+# do not take mstts:express-as styles, so goals and recaps differ only in what they say (docs/voice.md).
 VOICES = {
     "en": {"lang": "en-US", "voice": "en-US-Ava:DragonHDLatestNeural"},
+    "it": {"lang": "it-IT", "voice": "it-IT-Isabella:DragonHDLatestNeural"},
+    "es": {"lang": "es-ES", "voice": "es-ES-Ximena:DragonHDLatestNeural"},
+}
+
+# Italian and Spanish: the words for the signs a voice reads badly ("2-0" as "two minus zero").
+LOCAL = {
+    "it": {"digits": "zero uno due tre quattro cinque sei sette otto nove".split(), "out_of": "su", "plus": "più",
+           "m/s": "metri al secondo", "km/h": "chilometri orari", "metre": "metro", "metres": "metri"},
+    "es": {"digits": "cero uno dos tres cuatro cinco seis siete ocho nueve".split(), "out_of": "sobre", "plus": "más",
+           "m/s": "metros por segundo", "km/h": "kilómetros por hora", "metre": "metro", "metres": "metros"},
 }
 
 
-def spoken(text):
+def spoken(text, lang="en"):
     """What the voice reads: the verified text with broadcast pronunciations, no new content."""
     t = text.replace("’", "'")
+    if lang != "en":
+        return spoken_local(t, LOCAL[lang])
     t = re.sub(r"\b\d(?:-\d){2,3}\b", lambda m: "-".join(DIGIT_WORDS[int(d)] for d in m[0].split("-")), t)  # 4-4-2
     t = re.sub(r"\b(\d)-(\d)\b", lambda m: "-".join(SCORE_WORDS[int(g)] for g in m.groups()), t)  # 2-1: two-one
     t = re.sub(r"(\d)\s?/10\b", r"\1 out of 10", t)
@@ -61,6 +73,19 @@ def spoken(text):
     return t[:1].upper() + t[1:]
 
 
+def spoken_local(t, w):
+    t = re.sub(r"\b\d(?:-\d){2,3}\b", lambda m: "-".join(w["digits"][int(d)] for d in m[0].split("-")), t)  # 4-4-2
+    t = re.sub(r"\b(\d)-(\d)\b", r"\1 a \2", t)  # 2-0: "due a zero", "dos a cero"
+    t = re.sub(r"(\d)\s?/10\b", rf"\1 {w['out_of']} 10", t)
+    t = re.sub(r"(\d) ?m/s\b", rf"\1 {w['m/s']}", t)
+    t = re.sub(r"(\d) ?km/h\b", rf"\1 {w['km/h']}", t)
+    t = re.sub(r"\b1 m\b", f"1 {w['metre']}", t)
+    t = re.sub(r"(\d) m\b", rf"\1 {w['metres']}", t)
+    t = re.sub(r"\b(\d{2,3})\+(\d{1,2})\b", rf"\1 {w['plus']} \2", t)  # 45+2
+    t = re.sub(r"(\d)'", r"\1", t)  # "al 73'": read "al 73", as commentators say it
+    return t[:1].upper() + t[1:]
+
+
 SCORE_WORDS = ["nil", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
 DIGIT_WORDS = ["zero", *SCORE_WORDS[1:]]  # formations: no "nil"
 
@@ -69,7 +94,7 @@ def ssml(story, lang):
     """SSML for one story: the verified text, read by the language's voice."""
     v = VOICES[lang]
     doc = (f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{v["lang"]}">'
-           f'<voice name="{v["voice"]}">{escape(spoken(story["texts"][lang]))}</voice></speak>')
+           f'<voice name="{v["voice"]}">{escape(spoken(story["texts"][lang], lang))}</voice></speak>')
     return v["voice"], doc
 
 
@@ -175,7 +200,7 @@ def build(match_id, lang="en", src=None, out=None, synth=None, dry_run=False, lo
                 rows.append(prev)
                 continue
             if dry_run:
-                log(f"would voice {s['story_id']} ({s['kind']}, {voice}): {spoken(s['texts'][lang])}")
+                log(f"would voice {s['story_id']} ({s['kind']}, {voice}): {spoken(s['texts'][lang], lang)}")
                 continue
             if synth is None:
                 synth = Synth(azure_key())
