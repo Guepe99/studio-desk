@@ -104,7 +104,8 @@ const open = async (browser, opts, { route, ignoreConsole = false } = {}) => {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();
   // with static hosting the desk's api/ calls 404 and the desk keeps decisions in the tab
-  const apiMiss = (m) => /\/api\//.test(m.location()?.url ?? "");
+  // voice.json is optional too: a match without clips answers 404
+  const apiMiss = (m) => /\/api\/|\/voice\.json$/.test(m.location()?.url ?? "");
   if (!ignoreConsole) page.on("console", (m) => { if (m.type() === "error" && !apiMiss(m)) fail(`${opts.viewport.width}x${opts.viewport.height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${opts.viewport.width}x${opts.viewport.height} page error: ${e.message}`));
   if (route) await route(page);
@@ -152,6 +153,7 @@ const playAt = (page, speed, from, span) => page.evaluate(async ({ speed, from, 
 
 // Every control in #controls fully inside the viewport and the topmost element at its centre.
 const unreachable = (page) => page.evaluate(() => [...document.querySelectorAll("#controls button, #controls select, #seek-range")]
+  .filter((el) => !el.hidden)   // the voice button stays hidden on a match without clips
   .filter((el) => {
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) return true;

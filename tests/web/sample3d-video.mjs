@@ -2,7 +2,7 @@
 // (window.__setTime, 30 fps), one screenshot per frame, then ffmpeg (libx264, yuv420p, crf 23).
 // The frames are deleted afterwards. About 6 minutes with software WebGL, so run it detached:
 //
-//   [START=12 SECONDS=3 CRF=32] scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-video.mjs [match] [name] [query]
+//   [WEBGL=2 for quality=high] [START=12 SECONDS=3 CRF=32] scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-video.mjs [match] [name] [query]
 // query: extra page parameters, e.g. "from=97.5&motion=procedural". START and SECONDS cut a short
 // clip out of the 20 s (clock seconds), CRF lowers the quality for a quick look.
 import { createRequire } from "node:module";
