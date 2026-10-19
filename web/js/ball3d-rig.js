@@ -28,7 +28,8 @@ export class BallRig {
       const c = B.Vector3.Lerp(f, t, 0.65).scale(scale);
       this.reach[kind + side] = { x: c.x, z: c.z + ballR };
     }
-    this.plan = new BallPlan(match, span, { reach: (kind, side) => this.reach[kind + side], ballR });
+    this.match = match; this.ballR = ballR;
+    this.replan(span);
     this.players = new Map();   // entity index -> { legs, leg }
     this.body = true;   // the whole-body layer; tests switch it off to show the legs-only pose
     // leg actions go on top of the locomotion pose, once the animation groups have written it; then
@@ -41,6 +42,8 @@ export class BallRig {
     });
   }
 
+  // Plans the ball for the match time [span[0], span[1]] (Scene3D.replan).
+  replan(span) { this.plan = new BallPlan(this.match, span, { reach: (kind, side) => this.reach[kind + side], ballR: this.ballR }); }
   addPlayer(i, root) { this.players.set(i, { root, legs: legNodes(root), leg: null }); }
   setLeg(i, leg) { const p = this.players.get(i); if (p) p.leg = leg ?? null; }
   ball(ts) { return this.plan.ball(ts); }

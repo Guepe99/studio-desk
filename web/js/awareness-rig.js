@@ -25,7 +25,7 @@ export class AwarenessRig {
     this.s = s;
     s.awareness = this;
     // s.motion: the retargeted clips (players.js loadMotion), or none for the SD_ stand-ins
-    this.aw = new Awareness(s.match, s.span, { ball: (t) => s.rig.ball(t), motion: s.motion ?? null });
+    this.replan(s.span);
     this.enabled = true;
     const probe = s.container.instantiateModelsToScene((n) => `aw-probe-${n}`, false, { doNotInstantiate: true });
     const P = nodesOf(probe.rootNodes[0], "aw-probe-");
@@ -39,6 +39,14 @@ export class AwarenessRig {
     this.players = new Map(s.players.map((p) => { const n = nodesOf(p.holder, `${p.pid}-`); return [p.i, { p, n, c: new Chain(n.Head) }]; }));
     s.addDriver({ priority: 10, pose: (i, ts) => this.pose(i, ts) });
     s.scene.onAfterAnimationsObservable.add(() => this._post());
+  }
+
+  // Plans the layer for the match time [span[0], span[1]] (Scene3D.replan); the keeper rig, if
+  // any, keeps the others off a keeper on the grass as before.
+  replan(span) {
+    const s = this.s;
+    this.aw = new Awareness(s.match, span, { ball: (t) => s.rig.ball(t), motion: s.motion ?? null });
+    if (s.keeper) this.aw.bodyOf = (i, ts) => s.keeper.body(i, ts);
   }
 
   // What the drivers above this one do with player i at ts: a leg pose (ball rig) or an action.
