@@ -17,3 +17,11 @@ def test_invented_names_and_partial_words_pass():
     assert not is_forbidden("Harbour Vale Rovers")
     assert not is_forbidden("Arsenalista")  # whole words only
     assert not is_forbidden("Villa Nova Athletic")  # "Aston Villa" is listed, "Villa" alone is not
+
+
+def test_homoglyphs_accents_and_bare_surnames_are_caught():
+    # Cyrillic a, Greek capital eta, accents, a full-width H
+    for text in ("Harry Kаne", "Ηarry Kane", "Hárry Käne", "Ｈarry Kane"):
+        assert is_forbidden(text), text
+    assert is_forbidden("a run from Petrov") and is_forbidden("ADEYEMI again")  # listed as bare surnames
+    assert not is_forbidden("Hugo Okowande")

@@ -244,3 +244,10 @@ Opta
 Wyscout
 StatsBomb
 Hawk-Eye
+
+# Surnames of famous footballers that an invented name must not reuse
+Adeyemi
+Castellanos
+Marchetti
+Benali
+Petrov

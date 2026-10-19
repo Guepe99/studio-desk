@@ -83,9 +83,23 @@ def test_flagged_story_goes_to_review_and_empty_or_failing_checks_stay_unchecked
     counts = safety.check_match(rt, "M001", analyze, log=lambda *_: None)
     got = [tuple(r) for r in rt.execute("SELECT story_id, safety, default_status FROM stories ORDER BY ts")]
     assert got[0] == ("S-000001", "flagged", "needs_review")
-    assert [r[1] for r in got[1:]] == ["not_checked"] * 6 and all(r[2] == "auto_approved" for r in got[1:])
+    # not checked is not passed: nothing goes on air by itself
+    assert [r[1] for r in got[1:]] == ["not_checked"] * 6 and all(r[2] == "needs_review" for r in got[1:])
     assert len(sent) == 1 + 1 + safety.MAX_FAILURES  # nothing for the empty story, then it stops after 3 failures
     assert counts == {"flagged": 1, "not_checked": 6, "calls": 5}
+    rt.close()
+
+
+def test_only_a_passed_story_keeps_the_status_its_risk_gives_and_the_analysis_is_checked(tmp_path):
+    rt = runtime_with(tmp_path, 2)
+    rt.execute("UPDATE stories SET risk = 0.6, default_status = 'needs_review' WHERE story_id = 'S-000002'")
+    rt.execute("UPDATE stories SET analysis_en = 'why it matters' WHERE story_id = 'S-000001'")
+    rt.commit()
+    sent = []
+    safety.check_match(rt, "M001", lambda text: sent.append(text) or {"Hate": 0}, log=lambda *_: None)
+    got = dict(rt.execute("SELECT story_id, default_status FROM stories").fetchall())
+    assert got == {"S-000001": "auto_approved", "S-000002": "needs_review"}
+    assert sent[0] == "en 1\nit 1\nes 1\nwhy it matters"
     rt.close()
 
 

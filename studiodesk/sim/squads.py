@@ -17,10 +17,10 @@ FIRST = ["Mateo", "Luca", "Kofi", "Tomasz", "Hiroshi", "Ade", "Santiago", "Emil"
          "Dario", "Sefu", "Kenji", "Bastien", "Anders", "Chidi", "Marek", "Felipe", "Ilya", "Tariq",
          "Joao", "Pieter", "Moussa", "Ricardo", "Aleks", "Daniel", "Femi", "Hugo", "Sami", "Wei",
          "Bruno", "Leandro", "Malik", "Stefan", "Teodor", "Nuno", "Aziz", "Callum", "Rui", "Jin"]
-LAST = ["Okonkwo", "Varga", "Lindqvist", "Moreau", "Takeda", "Mensah", "Castellanos", "Novak",
-        "Brennan", "Haddad", "Vellacott", "Kowalczyk", "Adeyemi", "Sorensen", "Bianchi", "Dunsavel",
-        "Ishikawa", "Rojas", "Petrov", "Achterberg", "Nwosu", "Quintero", "Halvorsen", "Benali",
-        "Szabo", "Oyelaran", "Marchetti", "Ombrecht", "Kimura", "Duarte", "Lundgren", "Marravi", "Pavic",
+LAST = ["Okonkwo", "Varga", "Lindqvist", "Moreau", "Takeda", "Mensah", "Castrovane", "Novak",
+        "Brennan", "Haddad", "Vellacott", "Kowalczyk", "Okowande", "Sorensen", "Bianchi", "Dunsavel",
+        "Ishikawa", "Rojas", "Selvakov", "Achterberg", "Nwosu", "Quintero", "Halvorsen", "Dunmarrow",
+        "Szabo", "Oyelaran", "Orvanelli", "Ombrecht", "Kimura", "Duarte", "Lundgren", "Marravi", "Pavic",
         "Mbeki", "Quennell", "Strand", "Galvan", "Keane-Doyle", "Oduya", "Rinaldi", "Sakamoto",
         "Vasquez", "Holmberg", "Tessaro", "Lisowski", "Abara", "Fontaine", "Morales", "Ekwueme", "Yilmaz"]
 SQUAD = ["GK"] * 2 + ["DF"] * 6 + ["MF"] * 6 + ["FW"] * 4  # 18 per club
@@ -33,6 +33,21 @@ def _pick(rng, used, make):
         if name not in used and not is_forbidden(name):
             used.add(name)
             return name
+
+
+def _own_surname(name, taken, names):
+    """name with its surname moved along LAST until no one in `taken` has it. No random draw, so the
+    league's random stream (and the whole dataset) stays the same as before this rule."""
+    first, last = name.rsplit(" ", 1)
+    k = LAST.index(last)
+    for step in range(len(LAST)):
+        cand = LAST[(k + step) % len(LAST)]
+        full = f"{first} {cand}"
+        if cand not in taken and full not in names and not is_forbidden(full):
+            taken.add(cand)
+            names.add(full)
+            return full
+    raise ValueError("surname pool too small for one fixture")
 
 
 def crest(rng, c1, c2, cid) -> str:
@@ -52,6 +67,8 @@ def crest(rng, c1, c2, cid) -> str:
 def make_league(rng, cal, n_teams=8):
     """Teams, players and venues. Odd-numbered clubs (T01, T03, ..) get one fast forward."""
     used, teams, players, venues = set(), [], [], {}
+    # surnames per fixture: build.simulate pairs clubs 2k and 2k+1, so no two players of a match share one
+    taken, names = {}, set()
     places = list(rng.permutation(PLACES))
     sp = cal["top_speed_kmh_by_position"]["value"]
     fast = cal["fast_forward_kmh"]["value"]
@@ -75,6 +92,7 @@ def make_league(rng, cal, n_teams=8):
                 top = rng.uniform(*fast)
             pname = _pick(rng, used, lambda: f"{FIRST[rng.integers(len(FIRST))]} "
                                              f"{LAST[rng.integers(len(LAST))]}")
+            pname = _own_surname(pname, taken.setdefault(i // 2, set()), names)
             players.append(dict(player_id=f"{tid}-{shirt}", team_id=tid, name=pname, shirt=shirt,
                                 position=pos, top_speed_kmh=round(float(top), 2)))
     return teams, players, venues

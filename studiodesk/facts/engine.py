@@ -23,7 +23,8 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   distance from their own goal; the two widest gaps split them into three lines, e.g. 4-4-2,
   stored as the value 442. Only when the shape is clear: the second widest gap is at least
   FORMATION_GAP_M and FORMATION_RATIO times the third.
-- shot_distance = distance from the shot location to the centre of the goal being attacked.
+- shot_distance = distance from the shot location to the centre of the goal being attacked. Its label
+  adds what the events know: inside or outside the box, the body part and the outcome.
 - Sprints: player speed from a 0.5 s centred moving average of the positions, a sprint is
   above 25.2 km/h for at least 1 s; steps above 45 km/h are tracking jumps and are ignored.
 """
@@ -57,6 +58,34 @@ def clip01(v):
 
 def is_goal(e):
     return (e["type_name"] in SHOT_TYPES and e["result_name"] == "success") or e["result_name"] == "owngoal"
+
+
+GOAL_Y = (WIDTH / 2 - 3.66, WIDTH / 2 + 3.66)  # the posts
+BOX_DEPTH, BOX_HALF_WIDTH = 16.5, 20.16
+BODY = {"head": "header", "foot": "foot", "foot_left": "left foot", "foot_right": "right foot"}
+
+
+def shot_outcome(shot, saves=()):
+    """goal, saved (a keeper_save answers it within 5 s), wide or over (it reached the goal line outside
+    or between the posts), or blocked (it stopped short)."""
+    if is_goal(shot):
+        return "goal"
+    if any(s.get("related_player_id") == shot["player_id"] and 0 <= s["ts"] - shot["ts"] <= 5 for s in saves):
+        return "saved"
+    line = LENGTH if shot["end_x"] > LENGTH / 2 else 0.0
+    if abs(shot["end_x"] - line) < 0.05:
+        return "over" if GOAL_Y[0] <= shot["end_y"] <= GOAL_Y[1] else "wide"
+    return "blocked"
+
+
+def shot_detail(shot, sign, saves=()):
+    """What the events know about a shot, as words for its shot_distance label: inside or outside the
+    box (from the start position and the attack direction), the body part, the outcome."""
+    depth = LENGTH - shot["start_x"] if sign > 0 else shot["start_x"]
+    box = "inside the box" if depth <= BOX_DEPTH and abs(shot["start_y"] - WIDTH / 2) <= BOX_HALF_WIDTH \
+        else "outside the box"
+    body = BODY.get(shot.get("bodypart_name"))
+    return ", ".join(w for w in (box, body, shot_outcome(shot, saves)) if w)
 
 
 class Match:
@@ -169,7 +198,8 @@ class Match:
                 self.add("xt_added", ts, round(v, 4), "xT", f"xT {v:+.3f}", team, pid, [eid])
             if kind in SHOT_TYPES:
                 d = math.hypot(e["start_x"] - (LENGTH if sign > 0 else 0.0), e["start_y"] - WIDTH / 2)
-                self.add("shot_distance", ts, round(d, 1), "m", f"Shot from {d:.0f} m", team, pid, [eid])
+                detail = shot_detail(e, sign, self.saves_after(i))
+                self.add("shot_distance", ts, round(d, 1), "m", f"Shot from {d:.0f} m, {detail}", team, pid, [eid])
             if kind in SHOT_TYPES and f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = self.peak_ball_kmh(f0, f1)
@@ -190,6 +220,15 @@ class Match:
             score = 10 * (0.35 * min(dist / 40, 1) + 0.25 * pressure + 0.2 * clip01(gain / 30) + 0.2 * bypass)
             self.add("pass_difficulty", ts, round(score, 1), "/10", f"Pass difficulty {score:.1f}/10",
                      team, pid, [eid], frames)
+
+    def saves_after(self, i):
+        out = []
+        for e in self.events[i + 1:]:
+            if e["ts"] - self.events[i]["ts"] > 5:
+                break
+            if e["type_name"] == "keeper_save":
+                out.append(e)
+        return out
 
     def pressure_and_bypass(self, e, f, sign):
         opp = self.cols.get(self.other(e["team_id"]), np.array([], int))

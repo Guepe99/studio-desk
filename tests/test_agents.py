@@ -53,7 +53,7 @@ ALLOWED = rules.allowed_numbers(FACTS, minutes=[(52, 2)])
 
 
 def test_verifier_passes_ledger_numbers_with_rounding_and_units():
-    assert rules.check_text("In minute 52 a shot at 92 km/h [F-SHOT_SPEED-000001].", ALLOWED) == []
+    assert rules.check_text("In minute 52 a shot at 92 km/h [F-SHOT_SPEED-000001].", ALLOWED, "en", {"F-SHOT_SPEED-000001"}) == []
     assert rules.check_text("Linea difensiva a 31,2 metri dalla porta al 52'.", ALLOWED) == []
     assert rules.check_text("Disparo a 92.3 km/h, línea a 31 m.", ALLOWED) == []
 
@@ -94,7 +94,7 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
     for s in st:
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values())
         assert s["verifier"]["status"] == "pass" and set(s["verifier"]) == {"status", "attempts", "flagged"}, (s["texts"], s["verifier"])
-        assert s["default_status"] == rules.default_status(s["risk"]) and s["fact_ids"]
+        assert s["default_status"] == "needs_review" and s["safety"] == "not_checked" and s["fact_ids"]  # no Content Safety yet
     # one trace per hand-off, in workflow order, for every batch
     tr = rows(rt, "traces")
     assert [t["seq"] for t in tr] == list(range(1, len(tr) + 1))
@@ -137,8 +137,8 @@ def test_rewrites_at_most_twice_then_template(desk_db):
         assert s["verifier"]["status"] == "template" and s["verifier"]["attempts"] == 1 + config.MAX_REWRITES
         assert "999" not in s["texts"]["it"]  # and English, though fine, is the template too: one story in all three
         assert "en: template, as another language failed" in s["verifier"]["flagged"]
-        assert any("number not in the facts: '999 km/h'" in f for f in s["verifier"]["flagged"])
-        assert s["default_status"] == "needs_review"
+        assert "it: number not in the facts" in s["verifier"]["flagged"] and not any("999" in f for f in s["verifier"]["flagged"])
+        assert rules.default_status(s["risk"]) == "needs_review"
 
 
 def test_one_rewrite_fixes_it_and_passed_texts_are_judged_once(desk_db):
@@ -190,9 +190,9 @@ def test_agent_failure_falls_back_and_never_blocks(desk_db, monkeypatch, failing
     for s in st:
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values()) and s["analysis_en"]
         if failing in ("Lines", "all", "timeout"):
-            assert s["verifier"]["status"] == "template" and s["default_status"] == "needs_review"
+            assert s["verifier"]["status"] == "template" and rules.default_status(s["risk"]) == "needs_review"
         if failing == "Verdicts":  # numbers checked, claims not judged: nothing airs without a person
-            assert s["verifier"]["status"] == "pass" and s["default_status"] == "needs_review"
+            assert s["verifier"]["status"] == "pass" and rules.default_status(s["risk"]) == "needs_review"
     tr = rows(rt, "traces")
     if failing != "Verdicts":
         assert any("fallback" in t["output_summary"] for t in tr)
@@ -206,7 +206,7 @@ def test_judge_with_missing_verdicts_approves_nothing(desk_db):
     _, _, rt = desk_db
     run(rt, FakeChatClient(lambda schema, p: {"verdicts": []} if schema == "Verdicts" else None))
     st = stories(rt)
-    assert st and all(s["default_status"] == "needs_review" for s in st)
+    assert st and all(rules.default_status(s["risk"]) == "needs_review" for s in st)
 
 
 def test_a_judge_that_takes_its_issue_back_keeps_the_text_but_approves_nothing(desk_db):
@@ -219,7 +219,7 @@ def test_a_judge_that_takes_its_issue_back_keeps_the_text_but_approves_nothing(d
 
     run(rt, FakeChatClient(judge))
     st = stories(rt)
-    assert st and all(s["default_status"] == "needs_review" for s in st)
+    assert st and all(rules.default_status(s["risk"]) == "needs_review" for s in st)
     assert any(s["verifier"]["status"] == "pass" for s in st)  # not sent to the template for a non-issue
 
 
@@ -229,7 +229,7 @@ def test_run_stops_calling_the_model_at_its_ceiling(desk_db, monkeypatch):
     summary = run(rt, FakeChatClient())
     assert summary["model_calls"] == 3 and summary["stories"] > 0
     assert any("run budget reached" in t["output_summary"] for t in rows(rt, "traces"))
-    assert all(s["default_status"] == "needs_review" for s in stories(rt))
+    assert all(rules.default_status(s["risk"]) == "needs_review" for s in stories(rt))
 
 
 def test_director_never_shows_more_than_two_graphics(desk_db):
@@ -307,10 +307,10 @@ def test_window_run_only_sees_its_window(desk_db):
 BEFORE = [  # lines from the first real run on M001, each with something a TV commentator would not do
     ("en", "big_chance", "Very close-range chance from very close range but a relatively soft effort at 67 km/h in "
                          "minute 26. Redwick Wanderers lead 2-0."),
-    ("en", "goal", "Hugo Adeyemi puts Redwick Wanderers 2-0 up at 13 with a 96 km/h strike. Redwick Wanderers lead 2-0."),
+    ("en", "goal", "Hugo Okowande puts Redwick Wanderers 2-0 up at 13 with a 96 km/h strike. Redwick Wanderers lead 2-0."),
 ]
 GOOD = [
-    ("en", "goal", "Adeyemi rifles it in at 96 km/h and Redwick Wanderers lead 2-0."),
+    ("en", "goal", "Okowande rifles it in at 96 km/h and Redwick Wanderers lead 2-0."),
     ("it", "goal", "Kimura accorcia con un destro a 96 km/h: 2-1."),
     ("es", "tactical_shift", "Redwick Wanderers pasa del 4-3-3 al 4-4-2 para cerrar el centro."),
     ("en", "momentum_swing", "Ostwick FC have taken over in the last ten minutes, momentum 6.8/10."),
@@ -376,8 +376,8 @@ def test_judge_gets_the_score_in_words():
 
 NOT_A_NO_ISSUE = FIRST_RUN_ISSUES + [  # each names a real problem somewhere in the sentence
     "Says Ostwick FC lead, but Redwick Wanderers lead 2-1; the rest is fine.",
-    "No factual issue with the score, but the goal was scored by Kimura, not Adeyemi.",
-    "Wrong scorer named. Issue: none of the facts mention Adeyemi.",
+    "No factual issue with the score, but the goal was scored by Kimura, not Okowande.",
+    "Wrong scorer named. Issue: none of the facts mention Okowande.",
     "Claims a header, but the shot was with the foot. Tone is acceptable.",
     "The text says Ostwick FC lead, but Redwick Wanderers lead 2-1.",
     "Calling the drive unstoppable is not fine.",
@@ -548,9 +548,9 @@ def test_invented_details_and_a_lead_at_full_time_are_flagged():
     m = rules.Match(SIDES)
     m.facts["g"] = fact("score", 1, 2900, 1, "goal", "Goal 0-1", "T02")
     chance = _story(m, "big_chance", [], player="T01-9", outcome="saved")
-    assert rules.story_issues(m, chance, "Adeyemi at the near post, saved.", "en") == ["'near post' is not in the facts"]
-    assert rules.story_issues(m, chance, "Adeyemi colpisce al volo, parata.", "it")
-    assert rules.story_issues(m, chance, "Adeyemi hits the crossbar area, saved.", "en") == []
+    assert rules.story_issues(m, chance, "Okowande at the near post, saved.", "en") == ["detail not in the facts: 'near post'"]
+    assert rules.story_issues(m, chance, "Okowande colpisce al volo, parata.", "it")
+    assert rules.story_issues(m, chance, "Okowande hits the crossbar area, saved.", "en") == []
     ft = _story(m, "recap", [], team=None, phase="ft", ts=5600)
     assert rules.story_issues(m, ft, "Full time: Ostwick FC lead 1-0.", "en")
     assert rules.story_issues(m, ft, "Full time: Ostwick FC win 1-0 after Kimura gave them the lead.", "en") == []
@@ -571,9 +571,9 @@ def test_short_error_summaries():
     assert rules.brief_error(ValueError("boom")) == "model error"
 
 
-SIDES = {**INFO, "players": [{"player_id": "T01-9", "name": "Hugo Adeyemi", "team_id": "T01"},
+SIDES = {**INFO, "players": [{"player_id": "T01-9", "name": "Hugo Okowande", "team_id": "T01"},
                              {"player_id": "T02-9", "name": "Tariq Kimura", "team_id": "T02"},
-                             {"player_id": "T02-7", "name": "Ali Adeyemi", "team_id": "T02"}]}
+                             {"player_id": "T02-7", "name": "Ali Okowande", "team_id": "T02"}]}
 
 
 def _story(m, kind, facts, team="T01", player=None, ts=3000.0, **extra):
@@ -587,19 +587,19 @@ def test_story_issues_catch_distance_possession_score_order_and_trend():
     shot = [fact("shot_speed", 2, 3000, 101.0, "km/h", "Shot at 101 km/h"),
             fact("shot_distance", 2, 3000, 8.6, "m", "Shot from 9 m")]
     chance = _story(m, "big_chance", shot, player="T01-9", outcome="saved")
-    assert rules.story_issues(m, chance, "Adeyemi dal limite dell'area, 8,6 m.", "it")
-    assert rules.story_issues(m, chance, "Hugo Adeyemi from distance, saved.", "en")
-    assert rules.story_issues(m, chance, "Hugo Adeyemi from close range, saved.", "en") == []
+    assert rules.story_issues(m, chance, "Okowande dal limite dell'area, 8,6 m.", "it")
+    assert rules.story_issues(m, chance, "Hugo Okowande from distance, saved.", "en")
+    assert rules.story_issues(m, chance, "Hugo Okowande from close range, saved.", "en") == []
     acc = _story(m, "momentum_swing", [], team="T02")
     assert rules.story_issues(m, acc, "Ostwick have bossed possession.", "en")
     goal = _story(m, "goal", [m.facts["g"]], team="T02", player="T02-9", ts=2900)
-    assert rules.story_issues(m, goal, "Kimura makes it 0-1.", "en") == ["write the score leader first: 1-0, not 0-1"]
+    assert rules.story_issues(m, goal, "Kimura makes it 0-1.", "en") == ["score order: write the leader first, 1-0, not 0-1"]
     assert rules.story_issues(m, goal, "Kimura puts Ostwick 1-0 up.", "en") == []
     press = [fact("press_intensity", 3, 2700 + 300 * k, v, "/10", f"Press intensity {v}/10") for k, v in ((1, 5.6), (2, 4.6))]
     spell = _story(m, "pressing_spell", press, ts=3300)
     assert rules.story_issues(m, spell, "Redwick kept up the heat, from 5.6/10 to 4.6/10.", "en")
     assert rules.story_issues(m, spell, "Redwick's press eased, from 5.6/10 to 4.6/10.", "en") == []
-    assert rules.story_issues(m, spell, "Redwick eased, 4.6/10 after 5.6/10.", "en") == ["the values are not in time order"]
+    assert rules.story_issues(m, spell, "Redwick eased, 4.6/10 after 5.6/10.", "en") == ["time order: the values are not in time order"]
     mom = [fact("momentum", 4 + k, 2700 + 300 * k, v, "/10", f"Momentum {v}/10") for k, v in enumerate((5.6, 2.7, 6.7, 9.3))]
     swing = _story(m, "momentum_swing", mom, ts=3900)
     assert any("values out of 10" in i for i in rules.story_issues(m, swing, "Redwick: 5.6/10, 2.7/10, 6.7/10.", "en"))
@@ -609,8 +609,8 @@ def test_story_issues_catch_distance_possession_score_order_and_trend():
 def test_lines_must_name_who_and_recaps_the_score():
     m = rules.Match(SIDES)
     goal = _story(m, "goal", [], team="T01", player="T01-9")
-    assert rules.story_gaps(m, goal, "What a strike, 1-0.") == ["name the player: Hugo Adeyemi"]  # surname shared
-    assert rules.story_gaps(m, goal, "Hugo Adeyemi, 1-0.") == []
+    assert rules.story_gaps(m, goal, "What a strike, 1-0.") == ["name the player: Hugo Okowande"]  # surname shared
+    assert rules.story_gaps(m, goal, "Hugo Okowande, 1-0.") == []
     assert rules.story_gaps(m, _story(m, "pressing_spell", []), "The press is on.") == ["name the team: Redwick Wanderers"]
     recap = _story(m, "recap", [], team=None, phase="ft")
     assert rules.story_gaps(m, recap, "Full time here.") == ["give the score: 0-0"]
@@ -655,3 +655,129 @@ def test_style_rations_loud_words_and_openings_over_a_match():
     assert any("starts" in i for i in rules.style_issues("A concerted press from Ostwick.", "en", "pressing_spell", used))
     assert any("not broadcast copy" in i for i in rules.style_issues("Gran intervento del difensore/portiere.", "it",
                                                                        "big_chance"))
+
+
+# --- verifier review 3 ---------------------------------------------------------------------------
+
+SHAPE = [fact("formation", 1, 3000, 442.0, "formation", "Formation 4-4-2, min 46-50"),
+         fact("shot_speed", 2, 3000, 96.4, "km/h", "Shot at 96.4 km/h")]
+
+
+def test_bare_numbers_and_formations_must_match_a_fact_exactly():
+    allowed = rules.allowed_numbers(SHAPE, minutes=[(52, 2)])
+    assert rules.check_text("In the 52nd minute, a 4-4-2 and a shot at 96 km/h.", allowed) == []
+    assert rules.check_text("They go 4-3-3.", allowed) == ["formation not in the facts: '4-3-3'"]
+    for text in ("Level after 45.", "Into the last 90.", "It ends 96 to nothing."):  # no generic 0/45/90, no 96.4 as 96
+        assert rules.check_text(text, allowed), text
+    m = rules.Match(INFO)
+    shift = _story(m, "tactical_shift", [], shape=("4-3-3", "4-4-2"))
+    assert rules.story_issues(m, shift, "Redwick go from 4-4-2 to 4-3-3.", "en") == \
+        ["formation order: the change is from 4-3-3 to 4-4-2"]
+    assert rules.story_issues(m, shift, "Redwick go from 4-3-3 to 4-4-2.", "en") == []
+
+
+def test_glued_letters_superscripts_and_unknown_citations_are_caught():
+    allowed = [(7.0, None), (96.4, "speed")]
+    assert any("letters glued" in i for i in rules.check_text("Shirt No.7 again.", allowed))
+    assert any("letters glued" in i for i in rules.check_text("He has scored x3 now.", allowed))
+    for text in ("A shot at ⁹⁹ km/h.", "A shot at ９９ km/h.", "A shot at ٩٩ km/h."):
+        assert rules.check_text(text, allowed) == ["number not in the facts: '99 km/h'"], text
+    assert rules.check_text("A shot at ⁹⁶ km/h.", allowed) == []  # superscript 96 is 96
+    ids = {"F-SHOT_SPEED-000001"}
+    assert rules.check_text("Big shot [F-SHOT_SPEED-000099].", allowed, "en", ids) == \
+        ["cited fact not in the story: 'F-SHOT_SPEED-000099'"]
+    assert rules.strip_citations("Big shot [F-SHOT_SPEED-000001], then more (F-MOMENTUM-000002).") == \
+        "Big shot, then more."
+
+
+def test_cited_facts_never_reach_graphics_templates_or_texts(desk_db):
+    _, _, rt = desk_db
+    extra = min((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])["fact_id"]
+
+    def analyst(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [extra],
+                                 "analysis_en": f"A move that mattered [{extra}]."} for s in p["stories"]]}
+
+    run(rt, FakeChatClient(analyst))
+    st = stories(rt)
+    assert st and all(extra in s["fact_ids"] and "F-" not in s["analysis_en"] + json.dumps(s["texts"]) for s in st)
+    assert not any(extra in c["payload"] for c in rows(rt, "cues"))
+    desk = workflow.Desk("M001", None, rt, "R", "fake")
+    c = {"kind": "top_sprint", "facts": [SHAPE[1]], "ts": 3000.0, "team_id": "T01", "player_id": None}
+    s = desk.new_story(c, 0.5, "x")
+    s["cited"].append(SHAPE[0])
+    assert c["facts"] == [SHAPE[1]] and rules.text_facts(s) == [SHAPE[1]] and SHAPE[0]["fact_id"] in rules.story_ids(s)
+
+
+def test_desk_notes_carry_a_fixed_reason_never_the_judges_words(desk_db):
+    _, _, rt = desk_db
+
+    def judge(schema, p):
+        if schema == "Verdicts":  # ok true with a real issue is not ok
+            return {"verdicts": [{"story_id": t["story_id"], "lang": t["lang"], "ok": True,
+                                  "issue": "Says 777 km/h, the shot was saved."} for t in p["texts"]]}
+
+    run(rt, FakeChatClient(judge))
+    st = stories(rt)
+    assert st and all(s["verifier"]["status"] == "template" for s in st)
+    notes = [n for s in st for n in s["verifier"]["flagged"]]
+    assert "en: claim the AI judge found unsupported" in notes and not any("777" in n or "saved" in n for n in notes)
+    assert rules.reason("number not in the facts: '999 km/h'") == "number not in the facts"
+    shot = fact("shot_distance", 3, 3000, 8.6, "m", "Shot from 9 m, inside the box, foot, saved")
+    assert rules.reason("distance word does not fit the shot: 'from distance'", {"facts": [shot]}) == \
+        "distance word does not fit the shot (F-SHOT_DISTANCE-000003)"
+    assert rules.reason("anything a model wrote") == "check failed"
+
+
+def test_a_failed_judge_leaves_a_short_reason_in_the_trace(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    monkeypatch.setattr(workflow, "RETRY_PAUSES_S", (0.0, 0.0))
+
+    def down(schema, p):
+        if schema == "Verdicts":
+            raise RuntimeError("secret endpoint https://x.example failed")
+
+    run(rt, FakeChatClient(down))
+    out = [t["output_summary"] for t in rows(rt, "traces") if t["agent"] == "verifier"]
+    assert out and all("(claims not judged: model error)" in o and "secret" not in o for o in out)
+
+
+def test_the_comeback_fires_at_the_equaliser_and_says_level():
+    m = rules.Match(INFO)
+    seen = []
+    for n, (team, ts) in enumerate([("T02", 600), ("T01", 900), ("T02", 1200), ("T01", 1500), ("T01", 1800)], 1):
+        m.facts[f"g{n}"] = f = fact("score", n, ts, 1, "goal", "Goal", team, 1)
+        seen += [(m.lead(ts)[1], rules.template(m, c, "en")) for c in rules.goal_candidates(m, f) if c["kind"] == "comeback"]
+    assert seen == [("1-1", "Redwick Wanderers have come back to level at 1-1."),
+                    ("2-2", "Redwick Wanderers have come back to level at 2-2.")]
+
+
+def test_template_percentages_use_the_label_rounding():
+    m = rules.Match(INFO)
+    acc = [fact("pass_accuracy", 1, 5600, 82.5, "%", "Pass accuracy 83% (33/40), full time"),
+           fact("pass_accuracy", 2, 5600, 70.0, "%", "Pass accuracy 70% (28/40), full time", "T02")]
+    story = _story(m, "recap", acc, team=None, phase="ft", ts=5600)
+    text = rules.template(m, story, "en")
+    assert "83%" in text and "82" not in text and not rules.check_text(text, rules.story_allowed(m, story)), text
+
+
+def test_shot_details_and_score_words_the_facts_do_not_give():
+    m = rules.Match(SIDES)
+    m.facts["g"] = fact("score", 1, 2900, 1, "goal", "Goal 0-1", "T02")
+    shot = [fact("shot_distance", 2, 3000, 18.0, "m", "Shot from 18 m, inside the box, foot, saved")]
+    chance = _story(m, "big_chance", shot, player="T01-9", outcome="saved")
+    for text, lang in [("Okowande from distance, saved.", "en"), ("Okowande hits the post.", "en"),
+                       ("Okowande with his left foot, saved.", "en"), ("Okowande in vantaggio, parata.", "it"),
+                       ("Okowande runs in behind, saved.", "en"), ("Okowande forcing errors.", "en"),
+                       ("Okowande colpisce il palo.", "it"), ("Zurdazo de Okowande, parado.", "es")]:
+        assert rules.story_issues(m, chance, text, lang), text
+    assert rules.story_issues(m, chance, "Okowande inside the box, saved.", "en") == []
+
+
+def test_english_words_in_italian_and_spanish_lines_go_back():
+    assert rules.english_words("Il Redwick win con il momentum.", "it")
+    assert rules.english_words("Tiro blocked, pass accuracy alta.", "es")
+    assert rules.english_words("Pressing alto del Redwick, inerzia della partita.", "it") == []
+    assert rules.english_words("Pressing alto del Redwick.", "es")
+    assert rules.english_words("Redwick win it.", "en") == []

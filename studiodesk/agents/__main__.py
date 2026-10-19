@@ -51,7 +51,10 @@ def main(argv=None):
             try:
                 summary["safety"] = safety.check_match(rt, args.match_id, safety.AzureSafety())
             except Exception as e:  # noqa: BLE001 - no endpoint or no az: the stories stay not_checked
-                summary["safety"] = {"not_checked": summary["stories"], "error": f"{e!r}"[:200]}
+                summary["safety"] = {"not_checked": summary["stories"], "error": type(e).__name__}
+        summary["default_status"] = dict(rt.execute(  # Content Safety decides what may be auto-approved
+            "SELECT default_status, COUNT(*) FROM stories WHERE match_id = ? GROUP BY default_status",
+            (args.match_id,)).fetchall())
     finally:
         rt.close()
     print(json.dumps(summary, indent=2))

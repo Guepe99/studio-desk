@@ -10,7 +10,7 @@ import numpy as np
 from fixture_match import FPS, HOME, PASS_MS, write_fixture
 from studiodesk import db
 from studiodesk.facts import Match, build
-from studiodesk.facts.engine import formation_name
+from studiodesk.facts.engine import formation_name, shot_detail
 
 KINDS = {"pass_distance", "pass_difficulty", "pass_accuracy", "ball_speed", "shot_speed", "sprint_speed",
          "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score",
@@ -94,6 +94,13 @@ def test_shot_distance_and_team_shape(match_db):
     (eid, x, y), = conn.execute("SELECT event_id, start_x, start_y FROM events WHERE type_name = 'shot'")
     assert json.loads(shot["source_event_ids"]) == [eid] and shot["unit"] == "m"
     assert abs(shot["value"] - math.hypot(x - 0.0, y - 34.0)) < 0.06  # home attack x = 0 in period 2
+    assert re.fullmatch(r"Shot from \d+ m, (inside|outside) the box(, [a-z ]+)?, (goal|saved|wide|over|blocked)",
+                        shot["label_en"]), shot["label_en"]
+    header = {"start_x": 95.0, "start_y": 34.0, "end_x": 105.0, "end_y": 30.0, "bodypart_name": "head",
+              "type_name": "shot", "result_name": "fail", "player_id": "P", "ts": 10.0}
+    assert shot_detail(header, 1) == "inside the box, header, wide"
+    assert shot_detail({**header, "start_x": 80.0, "bodypart_name": "foot_left"}, 1,
+                       [{"related_player_id": "P", "ts": 11.0}]) == "outside the box, left foot, saved"
     # the fixture's 4-4-2: clear lines whenever nobody leaves them (the sprinter breaks T01's in period 1)
     forms = {(r["team_id"], r["period"]): (r["value"], r["unit"], r["label_en"]) for r in facts(conn, "formation")}
     assert set(forms) == {("T02", 1), ("T01", 2), ("T02", 2)}
