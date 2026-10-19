@@ -179,7 +179,7 @@ export class View3D {
     b.textContent = on ? "Replay" : "";
   }
 
-  resize() { this.scene?.resize(); this.last = null; }
+  resize() { if (!this.lost) this.scene?.resize(); this.last = null; }   // a lost context has no textures to rebuild
 
   // One page frame: draws the 3D picture at page time ts. Called before the graphics are placed.
   frame(ts, speed, seeked, playing) {

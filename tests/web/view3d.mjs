@@ -38,7 +38,8 @@ async function open(view, { noWebGL = false, quiet = false } = {}) {
   page.on("console", (m) => {
     if (m.type() === "error" && !quiet && !/\/api\/|voice\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`);
   });
-  page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
+  // after the test loses the WebGL context on purpose, Babylon work already under way fails to make textures
+  page.on("pageerror", (e) => { if (page.lostOnPurpose && /Unable to create texture/.test(e.message)) console.log(`after the lost context: ${e.stack?.split("\n").slice(0, 4).join(" | ")}`); else fail(`${tag} page error: ${e.message}`); });
   if (noWebGL) await page.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (kind, ...rest) { return /webgl/i.test(kind) ? null : get.call(this, kind, ...rest); };
@@ -183,13 +184,16 @@ try {
         sd.view3d.floor = 0;
         sd.seek(1200); sd.setPlaying(true);
         await new Promise((r) => setTimeout(r, 2000));
-        let n = 0;
+        let n = 0, drawn = 0;
+        const o = sd.view3d.scene.scene.onAfterRenderObservable.add(() => drawn++);
         const t0 = performance.now();
         await new Promise((done) => { const f = () => { n++; if (performance.now() - t0 < 5000) requestAnimationFrame(f); else done(); }; requestAnimationFrame(f); });
         sd.setPlaying(false);
-        return { fps: n / ((performance.now() - t0) / 1000), profile: sd.view3d.scene.debug.profile, renderer: sd.view3d.scene.engine.webGLVersion };
+        sd.view3d.scene.scene.onAfterRenderObservable.remove(o);
+        return { fps: n / ((performance.now() - t0) / 1000), drawn: drawn / n, profile: sd.view3d.scene.debug.profile, renderer: sd.view3d.scene.engine.webGLVersion };
       });
-      console.log(`3D at 1280x720 playing 1x: ${fps.fps.toFixed(1)} fps (profile ${fps.profile}, WebGL ${fps.renderer})`);
+      console.log(`3D at 1280x720 playing 1x: ${fps.fps.toFixed(1)} fps, ${(fps.drawn * 100).toFixed(0)}% of them drawn (profile ${fps.profile}, WebGL ${fps.renderer})`);
+      if (!(fps.drawn > 0.9)) fail(`playing, the 3D picture was drawn in only ${(fps.drawn * 100).toFixed(0)}% of the page frames`);
 
       // the 3D canvas is no tab stop; a pause ends a run of play for the frame-rate watch (a pause
       // inside the window must not read as a slow frame rate), and the quality steps wait while paused
@@ -269,6 +273,7 @@ try {
       if (slow.kept !== "3d") fail("3D picked by hand after the fall back did not stay");
 
       // a lost WebGL context: back to the 2D pitch with a notice, 3D and Radar off
+      page.lostOnPurpose = true;
       const lost = await page.evaluate(async () => {
         const v = window.studioDesk.view3d;
         v.scene.engine._gl.getExtension("WEBGL_lose_context").loseContext();
