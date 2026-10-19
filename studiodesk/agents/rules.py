@@ -1497,7 +1497,9 @@ ANALYSIS_BAD = re.compile(r"\b(?:this|it|that) matter(?:s|ed) because\b|\bmatter
                           r"\b\d+-\d+ (?:[A-Z][\w']+ ){1,4}\d+\b|"
                           r"\b(?:remain\w*|stay\w*|stood|kept the score at|score at) (?:[A-Z][\w']+ ){1,4}(?:lead )?\d+-\d+|"
                           r"\bscore (?:\w+ )?described as\b|\bmaking the score\b|\bscore (?:was |is )?with\b|"
-                          r"\b(?:led|lead|leads|leading) \d+-\d+[^.]*\bwith \w+(?: \w+){0,3} leading\b")
+                          r"\b(?:led|lead|leads|leading) \d+-\d+[^.]*\bwith \w+(?: \w+){0,3} leading\b|"
+                          r"\bIt (?:is|was) (?:(?:[A-Z][\w']+ ){1,4}leads?\b|Level\b)|"  # "It is Tarnby lead 1-0"
+                          r"[\[\]]|\b(?:developer|citations?|mistakenly|need to fix)\b")  # the model's own reasoning
 
 
 def analysis_issues(text):
