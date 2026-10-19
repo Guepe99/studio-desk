@@ -192,7 +192,9 @@ body { display: flex; }
 .v-pass, .s-passed { color: #7be0a2; }
 .v-rewritten, .v-template, .s-not_checked { color: var(--tally-held); }
 .s-flagged { color: #ff8a96; }
-.flagged { margin: 6px 0 0; padding-left: 18px; font-size: 16px; color: #ffd98a; }
+.flagged { margin-top: 6px; font-size: 16px; }
+.flagged summary { cursor: pointer; color: #ffd98a; font-weight: 700; padding: 4px 0; }
+.flagged ul { margin: 4px 0 0; padding-left: 18px; color: #ffd98a; }
 .evidence { margin-top: 8px; font-size: 16px; }
 .evidence summary { cursor: pointer; color: var(--signal); font-weight: 700; padding: 4px 0; }
 .ev-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 6px; }

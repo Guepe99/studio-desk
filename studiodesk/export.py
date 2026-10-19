@@ -171,16 +171,35 @@ def export(match_id, conn, out_root, runtime=None):
     has_runtime = runtime is not None and runtime.execute(
         "SELECT 1 FROM cues WHERE match_id = ? LIMIT 1", (match_id,)).fetchone()
     if has_runtime:
-        q = "SELECT * FROM {} WHERE match_id = ? ORDER BY ts"
-        stories = _parsed(_all(runtime, q.format("stories"), (match_id,)), "fact_ids", "evidence_event_ids",
-                          "texts", "verifier")
-        cues = _parsed(_all(runtime, q.format("cues"), (match_id,)), "payload")
-        traces = _parsed(_all(runtime, q.format("traces") + ", run_id, seq", (match_id,)), "fact_ids")
+        stories, cues, traces = runtime_records(match_id, runtime)
     else:
         stories, traces, cues = [], [], template_cues(m, facts, events)
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
+    return out
+
+
+def runtime_records(match_id, runtime):
+    """stories, cues and traces of one match from runtime.sqlite, JSON columns parsed."""
+    q = "SELECT * FROM {} WHERE match_id = ? ORDER BY ts"
+    stories = _parsed(_all(runtime, q.format("stories"), (match_id,)), "fact_ids", "evidence_event_ids",
+                      "texts", "verifier")
+    cues = _parsed(_all(runtime, q.format("cues"), (match_id,)), "payload")
+    traces = _all(runtime, q.format("traces") + ", run_id, seq", (match_id,))
+    traces = _parsed(traces, "fact_ids", *(["story_ids"] if traces and "story_ids" in traces[0] else []))
+    return stories, cues, traces
+
+
+def pack(match_id, runtime, out_dir):
+    """The AI replay pack: stories, cues and traces of a real run, committed under replays/<match_id>/
+    and copied over the template export at image build."""
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for name, rows in zip(("stories", "cues", "traces"), runtime_records(match_id, runtime)):
+        if not rows and name != "traces":
+            raise SystemExit(f"no {name} for {match_id} in the runtime database")
+        _dump(out / f"{name}.json", rows)
     return out
 
 
@@ -190,7 +209,12 @@ if __name__ == "__main__":
     ap.add_argument("--db", type=Path, default=config.MATCHES_DB)
     ap.add_argument("--out", type=Path, default=config.ROOT / "web" / "data")
     ap.add_argument("--runtime", type=Path, default=config.RUNTIME_DB, help="runtime.sqlite written by the agents")
+    ap.add_argument("--pack", type=Path, help="write only stories, cues and traces from --runtime here (replays/M001)")
     args = ap.parse_args()
+    if args.pack:
+        with closing(db.connect(args.runtime, readonly=True)) as rt:
+            print(pack(args.match_id, rt, args.pack))
+        raise SystemExit(0)
     with closing(db.connect(args.db, readonly=True)) as conn:
         rt = db.connect(args.runtime, readonly=True) if args.runtime.exists() else None
         print(export(args.match_id, conn, args.out, rt))

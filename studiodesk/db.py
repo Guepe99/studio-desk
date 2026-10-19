@@ -16,6 +16,8 @@ def connect(path: Path, readonly: bool = False) -> sqlite3.Connection:
         conn = sqlite3.connect(path, check_same_thread=False)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA.read_text())
+        if "story_ids" not in {r[1] for r in conn.execute("PRAGMA table_info(traces)")}:  # runtime db from before
+            conn.execute("ALTER TABLE traces ADD COLUMN story_ids TEXT DEFAULT '[]'")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     return conn

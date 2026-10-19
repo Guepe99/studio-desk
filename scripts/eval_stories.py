@@ -6,11 +6,13 @@ A storyline counts as found when a story of the matching kind, for the same team
 the storyline has one), starts between 60 s before ts_start and 60 s after ts_end.
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from studiodesk import config, db  # noqa: E402
+from studiodesk.agents import rules  # noqa: E402
 
 KIND = {"tactical_shift": {"tactical_shift"}, "high_press": {"pressing_spell"}, "top_sprint": {"top_sprint"},
         "comeback": {"comeback"}}
@@ -37,13 +39,20 @@ def main():
             "SELECT story_id, kind, ts_start, ts_end, team_id, player_id FROM storylines WHERE match_id = ?",
             (args.match_id,))]
         stories = [dict(r) for r in rt.execute(
-            "SELECT story_id, kind, ts, team_id, player_id FROM stories WHERE match_id = ?", (args.match_id,))]
+            "SELECT story_id, kind, ts, team_id, player_id, texts FROM stories WHERE match_id = ?", (args.match_id,))]
     rows = evaluate(storylines, stories)
     for r in rows:
         print(f"{r['kind']:15s} {r['team_id']} {r['player_id'] or '':7s} {r['ts_start']:7.1f}-{r['ts_end']:7.1f}  "
               f"{'found by ' + ', '.join(r['found_by']) if r['found_by'] else 'MISSED'}")
     print(f"found {sum(bool(r['found_by']) for r in rows)} of {len(rows)} hidden storylines; "
           f"{len(stories)} stories in total")
+    true_ids = {i for r in rows for i in r["found_by"]}
+    for kind in ("tactical_shift", "pressing_spell"):
+        mine = [s["story_id"] for s in stories if s["kind"] == kind]
+        print(f"{kind} precision: {sum(i in true_ids for i in mine)} of {len(mine)} stories match a storyline")
+    issues = {lang: sum(bool(rules.style_issues(json.loads(s["texts"]).get(lang, ""), lang, s["kind"])) for s in stories)
+              for lang in rules.LANGS}
+    print("texts with a style issue: " + ", ".join(f"{lang} {n} of {len(stories)}" for lang, n in issues.items()))
 
 
 if __name__ == "__main__":

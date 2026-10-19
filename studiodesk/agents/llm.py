@@ -134,7 +134,7 @@ class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClien
     def _lines(p):
         lead = {"en": "Minute", "it": "Minuto", "es": "Minuto"}[p["language"]]
         return {"lines": [{"story_id": s["story_id"],
-                           "text": f"{lead} {s['minute']}: " + "; ".join(f["label"] for f in s["facts"][:2]) + "."}
+                           "text": f"{lead} {s['minute']}: {s['facts'][0]['label']}."}
                           for s in p["stories"]]}
 
     @staticmethod

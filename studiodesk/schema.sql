@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS traces (
   tokens_out INTEGER NOT NULL DEFAULT 0,
   latency_ms INTEGER NOT NULL DEFAULT 0,
   cost_usd   REAL NOT NULL DEFAULT 0,
+  story_ids  TEXT DEFAULT '[]',                 -- JSON array: the stories this hand-off concerns
   PRIMARY KEY (match_id, run_id, seq)
 ) STRICT;
 
