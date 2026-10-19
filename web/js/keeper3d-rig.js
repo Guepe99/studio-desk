@@ -35,13 +35,19 @@ export class KeeperRig {
     }
     probe.rootNodes.forEach((n) => n.dispose());
     probe.skeletons.forEach((k) => k.dispose());
-    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span: s.span, real: this.real });
-    this.by = new Map();
-    for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
+    this.replan(s.span);
     s.addDriver({ priority: 30, pose: (i, ts) => this.pose(i, ts) });
     s.scene.onAfterAnimationsObservable.add(() => this._arms());
     // the awareness layer keeps the others off a keeper lying on the grass after his dive
     if (s.awareness?.aw) s.awareness.aw.bodyOf = (i, ts) => this.body(i, ts);
+  }
+
+  // Plans the reactions for the match time [span[0], span[1]] (Scene3D.replan).
+  replan(span) {
+    const s = this.s;
+    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span, real: this.real });
+    this.by = new Map();
+    for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
   }
 
   // Three points along a keeper lying on the grass after a dive (feet, hips, head), as [x, y, w]

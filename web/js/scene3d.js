@@ -308,6 +308,15 @@ export class Scene3D {
     this.debug.camera = this.cams.mode;
   }
 
+  // Plans the ball, the awareness layer and the keepers for another stretch of match time: the
+  // broadcast page keeps a window around its clock, so a whole match never sits in memory.
+  replan(span) {
+    this.span = span;
+    this.rig.replan(span);
+    this.awareness?.replan(span);
+    this.keeper?.replan(span);
+  }
+
   // the page drives frames from its own requestAnimationFrame: beginFrame and endFrame let Babylon
   // measure the real frame rate, which the SceneOptimizer and the fps readout read (else 60 forever)
   render() { this.engine.beginFrame(); this.scene.render(); this.engine.endFrame(); }
