@@ -7,11 +7,11 @@ script after a regeneration; every number below comes from it.
 
 | match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI | proposals on the desk | model calls | tokens in / out | cost (USD) | round, median / max (s) | model time per match minute (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| M001 | 3 of 4 | 1 | 0 | 15 / 0 / 0 | 12 | 101 | 194,406 / 15,442 | 0.056 | 18.3 / 23.7 | 2.3 |
-| M002 | 4 of 4 | 2 | 0 | 24 / 0 / 0 | 16 | 155 | 308,008 / 24,024 | 0.085 | 16.3 / 27.8 | 3.5 |
-| M003 | 2 of 3 | 0 | 0 | 17 / 0 / 0 | 15 | 97 | 187,624 / 15,200 | 0.054 | 11.8 / 29.4 | 2.3 |
-| M004 | 2 of 3 | 3 | 0 | 26 / 0 / 0 | 20 | 166 | 311,464 / 23,233 | 0.083 | 15.7 / 28.2 | 3.6 |
-| all | 11 of 14 | 6 | 0 | 82 / 0 / 0 | 63 | 519 | 1,001,502 / 77,899 | 0.277 | | 2.9 |
+| M001 | 3 of 4 | 2 | 0 | 14 / 0 / 0 | 8 | 101 | 194,406 / 15,442 | 0.056 | 18.3 / 23.7 | 2.3 |
+| M002 | 4 of 4 | 4 | 0 | 24 / 0 / 0 | 16 | 155 | 308,008 / 24,024 | 0.085 | 16.3 / 27.8 | 3.5 |
+| M003 | 2 of 3 | 0 | 0 | 16 / 0 / 0 | 15 | 97 | 187,624 / 15,200 | 0.054 | 11.8 / 29.4 | 2.3 |
+| M004 | 2 of 3 | 1 | 0 | 27 / 0 / 0 | 19 | 166 | 311,464 / 23,233 | 0.083 | 15.7 / 28.2 | 3.6 |
+| all | 11 of 14 | 7 | 0 | 81 / 0 / 0 | 58 | 519 | 1,001,502 / 77,899 | 0.277 | | 2.9 |
 
 ## Hidden storylines found
 
@@ -25,15 +25,15 @@ player, when the storyline names one), within 60 seconds of the storyline. Only 
 Counted from the verifier's notes on each story: one count is one draft (a story in one language)
 whose earlier versions the verifier sent back, or dropped, because of a number (not in the fact
 ledger, written in words, with the wrong unit or letters stuck to it, a formation the facts do not
-give). Spacing slips and fact ids from another moment are not counted. 6 drafts were
+give). Spacing slips and fact ids from another moment are not counted. 7 drafts were
 blocked for a number and 0 for a real person's or club's name. A draft rewritten twice for the
 same reason counts once, so these are lower bounds.
 
 ## Phrasebook on air, proposals on the desk
 
-Every one of the 82 stories went on air with code-written text: 82 from the
+Every one of the 81 stories went on air with code-written text: 81 from the
 commentator phrasebook, 0 from the fact-only template, 0 with the AI's own line. In
-63 stories the AI's line passed every check in all three languages and waits on the desk as
+58 stories the AI's line passed every check in all three languages and waits on the desk as
 a proposal; it goes on air only when a person edits the story.
 
 ## Tokens and cost
@@ -41,7 +41,7 @@ a proposal; it goes on air only when a person edits the story.
 519 model calls used 1,001,502 input and 77,899 output tokens, $0.277 in all
 ($0.069 a match), counted from the audit table, one row per model call. The traces of the agent steps add up to the same tokens.
 The Content Safety checks (one call per story,
-82 in all) are recorded in neither table and are not counted.
+81 in all) are recorded in neither table and are not counted.
 
 ## Delay from event to graphic
 
