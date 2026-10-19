@@ -4,34 +4,18 @@ The replay can speak its stories in English. The clips are made beforehand with 
 (F0 free tier) from the verified story texts, committed in `replays/<match>/`, and played by the
 broadcast page when a story goes on air for the visitor. No speech is generated at view time.
 
-## Voices
+## Voice
 
-Azure has no British English voice with a sports commentary style: the only voice whose style
-list has `sports-commentary` and `sports-commentary-excited` is `zh-CN-YunjianNeural` (checked
-on 19 Oct 2026 with the `voices/list` endpoint of our Sweden Central resource). So the choice
-follows the way a football broadcast splits the work between two voices: a lead commentator who
-calls the moments, and a summariser or analyst who talks when play is not live and sums up
-([colour commentator, Wikipedia](https://en.wikipedia.org/wiki/Color_commentator); the RNIB
-guide asks that analysis comes at a time that does not disrupt the main commentary,
-[RNIB](https://www.rnib.org.uk/documents/1947/Best_practice_for_making_sports_commentaries_accessible_for_viewers_with_visio_xuVYOS9.pdf)).
+One voice for every story: `en-US-Ava:DragonHDLatestNeural`, chosen by ear by the project owner
+on 19 Oct 2026 against `en-US-Andrew:DragonHDLatestNeural` and `en-GB-OllieMultilingualNeural`
+(the same sentence read by each). The HD voices work on the F0 tier of our resource.
 
-| Role | Voice | Why | Used for |
-|---|---|---|---|
-| Lead commentator | `en-GB-RyanNeural` | male, tagged News, personality Bright and Engaging; has the `cheerful` style | every story except recaps |
-| Summariser | `en-GB-SoniaNeural` | female, tagged Narration and News, personality Gentle and Soft | half-time and full-time recaps |
-
-Voice tags and styles: the `voices/list` response of the resource, and the
-[language support table](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts).
-
-Prosody, sparingly ([SSML voice and sound](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-voice)):
-
-- goals and comebacks: `mstts:express-as style="cheerful" styledegree="1.4"` (range 0.01 to 2,
-  default 1) and `prosody rate="+6%" pitch="+4%"`;
-- recaps: `prosody rate="-4%"`, no style;
-- everything else: the plain voice.
-
-The HD voices (`DragonHDLatestNeural`) are left out: the F0 tier is enough for 14 standard clips
-a match, and the clips are small.
+HD voices take no `mstts:express-as` styles and pick their tone from the text, so the SSML is the
+verified text alone, with no style or prosody tags. Azure has no English voice with a sports
+commentary style: only `zh-CN-YunjianNeural` lists `sports-commentary` (checked on 19 Oct 2026
+with the `voices/list` endpoint of our Sweden Central resource;
+[language support](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts),
+[SSML voice](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-voice)).
 
 ## What is read
 

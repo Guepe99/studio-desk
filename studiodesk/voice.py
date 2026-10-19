@@ -36,10 +36,10 @@ MIN_INTERVAL_S = 3.1  # 60 s / 20 requests, plus a margin
 ELIGIBLE_VERIFIER = {"pass", "rewritten", "template"}
 ELIGIBLE_STATUS = {"auto_approved", "needs_review"}
 
-# Per language: the play-by-play voice, the recap voice, and which kinds sound excited.
+# Per language: one voice for every story. Ava HD picks its tone from the text itself; it does not
+# take mstts:express-as styles, so goals and recaps differ only in what they say (docs/voice.md).
 VOICES = {
-    "en": {"lang": "en-GB", "call": "en-GB-RyanNeural", "recap": "en-GB-SoniaNeural",
-           "excited": {"goal", "comeback"}},
+    "en": {"lang": "en-US", "voice": "en-US-Ava:DragonHDLatestNeural"},
 }
 
 
@@ -58,21 +58,11 @@ SCORE_WORDS = ["nil", "one", "two", "three", "four", "five", "six", "seven", "ei
 
 
 def ssml(story, lang):
-    """SSML for one story: excited for goals, calm for recaps, plain otherwise."""
+    """SSML for one story: the verified text, read by the language's voice."""
     v = VOICES[lang]
-    body = escape(spoken(story["texts"][lang]))
-    if story["kind"] == "recap":
-        voice, inner = v["recap"], f'<prosody rate="-4%">{body}</prosody>'
-    elif story["kind"] in v["excited"]:
-        voice = v["call"]
-        inner = (f'<mstts:express-as style="cheerful" styledegree="1.4">'
-                 f'<prosody rate="+6%" pitch="+4%">{body}</prosody></mstts:express-as>')
-    else:
-        voice, inner = v["call"], body
-    doc = (f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
-           f'xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="{v["lang"]}">'
-           f'<voice name="{voice}">{inner}</voice></speak>')
-    return voice, doc
+    doc = (f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{v["lang"]}">'
+           f'<voice name="{v["voice"]}">{escape(spoken(story["texts"][lang]))}</voice></speak>')
+    return v["voice"], doc
 
 
 def sha1(text):

@@ -51,8 +51,8 @@ def test_manifest_and_only_eligible(tmp_path):
     r = manifest[0]
     assert set(r) == {"story_id", "lang", "file", "duration_s", "text_sha1", "voice"}
     assert r["file"] == "voice/S-000001.en.mp3" and (tmp_path / "out" / r["file"]).stat().st_size == 6000
-    assert r["duration_s"] == 1.0 and r["text_sha1"] == voice.sha1("Goal at 10.") and r["voice"] == "en-GB-RyanNeural"
-    assert manifest[2]["voice"] == "en-GB-SoniaNeural"
+    assert r["duration_s"] == 1.0 and r["text_sha1"] == voice.sha1("Goal at 10.") and r["voice"] == voice.VOICES["en"]["voice"]
+    assert manifest[2]["voice"] == voice.VOICES["en"]["voice"]
 
 
 def test_unchanged_text_is_skipped(tmp_path):
@@ -79,14 +79,13 @@ def test_rate_limit_pauses(tmp_path):
     assert 7.0 in fake.sleeps and voice.MIN_INTERVAL_S * 20 >= 60  # spacing alone keeps under 20 a minute
 
 
-def test_ssml_escaped_and_styled():
+def test_ssml_escaped():
     s = story("S-000001", "Kim & Lee <score> 2-0 at 47', press 6.1/10, ran 6022.8 m")
     name, doc = voice.ssml(s, "en")
     root = ET.fromstring(doc)  # well-formed despite & and <
     text = "".join(root.itertext())
     assert "Kim & Lee <score> two-nil at minute 47, press 6.1 out of 10, ran 6022.8 metres" == text
-    assert "cheerful" in doc and name == "en-GB-RyanNeural"
-    assert "express-as" not in voice.ssml(story("S-1", "A sprint.", kind="top_sprint"), "en")[1]
+    assert name == "en-US-Ava:DragonHDLatestNeural" and "express-as" not in doc  # HD voices take no styles
 
 
 def test_dry_run_and_unknown_lang(tmp_path):
