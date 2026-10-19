@@ -9,7 +9,8 @@
 // player, mapped from tracking by this file); never more than 2 graphics in the DOM, also while
 // playing at 16x and 64x, and none past its cue; the real-time path; Space toggling exactly once;
 // the clock frozen at the end of each period; the score bug and seek-bar goals against the score
-// facts; seek keys and aria-valuetext; shirt-number contrast; the pass bar scale; why-card text
+// facts; seek keys and aria-valuetext; shirt-number contrast; the 2D pitch (players and
+// ball on the tracking, disc colours, the players named on air lit, draw time); the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; phone landscape and portrait
 // (every control reachable, graphic text at least 11 px in portrait). Screenshots go to out/shots/.
 import { createRequire } from "node:module";
@@ -333,6 +334,69 @@ try {
       const other = picked[i].toLowerCase() === "#ffffff" ? "#0e1a3d" : "#ffffff";
       if (contrast(c, picked[i]) + 1e-9 < contrast(c, other)) fail(`shirt text on ${c}: ${picked[i]} has less contrast than ${other}`);
     });
+  });
+
+  // The 2D pitch: every player and the ball where the tracking puts them (within 0.5 px of the
+  // mapping written again above), each isolated disc in its kit or keeper colour, and the players
+  // named by the graphics on air (payload.player_id, or the players of the facts they cite) lit.
+  await check("pitch", async () => {
+    await page.click('[data-audience="analyst"]');
+    const factPlayer = new Map(facts.filter((f) => f.player_id).map((f) => [f.fact_id, f.player_id]));
+    const moments = ["nameplate", "pass_shot", "why_card"].flatMap((g) => cues.filter((c) => c.audience === "analyst" && c.graphic === g).slice(0, 3))
+      .map((c) => c.ts + Math.min(2, c.duration_s / 2));
+    let lit = 0, coloured = 0, isolated = 0;
+    for (const ts0 of [...moments, 30]) {
+      await seekTo(page, ts0);
+      const r = await page.evaluate(async () => {
+        const sd = window.studioDesk, c = document.querySelector("#pitch"), k = c.width / 1920, g = c.getContext("2d");
+        const { keeperColours } = await import(new URL("js/pitch.js", document.baseURI));
+        const keeper = keeperColours(sd.match.meta.teams);
+        const players = sd.pitch.drawn.players.map(({ id, x, y, r, focus }) => {
+          const pl = sd.match.players[id], px = g.getImageData(Math.round(x * k), Math.round((y - 0.55 * r) * k), 1, 1).data;
+          return { id, x, y, r, focus, px: [...px.slice(0, 3)],
+            want: pl.position === "GK" ? keeper[pl.team_id] : sd.match.teams[pl.team_id].color_primary };
+        });
+        return { ts: sd.state.ts, players, ball: sd.pitch.drawn.ball, live: [...sd.host.live.values()].map((i) => i.cue) };
+      });
+      const want = meta.entities.slice(1).filter((e) => { const p = stageAt(e, r.ts); return !Number.isNaN(p[0]) && meta.players.some((x) => x.player_id === e); });
+      const got = r.players.map((p) => p.id);
+      if (want.sort().join() !== [...got].sort().join()) fail(`pitch at ${r.ts}: drew ${got.length} players, tracking has ${want.length}`);
+      for (const p of r.players) {
+        const [x, y] = stageAt(p.id, r.ts), off = Math.hypot(p.x - x, p.y - y);
+        if (!(off <= 0.5)) fail(`pitch at ${r.ts.toFixed(1)}: ${p.id} drawn ${off.toFixed(2)} px off the tracking`);
+        // colour under the disc, for a player nobody else (or a lit halo, or the ball) can cover
+        const near = r.players.some((o) => o !== p && Math.hypot(o.x - p.x, o.y - p.y) < 3 * p.r + (o.focus ? 2.6 * o.r : 0))
+          || p.focus || (r.ball && Math.hypot(r.ball[0] - p.x, r.ball[1] - p.y) < 30 * PX);
+        if (near) continue;
+        isolated++;
+        const hex = p.want.slice(1).match(/../g).map((h) => parseInt(h, 16));
+        if (hex.every((v, i) => Math.abs(v - p.px[i]) <= 10)) coloured++;
+        else fail(`pitch at ${r.ts.toFixed(1)}: ${p.id} shows rgb(${p.px}) where its disc should be ${p.want}`);
+      }
+      const [bx, by] = stageAt("ball", r.ts);
+      if (!Number.isNaN(bx) && !(r.ball && Math.hypot(r.ball[0] - bx, r.ball[1] - by) <= 0.5)) fail(`pitch at ${r.ts.toFixed(1)}: ball drawn at ${r.ball}, tracking ${bx.toFixed(1)},${by.toFixed(1)}`);
+      const named = new Set();
+      for (const c of r.live) for (const id of [c.payload.player_id, ...[c.payload.fact_id, ...(c.payload.fact_ids ?? [])].map((f) => factPlayer.get(f))]) if (id) named.add(id);
+      const on = r.players.filter((p) => p.focus).map((p) => p.id).sort();
+      const drawnNamed = [...named].filter((id) => got.includes(id)).sort();
+      if (on.join() !== drawnNamed.join()) fail(`pitch at ${r.ts.toFixed(1)}: lit ${on.join() || "nobody"}, the graphics on air name ${drawnNamed.join() || "nobody"}`);
+      lit += on.length;
+    }
+    if (!lit) fail("pitch: no moment had a lit player, the highlight was never checked");
+    if (isolated < 10) fail(`pitch: only ${isolated} isolated discs, the colour check measures nothing`);
+    console.log(`pitch: ${moments.length + 1} moments, ${lit} lit players, ${coloured}/${isolated} isolated discs in their colour`);
+    // draw time at 64x over 300 frames (the page draws at every frame)
+    const ms = await page.evaluate(() => {
+      const sd = window.studioDesk, t = [], live = [...sd.host.live.values()].map((i) => i.cue);
+      for (let f = 0; f < 300; f++) {
+        const t0 = performance.now();
+        sd.pitch.draw(sd.match, 600 + f * 64 / 60, live);
+        t.push(performance.now() - t0);
+      }
+      return t.sort((a, b) => a - b)[150];
+    });
+    console.log(`pitch: median draw ${ms.toFixed(2)} ms at 1280x720`);
+    if (ms > 8) fail(`pitch: median draw ${ms.toFixed(2)} ms, over half a 60 Hz frame`);
   });
 
   // Graphics rendered on their own, outside the cue sheet.

@@ -159,7 +159,7 @@ function tick(now) {
     if (state.ts >= end) { state.ts = end; setPlaying(false); }
   }
   // past the last tracking frame (full-time recap) the picture holds the last frame
-  if (view3d?.shown !== "3d") pitch.draw(match, Math.min(state.ts, match.duration));
+  if (view3d?.shown !== "3d") pitch.draw(match, Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
@@ -292,7 +292,7 @@ async function main() {
   layout(); // the team and player buttons may have changed the controls' height
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
   // 2D, 3D or Split: ?view= or what the device can draw; any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, side: $("#side2d"), badge: $("#replay-badge"),
     notice: $("#notice"), buttons: document.querySelectorAll("[data-view]") }, layout);
