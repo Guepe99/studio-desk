@@ -348,7 +348,10 @@ def restyle(pos, label, centre, kind):
 PALETTE = 8          # far palette texels: REGIONS, then hair
 FAR_HAIR = len(bf.REGIONS)
 HAIR_LEVEL = 0.5
-HAIR_NEAR, HAIR_FAR = 0.2, 0.1   # triangle ratios of the hair, near (error 0.03) and far (0.05)
+# triangle ratios of the near body and of the hair, near (error 0.03) and far (0.05). The near body is
+# the VRoid body unsimplified and the near hair keeps 0.45: at 0.62 and 0.2 the silhouette, the hands
+# and the toon terminator went polygonal. The far LOD stays as it was: at that size nobody sees facets
+BODY_NEAR, HAIR_NEAR, HAIR_FAR = 1.0, 0.45, 0.1
 SKIN_LEVEL = 0.6
 
 
@@ -457,7 +460,7 @@ def build(dl, out=OUT):
             return prims
 
         # near body, simplified with the region borders locked (gltf-transform), then read back
-        near = simplify_regions(tmp, region_prims, body, tr, 0.62)
+        near = simplify_regions(tmp, region_prims, body, tr, BODY_NEAR)
         bf.add_mesh_node(w, armature, "anime", w.mesh("anime", [w.primitive(p, p["tri"], mats[n], p["uv"]) for n, p in near]))
         face_prims = [morph_primitive(w, face_skin, mats["face_skin"]), morph_primitive(w, features, mats["face"])]
         fm = w.mesh("anime_face", face_prims)

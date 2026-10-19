@@ -241,7 +241,7 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
 
 // --- anime footballers (?players=anime, docs/anime3d.md) ---------------------------------------------
 // Hair styles of anime.glb and anime colours. Original characters only: no style and colour pair
-// copies a known anime or game character (no gold spikes, no white or silver hair). Natural, muted
+// copies a known anime or game character (spiky hair never takes the two palest colours). Natural, muted
 // colours only: the owner found green, blue and bright red hair too loud (18/10/2026).
 export const ANIME_HAIR = ["hair_messy", "hair_spiky", "hair_swept", "hair_crop"];
 // natural tones from black to platinum, any of them on any skin; no copper or auburn (under the
@@ -257,7 +257,9 @@ const EXPRESSIONS = ["joy", "sorrow", "determined", "blink"];
 export function animeLook(pid) {
   const h = hash(pid), base = playerLook(pid);
   const hair = ANIME_HAIR[(h >>> 4) % ANIME_HAIR.length];
-  const hairColour = ANIME_HAIR_COLOURS[(h >>> 8) % ANIME_HAIR_COLOURS.length];
+  let k = (h >>> 8) % ANIME_HAIR_COLOURS.length;
+  if (hair === "hair_spiky" && k >= ANIME_HAIR_COLOURS.length - 2) k -= 2;   // pale blond or platinum spikes are famous looks
+  const hairColour = ANIME_HAIR_COLOURS[k];
   return { ...base, hair, hairColour, eyes: EYE_COLOURS[(h >>> 20) % EYE_COLOURS.length], boots: ANIME_BOOTS[(h >>> 16) % ANIME_BOOTS.length],
     height: 0.95 + ((h >>> 24) % 11) / 100, blink: ((h >>> 12) % 97) / 97 };
 }
@@ -339,13 +341,14 @@ function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
 
 // After the clips and the upper-body emotions (players.js applyUpper), some joints of the anime body
 // turn part of the way back to their rest pose:
-// - the fingers by 70%, as the mannequin's clips close the hands into fists; a clip that wants a
-//   fist (FIST, cloned per player by players.js) keeps it in proportion to its weight;
+// - the fingers by 45%, as the mannequin's clips close the hands into fists (at 70% they hung flat
+//   and fanned out, a claw in the close-ups); a clip that wants a fist (FIST, cloned per player by
+//   players.js) keeps it in proportion to its weight;
 // - while a dejected motion clip plays (M_crouch_head_down, M_dejected_hips), the upper spine, neck
 //   and head by SLUMP: a 1.4x head with big hair turns their head-down pose into a slump. The
 //   look-at layer leaves the head to those clips (awareness-rig.js), so the order with it is moot.
 // Returns the per-frame hook the face calls with the driver answers.
-const FINGERS = /(thumb|index|middle|ring|pinky)_0[123]_[lr]$/, OPEN = 0.7;
+const FINGERS = /(thumb|index|middle|ring|pinky)_0[123]_[lr]$/, OPEN = 0.45;
 const SLUMPED = /(spine_03|neck_01|Head)$/, SLUMP = 0.5;
 const FIST = "M_celeb_jump_fist";
 function relaxJoints(scene, root, pid) {

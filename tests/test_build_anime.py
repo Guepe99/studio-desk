@@ -39,7 +39,8 @@ def test_shipped_anime_matches_the_mannequin():
     assert all(len(p["targets"]) == len(ba.EXPRESSIONS) <= 4 for p in face["primitives"])   # WebGL 1 limit
     for style in ("messy", "spiky", "swept", "crop"):
         near = tris["anime"] + tris["anime_face"] + tris[f"hair_{style}"]
-        assert near <= 10_000, (style, near)
+        # the near body is unsimplified and the hair at 0.45 so the silhouette stays round (docs/anime3d.md, Budget)
+        assert near <= 16_000, (style, near)
         assert tris[f"anime_lod1_{style}"] < 4_000
         assert len(meshes[f"anime_lod1_{style}"]["primitives"]) == 1
     # every mesh node is skinned
