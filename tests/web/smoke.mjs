@@ -219,6 +219,13 @@ try {
       await page.click(`[data-audience="${kind}"]`);
       const offered = (await page.$$eval("#audience-pick option", (os) => os.map((o) => o.value))).sort();
       if (offered.join() !== auds.join()) fail(`${kind}: picker offers ${offered.join()}, cues.json has ${auds.join()}`);
+      if (kind === "player") { // each entry ends with the minute of the player's first graphic (late substitutes)
+        const wrong = await page.evaluate(() => [...document.querySelectorAll("#audience-pick option")].filter((o) => {
+          const sd = window.studioDesk, ts = Math.min(...sd.match.cues.filter((c) => c.audience === o.value).map((c) => c.ts));
+          return !o.textContent.endsWith(`, ${sd.match.clock(ts).minute}'`);
+        }).map((o) => o.textContent));
+        if (wrong.length) fail(`player picker without the first minute: ${wrong.slice(0, 3).join(" | ")}`);
+      }
       let seen = 0;
       for (const aud of auds) {
         await page.selectOption("#audience-pick", aud);
@@ -440,6 +447,11 @@ try {
   for (const [w, h] of [[844, 390], [390, 844]]) {
     await check(`phone ${w}x${h}`, async () => {
       const phone = await open(browser, { viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true });
+      // the voice button and the desk's offline label are shown by now, and the layout has followed them
+      await phone.waitForFunction(() => window.studioDesk?.voice && window.studioDesk.desk.ready);
+      await phone.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      const tall = await phone.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+      if (tall > 1) fail(`${w}x${h}: the page is ${tall} px taller than the screen`);
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
       const lost = await unreachable(phone);
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);

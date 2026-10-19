@@ -1552,6 +1552,15 @@ PLAN = {
     "tactical_shift": _ALL_WHY,
 }
 MAX_DELAY_S = 30.0  # a graphic that cannot start within this many seconds of its moment is dropped
+# the longest run of graphics a story gets; a story that is not a must and would still be on screen at
+# the whistle is not told, so "Half-time" and "Full time" air at once and nothing follows them
+LAST_WORD_S = max(sum(DURATION[g] for g in gs) for p in PLAN.values() for gs in p.values())
+
+
+def before_the_whistle(cands):
+    """The candidates without those too close to a recap in the same batch (LAST_WORD_S)."""
+    whistles = [c["ts"] for c in cands if c["kind"] == "recap"]
+    return [c for c in cands if c["kind"] in MUST_TELL or not any(0 <= w - c["ts"] < LAST_WORD_S for w in whistles)]
 
 
 def air_order(story):
@@ -1567,9 +1576,11 @@ class Director:
         self.placed = {}  # audience -> [(start, end)]
         self.audiences = ["analyst", "casual"] + [f"team:{t}" for t in m.teams]
 
-    def _slot(self, audience, ts, dur):
+    def _slot(self, audience, ts, dur, by=math.inf):
         placed = self.placed.setdefault(audience, [])
         for start in sorted({ts} | {e for _, e in placed if ts < e <= ts + MAX_DELAY_S}):
+            if start + dur > by:
+                return None
             if sum(s < start + dur and start < e for s, e in placed) < config.MAX_GRAPHICS_ON_SCREEN:
                 placed.append((start, start + dur))
                 return start
@@ -1621,22 +1632,22 @@ class Director:
 
     def plan(self, stories):
         """Cues (without cue_id) for every audience and language. Player audiences start with their first story.
-        A story told at the same moment as a recap gets no cue: it would delay "Full time" or follow it."""
+        The must-tell stories and the recaps take their slots first; any other graphic must end by the next
+        whistle, so it can neither delay "Half-time" or "Full time" nor follow it."""
         for s in stories:
             if s["player_id"] and f"player:{s['player_id']}" not in self.audiences:
                 self.audiences.append(f"player:{s['player_id']}")
         cues = []
-        whistles = {s["ts"] for s in stories if s["kind"] == "recap"}
-        for s in sorted(stories, key=air_order):
-            if s["ts"] in whistles and s["kind"] not in MUST_TELL:
-                continue  # at the whistle the recap airs at once; the story stays on the desk
+        whistles = sorted(s["ts"] for s in stories if s["kind"] == "recap")
+        for s in sorted(stories, key=lambda s: (s["kind"] not in MUST_TELL, air_order(s))):
+            by = math.inf if s["kind"] in MUST_TELL else next((w for w in whistles if w >= s["ts"]), math.inf)
             for audience in self.audiences:
                 role = self._role(audience, s)
                 t = s["ts"]
                 for graphic in PLAN[s["kind"]].get(role, ()) if role else ():
                     if self.payload(s, graphic, "en") is None:
                         continue
-                    start = self._slot(audience, t, DURATION[graphic])
+                    start = self._slot(audience, t, DURATION[graphic], by)
                     if start is None:
                         continue
                     t = start + DURATION[graphic]  # the next graphic of the story follows this one

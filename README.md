@@ -11,10 +11,11 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 1. Pick a match and press play. The 2D pitch and the graphics run on one clock.
 2. Open **Desk**. Each story shows the facts behind it and the verifier's verdict. Approve, edit or reject it. Stories below the risk threshold go to air automatically, and the audit log marks them auto-approved.
 3. Switch the language between EN, IT and ES. The numbers stay the same, because they come from the fact ledger rather than from the model.
-4. Turn on the voice to hear the approved stories read in English.
+4. Turn on the voice to hear the approved stories read in the language on screen.
 5. Open the **Traces** tab to see which agent did what, with the model, the tokens, the time and the cost of each step.
 6. Switch the AI off and only the template graphics stay on air.
-7. Open `/sample3d.html` on the same site for the 3D view of the same match.
+7. Change who the broadcast is for: the analyst, a casual viewer, the fans of one team or one player.
+8. Open `/sample3d.html` on the same site for the 3D view of the same match.
 
 The replay needs no model calls, so it has no daily quota. Each visitor session allows 300 desk actions. Every visitor gets their own session, so your choices never reach another judge, and each match starts clean.
 
@@ -31,10 +32,10 @@ match clock --event--> facts (MCP server) --batch--> story_finder -> analyst -> 
 - **Phrasebook.** The lines that go on air by themselves are composed by code from pieces written for each language, each with the fact that makes it true: "What a hit!" only for a shot of 100 km/h or more, "strikes again" only for a player's second goal. The story finder chooses the tone and what the line leads with (where the shot came from, how far out, how hard). The commentators' own lines are checked against the facts by the verifier and wait on the desk as a proposal that a person can put on air with one click.
 - **Safety.** Approved texts pass through Azure AI Content Safety. The result is stored with the story, and a story that fails the check is held back.
 - **Fallbacks.** If an agent fails or times out, rules and template sentences take its place and the broadcast carries on. The trace records the fallback.
-- **Voice.** Azure AI Speech reads the verified English stories ahead of time. A clip plays only when its checksum matches the text on screen.
+- **Voice.** Azure AI Speech reads the verified stories ahead of time in English, Italian and Spanish. A clip plays only when its checksum matches the text on screen.
 - **Graphics.** Broadcast graphics in HTML, in the EBU OGraf open format (`web/graphics/`).
 
-The four replays in `replays/` were produced by real runs on Azure. Their files hold the stories and every agent step. One match costs between $0.10 and $0.17 in model calls (276,000 to 475,000 tokens), summed from the `traces.json` in each replay.
+The four replays in `replays/` were produced by real runs on Azure. Their files hold the stories and every agent step. One match costs between $0.054 and $0.085 in model calls (203,000 to 335,000 tokens), counted from the audit of each run. Stories found, numbers blocked, tokens, cost and timing for each match are in [docs/MEASURES.md](docs/MEASURES.md).
 
 The data contract, from the tables to the API, is in [docs/CONTRACT.md](docs/CONTRACT.md).
 

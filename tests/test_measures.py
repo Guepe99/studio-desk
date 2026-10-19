@@ -59,3 +59,49 @@ def test_timing_round_wall_time_and_match_wait():
     t = measures.timing(traces, stories)
     assert t["rounds"] == 2 and t["walls"] == [10.5, 4.0] and t["wall_max_s"] == 10.5 and t["wall_total_s"] == 14.5
     assert t["waits"] == [("goal", 0.5), ("big_chance", 200.0), ("goal", 1.0)]
+
+
+def test_live_delay_counts_from_the_event_as_the_clock_released_it():
+    def tr(seq, ts, agent, at, sids=()):
+        return {"seq": seq, "ts": ts, "agent": agent, "at": f"2026-10-19T20:{at}+00:00", "story_ids": json.dumps(list(sids))}
+    start = measures.at("2026-10-19T20:00:00.000+00:00")
+    traces = [tr(1, 310.0, "story_finder", "00:12.000", ["S-000001"]), tr(2, 310.0, "director", "00:14.500"),
+              tr(3, 900.0, "story_finder", "10:05.000", ["S-000002"]), tr(4, 900.0, "verifier", "10:06.000")]  # no cues
+    stories = [story("S-000001", 309.5), story("S-000002", 899.0, kind="big_chance")]
+    assert measures.live_delay(traces, stories, start, 300.0, 1.0) == [("goal", 5.0)]  # 14.5 s wall, event at 9.5 s
+    assert measures.live_delay(traces, stories, start, 300.0, 2.0) == [("goal", 9.75)]
+
+
+def test_measure_reads_only_its_match_and_the_page_adds_up(tmp_path):
+    import sqlite3
+    from studiodesk import db
+    rt = tmp_path / "rt.sqlite"
+    with db.connect(rt) as c:
+        for m, n in (("M001", 100), ("M002", 900)):  # M002's rows must not reach M001
+            c.execute("INSERT INTO audit (at, actor, action, match_id, tokens_in, tokens_out, cost_usd, detail) "
+                      "VALUES ('x', 'analyst', 'model_call', ?, ?, 10, 0.5, '{\"latency_ms\": 6000}')", (m, n))
+            for seq, agent, at in ((1, "story_finder", "00:01.000"), (2, "director", "00:05.000")):
+                c.execute("INSERT INTO traces (match_id, run_id, seq, ts, at, agent, step, input_summary, output_summary, "
+                          "tokens_in, tokens_out, latency_ms, cost_usd, story_ids) VALUES (?, 'R', ?, 600, ?, ?, 's', '', '', "
+                          "?, 10, 1000, 0.5, '[\"S-000001\"]')", (m, seq, f"2026-10-19T20:{at}+00:00", agent, n if seq == 1 else 0))
+    mc = sqlite3.connect(":memory:")
+    mc.row_factory = sqlite3.Row
+    mc.execute("CREATE TABLE storylines (match_id, story_id, kind, ts_start, ts_end, team_id, player_id)")
+    mc.execute("CREATE TABLE matches (match_id, period1_s, period2_s)")
+    mc.execute("INSERT INTO matches VALUES ('M001', 1500, 1500)")
+    pack = tmp_path / "M001"
+    pack.mkdir()
+    (pack / "stories.json").write_text(json.dumps([story("S-000001", 599.0)]))
+    r = measures.measure("M001", pack, rt, mc)
+    assert (r["calls"], r["tokens_in"], r["minutes"], r["model_s"]) == (1, 100, 50.0, 6.0)
+    assert r["walls"] == [5.0] and r["waits"] == [("goal", 1.0)]
+    other = {**r, "match_id": "M002", "calls": 3, "tokens_in": 300, "found": 1, "planted": 2, "wall_total_s": 15.0}
+    t = measures.total([r, other])
+    assert (t["calls"], t["tokens_in"], t["found"], t["planted"], t["minutes"]) == (4, 400, 1, 2, 100.0)
+    page = measures.markdown([r, other])
+    assert "| all | 1 of 2 |" in page and "4 model calls used 400 input" in page
+    assert "the 2 rounds took 0.2 seconds of wall time per minute" in page  # (5 + 15) s over 100 minutes
+    assert "Not measured: no real-speed run" in page and "do not match the audit" in " ".join(page.split())
+    live = " ".join(measures.markdown([r], {"delays": [("goal", 4.0), ("big_chance", 9.0), ("goal", 6.0)], "setup_s": 3.0}).split())
+    assert "The 2 goals reached the director's cue 4.0 and 6.0 seconds after the shot" in live
+    assert "the other story after 9.0 seconds" in live and "at least 3.0 seconds" in live and "—" not in page + live

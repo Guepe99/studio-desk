@@ -4,7 +4,7 @@
 stories of a replay (a `replays/<match>/` pack when it has stories.json, else the static export in
 `web/data/<match>/`), synthesises one mp3 per eligible story and writes
 `<out>/voice/<story_id>.<lang>.mp3` plus the manifest `<out>/voice.json`:
-`[{story_id, lang, file, duration_s, text_sha1, voice}]`, `file` relative to `<out>`.
+`[{story_id, lang, file, duration_s, text_sha1, voice, spoken_sha1}]`, `file` relative to `<out>`.
 
 Eligible: verifier status pass, rewritten or template (template lines are built from the fact
 ledger by code, so they are verified too), default status auto_approved or needs_review (the page
@@ -47,15 +47,28 @@ VOICES = {
 # Italian and Spanish: the words for the signs a voice reads badly ("2-0" as "two minus zero").
 LOCAL = {
     "it": {"digits": "zero uno due tre quattro cinque sei sette otto nove".split(), "out_of": "su", "plus": "più",
-           "m/s": "metri al secondo", "km/h": "chilometri orari", "metre": "metro", "metres": "metri"},
+           "m/s": "metri al secondo", "km/h": "chilometri orari", "metre": "metro", "metres": "metri",
+           "minute": "minuto", "minutes": "minuti", "and": "e"},
     "es": {"digits": "cero uno dos tres cuatro cinco seis siete ocho nueve".split(), "out_of": "sobre", "plus": "más",
-           "m/s": "metros por segundo", "km/h": "kilómetros por hora", "metre": "metro", "metres": "metros"},
+           "m/s": "metros por segundo", "km/h": "kilómetros por hora", "metre": "metro", "metres": "metros",
+           "minute": "minuto", "minutes": "minutos", "and": "y"},
+    "en": {"minute": "minute", "minutes": "minutes", "and": "and"},
 }
+MINUTE = r"\d{1,3}(?:\+\d{1,2})?'"
+
+
+def minute_list(t, w):
+    """A recap's scorer minutes, "(10', 13')": "(minutes 10 and 13)", not two bare numbers."""
+    def say(m):
+        p = [x.rstrip("'") for x in m[1].split(", ")]
+        return f"({w['minute']} {p[0]})" if len(p) == 1 else f"({w['minutes']} {', '.join(p[:-1])} {w['and']} {p[-1]})"
+    return re.sub(rf"\(({MINUTE}(?:, {MINUTE})*)\)", say, t)
 
 
 def spoken(text, lang="en"):
     """What the voice reads: the verified text with broadcast pronunciations, no new content."""
     t = text.replace("’", "'")
+    t = minute_list(t, LOCAL[lang])
     if lang != "en":
         return spoken_local(t, LOCAL[lang])
     t = re.sub(r"\b\d(?:-\d){2,3}\b", lambda m: "-".join(DIGIT_WORDS[int(d)] for d in m[0].split("-")), t)  # 4-4-2
@@ -63,13 +76,15 @@ def spoken(text, lang="en"):
     t = re.sub(r"(\d)\s?/10\b", r"\1 out of 10", t)
     t = re.sub(r"(\d) ?m/s\b", r"\1 metres per second", t)
     t = re.sub(r"\b([Aa]n?) (\d+(?:\.\d+)?) m (?=[a-z])", r"\1 \2-metre ", t)  # "a 21 m drive": "a 21-metre drive"
-    t = re.sub(r"\b1 m\b", "1 metre", t)
+    t = re.sub(r"(?<![\d.,])1 m\b", "1 metre", t)
     t = re.sub(r"(\d) m\b", r"\1 metres", t)
     t = re.sub(r"(\d) ?km/h\b", r"\1 kilometres per hour", t)
     t = re.sub(r"\b(\d{2,3})\+(\d{1,2})'(?=\s+[A-Z])", r"minute \1 plus \2,", t)  # "45+2' Kimura"
     t = re.sub(r"\b(\d{2,3})\+(\d{1,2})'", r"minute \1 plus \2", t)
     t = re.sub(r"\b(\d{1,3})'(?=\s+[A-Z])", r"minute \1,", t)  # "73' Kimura": "minute 73, Kimura"
     t = re.sub(r"\b(\d{1,3})'", r"minute \1", t)
+    t = re.sub(r"\b(\d{2,3})\+(\d{1,2})\b", r"\1 plus \2", t)  # in a minute list: "(minute 45+2)"
+    t = re.sub(r"\bthe minute\b", "minute", t)  # "in the 90+3'": "in minute 90 plus 3"
     return t[:1].upper() + t[1:]
 
 
@@ -79,7 +94,7 @@ def spoken_local(t, w):
     t = re.sub(r"(\d)\s?/10\b", rf"\1 {w['out_of']} 10", t)
     t = re.sub(r"(\d) ?m/s\b", rf"\1 {w['m/s']}", t)
     t = re.sub(r"(\d) ?km/h\b", rf"\1 {w['km/h']}", t)
-    t = re.sub(r"\b1 m\b", f"1 {w['metre']}", t)
+    t = re.sub(r"(?<![\d.,])1 m\b", f"1 {w['metre']}", t)
     t = re.sub(r"(\d) m\b", rf"\1 {w['metres']}", t)
     t = re.sub(r"\b(\d{2,3})\+(\d{1,2})\b", rf"\1 {w['plus']} \2", t)  # 45+2
     t = re.sub(r"(\d)'", r"\1", t)  # "al 73'": read "al 73", as commentators say it
@@ -194,9 +209,10 @@ def build(match_id, lang="en", src=None, out=None, synth=None, dry_run=False, lo
             voice, doc = ssml(s, lang)
             rel = f"voice/{s['story_id']}.{lang}.mp3"
             row = {"story_id": s["story_id"], "lang": lang, "file": rel, "duration_s": None,
-                   "text_sha1": sha1(s["texts"][lang]), "voice": voice}
+                   "text_sha1": sha1(s["texts"][lang]), "voice": voice, "spoken_sha1": sha1(spoken(s["texts"][lang], lang))}
             prev = previous.pop(s["story_id"], None)
-            if prev and prev["text_sha1"] == row["text_sha1"] and prev["voice"] == voice and (out / rel).exists():
+            # a changed pronunciation rule changes what the voice says, so it pays for the clip again
+            if prev and all(prev.get(k) == row[k] for k in ("text_sha1", "voice", "spoken_sha1")) and (out / rel).exists():
                 rows.append(prev)
                 continue
             if dry_run:

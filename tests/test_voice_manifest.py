@@ -13,12 +13,15 @@ PACKS = sorted(p for p in REPLAYS.glob("M*") if (p / "voice.json").exists()) if 
 
 @pytest.mark.parametrize("pack", PACKS, ids=[p.name for p in PACKS])
 def test_voice_manifest_matches_the_pack(pack):
+    from studiodesk import voice
     texts = {s["story_id"]: s["texts"] for s in json.loads((pack / "stories.json").read_text())}
     rows = json.loads((pack / "voice.json").read_text())
     for r in rows:
         text = texts.get(r["story_id"], {}).get(r["lang"])
         assert text is not None, f"{r['story_id']} {r['lang']}: no such story text"
         assert r["text_sha1"] == hashlib.sha1(text.encode("utf-8")).hexdigest(), f"{r['story_id']} {r['lang']}: stale clip"
+        said = hashlib.sha1(voice.spoken(text, r["lang"]).encode("utf-8")).hexdigest()
+        assert r.get("spoken_sha1") == said, f"{r['story_id']} {r['lang']}: voiced before a pronunciation rule changed"
         assert (pack / r["file"]).is_file(), r["file"]
         # a clip in the wrong language: its file, voice and text must all be the row's language
         assert r["file"] == f"voice/{r['story_id']}.{r['lang']}.mp3", f"{r['file']}: not the {r['lang']} clip"
@@ -36,3 +39,5 @@ def test_every_language_is_voiced(pack):
     for lang in ("en", "it", "es"):
         want = {(s["story_id"], lang) for s in voice.eligible(stories, lang)}
         assert want <= rows, f"{lang}: no clip for {sorted(want - rows)[:5]}"
+        extra = {r for r in rows if r[1] == lang} - want
+        assert not extra, f"{lang}: clip for a story that is not eligible: {sorted(extra)[:5]}"

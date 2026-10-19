@@ -13,7 +13,7 @@ import json
 import statistics
 import sys
 from contextlib import closing
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -24,12 +24,14 @@ import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
 RUNTIME = "runtime12-{}.sqlite"  # the run of out/regen12.sh that made the committed packs
+# out/live1x.sh: M001 from 5:00 to 20:00 at real speed; the start file holds the wall time it was launched
+LIVE = {"match": "M001", "runtime": "live1x-M001.sqlite", "start": "live1x-start.txt", "from_ts": 300.0, "to_ts": 1200.0, "speed": 1.0}
 
 # The verifier's fixed reasons (rules.REASONS) that block a number, and the one that blocks a name.
+# Spacing ("unit glued to a number") and fact ids from another moment are not counted as numbers.
 NUMBER_REASONS = {rules.REASONS[k] for k in (
     "number not in the facts", "number in words", "garbled numbers", "formation not in the facts",
-    "unit not in the facts", "unit glued to a number", "letters glued to a number", "unit mismatch",
-    "cited fact not in the story")}
+    "unit not in the facts", "letters glued to a number", "unit mismatch")}
 NAME_REASONS = {rules.REASONS["forbidden name (real person or club)"]}
 
 
@@ -97,6 +99,36 @@ def timing(traces, stories):
             "waits": waits, "wall_total_s": sum(walls)}
 
 
+def live_delay(traces, stories, start_s, from_ts, speed):
+    """(kind, seconds) per story of a real-speed run: wall time from its event, as the clock released it,
+    to the director's cues. The clock starts after the launch time start_s, so these are upper bounds."""
+    by_id, rounds, out = {s["story_id"]: s for s in stories}, {}, []
+    for t in sorted(traces, key=lambda t: t["seq"]):
+        rounds.setdefault(t["ts"], []).append(t)
+    for rs in rounds.values():
+        cue = [t for t in rs if t["agent"] == "director"]
+        if not cue:
+            continue
+        sids = json.loads(rs[0]["story_ids"]) if isinstance(rs[0]["story_ids"], str) else rs[0]["story_ids"]
+        out += [(by_id[i]["kind"], at(cue[-1]["at"]) - (start_s + (by_id[i]["ts"] - from_ts) / speed))
+                for i in sids or [] if i in by_id]
+    return out
+
+
+def measure_live(runtime, start_file):
+    if not (runtime.exists() and start_file.exists()):
+        return None
+    with closing(db.connect(runtime, readonly=True)) as rt:
+        traces = [dict(r) for r in rt.execute("SELECT * FROM traces WHERE match_id = ?", (LIVE["match"],))]
+        stories = [dict(r) for r in rt.execute("SELECT story_id, ts, kind FROM stories WHERE match_id = ?", (LIVE["match"],))]
+        first = rt.execute("SELECT run_id FROM traces WHERE match_id = ? ORDER BY seq LIMIT 1", (LIVE["match"],)).fetchone()
+    start = at(start_file.read_text().strip()[:26] + "+00:00")  # date -u +%N: nanoseconds, fromisoformat takes micro
+    delays = live_delay(traces, stories, start, LIVE["from_ts"], LIVE["speed"])
+    # the run id carries the second the workflow started, so start-up is at least this
+    setup = datetime.strptime(first[0][2:16], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc).timestamp() - start if first else 0.0
+    return {"delays": delays, "setup_s": max(setup, 0.0)} if delays else None
+
+
 def measure(match_id, pack, runtime, mconn):
     stories = json.loads((pack / "stories.json").read_text())
     with closing(db.connect(runtime, readonly=True)) as rt:
@@ -117,7 +149,28 @@ def total(rows):
     return {k: sum(r[k] for r in rows) for k in keys}
 
 
-def markdown(rows):
+def live_section(live):
+    if live is None:
+        return f"""Not measured: no real-speed run was found (`out/{LIVE['runtime']}`)."""
+    goals = [w for k, w in live["delays"] if k == "goal"]
+    rest = [w for k, w in live["delays"] if k != "goal"]
+    def secs(ws):
+        ws = [f"{w:.1f}" for w in ws]
+        return " and ".join([", ".join(ws[:-1]), ws[-1]] if len(ws) > 1 else ws)
+    said = [f"The {'goal' if len(goals) == 1 else f'{len(goals)} goals'} reached the director's cue {secs(goals)} "
+            "seconds after the shot" if goals else "No goal was scored"]
+    if rest:
+        said.append(f"the other {'story' if len(rest) == 1 else f'{len(rest)} stories'} after {secs(rest)} seconds, because a story that is not urgent waits on "
+                    "purpose for the end of its window to be told with the others")
+    return f"""Measured on a real-speed run (`python -m studiodesk.agents run {LIVE['match']} --speed 1 --from-ts
+{LIVE['from_ts']:.0f} --to-ts {LIVE['to_ts']:.0f}`): {LIVE['match']} from minute {LIVE['from_ts'] / 60:.0f} to minute
+{LIVE['to_ts'] / 60:.0f}, on Azure, the way the desk runs live. {'; '.join(said)}. These are upper bounds: they
+count from when the program was launched, and its start-up before the match clock began took at least
+{live['setup_s']:.1f} seconds. A story that needs a producer then waits for one; a story the director lets
+air by itself is on screen at that moment."""
+
+
+def markdown(rows, live=None):
     t = total(rows)
     n = len(rows)
     head = ("| match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI "
@@ -137,9 +190,9 @@ def markdown(rows):
     waits = [w for r in rows for w in r["waits"]]
     goal_max = max((w for k, w in waits if k == "goal"), default=0.0)
     over = t["trace_tokens"] / (t["tokens_in"] + t["tokens_out"])
-    traces_note = ("The traces of the agent steps add up to the same tokens." if abs(over - 1) < 0.005 else
-                   f"The traces add up to {over:.2f} times as many tokens (${t['trace_cost_usd']:.3f}): they were "
-                   "written before each trace counted only its own calls, so the audit is the figure to quote.")
+    traces_note = ("The traces of the agent steps add up to the same tokens." if over == 1 else
+                   f"The traces of the agent steps add up to {over:.3f} times those tokens (${t['trace_cost_usd']:.3f}), "
+                   "so they do not match the audit, which is the figure to quote.")
     return f"""# Measures
 
 What the system did on the {n} replay matches ({", ".join(r["match_id"] for r in rows)}), computed by
@@ -153,14 +206,15 @@ script after a regeneration; every number below comes from it.
 
 The simulator plants storylines the agents are never shown (a tactical shift, a spell of high
 pressing, a top sprint, a comeback). The agents found {t['found']} of the {t['planted']} planted, with the
-rule of `scripts/eval_stories.py`: a story of the matching kind, for the same team and player,
-within 60 seconds of the storyline. Only this evaluation reads the hidden table.
+rule of `scripts/eval_stories.py`: a story of the matching kind, for the same team (and the same
+player, when the storyline names one), within 60 seconds of the storyline. Only this evaluation reads the hidden table.
 
 ## Numbers and names blocked by the verifier
 
 Counted from the verifier's notes on each story: one count is one draft (a story in one language)
 whose earlier versions the verifier sent back, or dropped, because of a number (not in the fact
-ledger, written in words, wrong unit, a formation the facts do not give). {t['numbers']} drafts were
+ledger, written in words, with the wrong unit or letters stuck to it, a formation the facts do not
+give). Spacing slips and fact ids from another moment are not counted. {t['numbers']} drafts were
 blocked for a number and {t['names']} for a real person's or club's name. A draft rewritten twice for the
 same reason counts once, so these are lower bounds.
 
@@ -180,16 +234,17 @@ The Content Safety checks (one call per story,
 
 ## Delay from event to graphic
 
-Not measured. The regenerations ran with `--speed 0`, so the match clock did not wait for real
-time, and the replay places each graphic at its story's moment in the match, not where the round
-ended. What the traces do measure:
+{live_section(live)}
+
+The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
+real time, and the replay places each graphic at its story's moment in the match, not where the
+round ended. What their traces measure:
 a round (story finder, analyst, three commentators, verifier, rewrites, director) took
 {statistics.median(walls):.1f} seconds of wall time at the median, at most {max(walls):.1f} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
-parallel counted each). Before a round starts, the desk waits for its trigger: the story's event
+parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of {statistics.median(w for _, w in waits):.1f} seconds of match time before its round (goals at most
-{goal_max:.1f} seconds, other stories batched for up to {max(w for _, w in waits) / 60:.1f} minutes). At 1x a graphic would come
-roughly that wait plus the round after its event; no 1x run has measured it.
+{goal_max:.1f} seconds, other stories batched for up to {max(w for _, w in waits) / 60:.1f} minutes).
 """
 
 
@@ -202,7 +257,8 @@ def main():
     a = ap.parse_args()
     with closing(db.connect(mcp_server.DB_PATH, readonly=True)) as mconn:
         rows = [measure(m, a.replays / m, a.runtime_dir / RUNTIME.format(m), mconn) for m in a.matches]
-    a.out.write_text(markdown(rows))
+    live = measure_live(a.runtime_dir / LIVE["runtime"], a.runtime_dir / LIVE["start"])
+    a.out.write_text(markdown(rows, live))
     print(a.out.read_text())
 
 

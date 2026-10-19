@@ -52,8 +52,11 @@ Italian and Spanish clips yet: the owner should, as for English.
   "two-one", `0` in a score "nil", `6.1/10` "6.1 out of 10", `73'` "minute 73", `km/h` and `m` in
   full. Italian and Spanish: `2-1` is "2 a 1", `4-4-2` "quattro-quattro-due" / "cuatro-cuatro-dos",
   `5,5/10` "5,5 su 10" / "5,5 sobre 10", `45+2` "45 più 2" / "45 más 2", `km/h`, `m/s` and `m` in
-  full, and the minute mark is dropped ("al 73'" is read "al 73", as commentators say it).
-  No word is added or removed.
+  full, and the minute mark is dropped ("al 73'" is read "al 73"). In every language a recap's
+  scorer minutes, "(10', 13')", are read "(minutes 10 and 13)", "(minuti 10 e 13)", "(minutos 10 y
+  13)". Only signs are spelled out; no content is added or removed.
+- Each manifest row also keeps `spoken_sha1`, the SHA-1 of what the voice was sent, so a changed
+  pronunciation rule voices the clips it changes again, and only those.
 - One request every 3.1 s (F0: 20 requests a minute); a 429 waits for `Retry-After`.
 - Output: `replays/<match>/voice/<story_id>.<lang>.mp3` (24 kHz mono, 48 kbps) and
   `replays/<match>/voice.json`, one row per clip:
@@ -87,7 +90,8 @@ Docker, symlink them: `ln -s ../../../replays/M001/voice.json web/data/M001/` an
 - An edited story stays silent: the clip would say the old text. A clip whose `text_sha1` does not
   match the story text the page loaded is never played.
 - One clip at a time. A story that comes up while another speaks waits; it is dropped if it would
-  start more than 4 s of match time after its cue.
+  start more than 4 s of match time after its cue. Only one story waits: a newer one takes its
+  place, so the voice stays with the latest moment and the older card stays silent.
 - Seeking stops the clip; a speed other than 1x, a language change or the mute button stop it; a
   pause pauses it. At full time the recap finishes even though the replay has stopped.
 - The 3D sample page (`web/sample3d.html`) has no voice: it loops 20 seconds without the desk,

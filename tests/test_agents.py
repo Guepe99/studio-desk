@@ -112,9 +112,13 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
     assert sum(a["cost_usd"] for a in au) == pytest.approx(summary["cost_usd"], abs=1e-4)
 
 
-def test_traces_carry_only_their_own_calls(desk_db):
+@pytest.mark.parametrize("off_schema", [None, "Analyses", "Lines", "Verdicts"])
+def test_traces_carry_only_their_own_calls(desk_db, off_schema):
     _, _, rt = desk_db
-    run(rt, FakeChatClient(delay_s=0.002))  # the delay lets the three commentators' calls overlap
+    # the delay lets the three commentators' calls overlap; an answer off the schema fails its step after the call was paid
+    run(rt, FakeChatClient(lambda schema, _: {"nope": 1} if schema == off_schema else None, delay_s=0.002))
+    assert off_schema is None or any(w in t["output_summary"] for w in ("fallback", "failed", "not judged")
+                                     for t in rows(rt, "traces"))
     tr, au = rows(rt, "traces"), rows(rt, "audit")
     for k in ("tokens_in", "tokens_out"):
         assert sum(t[k] for t in tr) == sum(a[k] for a in au)
@@ -298,11 +302,23 @@ def test_the_full_time_recap_airs_at_the_whistle(desk_db):
     end = max(f["ts"] for f in m.kind("momentum"))
     base = {"ts": end, "team_id": m.home["team_id"], "player_id": None, "facts": [], "fact_ids": [],
             "texts": {lang: "text" for lang in rules.LANGS}}
-    stories = [{**base, "story_id": "S-000001", "kind": "momentum_swing"},
-               {**base, "story_id": "S-000002", "kind": "recap", "phase": "ft", "team_id": None}]
-    cues = rules.Director(m).plan(stories)
-    assert {c["story_id"] for c in cues} == {"S-000002"}
-    assert all(c["ts"] == end for c in cues)
+    for before in (0.0, 0.5, 2.0, 5.0, 30.0):
+        stories = [{**base, "story_id": "S-000001", "kind": "momentum_swing", "ts": end - before},
+                   {**base, "story_id": "S-000002", "kind": "recap", "phase": "ft", "team_id": None},
+                   {**base, "story_id": "S-000003", "kind": "goal"}]  # a goal at the whistle is still told
+        cues = rules.Director(m).plan(stories)
+        by = {sid: [c for c in cues if c["story_id"] == sid] for sid in ("S-000001", "S-000002", "S-000003")}
+        assert by["S-000002"] and all(c["ts"] == end for c in by["S-000002"]), before
+        assert by["S-000003"], before
+        assert all(c["ts"] + c["duration_s"] <= end for c in by["S-000001"]), before
+        assert bool(by["S-000001"]) == (before == 30.0), before
+
+
+def test_the_story_finder_skips_what_the_whistle_would_cut():
+    cands = [{"kind": "momentum_swing", "ts": 2990.0}, {"kind": "goal", "ts": 2995.0}, {"kind": "big_chance", "ts": 2900.0},
+             {"kind": "recap", "ts": 3000.0}]
+    assert [c["kind"] for c in rules.before_the_whistle(cands)] == ["goal", "big_chance", "recap"]
+    assert rules.before_the_whistle(cands[:3]) == cands[:3]  # no recap in the batch: nothing to protect
 
 
 def test_export_uses_runtime_records_with_contract_shapes(desk_db, tmp_path):

@@ -352,6 +352,9 @@ class Desk:
         token = _ASK_USAGE.set(mine)
         try:
             out = await self._ask(agent, payload, schema)
+        except Exception as e:
+            e.usage = {**mine, "latency_ms": round((time.perf_counter() - t0) * 1000)}  # its failed calls were paid too
+            raise
         finally:
             _ASK_USAGE.reset(token)
         return out, {**mine, "latency_ms": round((time.perf_counter() - t0) * 1000)}
@@ -578,7 +581,7 @@ def build_workflow(desk):
 
     @executor(id="story_finder")
     async def story_finder(batch: Batch, ctx: WorkflowContext[Round, Round]) -> None:
-        cands = batch.candidates
+        cands = rules.before_the_whistle(batch.candidates)  # no tokens for a story that would not air
         if not cands:
             await ctx.yield_output(Round(batch, []))
             return
@@ -602,7 +605,8 @@ def build_workflow(desk):
             choice = {id(by_id[p.candidate_id]): (p.tone, p.focus) for p in out.picks if p.candidate_id in by_id}
             note = ""
         except Exception as e:  # noqa: BLE001 - any failure falls back to the written rules
-            picks, usage, note = [(c, 0.5, c["note"]) for c in _rule_picks(cands)], None, f" fallback: {rules.brief_error(e)}"
+            picks, usage, note = [(c, 0.5, c["note"]) for c in _rule_picks(cands)], getattr(e, "usage", None), \
+                f" fallback: {rules.brief_error(e)}"
             choice = {}
         chosen = {id(c) for c, _, _ in picks}
         picks = list({id(c): (c, conf, a) for c, conf, a in picks}.values())
@@ -625,7 +629,7 @@ def build_workflow(desk):
             out, usage = await desk.ask("analyst", {"stories": [desk.card(s) for s in rnd.stories]}, Analyses)
             got = {a.story_id: a for a in out.stories}
         except Exception as e:  # noqa: BLE001
-            got, note = {}, f" fallback: {rules.brief_error(e)}"
+            got, note, usage = {}, f" fallback: {rules.brief_error(e)}", getattr(e, "usage", None)
         fallback = 0  # analyses that fell back to the facts: counted in the trace, never a desk note
         for s in rnd.stories:
             a = got.get(s["story_id"])
@@ -655,7 +659,7 @@ def build_workflow(desk):
                 out, usage = await desk.ask(f"commentator_{lang}", payload, Lines)
                 drafts = Drafts(rnd, lang, {x.story_id: x.text for x in out.lines})
             except Exception as e:  # noqa: BLE001
-                usage, drafts = None, Drafts(rnd, lang, {}, rules.brief_error(e))
+                usage, drafts = getattr(e, "usage", None), Drafts(rnd, lang, {}, rules.brief_error(e))
             desk.trace(f"commentator_{lang}", "draft", f"{len(rnd.stories)} stories",
                        f"{len(drafts.texts)} lines" + (f" fallback: {drafts.error}" if drafts.error else ""),
                        [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
@@ -673,7 +677,7 @@ def build_workflow(desk):
         try:
             out, usage = await desk.ask("verifier", payload, Verdicts)
         except Exception as e:  # noqa: BLE001 - not judged: the numbers were checked, the story goes to review
-            return {}, set(), None, rules.brief_error(e)
+            return {}, set(), getattr(e, "usage", None), rules.brief_error(e)
         # a verdict counts as ok only when its issue is empty or "none": "ok: true" with a named problem
         # is not ok; a "not ok" that argues itself out of its issue is no verdict (unjudged, review)
         ok = {(v.story_id, v.lang): rules.no_issue(v.issue) or (v.ok and not (v.issue or "").strip())
@@ -691,7 +695,7 @@ def build_workflow(desk):
             out, usage = await desk.ask(f"commentator_{lang}", payload, Lines)
             got = {x.story_id: x.text for x in out.lines if x.story_id in todo}
         except Exception as e:  # noqa: BLE001
-            got, usage = {}, None
+            got, usage = {}, getattr(e, "usage", None)
             todo = {sid: p + [f"rewrite failed: {rules.brief_error(e)}"] for sid, p in todo.items()}
         desk.trace(f"commentator_{lang}", "rewrite", f"verifier asks to fix {', '.join(todo)}",
                    f"{len(got)} lines", [], usage, list(todo))

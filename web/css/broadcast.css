@@ -75,6 +75,7 @@ body {
 .seg .ctl { border-radius: 0; margin-left: -1px; }
 .seg .ctl:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
 .seg .ctl:last-child { border-radius: 0 4px 4px 0; }
+.seg .ctl:not(:has(~ .ctl:not([hidden]))) { border-radius: 0 4px 4px 0; } /* the last button shown */
 .readout { font-weight: 700; font-size: 20px; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 select { font: 700 18px/1 var(--font); color: var(--paper); background: var(--ink); border: 1px solid #2a3c74; border-radius: 4px; height: 36px; padding: 0 8px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

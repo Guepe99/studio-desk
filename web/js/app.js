@@ -17,11 +17,11 @@ const STRINGS = {
   },
   // only the audience control is translated so far; every other key falls back to English
   it: {
-    audience: "Pubblico", analyst: "Analista", casual: "Tifoso", myteam: "La mia squadra", player: "Giocatore",
+    audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
     pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
   },
   es: {
-    audience: "Público", analyst: "Analista", casual: "Aficionado", myteam: "Mi equipo", player: "Jugador",
+    audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
     pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
   },
 };
@@ -65,6 +65,8 @@ function layout() {
 function applyStrings() {
   // the page chrome is English; the graphics and story texts carry the chosen language
   for (const el of [$("#overlay"), deck]) el.lang = state.lang;
+  // the audience control is translated, so a screen reader reads it in the chosen language
+  for (const el of [$('[data-i18n-aria="audience"]'), $("#audience-pick")]) el.lang = state.lang;
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));
@@ -164,11 +166,14 @@ function wireControls() {
     b.addEventListener("click", () => { state.speed = Number(b.dataset.speed); pressed("data-speed", state.speed); });
   }
   // "team" and "player" need a pick: the select lists the ones the cue sheet has cues for
-  const auds = new Set(match.cues.map((c) => c.audience)), last = {};
+  const first = {}, last = {}; // audience -> its first cue: the picker says when a late substitute first appears
+  for (const c of match.cues) first[c.audience] = Math.min(first[c.audience] ?? Infinity, c.ts);
+  const auds = new Set(Object.keys(first));
   const choices = {
     team: [match.home, match.away].filter((tm) => auds.has(`team:${tm.team_id}`)).map((tm) => [`team:${tm.team_id}`, tm.name]),
     player: match.meta.players.filter((p) => auds.has(`player:${p.player_id}`))
-      .map((p) => [`player:${p.player_id}`, `${p.name} (${match.teams[p.team_id]?.short_name ?? ""} ${p.shirt})`]),
+      .map((p) => [`player:${p.player_id}`,
+        `${p.name} (${match.teams[p.team_id]?.short_name ?? ""} ${p.shirt}), ${match.clock(first[`player:${p.player_id}`]).minute}'`]),
   };
   const pick = $("#audience-pick");
   const setAudience = (aud) => {
@@ -225,6 +230,7 @@ function wireControls() {
   }, true);
   window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk")) e.preventDefault(); }, true);
   window.addEventListener("resize", layout);
+  new ResizeObserver(layout).observe(controls); // a button that appears late (voice, desk offline) may wrap the controls
 }
 
 async function main() {
@@ -271,13 +277,14 @@ async function main() {
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
+  layout(); // the team and player buttons may have changed the controls' height
   refreshCues();
   // hooks for tests and the lead's demo scripts
   window.studioDesk = { state, match, host, desk, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
-  await Promise.all([v.load().then(() => { voice = v; }), desk.connect()]);
+  await Promise.all([v.load().then(() => { voice = v; }), desk.connect()]); // the voice button may appear
 }
 
 main();

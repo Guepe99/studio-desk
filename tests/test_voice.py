@@ -49,7 +49,7 @@ def test_manifest_and_only_eligible(tmp_path):
     manifest = json.loads((tmp_path / "out" / "voice.json").read_text())
     assert manifest == rows
     r = manifest[0]
-    assert set(r) == {"story_id", "lang", "file", "duration_s", "text_sha1", "voice"}
+    assert set(r) == {"story_id", "lang", "file", "duration_s", "text_sha1", "voice", "spoken_sha1"}
     assert r["file"] == "voice/S-000001.en.mp3" and (tmp_path / "out" / r["file"]).stat().st_size == 6000
     assert r["duration_s"] == 1.0 and r["text_sha1"] == voice.sha1("Goal at 10.") and r["voice"] == voice.VOICES["en"]["voice"]
     assert manifest[2]["voice"] == voice.VOICES["en"]["voice"]
@@ -105,7 +105,9 @@ def test_spoken_formations_stoppage_time_and_units():
     assert voice.spoken("They switch into a 4-4-2, then a 4-2-3-1; 2-0 up.") == \
         "They switch into a four-four-two, then a four-two-three-one; two-nil up."
     assert voice.spoken("45+2' Kimura shoots") == "Minute 45 plus 2, Kimura shoots"
-    assert voice.spoken("in the 90+3’, 10 m/s, 1 m") == "In the minute 90 plus 3, 10 metres per second, 1 metre"
+    assert voice.spoken("in the 90+3’, 10 m/s, 1 m, 9.1 m") == "In minute 90 plus 3, 10 metres per second, 1 metre, 9.1 metres"
+    assert voice.spoken("Scorers: Okowande (10', 13') and Duarte (45+2').") == \
+        "Scorers: Okowande (minutes 10 and 13) and Duarte (minute 45 plus 2)."
     assert voice.spoken("a 21 m drive, ran 61.5 m in all") == "A 21-metre drive, ran 61.5 metres in all"
 
 
@@ -145,6 +147,43 @@ def test_each_language_gets_its_own_text_voice_and_file(tmp_path, lang):
         (s["story_id"], x) for s in stories for x in ("en", lang))
     assert len(list((tmp_path / "out" / "voice").glob(f"*.{lang}.mp3"))) == 2
     assert len(list((tmp_path / "out" / "voice").glob("*.en.mp3"))) == 2  # a run for one language keeps the others
+
+
+def test_spoken_minute_lists_and_decimals_in_italian_and_spanish():
+    assert voice.spoken("Marcatori: Okowande (10', 13') e Duarte (50', 81', 90+2'), da 9,1 m.", "it") == \
+        "Marcatori: Okowande (minuti 10 e 13) e Duarte (minuti 50, 81 e 90 più 2), da 9,1 metri."
+    assert voice.spoken("Goles: Mensah (23') y Haddad (32').", "es") == "Goles: Mensah (minuto 23) y Haddad (minuto 32)."
+
+
+@pytest.mark.parametrize("lang,text,said", [("it", "Al 45+2' è 2-0.", "Al 45 più 2 è 2 a 0."),
+                                            ("es", "En el 45+2', 2-0.", "En el 45 más 2, 2 a 0.")])
+def test_the_language_rules_reach_the_ssml(tmp_path, lang, text, said):
+    s = story("S-000001", "Goal.")
+    s["texts"][lang] = text
+    fake = Fake()
+    run(tmp_path, [s], fake, lang=lang)
+    assert "".join(ET.fromstring(fake.calls[0][1]).itertext()) == said
+
+
+def test_a_story_without_the_language_text_is_not_voiced(tmp_path):
+    s = story("S-000002", "Goal.")
+    s["texts"]["it"] = " "
+    fake = Fake()
+    assert [r["story_id"] for r in run(tmp_path, [story("S-000001", "Goal."), s], fake, lang="it")] == ["S-000001"]
+    assert len(fake.calls) == 1
+
+
+def test_a_changed_pronunciation_is_voiced_again(tmp_path, monkeypatch):
+    stories = [story("S-000001", "Goal at 10."), story("S-000002", "Another line.")]
+    run(tmp_path, stories, Fake())
+    monkeypatch.setitem(voice.LOCAL["en"], "and", "&")  # no text changes; nothing the voice says changes
+    fake = Fake()
+    run(tmp_path, stories, fake)
+    assert fake.calls == []
+    real = voice.spoken
+    monkeypatch.setattr(voice, "spoken", lambda t, lang="en": real(t, lang).replace("10", "ten"))
+    run(tmp_path, stories, fake)
+    assert len(fake.calls) == 1  # only the line the new rule reads differently
 
 
 def test_spoken_italian_and_spanish():
