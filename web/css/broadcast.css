@@ -277,3 +277,48 @@ body { display: flex; }
   .link, .switch, .flagged summary, .evidence summary { min-height: 44px; }
   .flagged summary, .evidence summary { display: flex; align-items: center; }
 }
+
+/* ---- Agent activity (activity.js): under the pitch, the hand-offs the replay clock has reached.
+   One colour per role along the top edge; amber is kept for a fallback, which also says so in words.
+   A narrow strip (a docked desk at 1280 px) gives the model and the cost a line each. */
+#activity { flex: none; container-type: inline-size; display: grid; grid-template-columns: auto 1fr; align-content: start; gap: 4px 12px; }
+.act-title { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--signal); }
+.act-sum { align-self: baseline; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-steps { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;
+  min-height: 84px; } /* the height of a card: the pitch does not jump when the first one arrives */
+.act-steps li { min-width: 0; background: var(--ink); border-top: 3px solid var(--signal); border-radius: 0 0 4px 4px; padding: 4px 7px 5px; font-size: 15px; line-height: 1.15; }
+.act-steps li[data-agent="story_finder"] { border-top-color: #c39bff; }
+.act-steps li[data-agent="commentator"] { border-top-color: #ff9ecb; }
+.act-steps li[data-agent="verifier"] { border-top-color: #7be0a2; }
+.act-steps li[data-agent="director"] { border-top-color: var(--muted); }
+.act-steps li.fallback { border-top-color: var(--tally-held); }
+.act-name { display: block; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-step { color: var(--muted); }
+.fallback .act-step { color: var(--tally-held); font-weight: 700; }
+.act-out { margin: 2px 0 0; height: 2.3em; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #d7def2; }
+.act-meta { margin: 2px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-model::after { content: ", "; }
+@container (max-width: 1100px) {
+  .act-meta span { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .act-model::after { content: none; }
+  .act-meta:has(> :only-child) { height: 2.3em; } /* code steps: every card keeps the same height */
+  .act-steps { min-height: 100px; }
+}
+.act-steps li.act-empty { grid-column: 1 / -1; background: none; border: 0; padding: 4px 0; color: var(--muted); }
+.act-steps li.new { animation: act-in .35s ease-out both; animation-delay: calc(var(--i) * 120ms); }
+@keyframes act-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .act-steps li.new { animation: none; } }
+/* Phone: one line, the latest step only */
+@media (max-width: 700px), (max-height: 500px) {
+  #activity { display: flex; align-items: baseline; gap: 8px; font-size: 14px; white-space: nowrap; }
+  .act-title { flex: none; font-size: 13px; }
+  .act-sum, .act-meta { display: none; }
+  .act-steps { display: block; flex: 1; min-width: 0; min-height: 0; }
+  .act-steps li { display: flex; align-items: baseline; gap: 6px; border: 0; background: none; padding: 0; font-size: 14px; }
+  .act-steps li:not(:last-child) { display: none; }
+  .act-steps li.act-empty { padding: 0; }
+  .act-steps li.new { animation: none; }
+  .act-name { flex: none; }
+  .act-out { display: block; flex: 1; min-width: 0; height: auto; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
+}
+#next-moment:disabled { opacity: .55; cursor: default; }

@@ -11,8 +11,9 @@
 // the clock frozen at the end of each period; the score bug and seek-bar goals against the score
 // facts; seek keys and aria-valuetext; shirt-number contrast; the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
-// phone landscape and portrait (every control reachable, graphic text at least 11 px in portrait).
-// Screenshots go to out/shots/.
+// phone landscape and portrait (every control reachable, graphic text at least 11 px in portrait, the
+// agent strip on one line); Next key moment for analyst and a team; the agent strip after seeks and
+// at 64x. Screenshots go to out/shots/.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -396,6 +397,81 @@ try {
     if (!role) fail("#frame has aria-label but no role");
   });
 
+  const nextFrame = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  // Next key moment: 3 s before the next story cue on air for the audience (a graphic following its own
+  // story's previous one is the same moment), by button and by the N key; nothing past the last one.
+  await check("next key moment", async () => {
+    const all = await page.evaluate(() => window.studioDesk.match.cues);
+    // the team with the most story cues on air (DEMO has none: there the button must stay disabled)
+    const storyCount = (a) => cues.filter((c) => c.audience === a && c.story_id).length;
+    const team = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith("team:")))].sort((a, b) => storyCount(b) - storyCount(a))[0];
+    for (const aud of ["analyst", team]) {
+      if (aud === "analyst") await page.click('[data-audience="analyst"]');
+      else { await page.click('[data-audience="team"]'); await page.selectOption("#audience-pick", aud); }
+      const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
+      const stops = story.filter((c, i) => !story.slice(0, i).some((p) => p.story_id === c.story_id && c.ts <= p.ts + p.duration_s + 1));
+      if (!stops.length && aud === "analyst") fail("next analyst: no story cue on air");
+      await seekTo(page, 0);
+      for (const [i, c] of stops.entries()) {
+        if (await page.$eval("#next-moment", (b) => b.disabled)) { fail(`next ${aud}: disabled before ${c.cue_id}`); break; }
+        if (i % 2) await page.keyboard.press("n"); else await page.click("#next-moment");
+        await nextFrame(page);
+        const ts = await page.evaluate(() => window.studioDesk.state.ts), want = Math.max(0, c.ts - 3);
+        if (Math.abs(ts - want) > 0.01) { fail(`next ${aud}: landed at ${ts.toFixed(2)} s, wanted ${want.toFixed(2)} s for ${c.cue_id}`); break; }
+      }
+      const at = await page.evaluate(() => window.studioDesk.state.ts);
+      const b = await page.$eval("#next-moment", (x) => ({ disabled: x.disabled, label: x.textContent }));
+      if (!b.disabled || b.label !== "No more key moments") fail(`next ${aud}: past the last moment the button is ${JSON.stringify(b)}`);
+      await page.keyboard.press("n");
+      await nextFrame(page);
+      if (await page.evaluate(() => window.studioDesk.state.ts) !== at) fail(`next ${aud}: N moved the clock past the last moment`);
+      console.log(`next ${aud}: ${stops.length} moments`);
+    }
+    await page.selectOption("#lang", "it");
+    if (await page.$eval("#next-moment", (x) => x.textContent) !== "Nessun altro momento chiave") fail("next: label not in Italian");
+    await page.selectOption("#lang", "en");
+    await page.click('[data-audience="analyst"]');
+  });
+
+  // Agent activity: each agent's latest step with ts <= now, after seeks both ways and while playing at
+  // 64x with a handful of DOM changes (one per trace that comes into reach, not one per frame).
+  await check("agent activity", async () => {
+    const rows = (await page.evaluate(() => window.studioDesk.desk.traces)).sort((a, b) => a.ts - b.ts || a.seq - b.seq);
+    if (!rows.length) { fail("activity: no traces in this replay"); return; }
+    const want = (ts) => {
+      const seen = new Set(), out = [];
+      for (const r of rows.filter((x) => x.ts <= ts).reverse()) if (!seen.has(r.agent) && out.length < 7) { seen.add(r.agent); out.unshift(r.seq); }
+      return out.join();
+    };
+    const shown = () => page.evaluate(() => [...document.querySelectorAll("#activity li[data-seq]")].map((l) => l.dataset.seq).join());
+    const mid = rows[Math.floor(rows.length / 2)].ts, last = rows.at(-1).ts;
+    for (const ts of [last + 1, mid, mid - 0.01, rows[0].ts - 1, mid, last + 1]) {
+      await seekTo(page, ts);
+      const got = await shown();
+      if (got !== want(ts)) fail(`activity at ${ts} s: shows ${got || "nothing"}, wanted ${want(ts) || "nothing"}`);
+    }
+    const failed = rows.find((r) => r.step === "fallback" || /(^| )fallback: /.test(r.output_summary));
+    if (failed) {
+      await seekTo(page, failed.ts);
+      const mark = await page.evaluate((seq) => document.querySelector(`#activity li[data-seq="${seq}"]`)?.className, failed.seq);
+      if (mark !== undefined && !/fallback/.test(mark)) fail(`activity: fallback step ${failed.seq} not marked`);
+    }
+    const from = Math.max(0, rows[0].ts - 20);
+    await page.evaluate(() => {
+      window.__actMuts = 0;
+      new MutationObserver((ms) => { window.__actMuts += ms.length; }).observe(document.querySelector("#activity"), { childList: true, subtree: true, characterData: true });
+    });
+    await playAt(page, 64, from, 900);
+    const end = await page.evaluate(() => window.studioDesk.state.ts);
+    const batches = new Set(rows.filter((r) => r.ts > from && r.ts <= end).map((r) => r.ts)).size;
+    const muts = await page.evaluate(() => window.__actMuts);
+    if (muts > 4 * (batches + 1)) fail(`activity at 64x: ${muts} DOM changes for ${batches} batches of traces`);
+    if (await shown() !== want(end)) fail(`activity at 64x: stale at ${end.toFixed(1)} s`);
+    if (await page.$eval("#activity", (el) => !!(el.closest("[aria-live]") || el.querySelector("[aria-live]")))) fail("activity: a live region");
+    await seekTo(page, mid + 1);
+    await page.screenshot({ path: `${shots}/web-activity-1280x720.png` });
+  });
+
   for (const [speed, span] of [[64, 900], [16, 300]]) {
     await check(`${speed}x`, async () => {
       for (const audience of ["analyst", "casual"]) {
@@ -437,6 +513,7 @@ try {
           es.push({ ...es[0], event_id: 999999, type_name: "shot", result_name: "success", team_id: "T99" });
           return es;
         });
+        await edit("traces.json", (ts) => { if (ts.length) ts.at(-1).output_summary = '<img src=x onerror="window.__xss=1">'; return ts; });
         await edit("facts.json", (fs) => {
           fs.push({ ...fs[0], fact_id: "F-SCORE-999999", kind: "score", team_id: "T99", player_id: null, value: 1, ts: 5 });
           edited = fs;
@@ -449,7 +526,9 @@ try {
       const got = await scorebug(hostile), [h, a] = scoreAt(edited, ts);
       if (got.h !== String(h) || got.a !== String(a)) fail(`hostile score at ${ts}: ${got.h}-${got.a}, facts say ${h}-${a}`);
     }
-    if (await hostile.evaluate(() => window.__xss)) fail("team colour markup ran as HTML");
+    await seekTo(hostile, await hostile.evaluate(() => window.studioDesk.end));
+    if (await hostile.evaluate(() => window.__xss)) fail("team colour or trace summary markup ran as HTML");
+    if (await hostile.evaluate(() => window.studioDesk.desk.traces.length && !document.querySelector("#activity").textContent.includes("<img"))) fail("activity: a summary with markup not shown as text");
     await hostile.context().close();
   });
 
@@ -517,6 +596,12 @@ try {
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
       const lost = await unreachable(phone);
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);
+      await seekTo(phone, shotAt);
+      const strip = await phone.evaluate(() => {
+        const r = document.querySelector("#activity").getBoundingClientRect();
+        return { h: r.height, bottom: r.bottom, items: [...document.querySelectorAll("#activity li")].filter((l) => l.offsetHeight).length };
+      });
+      if (strip.h > 24 || strip.bottom > h || strip.items > 1) fail(`${w}x${h}: agent strip ${JSON.stringify(strip)}, wanted one line on screen`);
       if (h > w) {
         for (const graphic of ["pass_shot", "why_card", "momentum", "nameplate"]) {
           const c = cues.find((x) => x.audience === "analyst" && x.graphic === graphic);

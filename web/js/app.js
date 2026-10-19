@@ -6,6 +6,8 @@ import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { View3D, probe, defaultView } from "./view3d.js";
 import { Ask } from "./ask.js";
+import { Moments } from "./moments.js";
+import { Activity } from "./activity.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -22,6 +24,7 @@ const STRINGS = {
     askLimit: "No more questions for now: the limit is reached. Try again tomorrow.",
     askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
     askBad: "The studio could not take that question. Try a shorter one about this match.",
+    next: "Next key moment", nonext: "No more key moments",
   },
   // only the audience control is translated so far; every other key falls back to English
   it: {
@@ -33,6 +36,7 @@ const STRINGS = {
     askLimit: "Per ora non si possono fare altre domande: il limite è raggiunto. Riprova domani.",
     askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
     askBad: "Lo studio non può prendere questa domanda. Provane una più breve su questa partita.",
+    next: "Prossimo momento chiave", nonext: "Nessun altro momento chiave",
   },
   es: {
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
@@ -43,6 +47,7 @@ const STRINGS = {
     askLimit: "Por ahora no se pueden hacer más preguntas: se alcanzó el límite. Inténtalo mañana.",
     askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se pudo contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
     askBad: "El estudio no puede aceptar esa pregunta. Prueba con una más corta sobre este partido.",
+    next: "Siguiente momento clave", nonext: "No hay más momentos clave",
   },
 };
 
@@ -52,9 +57,9 @@ const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
-const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck");
+const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, ask = null, end = 0;
+let match = null, host = null, desk = null, voice = null, ask = null, end = 0, moments = null, activity = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
 let portrait = false, scale = 1;
@@ -65,7 +70,7 @@ function layout() {
   const W = $("#app").clientWidth || window.innerWidth;
   const cw = Math.min(W - 32, 860);
   controls.style.width = `${cw}px`;
-  const ch = controls.offsetHeight + 24;
+  const ch = controls.offsetHeight + 24 + strip.offsetHeight + 10;
   const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
   // Split: the 2D pitch at k times the 3D frame, beside it, or below it when the window is tall
   const below = window.innerHeight > W, k = view3d?.shown === "split" ? (below ? 0.6 : 0.36) : 0;
@@ -75,6 +80,7 @@ function layout() {
   frame.style.height = `${Math.round(STAGE_H * s)}px`;
   stage.style.transform = `scale(${s})`;
   controls.style.width = `${Math.max(Math.round(STAGE_W * s * (below ? 1 : 1 + k) + (k && !below ? 16 : 0)), cw)}px`;
+  strip.style.width = frame.style.width;
   pitch.resize(s * (k || 1) * Math.min(window.devicePixelRatio || 1, 2));
   const side = $("#side2d");
   side.style.width = `${Math.round(STAGE_W * s * k)}px`;
@@ -86,10 +92,16 @@ function layout() {
   document.body.classList.toggle("portrait", portrait);
   if (portrait) {
     deck.style.width = frame.style.width;
-    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s * (1 + k)) - controls.offsetHeight - 36)}px`;
+    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s * (1 + k)) - controls.offsetHeight - strip.offsetHeight - 46)}px`;
   }
   state.seeked = true; // graphics are rebuilt for the new size
+  laidOut = `${controls.offsetHeight}|${strip.offsetHeight}`;
 }
+// a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
+let laidOut = "";
+const relayout = new ResizeObserver(() => { if (`${controls.offsetHeight}|${strip.offsetHeight}` !== laidOut) layout(); });
+relayout.observe(controls);
+relayout.observe(strip);
 
 function applyStrings() {
   // the page chrome is English; the graphics and story texts carry the chosen language
@@ -123,7 +135,9 @@ function cueSheet() {
 }
 
 function refreshCues() {
-  host.setCues(cueSheet(), state.ts);
+  const sheet = cueSheet();
+  host.setCues(sheet, state.ts);
+  moments.setSheet(sheet);
   ask?.render();
 }
 
@@ -184,6 +198,8 @@ function tick(now) {
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
   voice?.update(state.ts, end); // null until its clips are checked
+  moments.update(state.ts);
+  activity.update(state.ts, state.seeked);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -261,7 +277,6 @@ function wireControls() {
   }, true);
   window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk, #ask")) e.preventDefault(); }, true);
   window.addEventListener("resize", layout);
-  new ResizeObserver(layout).observe(controls); // a button that appears late (voice, desk offline) may wrap the controls
 }
 
 async function main() {
@@ -306,6 +321,8 @@ async function main() {
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   desk.render();
+  moments = new Moments($("#next-moment"), { state, seek, t });
+  activity = new Activity(strip, desk);
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
