@@ -12,12 +12,17 @@
 
 const LANGS = { en: "English", it: "Italian", es: "Spanish" };
 const KIND = { goal: "Goal", key_pass: "Key pass", momentum_swing: "Momentum swing", comeback: "Comeback",
-  top_sprint: "Top sprint", high_press: "High press", tactical_shift: "Tactical shift" };
+  top_sprint: "Top sprint", high_press: "High press", tactical_shift: "Tactical shift", big_chance: "Big chance",
+  pressing_spell: "Pressing spell", recap: "Recap" };
 const STATUS = { auto_approved: "Auto-approved", needs_review: "Needs review", approved: "Approved",
   edited: "Edited and approved", rejected: "Rejected" };
 const VERIFIER = { pass: "Pass", rewritten: "Rewritten", template: "Template line" };
+// Since the phrasebook (verifier.on_air): the line on air is written by code, the AI's lines are a proposal.
+const ON_AIR_TEXT = { phrasebook: "Phrasebook (code)", template: "Template line (code)" };
+const AI_DRAFT = { pass: "Pass", rewritten: "Rewritten", template: "Not usable" };
 // The notes describe the drafts the verifier sent back, not the text on screen (older packs: any note list).
 const NOTES_TITLE = { rewritten: "What the earlier drafts got wrong", template: "Why the fact-only sentence" };
+const DRAFT_NOTES_TITLE = { rewritten: "What the earlier AI drafts got wrong", template: "Why the AI drafts were not kept" };
 const SAFETY = { passed: "Passed", flagged: "Flagged", not_checked: "Not checked" };
 const AGENTS = [
   ["story_finder", "Story finder", "AI", "Picks moments from the events the match clock releases."],
@@ -339,7 +344,8 @@ export class Desk {
     const lang = this.state.lang, st = this.status(s), id = s.story_id;
     const tally = this.onAir(s) ? "onair" : st === "needs_review" && !this.kill ? "held" : "off";
     const tallyText = { onair: "On air", held: "Held", off: this.kill && st !== "rejected" ? "Off air, AI off" : "Off air" }[tally];
-    const minute = this.match.clock(s.ts).minute;
+    const c = this.match.clock(s.ts), base = c.period === 1 ? 45 : 90;
+    const minute = c.minute > base ? `${base}+${c.minute - base}` : String(c.minute); // stoppage as the lines say it
     const who = s.player_id ? this.match.players[s.player_id]?.name : this.match.teams[s.team_id]?.short_name;
     const v = s.verifier ?? {}, flagged = v.flagged ?? [];
     const risk = Number(s.risk);
@@ -365,16 +371,30 @@ export class Desk {
           `Risk ${risk.toFixed(2)}`,
           h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` })))),
       editing ? this.renderEditor(s) : h("p", { className: "story-text", lang: this.textLang(s, lang) }, this.text(s, lang)),
+      editing ? null : this.renderProposal(s, lang),
       h("dl", { className: "checks" },
-        h("div", {}, h("dt", {}, "Verifier"), h("dd", { className: `v-${v.status}` },
-          `${VERIFIER[v.status] ?? v.status ?? "none"}`, v.attempts ? `, ${v.attempts} attempt${v.attempts > 1 ? "s" : ""}` : "")),
+        v.on_air ? h("div", {}, h("dt", {}, "On air"), h("dd", {}, ON_AIR_TEXT[v.on_air] ?? v.on_air)) : null,
+        h("div", {}, h("dt", {}, v.on_air ? "AI draft" : "Verifier"), h("dd", { className: `v-${v.status}` },
+          `${(v.on_air ? AI_DRAFT : VERIFIER)[v.status] ?? v.status ?? "none"}`, v.attempts ? `, ${v.attempts} attempt${v.attempts > 1 ? "s" : ""}` : "")),
         h("div", {}, h("dt", {}, "Safety"), h("dd", { className: `s-${s.safety}` }, SAFETY[s.safety] ?? s.safety))),
-      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` }, `${NOTES_TITLE[v.status] ?? "Verifier notes"} (${flagged.length})`),
+      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` }, `${(v.on_air ? DRAFT_NOTES_TITLE : NOTES_TITLE)[v.status] ?? "Verifier notes"} (${flagged.length})`),
         h("ul", {}, flagged.map((f) => h("li", {}, flagText(f))))) : null,
       this.renderEvidence(s),
       editing ? null : h("div", { className: "actions" },
         act("approved", "Approve"), act("edited", "Edit"), act("rejected", "Reject"),
         this.traceGroups().has(id) ? h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, "Show trace") : null));
+  }
+
+  // The AI's own line, kept off air: one click puts it on air in all three languages, as an edit.
+  renderProposal(s, lang) {
+    const p = s.verifier?.proposals;
+    if (!p) return null;
+    const text = p[lang] ?? p.en ?? "";
+    const using = Object.keys(LANGS).every((l) => this.decisions.get(s.story_id)?.edited_text?.[l] === p[l]);
+    return h("div", { className: "proposal" },
+      h("p", { className: "proposal-text", lang: p[lang] ? lang : "en" }, h("b", {}, using ? "AI proposal, on air: " : "AI proposal, not on air: "), text),
+      using ? null : h("button", { type: "button", className: "ctl", "data-focus": `${s.story_id}:proposal`, disabled: this.locked(),
+        onclick: () => this.decide(s, "edited", { ...p }) }, "Use proposal"));
   }
 
   startEdit(s) {
@@ -442,7 +462,7 @@ export class Desk {
           h("caption", { className: "sr" }, "Facts cited by the story"),
           h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Fact"), h("th", { scope: "col" }, "Value"))),
           h("tbody", {}, facts.map((f) => h("tr", { className: f.missing ? "missing" : "" },
-            h("td", {}, h("span", { className: "fid" }, f.fact_id), h("span", { className: "flabel" }, f.label_en ?? "")),
+            h("td", { title: f.fact_id }, h("span", { className: "flabel" }, f.label_en ?? "")),
             h("td", { className: "num" }, f.missing ? "" : valueText(f))))))),
       events.length ? h("p", { className: "events" }, "Events ", events.map((e) => h("span", { className: "eid", title: e.missing ? "not in events.json" : `${e.type_name}, ${this.match.players[e.player_id]?.name ?? e.player_id}` },
         e.missing ? `${e.event_id}?` : `${e.event_id} ${e.type_name.replace(/_/g, " ")}`))) : null,

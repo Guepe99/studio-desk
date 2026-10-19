@@ -27,6 +27,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from .. import config, db, mcp_server
 from ..clock import MatchClock
 from . import rules
+from . import phrasebook
 from .llm import Analyses, Lines, Picks, Verdicts, cost_usd
 
 MAX_PICKS = 4          # stories per batch besides the must-tell ones
@@ -44,7 +45,11 @@ INSTRUCTIONS = {
         "interesting: the football reason (a run behind the line, a change of shape, a spell of pressure), "
         "not the score and not a list of numbers. Claim only what the candidate says: `outcome` is "
         "what happened to the shot. Do not start the angle the way the angles in `recent_stories` start. "
-        "Reply with JSON: picks = [{candidate_id, confidence 0..1, angle}]."),
+        "The line on air is composed by code; you choose how it sounds. `tone` is \"lively\" for a moment "
+        "that lifts a crowd (a goal, a comeback, a loud shot, a chance from close in) and \"calm\" otherwise. "
+        "`focus` is one of the candidate's `focus_options` (where the shot came from, how far out, how hard "
+        "it was hit), the one that makes the moment; \"\" when the candidate has none. "
+        "Reply with JSON: picks = [{candidate_id, confidence 0..1, angle, tone, focus}]."),
     "analyst": (
         "You are the analyst of a football broadcast desk. For each story in the JSON, explain in one or two "
         "sentences of plain English what the numbers show, citing the fact ids you rely on in square brackets, e.g. "
@@ -102,7 +107,7 @@ INSTRUCTIONS = {
         "box', 'central', 'straight on' only when `place` says so. A distance is exact: no 'about' or 'circa' "
         "before it. In Italian and Spanish use your own words, never English ones.\n"
         "- Pass accuracy is the share of passes completed, never possession; tie each value to its team.\n"
-        "- Momentum is how much a team is on top (inerzia, inercia), never possession, domination or "
+        "- Momentum is how much a team is on top (inerzia, empuje), never possession, domination or "
         "pressing; pressing is how hard a team presses, never where on the pitch (no 'press high', 'pressa "
         "alto', 'presión alta'), with no turnovers or 'carrier'. `trend` is the path of the values, ready "
         "in your language: follow it, you may reword it but never change its direction. When it rose and "
@@ -164,14 +169,14 @@ STYLE = {
           "all'80.' 'Il Tarnby alza la linea difensiva.'",
     "es": "Escribe en español de España como un narrador de televisión (gol, disparo, el área, por delante), "
           "con frases nativas, no traducidas del inglés; decimales con coma (96,4). Nunca palabras inglesas como "
-          "win, blocked, pass accuracy, momentum o pressing: se dice gana, rechazado, pases completados, inercia "
-          "del partido, presión. Los equipos llevan artículo: el Redwick, del Harbour Vale, al Ostwick. Nunca "
+          "win, blocked, pass accuracy, momentum o pressing: se dice gana, rechazado, precisión en el pase, empuje, "
+          "presión. Los equipos llevan artículo: el Redwick, del Harbour Vale, al Ostwick. Nunca "
           "'dominio', 'vs', 'compactación', 'arco' (es la portería) ni 'sprinta' (es 'esprinta'). El resultado "
           "se escribe como en el marcador, primero los goles del local (0-1 si gana el visitante). Un club "
           "es singular: 'el Brightwater remonta', nunca 'remontan'. Ejemplos: 'Remate de cabeza de "
           "Ferrandi dentro del área y para el portero.' 'Disparo de Okowande desde fuera del área, centrado: "
           "lo para el portero.' 'Gol de Duarte: el Redwick recorta distancias, pero el Ostwick sigue por "
-          "delante, 1-2.' 'Dunmarrow esprinta a 35,8 km/h.' 'Disparo a 25,4 m de la portería.' 'La inercia "
+          "delante, 1-2.' 'Dunmarrow esprinta a 35,8 km/h.' 'Disparo a 25,4 m de la portería.' 'El empuje "
           "es del Calderwick: de 4,1/10 en el minuto 30 a 7,3/10 en el 40.' 'El Tarnby adelanta su línea "
           "defensiva.'",
 }
@@ -264,6 +269,7 @@ class Desk:
         self.shifted = set()
         self.openings = defaultdict(list)    # lang -> first words of the lines on air, so openings vary
         self.used = defaultdict(lambda: {"loud": set(), "openings": set()})  # lang -> what style_issues rations
+        self.spent = set()                   # phrasebook openers already on air: each one once a match
         self.slots = asyncio.Semaphore(config.MAX_PARALLEL_CALLS)
 
     async def mcp(self, tool, **args):
@@ -477,13 +483,32 @@ class Desk:
                                        self.m.p1 or float("inf"))
         return Batch(now, cands, window_end)
 
-    def new_story(self, c, confidence, angle):
+    def new_story(self, c, confidence, angle, tone=None, focus=None):
         self.story_n += 1
+        tone = tone if tone in phrasebook.TONES else None  # anything else: the phrasebook's own choice
+        focus = focus if focus in phrasebook.focus_options(c) else None
         # its own copy of the facts: graphics, templates and trends read only the candidate's facts,
         # the ones the analyst cites go to "cited"
         return {**c, "story_id": f"S-{self.story_n:06d}", "confidence": confidence, "angle": rules.tidy(angle),
                 "facts": list(c["facts"]), "cited": [],
-                "fact_ids": [f["fact_id"] for f in c["facts"]], "analysis_en": "", "texts": {}, "flagged": []}
+                "fact_ids": [f["fact_id"] for f in c["facts"]], "analysis_en": "", "texts": {}, "flagged": [],
+                "tone": tone, "focus": focus}
+
+    def on_air(self, s):
+        """Put the phrasebook's lines in s["texts"], or the template's when no phrasebook line passes;
+        returns what the verifier record says about them."""
+        texts, opener = phrasebook.compose(self.m, s, s.get("tone"), s.get("focus"), self.spent, self.used)
+        if not texts:
+            s["texts"] = {lang: rules.template(self.m, s, lang) for lang in rules.LANGS}
+            return {"on_air": "template", "opener": None}
+        s["texts"] = texts
+        for lang, t in texts.items():
+            self.openings[lang].append(" ".join(t.split()[:3]))
+            self.used[lang]["openings"].add(rules.opening(t))
+            self.used[lang]["loud"] |= rules.loud_words(t, lang)
+        if opener and opener not in phrasebook.REUSABLE:
+            self.spent.add(opener)
+        return {"on_air": "phrasebook", "opener": opener}
 
     def finish(self, s):
         s["risk"] = rules.risk(s)
@@ -518,11 +543,11 @@ def _rule_picks(cands):
 
 
 def template_story(desk, s, reason):
-    for lang in rules.LANGS:
-        s["texts"][lang] = rules.template(desk.m, s, lang)
+    air = desk.on_air(s)
     s["analysis_en"] = s["analysis_en"] or rules.analysis_template(desk.m, s)
+    what = "Phrasebook line used, no AI proposal" if air["on_air"] == "phrasebook" else "Fact-only sentence used"
     s["verifier"] = {"status": "template", "attempts": 0,
-                     "flagged": [rules.note(f"Fact-only sentence used: {rules.reason(reason)}.")]}
+                     "flagged": [rules.note(f"{what}: {rules.reason(reason)}.")], **air}
     return desk.finish(s)
 
 
@@ -543,6 +568,7 @@ def build_workflow(desk):
                                    "player": m().player_name(c["player_id"]), "note": c["note"],
                                    "score_after": desk.who_leads(c["ts"]),
                                    **({"outcome": c["outcome"]} if c.get("outcome") else {}),
+                                   **({"focus_options": o} if (o := phrasebook.focus_options(c)) else {}),
                                    "facts": [desk.brief(f) for f in c["facts"][:6]]}
                                   for c in cands],
                    "recent_stories": [{"kind": s["kind"], "team": m().team_name(s["team_id"]),
@@ -552,15 +578,17 @@ def build_workflow(desk):
         try:
             out, usage = await desk.ask("story_finder", payload, Picks)
             picks = [(by_id[p.candidate_id], p.confidence, p.angle) for p in out.picks if p.candidate_id in by_id]
+            choice = {id(by_id[p.candidate_id]): (p.tone, p.focus) for p in out.picks if p.candidate_id in by_id}
             note = ""
         except Exception as e:  # noqa: BLE001 - any failure falls back to the written rules
             picks, usage, note = [(c, 0.5, c["note"]) for c in _rule_picks(cands)], None, f" fallback: {rules.brief_error(e)}"
+            choice = {}
         chosen = {id(c) for c, _, _ in picks}
         picks = list({id(c): (c, conf, a) for c, conf, a in picks}.values())
         must = [(c, 0.7, c["note"]) for c in cands if c["kind"] in rules.MUST_TELL and id(c) not in chosen]
         others = [p for p in picks if p[0]["kind"] not in rules.MUST_TELL][:MAX_PICKS]
-        stories = [desk.new_story(c, conf, a) for c, conf, a in sorted(
-            [p for p in picks if p[0]["kind"] in rules.MUST_TELL] + must + others, key=lambda p: p[0]["ts"])]
+        stories = [desk.new_story(c, conf, a, *choice.get(id(c), ())) for c, conf, a in sorted(
+            [p for p in picks if p[0]["kind"] in rules.MUST_TELL] + must + others, key=lambda p: rules.air_order(p[0]))]
         desk.trace("story_finder", "pick", f"{len(cands)} candidates: " + ", ".join(c["kind"] for c in cands),
                    f"{len(stories)} stories: " + ", ".join(f"{s['story_id']} {s['kind']}" for s in stories) + note,
                    [i for s in stories for i in s["fact_ids"]], usage, [s["story_id"] for s in stories])
@@ -722,17 +750,14 @@ def build_workflow(desk):
         statuses, unjudged_any = Counter(), False
         for sid, s in by_sid.items():
             ok = {lang: (sid, lang) in texts and (sid, lang) not in problems for lang in rules.LANGS}
-            if all(ok.values()):  # all three languages say the same story, or all three are the template
+            # the AI's lines become a proposal on the desk when all three pass; on air go the phrasebook's
+            proposals = None
+            if all(ok.values()):
                 status = "rewritten" if any(attempts[(sid, lang)] > 1 for lang in rules.LANGS) else "pass"
-                for lang in rules.LANGS:
-                    t = s["texts"][lang] = rules.strip_citations(texts[(sid, lang)])
-                    desk.openings[lang].append(" ".join(t.split()[:3]))
-                    desk.used[lang]["openings"].add(rules.opening(t))
-                    desk.used[lang]["loud"] |= rules.loud_words(t, lang)
+                proposals = {lang: rules.strip_citations(texts[(sid, lang)]) for lang in rules.LANGS}
             else:
                 status = "template"
-                for lang in rules.LANGS:
-                    s["texts"][lang] = rules.template(m(), s, lang)
+            air = desk.on_air(s)
             s["unjudged"] = status != "template" and (sid not in analysis_judged or any(
                 (sid, lang) not in judged_ok for lang in rules.LANGS))
             unjudged_any |= s["unjudged"]
@@ -741,7 +766,7 @@ def build_workflow(desk):
                                             {lang: [rules.reason(p) for p in problems.get((sid, lang), [])]
                                              for lang in rules.LANGS})
             s["verifier"] = {"status": status, "attempts": max(attempts[(sid, lang)] for lang in rules.LANGS),
-                             "flagged": s["flagged"]}
+                             "flagged": s["flagged"], **air, **({"proposals": proposals} if proposals else {})}
             desk.finish(s)
             statuses[status] += 1
         usage_all["calls"] = usage_all.get("calls", 0)

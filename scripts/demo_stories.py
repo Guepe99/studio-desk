@@ -119,7 +119,11 @@ def build(meta, events, facts, cues):
                 "es": f"Impulso: {short[away]} {num(ma['value'], 'es')}, {short[home]} {num(mh['value'], 'es')} en la última ventana."},
                {"status": "template", "attempts": 2,
                 "flagged": [{"claim": "their best spell of the match", "fact_id": None, "reason": "no fact supports it"},
-                            {"claim": "they have taken over", "fact_id": None, "reason": "judged unsupported on the second attempt"}]},
+                            {"claim": "they have taken over", "fact_id": None, "reason": "judged unsupported on the second attempt"}],
+                "on_air": "phrasebook", "opener": None,
+                "proposals": {"en": f"{short[away]} take over: momentum {num(ma['value'], 'en')} against {num(mh['value'], 'en')}.",
+                              "it": f"L'{short[away]} prende in mano la partita: inerzia {num(ma['value'], 'it')} contro {num(mh['value'], 'it')}.",
+                              "es": f"El {short[away]} manda: inercia de {num(ma['value'], 'es')} contra {num(mh['value'], 'es')}."}},
                "not_checked")
     why(s3, round(w + 8, 1), 8.0, ("analyst", "casual"),
         {"en": "Momentum swing", "it": "Cambio di inerzia", "es": "Cambio de inercia"})

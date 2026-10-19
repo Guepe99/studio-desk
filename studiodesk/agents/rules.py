@@ -49,7 +49,7 @@ TITLES = {
     "comeback": ("Comeback", "Rimonta", "Remontada"),
     "big_chance": ("Big chance", "Grande occasione", "Ocasión clara"),
     "top_sprint": ("Sprint", "Scatto", "Sprint"),
-    "momentum_swing": ("Momentum swing", "Cambio di inerzia", "Cambio de inercia"),
+    "momentum_swing": ("Momentum swing", "Cambio di inerzia", "Cambio de dinámica"),
     "pressing_spell": ("Pressing", "Pressing", "Presión"),
     "tactical_shift": ("Tactical shift", "Cambio tattico", "Cambio táctico"),
     "ht": ("Half-time", "Fine primo tempo", "Descanso"),
@@ -97,9 +97,9 @@ TEMPLATES = {
                    "{title}: {leader} por delante, {s}."),
     "recap_win": ("{title}: {leader} win {s}.", "{title}: {leader} vince {s}.", "{title}: {leader} gana {s}."),
     "recap_level": ("{title}: level at {s}.", "{title}: parità, {s}.", "{title}: empate, {s}."),
-    "recap_acc": (" Passes completed: {home} {acc_h}%, {away} {acc_a}%.",
-                  " Passaggi riusciti: {home} {acc_h}%, {away} {acc_a}%.",
-                  " Pases completados: {home} {acc_h}%, {away} {acc_a}%."),
+    "recap_acc": (" Pass completion: {home} {acc_h}%, {away} {acc_a}%.",
+                  " Precisione nei passaggi: {home} {acc_h}%, {away} {acc_a}%.",
+                  " Precisión en el pase: {home} {acc_h}%, {away} {acc_a}%."),
 }
 # What happened to a shot, from its events (facts.engine.shot_outcome), in each writer's language.
 OUTCOMES = {"goal": ("goal", "gol", "gol"), "saved": ("saved", "parato", "parado por el portero"),
@@ -274,8 +274,9 @@ class Match:
 
     def without_names(self, text):
         """text with the match's player and team names blanked, so a digit in a name is not a number."""
-        for n in sorted({p.get("name") or "" for p in self.players.values()} | {t["name"] for t in self.teams.values()},
-                        key=len, reverse=True):
+        names = {p.get("name") or "" for p in self.players.values()}
+        surnames = {n.split()[-1] for n in names if n}  # lines name a player by surname (required_name)
+        for n in sorted(names | surnames | {t["name"] for t in self.teams.values()}, key=len, reverse=True):
             text = text.replace(n, " ") if n else text
         return text
 
@@ -846,7 +847,7 @@ CONTROL = {"en": r"tak\w* (?:control|over|charge|command)|took (?:control|over|c
            "es": r"tom\w* el (?:mando|control)|tomó el (?:mando|control)|se adueñ\w*|hasta el(?: minuto)? \d+|"
                  r"ventana tras ventana|en aumento"}
 # the two window measures are different numbers: momentum is not press intensity
-MOMENTUM_WORDS = r"momentum|inerzia|inercia"
+MOMENTUM_WORDS = r"momentum|inerzia|inercia|empuje"
 PRESS_WORDS = (r"press(?:es|ed|ing)?|pressure|pressione|pressa\w*|pressing|presión|presiona\w*|intensity|intensità|"
                r"intensidad")
 # press intensity is how hard a team presses, never where on the pitch
@@ -978,7 +979,7 @@ def story_issues(m, story, text, lang, on_air=True):
     elif hit := _has(DOMINATION, text):
         out.append(f"domination claim: '{hit.group(0)}', no fact measures domination")
     # the crossbar is named by the over-the-bar outcome itself ("por encima del larguero")
-    scan = re.sub(OVER_BAR, "", text, flags=re.IGNORECASE) if story.get("outcome") == "over" else text
+    scan = re.sub(OVER_BAR, "", text, flags=re.IGNORECASE) if info and info["outcome"] == "over" else text
     if hit := _has(INVENTED.get(lang, INVENTED["en"]), scan):
         out.append(f"detail not in the facts: '{hit.group(0)}'")
     if hit := _has(PRESS_HIGH, text):
@@ -1400,7 +1401,7 @@ def style_issues(text, lang, kind, used=None, m=None):
         out.append(f"article twice: '{hit.group(0)}', the club's article merges with the word before")
     if lang == "en" and (hit := re.search(r"(?<!\bthe )\b\d+(?:st|nd|rd|th) minute\b", text)):
         out.append(f"'{hit.group(0)}' without 'the': say 'in the {hit.group(0)}'")
-    tail = [p for p in re.split(r"[,;:]", text.rstrip(" .!"))][-2:]
+    tail = re.split(r"[;:]|,(?!\d)", text.rstrip(" .!"))[-2:]  # "7,5/10": a decimal comma splits nothing
     if len(tail) == 2 and all(re.search(r"\d", p) and len(p.split()) <= 3 for p in tail) and kind != "recap":
         out.append("numbers listed at the end: work them into the sentence")
     used = used or {}
@@ -1517,6 +1518,8 @@ def risk(story):
     """0..1: how much a person should look before this goes on air. A story whose claims the AI judge
     did not check always goes to review."""
     r = 0.05
+    if story["verifier"].get("on_air") == "phrasebook":  # every claim on air comes with its fact condition
+        return round(r + (0.3 if not story["fact_ids"] else 0.0), 2)
     if story.get("kind") == "recap" and story["verifier"]["status"] == "template":
         return r  # the score and pass accuracy written by code: the half-time and full-time card always airs
     r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
@@ -1549,6 +1552,11 @@ PLAN = {
     "tactical_shift": _ALL_WHY,
 }
 MAX_DELAY_S = 30.0  # a graphic that cannot start within this many seconds of its moment is dropped
+
+
+def air_order(story):
+    """Match time, and at the same moment the recap last: nothing follows "Half-time" or "Full time"."""
+    return story["ts"], story["kind"] == "recap"
 
 
 class Director:
@@ -1617,7 +1625,7 @@ class Director:
             if s["player_id"] and f"player:{s['player_id']}" not in self.audiences:
                 self.audiences.append(f"player:{s['player_id']}")
         cues = []
-        for s in sorted(stories, key=lambda s: s["ts"]):
+        for s in sorted(stories, key=air_order):
             for audience in self.audiences:
                 role = self._role(audience, s)
                 t = s["ts"]

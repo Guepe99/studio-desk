@@ -27,7 +27,8 @@ match clock --event--> facts (MCP server) --batch--> story_finder -> analyst -> 
 ```
 
 - **Agents.** A Microsoft Agent Framework workflow on gpt-5-mini in Azure AI Foundry (Sweden Central). Agents read the match only through an MCP server whose clock moves with the match, so they cannot see the future.
-- **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id. Models write the words, never the numbers. The verifier checks each sentence against its facts, and the desk shows which facts a story uses.
+- **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id. Models never write the numbers. The desk shows which facts a story uses.
+- **Phrasebook.** The lines that go on air by themselves are composed by code from pieces written for each language, each with the fact that makes it true: "What a hit!" only for a shot of 100 km/h or more, "strikes again" only for a player's second goal. The story finder chooses the tone and what the line leads with (where the shot came from, how far out, how hard). The commentators' own lines are checked against the facts by the verifier and wait on the desk as a proposal that a person can put on air with one click.
 - **Safety.** Approved texts pass through Azure AI Content Safety. The result is stored with the story, and a story that fails the check is held back.
 - **Fallbacks.** If an agent fails or times out, rules and template sentences take its place and the broadcast carries on. The trace records the fallback.
 - **Voice.** Azure AI Speech reads the verified English stories ahead of time. A clip plays only when its checksum matches the text on screen.
@@ -52,7 +53,7 @@ cp -r replays/. web/data/
 
 The export builds the tracking and the template graphics; the copy adds the recorded agent output on top. Then open http://127.0.0.1:8000/. The replay needs no Azure account. To run the agents yourself, run `.venv/bin/pip install -e '.[dev,agents]'`, then `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI for the real one.
 
-Tests run offline and never call a paid service: `.venv/bin/pytest -q` (196 tests). GitHub Actions runs them on every push and builds the container image.
+Tests run offline and never call a paid service: `.venv/bin/pytest -q` (318 tests). GitHub Actions runs them on every push and builds the container image.
 
 ## Deployment
 

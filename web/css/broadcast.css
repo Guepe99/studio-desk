@@ -190,6 +190,8 @@ body { display: flex; }
 .meter span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--muted); }
 .meter::after { content: ""; position: absolute; left: 35%; top: 0; bottom: 0; width: 2px; background: var(--paper); }
 .story-text { margin: 6px 0 8px; font-size: 19px; font-weight: 500; line-height: 1.3; max-width: 60ch; }
+.proposal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0 0 8px; padding: 6px 10px; border-left: 3px solid var(--line); }
+.proposal-text { margin: 0; color: var(--muted); max-width: 60ch; overflow-wrap: anywhere; }
 .checks { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: 16px; }
 .checks div { display: flex; gap: 6px; }
 .checks dt { color: var(--muted); }

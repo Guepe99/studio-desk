@@ -3,13 +3,14 @@ import asyncio
 import json
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from test_export import PAYLOAD_KEYS
 
 from studiodesk import config, db
 from studiodesk import mcp_server as srv
-from studiodesk.agents import rules, workflow
+from studiodesk.agents import phrasebook, rules, workflow
 from studiodesk.agents.llm import FakeChatClient, cost_usd
 from studiodesk.export import export
 
@@ -95,7 +96,9 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
     assert summary["stories"] == len(st) and {"goal", "recap"} <= {s["kind"] for s in st}
     for s in st:
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values())
-        assert s["verifier"]["status"] == "pass" and set(s["verifier"]) == {"status", "attempts", "flagged"}, (s["texts"], s["verifier"])
+        v = s["verifier"]
+        assert v["status"] == "pass" and v["on_air"] == "phrasebook" and set(v["proposals"]) == set(s["texts"]), (s["texts"], v)
+        assert set(v) == {"status", "attempts", "flagged", "on_air", "opener", "proposals"}
         assert s["default_status"] == "needs_review" and s["safety"] == "not_checked" and s["fact_ids"]  # no Content Safety yet
     # one trace per hand-off, in workflow order, for every batch
     tr = rows(rt, "traces")
@@ -139,7 +142,8 @@ def test_rewrites_at_most_twice_then_template(desk_db):
         assert s["verifier"]["status"] == "template" and s["verifier"]["attempts"] == 1 + config.MAX_REWRITES
         assert "999" not in s["texts"]["it"]  # and English, though fine, is the template too: one story in all three
         assert s["verifier"]["flagged"] == ["Italian draft not used: a number the facts do not give."]
-        assert rules.default_status(s["risk"]) == ("auto_approved" if s["kind"] == "recap" else "needs_review")
+        assert "proposals" not in s["verifier"]  # a draft that failed is no proposal, in any language
+        assert s["verifier"]["on_air"] == "phrasebook" and rules.default_status(s["risk"]) == "auto_approved"
 
 
 def test_one_rewrite_fixes_it_and_passed_texts_are_judged_once(desk_db):
@@ -190,11 +194,12 @@ def test_agent_failure_falls_back_and_never_blocks(desk_db, monkeypatch, failing
     assert {"goal", "recap"} <= {s["kind"] for s in st} and summary["cues"] > 0
     for s in st:
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values()) and s["analysis_en"]
+        # the phrasebook line airs whatever the model did
+        assert s["verifier"]["on_air"] == "phrasebook" and rules.default_status(s["risk"]) == "auto_approved"
         if failing in ("Lines", "all", "timeout"):
-            assert s["verifier"]["status"] == "template"  # only the code's half-time and full-time card airs
-            assert rules.default_status(s["risk"]) == ("auto_approved" if s["kind"] == "recap" else "needs_review")
-        if failing == "Verdicts":  # numbers checked, claims not judged: nothing airs without a person
-            assert s["verifier"]["status"] == "pass" and rules.default_status(s["risk"]) == "needs_review"
+            assert s["verifier"]["status"] == "template" and "proposals" not in s["verifier"]
+        if failing == "Verdicts":  # numbers checked, claims not judged: a proposal, never on air by itself
+            assert s["verifier"]["status"] == "pass" and s["verifier"]["proposals"]
     tr = rows(rt, "traces")
     if failing != "Verdicts":
         assert any("fallback" in t["output_summary"] for t in tr)
@@ -204,14 +209,15 @@ def test_agent_failure_falls_back_and_never_blocks(desk_db, monkeypatch, failing
         assert cut and all(a["tokens_in"] > 0 for a in cut) and len(cut) == summary["model_calls"]
 
 
-def test_judge_with_missing_verdicts_approves_nothing(desk_db):
+def test_judge_with_missing_verdicts_leaves_a_proposal(desk_db):
     _, _, rt = desk_db
     run(rt, FakeChatClient(lambda schema, p: {"verdicts": []} if schema == "Verdicts" else None))
     st = stories(rt)
-    assert st and all(rules.default_status(s["risk"]) == "needs_review" for s in st)
+    # the judge no longer gates the air: the phrasebook line goes, the unjudged lines wait as a proposal
+    assert st and all(s["verifier"]["on_air"] == "phrasebook" and s["verifier"]["proposals"] for s in st)
 
 
-def test_a_judge_that_takes_its_issue_back_keeps_the_text_but_approves_nothing(desk_db):
+def test_a_judge_that_takes_its_issue_back_keeps_the_proposal(desk_db):
     _, _, rt = desk_db
 
     def judge(schema, p):
@@ -221,8 +227,33 @@ def test_a_judge_that_takes_its_issue_back_keeps_the_text_but_approves_nothing(d
 
     run(rt, FakeChatClient(judge))
     st = stories(rt)
-    assert st and all(rules.default_status(s["risk"]) == "needs_review" for s in st)
     assert any(s["verifier"]["status"] == "pass" for s in st)  # not sent to the template for a non-issue
+
+
+def test_the_finder_chooses_tone_and_focus_and_a_wrong_choice_is_dropped(desk_db):
+    _, _, rt = desk_db
+    seen = []
+
+    def finder(schema, p):
+        if schema == "Picks":
+            seen.extend(p["candidates"])
+            return {"picks": [{"candidate_id": c["candidate_id"], "confidence": 0.9, "angle": c["note"],
+                               "tone": "calm" if c["kind"] == "recap" else "shouting",
+                               "focus": (c.get("focus_options") or [""])[0] if c["kind"] == "goal" else "nowhere"}
+                              for c in p["candidates"]]}
+
+    run(rt, FakeChatClient(finder))
+    assert any(c.get("focus_options") for c in seen)  # the finder sees what it can choose from
+    st = stories(rt)
+    assert st and all(s["verifier"]["on_air"] == "phrasebook" for s in st)
+    m = rules.Match(srv.get_match_info("M001"))
+    m.facts = {f["fact_id"]: f for f in srv.get_facts("M001")}
+    goal = rules.goal_candidates(m, m.kind("score")[0])[0]
+    focus = phrasebook.focus_options(goal)[0]
+    desk = SimpleNamespace(story_n=0)
+    ok = workflow.Desk.new_story(desk, goal, 0.9, "angle", "calm", focus)
+    bad = workflow.Desk.new_story(desk, goal, 0.9, "angle", "shouting", "nowhere")
+    assert (ok["tone"], ok["focus"]) == ("calm", focus) and (bad["tone"], bad["focus"]) == (None, None)
 
 
 def test_run_stops_calling_the_model_at_its_ceiling(desk_db, monkeypatch):
@@ -231,7 +262,7 @@ def test_run_stops_calling_the_model_at_its_ceiling(desk_db, monkeypatch):
     summary = run(rt, FakeChatClient())
     assert summary["model_calls"] == 3 and summary["stories"] > 0
     assert any("run budget reached" in t["output_summary"] for t in rows(rt, "traces"))
-    assert all(rules.default_status(s["risk"]) == "needs_review" for s in stories(rt) if s["kind"] != "recap")
+    assert all(s["verifier"]["on_air"] == "phrasebook" and "proposals" not in s["verifier"] for s in stories(rt))
 
 
 def test_director_never_shows_more_than_two_graphics(desk_db):
@@ -417,7 +448,7 @@ def test_a_true_score_line_passes_when_the_judge_contradicts_itself(desk_db):
     assert any(c["kind"] == "goal" and c["score_after"].endswith("lead 1-0") for c in cards)
 
 
-def test_style_goes_back_to_the_writer_and_costs_little_risk(desk_db):
+def test_style_goes_back_to_the_writer(desk_db):
     _, _, rt = desk_db
     feedback = []
 
@@ -437,7 +468,6 @@ def test_style_goes_back_to_the_writer_and_costs_little_risk(desk_db):
         assert s["verifier"]["status"] == "rewritten" and "what a moment" not in s["texts"]["en"]
         assert any(n.startswith("Earlier English draft:") and n.endswith("a word repeated.")
                    for n in s["verifier"]["flagged"])  # style leaves a plain note too
-        assert s["risk"] < rules.risk({**s, "style_only": False, "fact_ids": s["fact_ids"]})
     for schema, p in fake.calls:
         if schema == "Lines":
             assert "recent_openings" in p
