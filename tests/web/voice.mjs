@@ -2,12 +2,14 @@
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh voice.mjs   (Playwright image: it decodes MP3)
 //
-// Writes data/DEMO/voice.json and clips (copied from replays/M001/voice, any speech will do) with
-// the text_sha1 of the DEMO stories, then checks at 1440x900: the button is off until pressed;
+// Writes data/DEMO/voice.json and clips (copied from replays/M001/voice, any speech in the row's
+// language will do) with the text_sha1 of the DEMO stories, in English, Italian and Spanish, then checks at 1440x900: the button is off until pressed;
 // at 1x a clip starts when an auto-approved story's cue goes on air; seeking stops it; a held
 // story stays silent until approved on the desk, then speaks; the AI switch stops a clip; an
 // edited story and 4x stay silent; a stale text_sha1 is never played; one Audio element plays every
-// clip; a language switch stops the clip; a casual-fan card in other words stays silent; a flagged
+// clip; a language switch stops the clip; the page plays the clip of the language the viewer picked
+// (the .it.mp3 file in Italian, never the English one) and stays silent in a language with no clip;
+// a manifest row whose text is another language's is not loaded; a casual-fan card in other words stays silent; a flagged
 // story never speaks; a refused play() turns the
 // button off; the speaker icon is painted, off and on (convex paths, pixels in the icon colour).
 // The fake clips are removed at the end. Screenshots of the controls bar at 1440 and 390 px:
@@ -33,15 +35,20 @@ const demo = path.join(ROOT, "web/data/DEMO");
 const stories = JSON.parse(readFileSync(path.join(demo, "stories.json"), "utf8"));
 const cues = JSON.parse(readFileSync(path.join(demo, "cues.json"), "utf8"));
 const src = path.join(ROOT, "replays/M001/voice");
-const mp3 = readdirSync(src).filter((f) => f.endsWith(".en.mp3")).sort();
 mkdirSync(path.join(demo, "voice"), { recursive: true });
 const story = (kind) => stories.find((s) => s.kind === kind);
 const AUTO = story("goal"), HELD = story("key_pass"), STALE = story("comeback"), EDITED = story("momentum_swing");
-const manifest = stories.map((s, i) => {
-  copyFileSync(path.join(src, mp3[i % mp3.length]), path.join(demo, "voice", `${s.story_id}.en.mp3`));
-  const text = s === STALE ? "an older text" : s.texts.en;
-  return { story_id: s.story_id, lang: "en", file: `voice/${s.story_id}.en.mp3`, duration_s: 5,
-    text_sha1: createHash("sha1").update(text, "utf8").digest("hex"), voice: "test" };
+// English: STALE's clip says an older text. Italian: HELD's row carries the English text (a clip in
+// the wrong language), so it is not loaded. Spanish: AUTO has no clip.
+const manifest = ["en", "it", "es"].flatMap((lang) => {
+  const mp3 = readdirSync(src).filter((f) => f.endsWith(`.${lang}.mp3`)).sort();
+  if (!mp3.length) throw new Error(`no ${lang} clips in replays/M001/voice`);
+  return stories.filter((s) => !(lang === "es" && s === AUTO)).map((s, i) => {
+    copyFileSync(path.join(src, mp3[i % mp3.length]), path.join(demo, "voice", `${s.story_id}.${lang}.mp3`));
+    const text = lang === "en" && s === STALE ? "an older text" : lang === "it" && s === HELD ? s.texts.en : s.texts[lang];
+    return { story_id: s.story_id, lang, file: `voice/${s.story_id}.${lang}.mp3`, duration_s: 5,
+      text_sha1: createHash("sha1").update(text, "utf8").digest("hex"), voice: "test" };
+  });
 });
 writeFileSync(path.join(demo, "voice.json"), JSON.stringify(manifest));
 // the fake clips go at the end, also on a crash, so later DEMO runs are silent again
@@ -71,7 +78,7 @@ await page.evaluate(() => document.fonts.ready);
 const voice = () => page.evaluate(() => {
   const v = window.studioDesk.voice;
   const a = v.current ? v.audio : null;
-  return { sid: v.current?.sid ?? null, playing: Boolean(a && !a.paused), t: a?.currentTime ?? 0, ts: window.studioDesk.state.ts };
+  return { sid: v.current?.sid ?? null, file: a ? a.src.split("/").pop() : null, playing: Boolean(a && !a.paused), t: a?.currentTime ?? 0, ts: window.studioDesk.state.ts };
 });
 // play at speed from half a second before ts until match time passes ts + after (frames are slow here)
 const playFrom = async (ts, after, speed = 1) => {
@@ -137,7 +144,9 @@ const iconOk = (paths) => paths.length === 4 && paths.every((p) => p.w > 1 && p.
 let paths = await icon();
 let lit = await bright();
 expect(iconOk(paths) && lit > 30, `voice icon drawn when off (${lit} icon pixels, ${JSON.stringify(paths)})`);
-expect(await page.evaluate(() => window.studioDesk.voice.clips.size) === stories.length - 1, "clip with a stale text_sha1 is not loaded");
+expect(await page.evaluate(() => [...window.studioDesk.voice.clips.keys()].sort().join()) ===
+  manifest.filter((r) => !(r.story_id === STALE.story_id && r.lang === "en") && !(r.story_id === HELD.story_id && r.lang === "it"))
+    .map((r) => `${r.story_id}|${r.lang}`).sort().join(), "clips with a stale or another language's text_sha1 are not loaded");
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "muted: no clip at the auto-approved cue");
 
@@ -152,7 +161,7 @@ expect(iconOk(paths) && paths.some((p) => p.cls === "i-on") && lit > 30, `voice 
 
 await playFrom(firstCue(AUTO), 1);
 let v = await voice();
-expect(v.sid === AUTO.story_id && v.playing && v.t > 0.2, `1x: clip of ${AUTO.story_id} plays when its cue goes on air (${JSON.stringify(v)})`);
+expect(v.sid === AUTO.story_id && v.file === `${AUTO.story_id}.en.mp3` && v.playing && v.t > 0.2, `1x: English clip of ${AUTO.story_id} plays when its cue goes on air (${JSON.stringify(v)})`);
 await page.screenshot({ path: path.join(shots, "voice-1440.png"), clip: await page.$eval("#controls", (el) => { const r = el.getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; }) });
 
 await page.evaluate(() => window.studioDesk.seek(window.studioDesk.state.ts + 30));
@@ -197,13 +206,20 @@ await playFrom(casual.ts, 1);
 expect((await voice()).sid === null, "casual audience: a card in other words stays silent");
 await page.click('[data-audience="analyst"]');
 
-// a language switch stops the clip; the story has no Italian clip, so it stays silent in Italian
+// a language switch stops the clip; in Italian the Italian clip plays, in Spanish (no clip) silence
 await page.selectOption("#lang", "it");
 await page.waitForTimeout(300);
 v = await voice();
 expect(v.sid === null && !v.playing, "switching to Italian stops the English clip");
 await playFrom(firstCue(AUTO), 1);
-expect((await voice()).sid === null, "Italian: no clip, silent");
+v = await voice();
+expect(v.sid === AUTO.story_id && v.file === `${AUTO.story_id}.it.mp3` && v.playing, `Italian: the Italian clip plays (${JSON.stringify(v)})`);
+await page.selectOption("#lang", "es");
+await page.waitForTimeout(300);
+v = await voice();
+expect(v.sid === null && !v.playing, "switching to Spanish stops the Italian clip");
+await playFrom(firstCue(AUTO), 1);
+expect((await voice()).sid === null, "Spanish: no clip for this story, silent (never another language's)");
 await page.selectOption("#lang", "en");
 
 // a story flagged by Content Safety is held on the desk and never speaks, even once approved

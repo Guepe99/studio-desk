@@ -8,7 +8,7 @@ from studiodesk import voice
 
 def story(sid, text, kind="goal", verifier="pass", status="auto_approved", safety="not_checked"):
     return {"story_id": sid, "kind": kind, "ts": 1.0, "default_status": status, "safety": safety,
-            "verifier": {"status": verifier, "attempts": 1, "flagged": []}, "texts": {"en": text, "it": "x"}}
+            "verifier": {"status": verifier, "attempts": 1, "flagged": []}, "texts": {"en": text, "it": f"IT {text}", "es": f"ES {text}"}}
 
 
 class Fake:
@@ -93,7 +93,7 @@ def test_dry_run_and_unknown_lang(tmp_path):
     assert run(tmp_path, [story("S-000001", "Goal.")], fake, dry_run=True) == []
     assert fake.calls == [] and not (tmp_path / "out" / "voice.json").exists()
     with pytest.raises(SystemExit):
-        run(tmp_path, [story("S-000001", "Goal.")], fake, lang="it")
+        run(tmp_path, [story("S-000001", "Goal.")], fake, lang="fr")
 
 
 def test_http_error_stops(tmp_path):
@@ -124,3 +124,33 @@ def test_a_failed_run_keeps_the_clips_it_made_in_the_manifest(tmp_path):
     fake = Fake()
     run(tmp_path, stories, fake)
     assert len(fake.calls) == 1  # only S-000002 is paid for again
+
+
+@pytest.mark.parametrize("lang", ["it", "es"])
+def test_each_language_gets_its_own_text_voice_and_file(tmp_path, lang):
+    stories = [story("S-000001", "Goal at 10."), story("S-000002", "Recap.", kind="recap")]
+    run(tmp_path, stories, Fake())  # English first: the other language must keep these rows
+    fake = Fake()
+    rows = run(tmp_path, stories, fake, lang=lang)
+    v = voice.VOICES[lang]
+    assert v["voice"].startswith(v["lang"] + "-") and v["lang"].startswith(lang + "-")
+    for (_, body), r, s in zip(fake.calls, rows, stories):
+        root = ET.fromstring(body)
+        assert root.get("{http://www.w3.org/XML/1998/namespace}lang") == v["lang"]
+        assert root[0].get("name") == v["voice"] and "".join(root.itertext()) == s["texts"][lang]
+        assert r["lang"] == lang and r["file"] == f"voice/{s['story_id']}.{lang}.mp3" and r["voice"] == v["voice"]
+        assert r["text_sha1"] == voice.sha1(s["texts"][lang]) != voice.sha1(s["texts"]["en"])
+    manifest = json.loads((tmp_path / "out" / "voice.json").read_text())
+    assert sorted((r["story_id"], r["lang"]) for r in manifest) == sorted(
+        (s["story_id"], x) for s in stories for x in ("en", lang))
+    assert len(list((tmp_path / "out" / "voice").glob(f"*.{lang}.mp3"))) == 2
+    assert len(list((tmp_path / "out" / "voice").glob("*.en.mp3"))) == 2  # a run for one language keeps the others
+
+
+def test_spoken_italian_and_spanish():
+    assert voice.spoken("Al 45+2' Kimura segna da 24 metri: 2-1. Dal 4-3-3 al 4-4-2, 3,8/10, 107 km/h, 1 m, 9 m.", "it") == \
+        "Al 45 più 2 Kimura segna da 24 metri: 2 a 1. Dal quattro-tre-tre al quattro-quattro-due, 3,8 su 10, " \
+        "107 chilometri orari, 1 metro, 9 metri."
+    assert voice.spoken("¡Gol! En el minuto 90+3, 0-2. Del 4-4-2, 5,5/10 en el 10, 92 km/h, 6 m/s, 16 m.", "es") == \
+        "¡Gol! En el minuto 90 más 3, 0 a 2. Del cuatro-cuatro-dos, 5,5 sobre 10 en el 10, 92 kilómetros por hora, " \
+        "6 metros por segundo, 16 metros."
