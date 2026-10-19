@@ -195,6 +195,13 @@ CREATE TABLE IF NOT EXISTS session_decisions (
   PRIMARY KEY (session_id, match_id, story_id)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS questions_daily (    -- Ask the studio caps (docs/CONTRACT.md)
+  day        TEXT NOT NULL,                     -- YYYY-MM-DD UTC
+  session_id TEXT NOT NULL,                     -- '*' for the site total
+  questions  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, session_id)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS usage_daily (
   day        TEXT NOT NULL,                     -- YYYY-MM-DD UTC
   session_id TEXT NOT NULL,                     -- '*' for the site total

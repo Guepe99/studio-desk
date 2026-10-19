@@ -313,5 +313,34 @@ Agents only learn about an event when the clock releases it, in replay generatio
   pack into `web/data/<match_id>/`.
 - `voice.json` is an array of `{story_id, lang, file, duration_s, text_sha1, voice}`; `file` is
   relative to the match folder, `text_sha1` is the SHA-1 of the story's `texts[lang]`.
+  An optional `spoken_sha1` (additive) is the SHA-1 of what the voice was sent; the page ignores it.
 - The page plays a clip only when its `text_sha1` matches the story text it shows. A match with no
   `voice.json` (404) plays silent.
+
+## Ask the studio additions (feat/ask, additive)
+
+- `POST /api/ask` with `{match_id, ts, question, lang}`: a visitor's question about the match at
+  replay time `ts`. `question` is plain text, 1 to 280 characters; `lang` is `en`, `it` or `es`.
+- Answer: `{status, answer, fact_ids, questions_left}`. `status` is `answered`, or `declined` when
+  the data up to `ts` cannot answer it or the answer fails a check (then `answer` is a fixed
+  sentence per language written in code, nothing from the model, and `fact_ids` is empty). Over a
+  cap: 429 with `{status: "limit", reason}`. No model configured (tests, a site without Foundry):
+  503, and the page hides the box.
+- The agent `studio_host` (gpt-5-mini, reasoning minimal) reads the match only through the MCP tools
+  with the clock set to `ts`: nothing after `ts`, never the hidden storylines. It answers in `lang`,
+  at most two sentences, and cites the fact ids it used.
+- Checks before an answer is shown: every number in it is the value of a cited fact with
+  `fact.ts <= ts` (the verifier's rules in `studiodesk/agents/rules.py`), no forbidden name, and
+  Azure AI Content Safety on the question and on the answer. The question is data, never instructions.
+- Caps (`studiodesk/config.py`): `ASK_PER_SESSION_PER_DAY = 10`, `ASK_PER_DAY = 500` for the site,
+  and the existing stop once the day's cost passes $25. Counted in `questions_daily`
+  (`day, session_id` with `'*'` for the site, `questions`). Every question writes one `audit` row,
+  `action: "ask"`, with its tokens, cost and status; the question text is kept in `detail`.
+
+## Page additions (feat/moments, additive)
+
+- "Next key moment": a button that seeks to 3 seconds before the next story cue of the current
+  audience after the current time (template cues without a story are skipped).
+- Agent activity: a strip beside the pitch that follows the replay clock and shows the last steps
+  of `traces.json` with `ts <= now` (agent, step, its output summary, model, tokens, cost). It
+  reads only the replay files; on a phone it folds to one line.

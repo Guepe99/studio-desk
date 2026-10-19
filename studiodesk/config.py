@@ -12,6 +12,8 @@ MAX_GRAPHICS_ON_SCREEN = 2
 LIVE_RUNS_PER_SESSION_PER_DAY = 2
 LIVE_RUNS_PER_DAY = 20
 DAILY_COST_STOP_USD = 25.0
+ASK_PER_SESSION_PER_DAY = 10
+ASK_PER_DAY = 500
 
 # Agents (studiodesk/agents): gpt-5-mini on Azure AI Foundry, reasoning effort minimal.
 MODEL_DEPLOYMENT = "gpt-5-mini"
