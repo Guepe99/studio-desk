@@ -8,10 +8,13 @@ COPY studiodesk ./studiodesk
 COPY web ./web
 RUN gzip -k -9 web/vendor/babylonjs/*/*.js
 COPY data/forbidden_names.txt ./data/
+# AI replay packs (stories, cues, traces of a real agents run) replace the template stories.
+COPY replays ./replays
 # The demo matches are rebuilt from the seed at image build: no data files in git.
 RUN set -e; python -m studiodesk.sim build --matches 4 --seed 7 \
  && python -m studiodesk.facts build --all \
- && for m in M001 M002 M003 M004; do python -m studiodesk.export "$m" && gzip -k -6 "web/data/$m/tracking.f32"; done \
+ && for m in M001 M002 M003 M004; do python -m studiodesk.export "$m" && gzip -k -6 "web/data/$m/tracking.f32" \
+    && if [ -d "replays/$m" ]; then cp "replays/$m/stories.json" "replays/$m/cues.json" "replays/$m/traces.json" "web/data/$m/"; fi; done \
  && chown -R app /app/data
 USER app
 EXPOSE 8000
