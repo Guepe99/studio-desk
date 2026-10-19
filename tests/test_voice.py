@@ -99,3 +99,28 @@ def test_dry_run_and_unknown_lang(tmp_path):
 def test_http_error_stops(tmp_path):
     with pytest.raises(RuntimeError, match="401"):
         run(tmp_path, [story("S-000001", "Goal.")], Fake(replies=[(401, {}, b"denied")]))
+
+
+def test_spoken_formations_stoppage_time_and_units():
+    assert voice.spoken("They switch into a 4-4-2, then a 4-2-3-1; 2-0 up.") == \
+        "They switch into a four-four-two, then a four-two-three-one; two-nil up."
+    assert voice.spoken("45+2' Kimura shoots") == "Minute 45 plus 2, Kimura shoots"
+    assert voice.spoken("in the 90+3’, 10 m/s, 1 m") == "In the minute 90 plus 3, 10 metres per second, 1 metre"
+    assert voice.spoken("a 21 m drive, ran 61.5 m in all") == "A 21-metre drive, ran 61.5 metres in all"
+
+
+def test_retry_after_in_date_form_waits_a_minute(tmp_path):
+    assert voice.retry_after({"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}) == 60.0
+    assert voice.retry_after({}) == 60.0 and voice.retry_after({"Retry-After": "7"}) == 7.0
+
+
+def test_a_failed_run_keeps_the_clips_it_made_in_the_manifest(tmp_path):
+    stories = [story(f"S-00000{i}", f"Line {i}.") for i in range(1, 4)]
+    run(tmp_path, stories[2:], Fake())  # S-000003 voiced by an earlier run
+    with pytest.raises(RuntimeError, match="401"):
+        run(tmp_path, stories, Fake(replies=[(200, {}, b"\xff" * 6000), (401, {}, b"denied")]))
+    manifest = json.loads((tmp_path / "out" / "voice.json").read_text())
+    assert [r["story_id"] for r in manifest] == ["S-000001", "S-000003"]
+    fake = Fake()
+    run(tmp_path, stories, fake)
+    assert len(fake.calls) == 1  # only S-000002 is paid for again

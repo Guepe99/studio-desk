@@ -45,16 +45,24 @@ VOICES = {
 
 def spoken(text):
     """What the voice reads: the verified text with broadcast pronunciations, no new content."""
-    t = re.sub(r"\b(\d)-(\d)\b", lambda m: "-".join(SCORE_WORDS[int(g)] for g in m.groups()), text)  # 2-1: two-one
+    t = text.replace("’", "'")
+    t = re.sub(r"\b\d(?:-\d){2,3}\b", lambda m: "-".join(DIGIT_WORDS[int(d)] for d in m[0].split("-")), t)  # 4-4-2
+    t = re.sub(r"\b(\d)-(\d)\b", lambda m: "-".join(SCORE_WORDS[int(g)] for g in m.groups()), t)  # 2-1: two-one
     t = re.sub(r"(\d)\s?/10\b", r"\1 out of 10", t)
+    t = re.sub(r"(\d) ?m/s\b", r"\1 metres per second", t)
+    t = re.sub(r"\b([Aa]n?) (\d+(?:\.\d+)?) m (?=[a-z])", r"\1 \2-metre ", t)  # "a 21 m drive": "a 21-metre drive"
+    t = re.sub(r"\b1 m\b", "1 metre", t)
     t = re.sub(r"(\d) m\b", r"\1 metres", t)
     t = re.sub(r"(\d) ?km/h\b", r"\1 kilometres per hour", t)
+    t = re.sub(r"\b(\d{2,3})\+(\d{1,2})'(?=\s+[A-Z])", r"minute \1 plus \2,", t)  # "45+2' Kimura"
+    t = re.sub(r"\b(\d{2,3})\+(\d{1,2})'", r"minute \1 plus \2", t)
     t = re.sub(r"\b(\d{1,3})'(?=\s+[A-Z])", r"minute \1,", t)  # "73' Kimura": "minute 73, Kimura"
     t = re.sub(r"\b(\d{1,3})'", r"minute \1", t)
     return t[:1].upper() + t[1:]
 
 
 SCORE_WORDS = ["nil", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+DIGIT_WORDS = ["zero", *SCORE_WORDS[1:]]  # formations: no "nil"
 
 
 def ssml(story, lang):
@@ -97,6 +105,14 @@ def http_post(url, headers, body):
         return e.code, dict(e.headers), e.read()
 
 
+def retry_after(headers):
+    """Seconds from a Retry-After header; 60 when it is missing or in the HTTP-date form."""
+    try:
+        return max(0.0, float(headers.get("Retry-After") or 60))
+    except ValueError:
+        return 60.0
+
+
 class Synth:
     """Azure TTS over REST, one request at least MIN_INTERVAL_S after the previous one."""
 
@@ -120,7 +136,7 @@ class Synth:
                 return data
             if status != 429:
                 raise RuntimeError(f"Azure Speech HTTP {status}: {data[:200]!r}")
-            self.sleep(float(rh.get("Retry-After") or 60))
+            self.sleep(retry_after(rh))
         raise RuntimeError("Azure Speech: still rate limited after retries")
 
 
@@ -141,37 +157,46 @@ def build(match_id, lang="en", src=None, out=None, synth=None, dry_run=False, lo
     manifest_path = out / "voice.json"
     old = json.loads(manifest_path.read_text()) if manifest_path.exists() else []
     previous = {r["story_id"]: r for r in old if r["lang"] == lang}
-    rows, made = [], 0
-    for s in eligible(stories, lang):
-        voice, doc = ssml(s, lang)
-        rel = f"voice/{s['story_id']}.{lang}.mp3"
-        row = {"story_id": s["story_id"], "lang": lang, "file": rel, "duration_s": None,
-               "text_sha1": sha1(s["texts"][lang]), "voice": voice}
-        prev = previous.get(s["story_id"])
-        if prev and prev["text_sha1"] == row["text_sha1"] and prev["voice"] == voice and (out / rel).exists():
-            rows.append(prev)
-            continue
-        if dry_run:
-            log(f"would voice {s['story_id']} ({s['kind']}, {voice}): {spoken(s['texts'][lang])}")
-            continue
-        if synth is None:
-            synth = Synth(azure_key())
-        audio = synth(doc)
-        (out / "voice").mkdir(parents=True, exist_ok=True)
-        (out / rel).write_bytes(audio)
-        row["duration_s"] = round(len(audio) * 8 / BITRATE, 2)
-        rows.append(row)
-        made += 1
-        log(f"voiced {s['story_id']} {row['duration_s']} s, {len(audio)} bytes, {voice}")
+    rows, made, others = [], 0, [r for r in old if r["lang"] != lang]
+
+    def write_manifest(listed):
+        out.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(sorted(others + listed, key=lambda r: (r["story_id"], r["lang"])),
+                                            indent=1) + "\n")
+
+    try:
+        for s in eligible(stories, lang):
+            voice, doc = ssml(s, lang)
+            rel = f"voice/{s['story_id']}.{lang}.mp3"
+            row = {"story_id": s["story_id"], "lang": lang, "file": rel, "duration_s": None,
+                   "text_sha1": sha1(s["texts"][lang]), "voice": voice}
+            prev = previous.pop(s["story_id"], None)
+            if prev and prev["text_sha1"] == row["text_sha1"] and prev["voice"] == voice and (out / rel).exists():
+                rows.append(prev)
+                continue
+            if dry_run:
+                log(f"would voice {s['story_id']} ({s['kind']}, {voice}): {spoken(s['texts'][lang])}")
+                continue
+            if synth is None:
+                synth = Synth(azure_key())
+            audio = synth(doc)
+            (out / "voice").mkdir(parents=True, exist_ok=True)
+            (out / rel).write_bytes(audio)
+            row["duration_s"] = round(len(audio) * 8 / BITRATE, 2)
+            rows.append(row)
+            made += 1
+            log(f"voiced {s['story_id']} {row['duration_s']} s, {len(audio)} bytes, {voice}")
+    except BaseException:
+        if made:  # every clip on disk keeps its manifest row, so a rerun does not pay for it again
+            write_manifest(rows + [r for r in previous.values() if (out / r["file"]).exists()])
+        raise
     if dry_run:
         return rows
     keep = {r["file"] for r in rows}
     for f in (out / "voice").glob(f"*.{lang}.mp3"):
         if f"voice/{f.name}" not in keep:
             f.unlink()  # a story that is gone or no longer eligible
-    others = [r for r in old if r["lang"] != lang]
-    out.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(sorted(others + rows, key=lambda r: (r["story_id"], r["lang"])), indent=1) + "\n")
+    write_manifest(rows)
     size = sum((out / r["file"]).stat().st_size for r in rows)
     log(f"{match_id} {lang}: {len(rows)} clips ({made} new), {size / 1e6:.2f} MB, "
         f"{sum(r['duration_s'] for r in rows):.1f} s of audio")

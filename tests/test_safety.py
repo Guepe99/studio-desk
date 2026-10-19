@@ -64,3 +64,42 @@ def test_azure_request_shape_and_key_fallback(monkeypatch):
     assert reqs[0].get_header("Authorization") == "Bearer tok"  # Entra ID first
     assert reqs[1].get_header("Ocp-apim-subscription-key") == "k3y"  # then the key, from az, in memory
     assert json.loads(reqs[1].data)["text"] == "a line"
+
+
+def test_flagged_story_goes_to_review_and_empty_or_failing_checks_stay_unchecked(tmp_path):
+    rt = runtime_with(tmp_path, 7)
+    rt.execute("UPDATE stories SET texts = ? WHERE story_id = 'S-000002'", (json.dumps({"en": " ", "it": "", "es": ""}),))
+    rt.commit()
+    sent = []
+
+    def analyze(text):
+        sent.append(text)
+        if "en 1" in text:
+            return {"Violence": 4}
+        if "en 3" in text:
+            return {}  # no categoriesAnalysis
+        raise RuntimeError("down")
+
+    counts = safety.check_match(rt, "M001", analyze, log=lambda *_: None)
+    got = [tuple(r) for r in rt.execute("SELECT story_id, safety, default_status FROM stories ORDER BY ts")]
+    assert got[0] == ("S-000001", "flagged", "needs_review")
+    assert [r[1] for r in got[1:]] == ["not_checked"] * 6 and all(r[2] == "auto_approved" for r in got[1:])
+    assert len(sent) == 1 + 1 + safety.MAX_FAILURES  # nothing for the empty story, then it stops after 3 failures
+    assert counts == {"flagged": 1, "not_checked": 6, "calls": 5}
+    rt.close()
+
+
+def test_the_cap_counts_http_requests_and_the_deadline_stops_the_step(tmp_path):
+    rt = runtime_with(tmp_path, 3)
+
+    class Analyzer:
+        requests = 0
+
+        def __call__(self, text):
+            self.requests += 2  # token refused, then the key
+            return {"Hate": 0}
+
+    assert safety.check_match(rt, "M001", Analyzer(), max_calls=4, log=lambda *_: None) == \
+        {"passed": 2, "not_checked": 1, "calls": 2}
+    assert safety.check_match(rt, "M001", Analyzer(), deadline_s=0, log=lambda *_: None) == {"not_checked": 3, "calls": 0}
+    rt.close()
