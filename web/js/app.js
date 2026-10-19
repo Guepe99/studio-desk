@@ -4,7 +4,7 @@ import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
-import { View3D, probe, defaultView } from "./view3d.js";
+import { View3D, probe, defaultView, RADAR } from "./view3d.js";
 import { Ask } from "./ask.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
@@ -67,26 +67,20 @@ function layout() {
   controls.style.width = `${cw}px`;
   const ch = controls.offsetHeight + 24;
   const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
-  // Split: the 2D pitch at k times the 3D frame, beside it, or below it when the window is tall
-  const below = window.innerHeight > W, k = view3d?.shown === "split" ? (below ? 0.6 : 0.36) : 0;
-  const s = k === 0 ? Math.min(w / STAGE_W, h / STAGE_H)
-    : below ? Math.min(w / STAGE_W, (h - 10) / (STAGE_H * (1 + k))) : Math.min((w - 16) / (STAGE_W * (1 + k)), h / STAGE_H);
+  const s = Math.min(w / STAGE_W, h / STAGE_H);
   frame.style.width = `${Math.round(STAGE_W * s)}px`;
   frame.style.height = `${Math.round(STAGE_H * s)}px`;
   stage.style.transform = `scale(${s})`;
-  controls.style.width = `${Math.max(Math.round(STAGE_W * s * (below ? 1 : 1 + k) + (k && !below ? 16 : 0)), cw)}px`;
-  pitch.resize(s * (k || 1) * Math.min(window.devicePixelRatio || 1, 2));
-  const side = $("#side2d");
-  side.style.width = `${Math.round(STAGE_W * s * k)}px`;
-  side.style.height = `${Math.round(STAGE_H * s * k)}px`;
-  document.body.classList.toggle("split-beside", k > 0 && !below);
+  controls.style.width = `${Math.max(Math.round(STAGE_W * s), cw)}px`;
+  // in the radar the 2D pitch is drawn at RADAR of the stage
+  pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR : 1) * Math.min(window.devicePixelRatio || 1, 2));
   view3d?.resize();
   scale = s;
   portrait = window.innerHeight > W;
   document.body.classList.toggle("portrait", portrait);
   if (portrait) {
     deck.style.width = frame.style.width;
-    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s * (1 + k)) - controls.offsetHeight - 36)}px`;
+    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s) - controls.offsetHeight - 36)}px`;
   }
   state.seeked = true; // graphics are rebuilt for the new size
 }
@@ -183,6 +177,8 @@ function tick(now) {
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
+  // the radar steps aside while a graphic that is not pinned to a player is on the frame
+  document.body.classList.toggle("radar-yield", !portrait && [...host.live.values()].some((i) => !i.positioned));
   voice?.update(state.ts, end); // null until its clips are checked
   state.seeked = false;
   const range = $("#seek-range");
@@ -285,7 +281,7 @@ async function main() {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: 60,
     locate: (pid, now) => {
-      if (view3d && view3d.shown !== "2d") return view3d.project(pid, now);
+      if (view3d?.main === "3d") return view3d.project(pid, now);
       const p = match.index[pid] !== undefined ? match.at(match.index[pid], Math.min(now, match.duration)) : null;
       if (!p) return { x: 0, y: 0, visible: false };
       const [x, y] = toStage(p[0], p[1]);
@@ -314,8 +310,8 @@ async function main() {
   refreshCues();
   // hooks for tests and the lead's demo scripts
   window.studioDesk = { state, match, host, desk, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
-  // 2D, 3D or Split: ?view= or what the device can draw; any change of view re-lays the page
-  view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, side: $("#side2d"), badge: $("#replay-badge"),
+  // 2D, 3D or Radar (?view=split): ?view= or what the device can draw; any change of view re-lays the page
+  view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
     notice: $("#notice"), buttons: document.querySelectorAll("[data-view]") }, layout);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;

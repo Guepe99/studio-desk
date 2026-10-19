@@ -22,7 +22,10 @@ const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
 const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4 };
 const BABYLON = ["vendor/babylonjs/9.29.0/babylon.js", "vendor/babylonjs/9.29.0/babylon.glTF2FileLoader.min.js"];
-export const VIEWS = ["2d", "3d", "split"];
+export const VIEWS = ["2d", "3d", "split"];   // "split" is the Radar: one picture large, the other small
+// The radar shows the pitch lines and a margin (1420 x 940 stage px around the 1359 x 880 pitch) at
+// this scale; view3d.css places it with the same numbers.
+export const RADAR = 440 / 1420;
 
 // What the browser offers: WebGL 2, a software renderer (no GPU), a phone (the rule of
 // scene3d/quality.js pickProfile).
@@ -70,7 +73,7 @@ const script = (src) => new Promise((ok, ko) => {
 });
 
 export class View3D {
-  // els: {canvas, pitch (the 2D canvas), stage, side, badge, notice, buttons}; onChange: the page
+  // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, buttons}; onChange: the page
   // lays itself out again (the shown view or the notice changed).
   constructor(match, els, onChange) {
     Object.assign(this, { match, els, onChange });
@@ -83,6 +86,9 @@ export class View3D {
     this.watch = true;         // off once the visitor picks 3D again after a slow fallback
     this.fps = null;
     this.frames = [];
+    this.swapped = false;      // Radar: the 2D pitch large and the 3D picture small
+    this.home = els.canvas.parentElement;
+    els.radar.addEventListener("click", () => { this.swapped = !this.swapped; this._apply(); });
     document.addEventListener("visibilitychange", () => { this.since = null; });
     for (const b of els.buttons) b.addEventListener("click", () => {
       if (this.slow) this.watch = false;   // the visitor asked for it, slow or not
@@ -92,6 +98,8 @@ export class View3D {
 
   // The view on screen: the 2D pitch until the scene is ready.
   get shown() { return this.scene ? this.mode : "2d"; }
+  // The picture that fills the frame, and that the graphics follow.
+  get main() { const v = this.shown; return v === "3d" || (v === "split" && !this.swapped) ? "3d" : "2d"; }
 
   set(mode) {
     this.mode = VIEWS.includes(mode) ? mode : "2d";
@@ -128,12 +136,17 @@ export class View3D {
 
   _span(ts) { return [Math.max(0, ts - WINDOW[0]), Math.min(this.match.duration, ts + WINDOW[1])]; }
 
-  // Puts the 2D pitch where the shown view wants it: in the frame (2D), hidden (3D), beside (Split).
+  // Puts each picture where the shown view wants it: the 2D pitch in the frame (2D) or hidden (3D);
+  // in the Radar the small one goes in the radar box at the bottom of the frame, under the graphics.
   _apply() {
-    const v = this.shown, { pitch, stage, side } = this.els;
-    if (v === "split") side.append(pitch); else stage.prepend(pitch);
+    const v = this.shown, { pitch, stage, canvas, radar } = this.els;
+    const small = v !== "split" ? null : this.swapped ? canvas : pitch;
+    if (small === pitch) radar.append(pitch); else stage.prepend(pitch);
+    if (small === canvas) radar.append(canvas); else this.home.prepend(canvas);
     pitch.hidden = v === "3d";
-    side.hidden = v !== "split";
+    radar.hidden = !small;
+    radar.classList.toggle("is-3d", small === canvas);
+    radar.setAttribute("aria-label", small === canvas ? "Swap: show the 3D picture large" : "Swap: show the 2D pitch large");
     document.body.dataset.view = v;
     if (v === "2d") this.els.badge.classList.remove("on");
     this.last = null;   // draw the next frame whatever the clock does

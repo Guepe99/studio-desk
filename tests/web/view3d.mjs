@@ -1,4 +1,4 @@
-// The 2D, 3D and Split views of the broadcast page (web/js/view3d.js) on a whole match. For each
+// The 2D, 3D and Radar (split) views of the broadcast page (web/js/view3d.js) on a whole match. For each
 // view it opens index.html?match=$MATCH&view=<view> and seeks to three moments (a nameplate on air,
 // a graphic in the second half, a goal replay), and checks that the 3D players stand where the
 // tracking says (the rigs may move a body by a step: the ball rig's reach, a keeper's dive, a
@@ -77,7 +77,9 @@ const measure = (page) => page.evaluate(() => {
     return out;
   });
   const res = { ts: sd.state.ts, shown: v.shown, graphics, pitchHidden: document.querySelector("#pitch").hidden,
-    pitchIn: document.querySelector("#pitch").parentElement.id, babylon: !!window.BABYLON };
+    pitchIn: document.querySelector("#pitch").parentElement.id, babylon: !!window.BABYLON,
+    radar: { yields: document.body.classList.contains("radar-yield"), hidden: document.querySelector("#radar").hidden,
+      lower: graphics.some((g) => !g.nameplate) } };
   if (!v.scene || v.shown === "2d") return res;
   const s = v.scene, vts = v.last.ts;
   res.view = { ts: vts, replay: v.last.replay, badge: document.querySelector("#replay-badge").classList.contains("on") };
@@ -134,7 +136,8 @@ try {
       if (r.shown !== view) fail(`${tag}: shows ${r.shown}`);
       if (view === "2d" && r.babylon) fail("the 2D view loaded Babylon");
       if (view === "3d" && !r.pitchHidden) fail(`${tag}: 2D pitch still drawn over the 3D frame`);
-      if (view === "split" && (r.pitchIn !== "side2d" || r.pitchHidden)) fail(`${tag}: 2D pitch not beside the 3D frame`);
+      if (view === "split" && (r.pitchIn !== "radar" || r.pitchHidden || r.radar.hidden)) fail(`${tag}: 2D pitch not in the radar box`);
+      if (view === "split" && r.radar.yields !== r.radar.lower) fail(`${tag}: the radar ${r.radar.yields ? "steps aside" : "stays"} with ${r.radar.lower ? "a" : "no"} lower graphic on air`);
       if (!r.graphics.length && name !== "replay") fail(`${tag}: no graphic on air`);
       if (r.graphics.some((g) => !g.inFrame)) fail(`${tag}: a graphic outside the frame: ${JSON.stringify(r.graphics)}`);
       for (const g of r.graphics) if (g.nameplate && g.nameplate.visible && !(g.nameplate.offset < 2)) fail(`${tag}: nameplate ${g.nameplate.offset.toFixed(1)} px off its player`);
@@ -153,6 +156,25 @@ try {
       if (name === "replay" && view === "3d") await page.screenshot({ path: `${shots}/view3d-replay.png` });
     }
     console.log(`${view}: three moments in ${((Date.now() - t0) / 1000).toFixed(0)} s, screenshot out/shots/view3d-${view}.png`);
+
+    if (view === "split") {
+      // a click on the radar swaps the pictures: the 2D pitch fills the frame, the 3D goes in the box,
+      // and the graphics follow the 2D pitch; a second click puts them back
+      await seekTo(page, moments[0][1]);
+      await page.click("#radar");
+      await seekTo(page, moments[0][1]);
+      const sw = await page.evaluate(() => ({ main: window.studioDesk.view3d.main, pitchIn: document.querySelector("#pitch").parentElement.id,
+        canvasIn: document.querySelector("#view3d").parentElement.id, label: document.querySelector("#radar").getAttribute("aria-label") }));
+      const r = await measure(page);
+      if (sw.main !== "2d" || sw.pitchIn !== "stage" || sw.canvasIn !== "radar" || !/3D picture large/.test(sw.label)) fail(`radar swap: ${JSON.stringify(sw)}`);
+      for (const g of r.graphics) if (g.nameplate && g.nameplate.visible && !(g.nameplate.offset < 2)) fail(`radar swap: nameplate ${g.nameplate.offset.toFixed(1)} px off its player on the 2D pitch`);
+      await page.screenshot({ path: `${shots}/view3d-radar-swapped.png` });
+      await page.keyboard.press("Tab"); // keyboard: the radar is a button
+      await page.focus("#radar");
+      await page.keyboard.press("Enter");
+      const back = await page.evaluate(() => ({ main: window.studioDesk.view3d.main, pitchIn: document.querySelector("#pitch").parentElement.id }));
+      if (back.main !== "3d" || back.pitchIn !== "radar") fail(`radar swap back: ${JSON.stringify(back)}`);
+    }
 
     if (view === "3d") {
       // frame rate while playing at 1x (the floor is off while measuring)
