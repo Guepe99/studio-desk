@@ -283,6 +283,20 @@ def test_director_never_shows_more_than_two_graphics(desk_db):
             assert sum(d["ts"] <= c["ts"] < d["ts"] + d["duration_s"] for d in mine) <= config.MAX_GRAPHICS_ON_SCREEN
 
 
+def test_the_full_time_recap_airs_at_the_whistle(desk_db):
+    m = rules.Match(srv.get_match_info("M001"))
+    for f in srv.get_facts("M001"):
+        m.facts[f["fact_id"]] = f
+    end = max(f["ts"] for f in m.kind("momentum"))
+    base = {"ts": end, "team_id": m.home["team_id"], "player_id": None, "facts": [], "fact_ids": [],
+            "texts": {lang: "text" for lang in rules.LANGS}}
+    stories = [{**base, "story_id": "S-000001", "kind": "momentum_swing"},
+               {**base, "story_id": "S-000002", "kind": "recap", "phase": "ft", "team_id": None}]
+    cues = rules.Director(m).plan(stories)
+    assert {c["story_id"] for c in cues} == {"S-000002"}
+    assert all(c["ts"] == end for c in cues)
+
+
 def test_export_uses_runtime_records_with_contract_shapes(desk_db, tmp_path):
     _, conn, rt = desk_db
     run(rt, FakeChatClient())

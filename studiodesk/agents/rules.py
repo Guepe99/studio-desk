@@ -1620,12 +1620,16 @@ class Director:
                 "window": len({f["ts"] for f in so_far}), "fact_ids": [f["fact_id"] for f in so_far]}
 
     def plan(self, stories):
-        """Cues (without cue_id) for every audience and language. Player audiences start with their first story."""
+        """Cues (without cue_id) for every audience and language. Player audiences start with their first story.
+        A story told at the same moment as a recap gets no cue: it would delay "Full time" or follow it."""
         for s in stories:
             if s["player_id"] and f"player:{s['player_id']}" not in self.audiences:
                 self.audiences.append(f"player:{s['player_id']}")
         cues = []
+        whistles = {s["ts"] for s in stories if s["kind"] == "recap"}
         for s in sorted(stories, key=air_order):
+            if s["ts"] in whistles and s["kind"] not in MUST_TELL:
+                continue  # at the whistle the recap airs at once; the story stays on the desk
             for audience in self.audiences:
                 role = self._role(audience, s)
                 t = s["ts"]
