@@ -104,4 +104,4 @@ def test_measure_reads_only_its_match_and_the_page_adds_up(tmp_path):
     assert "Not measured: no real-speed run" in page and "do not match the audit" in " ".join(page.split())
     live = " ".join(measures.markdown([r], {"delays": [("goal", 4.0), ("big_chance", 9.0), ("goal", 6.0)], "setup_s": 3.0}).split())
     assert "The 2 goals reached the director's cue 4.0 and 6.0 seconds after the shot" in live
-    assert "the other story after 9.0 seconds" in live and "at least 3.0 seconds" in live and "—" not in page + live
+    assert "the big chance after 9.0 seconds, judged once the play had settled" in live and "at least 3.0 seconds" in live and "—" not in page + live
