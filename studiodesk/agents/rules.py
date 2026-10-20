@@ -491,6 +491,8 @@ _NOT_A_NUMBER = re.compile(r"\bsix-yard\b|\b(?:final|attacking|defensive|middle)
 # three or more numbers joined by hyphens: a formation (single digits adding up to 10) or a glued mess ("73-2-2")
 _CHAIN = re.compile(_LB + r"\d+(?:-\d+){2,}(?![\w.,]\d)")
 _FACT_ID = re.compile(r"F-[A-Z_]+-\d+", re.IGNORECASE)
+# the word the model puts before an id ("fact F-SCORE-000001", "fatto F-…"): it goes with the id
+_CITED_AS = re.compile(r"\b(?:facts?|fatt[oi]|hechos?)\s*:?\s*(?=F-[A-Z_]+-\d+)", re.IGNORECASE)
 _CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]", re.IGNORECASE)
 
 
@@ -514,8 +516,12 @@ def normalise(text):
 def minute_word(text, lang):
     """The minute word in the answer's language: the model writes "minuto 10" in English now and then."""
     word = "minute" if lang == "en" else "minuto"
-    return re.sub(r"\bminut[eo](?= \d)", lambda m: word.capitalize() if m.group(0)[0].isupper() else word, text,
+    text = re.sub(r"\bminut[eo](?= \d)", lambda m: word.capitalize() if m.group(0)[0].isupper() else word, text,
                   flags=re.IGNORECASE)
+    # the article the model drops: "ai minuto 10 e minuto 13" reads "al minuto 10 e al minuto 13"
+    if lang == "it":
+        return re.sub(r"\b(?:ai|a|e)(?= minuto \d)", lambda m: "e al" if m.group(0) == "e" else "al", text)
+    return re.sub(r"\b(en|y)(?= minuto \d)", r"\1 el", text) if lang == "es" else text
 
 
 def decimal_comma(text, lang):
@@ -525,7 +531,8 @@ def decimal_comma(text, lang):
 
 def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
-    text = _FACT_ID.sub("", _CITATION.sub("", text))
+    text = _FACT_ID.sub("", _CITATION.sub("", _CITED_AS.sub("", text)))
+    text = re.sub(r"\s*[,;]\s*(?=\))", "", text)  # "(minuto 10, )" reads "(minuto 10)"
     return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
 
 
@@ -627,6 +634,15 @@ _FALSE_FRIENDS = {"en": {"once", "due", "dues", "miles", "par", "pars"}, "it": {
 _ASK_SPELLED = re.compile(r"(?<!\w)(?:" + "|".join(sorted({re.escape(w) for lang in LANGS for w in (
     _WORDS[lang] + " " + _ASK_WORDS[lang]).split()}, key=len, reverse=True))
     + "|" + "|".join(f"(?:{t})\\w*" for t in _TENS.values() if t) + r")s?(?!\w)", re.IGNORECASE)
+# "il terzo gol" is a fact when the answer cites that goal: its label carries the score after it ("Goal 2-1" is goal 3)
+# shortcut: the ordinal is checked against the cited goals, not tied to the minute next to it; tie them if a wrong pairing shows up
+_GOAL_ORDINALS = {w: k for words in (
+    "first second third fourth fifth sixth seventh eighth ninth tenth",
+    "primo secondo terzo quarto quinto sesto settimo ottavo nono decimo",
+    "primer segundo tercer cuarto quinto sexto séptimo octavo noveno décimo") for k, w in enumerate(words.split(), 1)}
+_GOAL_ORDINALS |= {"primero": 1, "tercero": 3}
+_GOAL_ORDINAL = re.compile(r"(?<!\w)(?:" + "|".join(_GOAL_ORDINALS) + r")(?!\w)", re.IGNORECASE)
+_GOAL_LABEL = re.compile(r"\bGoal (\d+)-(\d+)\b")
 _ASK_NOT_A_NUMBER = re.compile(
     r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bfirst[- ]time\b|\bfirst touch\b|"
     r"\bsecond balls?\b|\b(?:first|second) post\b|\bboth (?:teams|sides)\b|"
@@ -735,6 +751,8 @@ def check_answer(text, facts, p1, lang, ids, score=None):
     pairs = [tuple(map(float, mt.groups())) for f in facts for mt in _LABEL_PAIR.finditer(f["label_en"])]
     rest = _PAIR.sub(licensed(pairs), rest)
 
+    goals = {int(a) + int(b) for f in facts if f["kind"] == "score" for a, b in _GOAL_LABEL.findall(f["label_en"])}
+    rest = _GOAL_ORDINAL.sub(lambda mt: " " if _GOAL_ORDINALS[mt.group(0).lower()] in goals else mt.group(0), rest)
     bare = [{**f, "label_en": _LABEL_MINUTES.sub("", f["label_en"])} for f in facts]
     flags += check_text(rest, allowed_numbers(bare), lang, ids, bare=False)
     words = _NOT_A_NUMBER.sub("", _ASK_NOT_A_NUMBER.sub("", _FACT_ID.sub("", rest)))
