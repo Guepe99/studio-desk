@@ -69,9 +69,10 @@ async function scenario(browser, w, h) {
   const phone = w < 1100, tag = `${w}`;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone });
   const page = await ctx.newPage();
-  // voice.json is optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
+  // voice.json is optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent; so is
+  // booth.json, a match without the booth (DEMO outside voice.mjs).
   // api/ask too: the page probes it with an empty body (422 with a model behind it, 503 without, as here).
-  const optional = (u) => u.endsWith("/voice.json") || u.endsWith("/api/ask");
+  const optional = (u) => /\/(voice|booth)\.json$/.test(u) || u.endsWith("/api/ask");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   page.on("response", (r) => { if (r.status() >= 400 && !optional(r.url())) fail(`${tag} ${r.status()} ${r.url()}`); });
@@ -315,9 +316,10 @@ async function edges(browser) {
   const t0 = Date.now();
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
+  const t1 = Date.now();   // the page load alone can take 4 s on a busy machine: the clock starts once it is up
   await page.evaluate(() => window.studioDesk.setPlaying(true));
   await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
-  expect(await page.evaluate(() => window.studioDesk.state.ts > 0.5 && !window.studioDesk.desk.online) && Date.now() - t0 < 4000,
+  expect(await page.evaluate(() => window.studioDesk.state.ts > 0.5 && !window.studioDesk.desk.online) && Date.now() - t1 < 3000,
     "edges: the replay waits for a hanging API");
   // until the desk knows this visitor's decisions, nothing can be pressed
   expect(await page.$eval("#ai-switch", (el) => el.disabled) && await page.$eval(`${card(AUTO)} .act-rejected`, (el) => el.disabled),
