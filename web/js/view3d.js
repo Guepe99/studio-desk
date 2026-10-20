@@ -1,7 +1,7 @@
 // The whole match in 3D on the broadcast page (index.html): the scene of scene3d.js with its rigs,
 // on the page's clock, as the main picture with the 2D pitch as a live minimap (split, the default; a
 // click on the minimap swaps the two) or alone (3D, the minimap off in the settings). Babylon and the
-// scene load only when a 3D view is asked for; until the scene is ready the 2D pitch stays up alone.
+// scene load only when a 3D view is asked for; until the scene is ready a still of the stadium stands in.
 //
 // The rigs plan the ball, the awareness layer and the keepers for a stretch of match time. Here
 // that stretch is a window around the clock (WINDOW), planned again when the clock leaves it, so a
@@ -68,11 +68,22 @@ export function viewAt(reps, ts, speed) {
 
 const script = (src) => new Promise((ok, ko) => {
   const s = document.createElement("script");
+  s.async = false;   // the scripts download together and run in the order they were added
   s.src = src;
   s.onload = ok;
   s.onerror = () => ko(new Error(`${src} did not load`));
   document.head.append(s);
 });
+
+// Babylon and the scene modules, fetched once: app.js starts this while the match itself downloads,
+// so the 3D view no longer waits for the match and then for Babylon. A failure is tried again next time.
+let engine = null;
+export function warm3d() {
+  engine ??= Promise.all(window.BABYLON ? [] : BABYLON.map(script))
+    .then(() => Promise.all(["./scene3d.js", "./awareness-rig.js", "./keeper3d-rig.js", "./scene3d/players.js"].map((m) => import(m))))
+    .catch((e) => { engine = null; throw e; });
+  return engine;
+}
 
 export class View3D {
   // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, status}; onChange: the page
@@ -122,9 +133,7 @@ export class View3D {
   }
 
   async _load() {
-    if (!window.BABYLON) for (const src of BABYLON) await script(src);
-    const [{ Scene3D }, { AwarenessRig }, { KeeperRig }, { loadMotion }] = await Promise.all(
-      ["./scene3d.js", "./awareness-rig.js", "./keeper3d-rig.js", "./scene3d/players.js"].map((m) => import(m)));
+    const [{ Scene3D }, { AwarenessRig }, { KeeperRig }, { loadMotion }] = await warm3d();
     // everyone who is on the pitch at some point of the match (an unused substitute is not built)
     const m = this.match, entities = [];
     for (let i = 1; i < m.n; i++) for (let f = 0; f < m.meta.frames; f += 10) if (!Number.isNaN(m.pos[(f * m.n + i) * 3])) { entities.push(i); break; }
@@ -153,6 +162,8 @@ export class View3D {
     if (small === pitch) radar.append(pitch); else stage.prepend(pitch);
     if (small === canvas) radar.append(canvas); else this.home.prepend(canvas);
     pitch.hidden = v === "3d";
+    // while the 3D view loads, a still of the stadium stands in for it rather than the 2D pitch
+    stage.classList.toggle("loading3d", this.mode !== "2d" && !this.scene && !!this.loading);
     radar.hidden = !small;
     radar.classList.toggle("is-3d", small === canvas);
     this.relabel();
