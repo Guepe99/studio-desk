@@ -2,7 +2,7 @@
 //   node --test tests/web/moments.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { momentTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
+import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
 import { reached, latestPerAgent } from "../../web/js/activity.js";
 import { agentName, TEXT, tr, riskBand } from "../../web/js/desk.js";
 
@@ -19,6 +19,11 @@ test("a story graphic that starts while another story's graphic is on air is the
   assert.deepEqual(momentTargets(goal), [4905.1]);
   // up to 1 s after the cue before it ends still counts; later is a moment of its own
   assert.deepEqual(momentTargets([cue(100, "S-1"), cue(107, "S-2"), cue(120, "S-3"), cue(127.1, "S-4")]), [97, 117, 124.1]);
+});
+
+test("with the AI graphics off a moment is 3 s before each goal, in time order, never before kick-off", () => {
+  assert.deepEqual(goalTargets([4908.1, 595.7, 1.2]), [0, 592.7, 4905.1]);
+  assert.deepEqual(goalTargets([]), []);
 });
 
 test("the button's label: next while the stories load, then none at all, none ahead or next", () => {

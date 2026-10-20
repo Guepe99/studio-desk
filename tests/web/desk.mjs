@@ -75,6 +75,7 @@ async function scenario(browser, w, h) {
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
+  if (phone) await page.click("#viewing-open");   // the audience sits behind Viewing on a phone
   await page.click('[data-audience="analyst"]');
   const frameBefore = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
   const openDesk = async () => {

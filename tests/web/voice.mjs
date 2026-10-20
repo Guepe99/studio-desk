@@ -80,6 +80,8 @@ const voice = () => page.evaluate(() => {
   const a = v.current ? v.audio : null;
   return { sid: v.current?.sid ?? null, file: a ? a.src.split("/").pop() : null, playing: Boolean(a && !a.paused), t: a?.currentTime ?? 0, ts: window.studioDesk.state.ts };
 });
+// two drawn frames: on a loaded machine 300 ms can pass without one (as in smoke.mjs)
+const frames = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 // play at speed from half a second before ts until match time passes ts + after (frames are slow here)
 const playFrom = async (ts, after, speed = 1) => {
   await page.evaluate(([x, sp]) => {
@@ -176,6 +178,7 @@ v = await voice();
 expect(v.sid === HELD.story_id && v.playing, `approved, ${HELD.story_id} speaks (${JSON.stringify(v)})`);
 await page.click("#ai-switch");
 await page.waitForTimeout(300); // the next frames see the desk change
+await frames();
 v = await voice();
 expect(v.sid === null && !v.playing, "AI switch off stops the clip");
 await page.click("#ai-switch");
@@ -209,6 +212,7 @@ await page.click('[data-audience="analyst"]');
 // a language switch stops the clip; in Italian the Italian clip plays, in Spanish (no clip) silence
 await page.selectOption("#lang", "it");
 await page.waitForTimeout(300);
+await frames();
 v = await voice();
 expect(v.sid === null && !v.playing, "switching to Italian stops the English clip");
 await playFrom(firstCue(AUTO), 1);
@@ -216,6 +220,7 @@ v = await voice();
 expect(v.sid === AUTO.story_id && v.file === `${AUTO.story_id}.it.mp3` && v.playing, `Italian: the Italian clip plays (${JSON.stringify(v)})`);
 await page.selectOption("#lang", "es");
 await page.waitForTimeout(300);
+await frames();
 v = await voice();
 expect(v.sid === null && !v.playing, "switching to Spanish stops the Italian clip");
 await playFrom(firstCue(AUTO), 1);

@@ -13,9 +13,9 @@
 // - Convention: if a manifest declares the custom action "position", the host calls it every frame
 //   with {x, y, visible}, the renderer-pixel position of data.player_id (the nameplate uses it).
 // - At most MAX_ON_SCREEN graphics at once (docs/CONTRACT.md), counting those animating out.
-// - Compact layout (opts.compact() returns {deck, magnify}, a phone in portrait): graphics without
-//   "position" leave the pitch for the deck element, one under the other, each scaled so its box
-//   (the first element in its .stage, a Studio Desk graphic convention) fills the deck width.
+// - Small frames (opts.compact() returns {deck, magnify}): with a deck element (a frame too small for
+//   the graphics), graphics without "position" leave the pitch for it, one under the other, each scaled
+//   so its box (the first element in its .stage, a Studio Desk graphic convention) fills the deck width.
 //   Positioned graphics stay on the pitch, drawn `magnify` times larger around the same point.
 
 const MAX_ON_SCREEN = 2;
@@ -25,7 +25,7 @@ export class OGrafHost {
    * @param {HTMLElement} layer  overlay element, sized like the renderer resolution
    * @param {{resolution: {width: number, height: number}, frameRate: number,
    *          locate: (playerId: string, now: number) => {x: number, y: number, visible: boolean},
-   *          vendorParams: () => object, compact?: () => ({deck: HTMLElement, magnify: number} | null)}} opts
+   *          vendorParams: () => object, compact?: () => ({deck: HTMLElement | null, magnify: number} | null)}} opts
    */
   constructor(layer, opts) {
     this.layer = layer;
@@ -117,7 +117,7 @@ export class OGrafHost {
     const positioned = (g.manifest.customActions ?? []).some((a) => a.id === "position");
     const compact = this.opts.compact?.();
     let node = el, inner = null;
-    if (compact && !positioned) {
+    if (compact?.deck && !positioned) {
       // deck item: a clip box, and inside it a full-size stage moved and scaled once the box is known
       node = document.createElement("div");
       node.className = "deck-item";
@@ -126,7 +126,7 @@ export class OGrafHost {
       inner.append(el);
       compact.deck.append(node);
     } else {
-      if (compact && compact.magnify > 1) {
+      if (positioned && compact?.magnify > 1) {
         Object.assign(el.style, { inset: "auto", left: "0", top: "0",
           width: `${this.opts.resolution.width * compact.magnify}px`, height: `${this.opts.resolution.height * compact.magnify}px` });
       }

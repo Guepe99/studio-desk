@@ -1,6 +1,6 @@
-/* Ask the studio (web/js/ask.js): a panel over the broadcast, next to the controls; ask.js sets top or bottom. */
-#app { position: relative; }
-#ask { position: absolute; left: 50%; transform: translateX(-50%); z-index: 5; width: min(560px, calc(100% - 32px));
+/* Ask the studio (web/js/ask.js): a panel in the page, never over the picture: under the controls, or
+   beside the frame when the graphics are there too (broadcast.css .deck-side; app.js sizes the frame). */
+#ask { flex: none; width: min(560px, 100%); max-height: min(40vh, 360px);
   overflow: auto; padding: 14px 16px; background: var(--page); color: var(--purple); border: 1px solid var(--lilac-100); border-radius: var(--r-card);
   box-shadow: var(--shadow); font-size: 16px; line-height: 1.35; }
 #ask[hidden] { display: none; }

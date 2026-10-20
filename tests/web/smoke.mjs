@@ -12,8 +12,8 @@
 // facts; seek keys and aria-valuetext; shirt-number contrast; the 2D pitch (players and ball on
 // the tracking, disc colours, the players named on air lit, draw time); the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
-// phone landscape and portrait (every control reachable, graphic text at least 11 px in portrait, the
-// agent strip on one line); Next key moment for analyst and a team; the agent strip after seeks and
+// phone landscape and portrait (every control reachable by scrolling, with the Viewing menu open,
+// graphic text at least 11 px in portrait, the agent strip on one line); Next key moment for analyst and a team; the agent strip after seeks and
 // at 64x. Screenshots go to out/shots/.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -155,15 +155,22 @@ const playAt = (page, speed, from, span) => page.evaluate(async ({ speed, from, 
   return { most, late, seen: ends.size };
 }, { speed, from, span, sel: GRAPHIC_NODES });
 
-// Every control in #controls fully inside the viewport and the topmost element at its centre.
-const unreachable = (page) => page.evaluate(() => [...document.querySelectorAll("#controls button, #controls select, #seek-range")]
-  .filter((el) => !el.hidden)   // the voice button stays hidden on a match without clips
-  .filter((el) => {
+// Every control in #controls, scrolled into view (the page scrolls), fully inside the viewport and the
+// topmost element at its centre. Controls behind a closed Viewing menu are not counted: open it first.
+const unreachable = (page) => page.evaluate(async () => {
+  const lost = [];
+  for (const el of document.querySelectorAll("#controls button, #controls select, #seek-range")) {
+    if (el.hidden || !el.getClientRects().length) continue;   // the voice button stays hidden on a match without clips
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    await new Promise((r) => requestAnimationFrame(r));
     const r = el.getBoundingClientRect();
-    if (r.width < 1 || r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) return true;
     const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return !(hit && (hit === el || el.contains(hit) || hit.contains(el)));
-  }).map((el) => el.id || el.dataset.speed || el.dataset.audience || el.tagName));
+    if (r.width < 1 || r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight
+      || !(hit && (hit === el || el.contains(hit) || hit.contains(el)))) lost.push(el.id || el.dataset.speed || el.dataset.audience || el.getAttribute("aria-label") || el.tagName);
+  }
+  scrollTo(0, 0);
+  return lost;
+});
 
 // How far the boxes of #app reach past the room it has (its height less its padding), in px.
 const overflow = (page) => page.evaluate(() => {
@@ -188,11 +195,13 @@ const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   return r.fulfill({ json: { status: "answered", answer: '<img src=x onerror="window.__xss=2">The quickest sprint was 32 km/h.',
     fact_ids: ["F-SPRINT_SPEED-000001"], questions_left: 9 } });
 });
-// The Ask panel inside the viewport, its question box the topmost element at its centre.
+// The Ask panel inside the viewport (the page scrolls to it, give or take a pixel of rounding), its question
+// box the topmost element at its centre: "" when it is, else what is wrong.
 const askFits = (page) => page.evaluate(() => {
   const r = document.querySelector("#ask").getBoundingClientRect(), q = document.querySelector("#ask-q").getBoundingClientRect();
   const hit = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
-  return r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && hit?.id === "ask-q";
+  const ok = r.left >= 0 && r.top > -2 && r.right <= innerWidth && r.bottom < innerHeight + 2 && hit?.id === "ask-q";
+  return ok ? "" : `panel at ${[r.left, r.top, r.right, r.bottom].map(Math.round)} in ${innerWidth}x${innerHeight}, ${hit?.id || hit?.className || "nothing"} on the question box`;
 });
 
 // Smallest rendered text (CSS px) inside the graphics on screen.
@@ -787,7 +796,7 @@ try {
     await seekTo(p, 125.37);
     await p.click("#ask-open");
     if (!(await p.evaluate(() => document.activeElement?.id === "ask-q"))) fail("ask: focus not on the question box");
-    if (!(await askFits(p))) fail("ask: panel out of the viewport or covered");
+    { const why = await askFits(p); if (why) fail(`ask: ${why}`); }
     await p.keyboard.type("Who is the fastest so far?");
     if (await p.evaluate(() => window.studioDesk.state.playing)) fail("ask: a typed space toggled play");
     await p.keyboard.press("Enter");
@@ -872,13 +881,12 @@ try {
       // the voice button and the desk's offline label are shown by now, and the layout has followed them
       await phone.waitForFunction(() => window.studioDesk?.voice && window.studioDesk.desk.ready);
       await phone.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      const tall = await phone.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-      if (tall > 1) fail(`${w}x${h}: the page is ${tall} px taller than the screen`);
+      // the page may be taller than the screen (it scrolls), never wider; speed, audience and language sit behind Viewing
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
-      const over = await overflow(phone);
-      if (over > 1) fail(`${w}x${h}: the page overflows by ${over.toFixed(1)} px`);
+      await phone.click("#viewing-open");
       const lost = await unreachable(phone);
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);
+      await phone.click("#viewing-open");
       await seekTo(phone, shotAt);
       const strip = await phone.evaluate(() => {
         const r = document.querySelector("#activity").getBoundingClientRect();
@@ -896,6 +904,7 @@ try {
         }
       }
       // the Player picker, the widest the controls get, still fits
+      await phone.click("#viewing-open");
       await phone.click('[data-audience="player"]');
       await phone.waitForTimeout(100);
       const lostPick = await unreachable(phone);
@@ -903,7 +912,7 @@ try {
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} player mode: horizontal scroll`);
       await phone.screenshot({ path: `${shots}/web-modes-${w}x${h}.png` });
       await phone.click("#ask-open");
-      if (!(await askFits(phone))) fail(`${w}x${h}: Ask panel out of the viewport or covered`);
+      { const why = await askFits(phone); if (why) fail(`${w}x${h}: Ask ${why}`); }
       await phone.screenshot({ path: `${shots}/web-ask-${w}x${h}.png` });
       await phone.press("#ask-q", "Escape");
       await phone.click('[data-audience="analyst"]');

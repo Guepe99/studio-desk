@@ -74,7 +74,7 @@ const script = (src) => new Promise((ok, ko) => {
 });
 
 export class View3D {
-  // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, buttons}; onChange: the page
+  // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, status, buttons}; onChange: the page
   // lays itself out again (the shown view or the notice changed).
   constructor(match, els, onChange) {
     Object.assign(this, { match, els, onChange });
@@ -107,8 +107,9 @@ export class View3D {
     for (const b of this.els.buttons) b.setAttribute("aria-pressed", String(b.dataset.view === this.mode));
     if (this.notice) this._notice("");
     if (this.mode !== "2d" && !this.scene && !this.loading) {
-      this._notice("Loading the 3D view");
-      this.loading = this._load().then(() => this._notice(""), (err) => {
+      this._status("Loading the 3D view");
+      this.loading = this._load().then(() => this._status(""), (err) => {
+        this._status("");
         console.warn(`3D view: ${err.message}`);
         this.failed = true;
         for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
@@ -168,6 +169,12 @@ export class View3D {
     this.notice = !!text;
     n.textContent = text || this.prior || "";
     n.hidden = !n.textContent;
+    this.onChange();
+  }
+
+  // Loading news is polite (role=status); the notice (role=alert) is kept for the lines that say something failed.
+  _status(text) {
+    this.els.status.textContent = text;
     this.onChange();
   }
 

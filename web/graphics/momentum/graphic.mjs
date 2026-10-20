@@ -8,6 +8,8 @@ export default class Momentum extends SdGraphic {
   css() {
     return `
 .box { position: absolute; right: 96px; bottom: 84px; width: 780px; }
+.box.left { right: auto; left: 96px; }  /* v_side "left": the ball is on the right half */
+.compact .box { width: 720px; }  /* fits a 264 px deck with its smallest type (30 px) at 11 px */
 .card { padding: 22px 28px 18px; }
 .row { display: grid; grid-template-columns: 112px 1fr; align-items: end; height: ${H + 6}px; }
 .row.away { align-items: start; }
@@ -20,7 +22,7 @@ export default class Momentum extends SdGraphic {
 .bar.now { opacity: 1; box-shadow: 0 0 0 3px var(--green); }
 .mid { height: 3px; border-radius: 2px; background: var(--page); margin-left: 112px; }
 .foot { display: flex; justify-content: space-between; margin: 12px 0 0 112px; font-weight: 600; font-size: 22px; color: var(--lilac-100); }
-.compact .foot { font-size: 28px; }`;
+.compact .foot, .compact .team { font-size: 30px; }`;
   }
 
   html() {
@@ -33,8 +35,14 @@ export default class Momentum extends SdGraphic {
       <div class="factslot"></div></div>`;
   }
 
+  async load(params = {}) {
+    this.side = params.v_side;
+    return super.load(params);
+  }
+
   render() {
     const d = this.data, $ = (s) => this.stage.querySelector(s);
+    $(".box").classList.toggle("left", this.side === "left");
     for (const side of ["home", "away"]) {
       const t = this.teams[side] ?? {};
       const vals = Array.isArray(d[side]) ? d[side] : [];
