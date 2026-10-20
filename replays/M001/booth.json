@@ -1,0 +1,4206 @@
+{
+"clips": [
+{
+"key": "co|Brave from Ostwick.",
+"lang": "en",
+"role": "co",
+"text": "Brave from Ostwick.",
+"file": "booth/en/1ceafca5a3e3.mp3",
+"duration_s": 0.995,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Brave from Redwick.",
+"lang": "en",
+"role": "co",
+"text": "Brave from Redwick.",
+"file": "booth/en/c383f8045f2d.mp3",
+"duration_s": 1.019,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Castrovane.",
+"lang": "en",
+"role": "co",
+"text": "Castrovane.",
+"file": "booth/en/8d1d73d3b377.mp3",
+"duration_s": 0.779,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Duarte.",
+"lang": "en",
+"role": "co",
+"text": "Duarte.",
+"file": "booth/en/011856023571.mp3",
+"duration_s": 0.587,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Dunmarrow.",
+"lang": "en",
+"role": "co",
+"text": "Dunmarrow.",
+"file": "booth/en/a20745dcd0fc.mp3",
+"duration_s": 0.659,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ekwueme.",
+"lang": "en",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/en/797b0bf22af6.mp3",
+"duration_s": 0.635,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Galvan.",
+"lang": "en",
+"role": "co",
+"text": "Galvan.",
+"file": "booth/en/89bf96a5abb0.mp3",
+"duration_s": 0.587,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Halvorsen.",
+"lang": "en",
+"role": "co",
+"text": "Halvorsen.",
+"file": "booth/en/680172bd2efa.mp3",
+"duration_s": 0.707,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Holmberg.",
+"lang": "en",
+"role": "co",
+"text": "Holmberg.",
+"file": "booth/en/a7c091bd613a.mp3",
+"duration_s": 0.635,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Kimura.",
+"lang": "en",
+"role": "co",
+"text": "Kimura.",
+"file": "booth/en/2e3638a2a9aa.mp3",
+"duration_s": 0.683,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Lindqvist.",
+"lang": "en",
+"role": "co",
+"text": "Lindqvist.",
+"file": "booth/en/c20527da1281.mp3",
+"duration_s": 0.755,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Lisowski.",
+"lang": "en",
+"role": "co",
+"text": "Lisowski.",
+"file": "booth/en/6917161e6ccf.mp3",
+"duration_s": 0.803,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Lundgren.",
+"lang": "en",
+"role": "co",
+"text": "Lundgren.",
+"file": "booth/en/85f49d52816b.mp3",
+"duration_s": 0.659,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Marravi.",
+"lang": "en",
+"role": "co",
+"text": "Marravi.",
+"file": "booth/en/61ebff5272e2.mp3",
+"duration_s": 0.611,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Mbeki.",
+"lang": "en",
+"role": "co",
+"text": "Mbeki.",
+"file": "booth/en/1a2aee39cbf2.mp3",
+"duration_s": 0.635,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Morales.",
+"lang": "en",
+"role": "co",
+"text": "Morales.",
+"file": "booth/en/bfb35be601fa.mp3",
+"duration_s": 0.683,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Moreau.",
+"lang": "en",
+"role": "co",
+"text": "Moreau.",
+"file": "booth/en/deabbaf45f4d.mp3",
+"duration_s": 0.539,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Nwosu.",
+"lang": "en",
+"role": "co",
+"text": "Nwosu.",
+"file": "booth/en/dade7fb77494.mp3",
+"duration_s": 0.755,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Okonkwo.",
+"lang": "en",
+"role": "co",
+"text": "Okonkwo.",
+"file": "booth/en/9e9588421451.mp3",
+"duration_s": 0.755,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Okowande.",
+"lang": "en",
+"role": "co",
+"text": "Okowande.",
+"file": "booth/en/05f5cb621955.mp3",
+"duration_s": 0.659,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ostwick are sitting deep.",
+"lang": "en",
+"role": "co",
+"text": "Ostwick are sitting deep.",
+"file": "booth/en/a27deb175f30.mp3",
+"duration_s": 1.163,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ostwick finished with good numbers on the ball.",
+"lang": "en",
+"role": "co",
+"text": "Ostwick finished with good numbers on the ball.",
+"file": "booth/en/b4c504f3e6ca.mp3",
+"duration_s": 2.195,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ostwick have kept the ball so well.",
+"lang": "en",
+"role": "co",
+"text": "Ostwick have kept the ball so well.",
+"file": "booth/en/1baa3be96d29.mp3",
+"duration_s": 1.619,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ostwick have looked after the ball.",
+"lang": "en",
+"role": "co",
+"text": "Ostwick have looked after the ball.",
+"file": "booth/en/087bd9fb486f.mp3",
+"duration_s": 1.475,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Ostwick.",
+"lang": "en",
+"role": "co",
+"text": "Ostwick.",
+"file": "booth/en/f3b341929ee3.mp3",
+"duration_s": 0.683,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Oyelaran.",
+"lang": "en",
+"role": "co",
+"text": "Oyelaran.",
+"file": "booth/en/59af2d9f4925.mp3",
+"duration_s": 0.683,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Pavic.",
+"lang": "en",
+"role": "co",
+"text": "Pavic.",
+"file": "booth/en/1d1e8aed7bda.mp3",
+"duration_s": 0.563,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Quennell.",
+"lang": "en",
+"role": "co",
+"text": "Quennell.",
+"file": "booth/en/8e30314b1a1f.mp3",
+"duration_s": 0.539,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Quintero.",
+"lang": "en",
+"role": "co",
+"text": "Quintero.",
+"file": "booth/en/d359da33b449.mp3",
+"duration_s": 0.707,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Redwick are sitting deep.",
+"lang": "en",
+"role": "co",
+"text": "Redwick are sitting deep.",
+"file": "booth/en/258373ba72de.mp3",
+"duration_s": 1.115,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Redwick finished with good numbers on the ball.",
+"lang": "en",
+"role": "co",
+"text": "Redwick finished with good numbers on the ball.",
+"file": "booth/en/7c52ee1f4927.mp3",
+"duration_s": 2.171,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Redwick have kept the ball so well.",
+"lang": "en",
+"role": "co",
+"text": "Redwick have kept the ball so well.",
+"file": "booth/en/7cd7ccc9ed75.mp3",
+"duration_s": 1.595,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Redwick have looked after the ball.",
+"lang": "en",
+"role": "co",
+"text": "Redwick have looked after the ball.",
+"file": "booth/en/4d457009f15e.mp3",
+"duration_s": 1.499,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Redwick.",
+"lang": "en",
+"role": "co",
+"text": "Redwick.",
+"file": "booth/en/2940df8c542c.mp3",
+"duration_s": 0.611,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Sakamoto.",
+"lang": "en",
+"role": "co",
+"text": "Sakamoto.",
+"file": "booth/en/67f002530ade.mp3",
+"duration_s": 0.851,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Sorensen.",
+"lang": "en",
+"role": "co",
+"text": "Sorensen.",
+"file": "booth/en/7b128ae19338.mp3",
+"duration_s": 0.755,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Szabo.",
+"lang": "en",
+"role": "co",
+"text": "Szabo.",
+"file": "booth/en/c46adedb0884.mp3",
+"duration_s": 0.611,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Takeda.",
+"lang": "en",
+"role": "co",
+"text": "Takeda.",
+"file": "booth/en/5e165986692d.mp3",
+"duration_s": 0.611,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Tessaro.",
+"lang": "en",
+"role": "co",
+"text": "Tessaro.",
+"file": "booth/en/f71078e1fabf.mp3",
+"duration_s": 0.659,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Vasquez.",
+"lang": "en",
+"role": "co",
+"text": "Vasquez.",
+"file": "booth/en/534ab59c5d5b.mp3",
+"duration_s": 0.683,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Vellacott.",
+"lang": "en",
+"role": "co",
+"text": "Vellacott.",
+"file": "booth/en/a39adb2668bc.mp3",
+"duration_s": 0.707,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Yilmaz.",
+"lang": "en",
+"role": "co",
+"text": "Yilmaz.",
+"file": "booth/en/4d33455c85d2.mp3",
+"duration_s": 0.635,
+"voice": "am_fenrir"
+},
+{
+"key": "pbp|Castrovane!",
+"lang": "en",
+"role": "pbp",
+"text": "Castrovane!",
+"file": "booth/en/862c5d70243a.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Castrovane.",
+"lang": "en",
+"role": "pbp",
+"text": "Castrovane.",
+"file": "booth/en/34f964e8e06a.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Castrovane...",
+"lang": "en",
+"role": "pbp",
+"text": "Castrovane...",
+"file": "booth/en/1d631f0fbc9b.mp3",
+"duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Corner to Ostwick.",
+"lang": "en",
+"role": "pbp",
+"text": "Corner to Ostwick.",
+"file": "booth/en/a37eaeff9745.mp3",
+"duration_s": 1.139,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Corner to Redwick.",
+"lang": "en",
+"role": "pbp",
+"text": "Corner to Redwick.",
+"file": "booth/en/09c5beb743f9.mp3",
+"duration_s": 1.115,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Duarte!",
+"lang": "en",
+"role": "pbp",
+"text": "Duarte!",
+"file": "booth/en/64027f6d1e0b.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Duarte.",
+"lang": "en",
+"role": "pbp",
+"text": "Duarte.",
+"file": "booth/en/807d2329cb16.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Duarte...",
+"lang": "en",
+"role": "pbp",
+"text": "Duarte...",
+"file": "booth/en/8c62829527ef.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Dunmarrow!",
+"lang": "en",
+"role": "pbp",
+"text": "Dunmarrow!",
+"file": "booth/en/abba176c9911.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Dunmarrow.",
+"lang": "en",
+"role": "pbp",
+"text": "Dunmarrow.",
+"file": "booth/en/93e51776a9ea.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Dunmarrow...",
+"lang": "en",
+"role": "pbp",
+"text": "Dunmarrow...",
+"file": "booth/en/6e371aa05395.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/en/0534329f29af.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/en/96c7b986bbc4.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/en/4d12263a3b0a.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Free kick to Ostwick.",
+"lang": "en",
+"role": "pbp",
+"text": "Free kick to Ostwick.",
+"file": "booth/en/3415e9aafea4.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Free kick to Redwick.",
+"lang": "en",
+"role": "pbp",
+"text": "Free kick to Redwick.",
+"file": "booth/en/6f48442d6736.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Galvan!",
+"lang": "en",
+"role": "pbp",
+"text": "Galvan!",
+"file": "booth/en/15a1079b8521.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Galvan.",
+"lang": "en",
+"role": "pbp",
+"text": "Galvan.",
+"file": "booth/en/25fe90dd5894.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Galvan...",
+"lang": "en",
+"role": "pbp",
+"text": "Galvan...",
+"file": "booth/en/b9c5b41358d5.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Good evening. Ostwick and Redwick, and we're off.",
+"lang": "en",
+"role": "pbp",
+"text": "Good evening. Ostwick and Redwick, and we're off.",
+"file": "booth/en/4afec0f6c32e.mp3",
+"duration_s": 2.699,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Good evening. Redwick and Ostwick, and we're off.",
+"lang": "en",
+"role": "pbp",
+"text": "Good evening. Redwick and Ostwick, and we're off.",
+"file": "booth/en/a41d0dd954dd.mp3",
+"duration_s": 2.771,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Halvorsen!",
+"lang": "en",
+"role": "pbp",
+"text": "Halvorsen!",
+"file": "booth/en/4fbcb0c026d3.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Halvorsen.",
+"lang": "en",
+"role": "pbp",
+"text": "Halvorsen.",
+"file": "booth/en/93ad84617fd6.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Halvorsen...",
+"lang": "en",
+"role": "pbp",
+"text": "Halvorsen...",
+"file": "booth/en/3de57c35e150.mp3",
+"duration_s": 0.899,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Holmberg!",
+"lang": "en",
+"role": "pbp",
+"text": "Holmberg!",
+"file": "booth/en/b49004925912.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Holmberg.",
+"lang": "en",
+"role": "pbp",
+"text": "Holmberg.",
+"file": "booth/en/0307bbed71af.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Holmberg...",
+"lang": "en",
+"role": "pbp",
+"text": "Holmberg...",
+"file": "booth/en/d59f978372cf.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Kimura!",
+"lang": "en",
+"role": "pbp",
+"text": "Kimura!",
+"file": "booth/en/1c9a00a5881a.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Kimura.",
+"lang": "en",
+"role": "pbp",
+"text": "Kimura.",
+"file": "booth/en/f2992f614a8e.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Kimura...",
+"lang": "en",
+"role": "pbp",
+"text": "Kimura...",
+"file": "booth/en/f1df1cd5213c.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lindqvist!",
+"lang": "en",
+"role": "pbp",
+"text": "Lindqvist!",
+"file": "booth/en/bdc10d4661fb.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lindqvist.",
+"lang": "en",
+"role": "pbp",
+"text": "Lindqvist.",
+"file": "booth/en/fd42efc7d158.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lindqvist...",
+"lang": "en",
+"role": "pbp",
+"text": "Lindqvist...",
+"file": "booth/en/85d284a4c320.mp3",
+"duration_s": 0.899,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lisowski!",
+"lang": "en",
+"role": "pbp",
+"text": "Lisowski!",
+"file": "booth/en/cfacb1db8bea.mp3",
+"duration_s": 0.899,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lisowski.",
+"lang": "en",
+"role": "pbp",
+"text": "Lisowski.",
+"file": "booth/en/31af317a940c.mp3",
+"duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lisowski...",
+"lang": "en",
+"role": "pbp",
+"text": "Lisowski...",
+"file": "booth/en/d107af9910f9.mp3",
+"duration_s": 0.995,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lundgren!",
+"lang": "en",
+"role": "pbp",
+"text": "Lundgren!",
+"file": "booth/en/5016034bdc89.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lundgren.",
+"lang": "en",
+"role": "pbp",
+"text": "Lundgren.",
+"file": "booth/en/66f08f51972e.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Lundgren...",
+"lang": "en",
+"role": "pbp",
+"text": "Lundgren...",
+"file": "booth/en/d658a2befcb0.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Marravi!",
+"lang": "en",
+"role": "pbp",
+"text": "Marravi!",
+"file": "booth/en/56f38221b3ea.mp3",
+"duration_s": 0.683,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Marravi.",
+"lang": "en",
+"role": "pbp",
+"text": "Marravi.",
+"file": "booth/en/2108004cb3e0.mp3",
+"duration_s": 0.683,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Marravi...",
+"lang": "en",
+"role": "pbp",
+"text": "Marravi...",
+"file": "booth/en/9981430d6674.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Mbeki!",
+"lang": "en",
+"role": "pbp",
+"text": "Mbeki!",
+"file": "booth/en/89d2e05a59bc.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Mbeki.",
+"lang": "en",
+"role": "pbp",
+"text": "Mbeki.",
+"file": "booth/en/1fd40d0e92a2.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Mbeki...",
+"lang": "en",
+"role": "pbp",
+"text": "Mbeki...",
+"file": "booth/en/8b038e279629.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Morales!",
+"lang": "en",
+"role": "pbp",
+"text": "Morales!",
+"file": "booth/en/80e6c591fa29.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Morales.",
+"lang": "en",
+"role": "pbp",
+"text": "Morales.",
+"file": "booth/en/51514a123a4b.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Morales...",
+"lang": "en",
+"role": "pbp",
+"text": "Morales...",
+"file": "booth/en/def4422d8684.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Moreau!",
+"lang": "en",
+"role": "pbp",
+"text": "Moreau!",
+"file": "booth/en/b1cbc43cbada.mp3",
+"duration_s": 0.659,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Moreau.",
+"lang": "en",
+"role": "pbp",
+"text": "Moreau.",
+"file": "booth/en/44090e14f4e0.mp3",
+"duration_s": 0.659,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Moreau...",
+"lang": "en",
+"role": "pbp",
+"text": "Moreau...",
+"file": "booth/en/945b52c4fa0e.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nwosu!",
+"lang": "en",
+"role": "pbp",
+"text": "Nwosu!",
+"file": "booth/en/e21797f51358.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nwosu.",
+"lang": "en",
+"role": "pbp",
+"text": "Nwosu.",
+"file": "booth/en/33b627eec493.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nwosu...",
+"lang": "en",
+"role": "pbp",
+"text": "Nwosu...",
+"file": "booth/en/6f0fd52e24e9.mp3",
+"duration_s": 0.971,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okonkwo!",
+"lang": "en",
+"role": "pbp",
+"text": "Okonkwo!",
+"file": "booth/en/3121834ad2e0.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okonkwo.",
+"lang": "en",
+"role": "pbp",
+"text": "Okonkwo.",
+"file": "booth/en/3c9262252a64.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okonkwo...",
+"lang": "en",
+"role": "pbp",
+"text": "Okonkwo...",
+"file": "booth/en/6f4c3b982646.mp3",
+"duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okowande!",
+"lang": "en",
+"role": "pbp",
+"text": "Okowande!",
+"file": "booth/en/ba3ee1feaf92.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okowande.",
+"lang": "en",
+"role": "pbp",
+"text": "Okowande.",
+"file": "booth/en/d1fd461e6181.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Okowande...",
+"lang": "en",
+"role": "pbp",
+"text": "Okowande...",
+"file": "booth/en/da078cb3e743.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick are pushing. Dan?",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick are pushing. Dan?",
+"file": "booth/en/0d838f9fa9cd.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick have changed something, Dan.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick have changed something, Dan.",
+"file": "booth/en/295831ba1564.mp3",
+"duration_s": 1.931,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick have their goal.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick have their goal.",
+"file": "booth/en/36bda50d0333.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick keep moving it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick keep moving it around.",
+"file": "booth/en/9968139302bc.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick look different now.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick look different now.",
+"file": "booth/en/afea410bdbff.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick on top at the moment. Dan?",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick on top at the moment. Dan?",
+"file": "booth/en/2133fae80190.mp3",
+"duration_s": 2.267,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick still looking for a way in.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick still looking for a way in.",
+"file": "booth/en/3791046c6914.mp3",
+"duration_s": 1.907,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ostwick work it short.",
+"lang": "en",
+"role": "pbp",
+"text": "Ostwick work it short.",
+"file": "booth/en/e35a000cc92b.mp3",
+"duration_s": 1.307,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Oyelaran!",
+"lang": "en",
+"role": "pbp",
+"text": "Oyelaran!",
+"file": "booth/en/8349a8e120bf.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Oyelaran.",
+"lang": "en",
+"role": "pbp",
+"text": "Oyelaran.",
+"file": "booth/en/400933b24516.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Oyelaran...",
+"lang": "en",
+"role": "pbp",
+"text": "Oyelaran...",
+"file": "booth/en/052b49562b3c.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Pavic!",
+"lang": "en",
+"role": "pbp",
+"text": "Pavic!",
+"file": "booth/en/717b148ae8fb.mp3",
+"duration_s": 0.635,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Pavic.",
+"lang": "en",
+"role": "pbp",
+"text": "Pavic.",
+"file": "booth/en/a924d82ad765.mp3",
+"duration_s": 0.635,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Pavic...",
+"lang": "en",
+"role": "pbp",
+"text": "Pavic...",
+"file": "booth/en/06e0f3a85b05.mp3",
+"duration_s": 0.659,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quennell!",
+"lang": "en",
+"role": "pbp",
+"text": "Quennell!",
+"file": "booth/en/c7a8e9bcaad1.mp3",
+"duration_s": 0.611,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quennell.",
+"lang": "en",
+"role": "pbp",
+"text": "Quennell.",
+"file": "booth/en/960b0976a8f8.mp3",
+"duration_s": 0.611,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quennell...",
+"lang": "en",
+"role": "pbp",
+"text": "Quennell...",
+"file": "booth/en/a66499acf15e.mp3",
+"duration_s": 0.659,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quintero!",
+"lang": "en",
+"role": "pbp",
+"text": "Quintero!",
+"file": "booth/en/64c567859c8c.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quintero.",
+"lang": "en",
+"role": "pbp",
+"text": "Quintero.",
+"file": "booth/en/cde76c184a06.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Quintero...",
+"lang": "en",
+"role": "pbp",
+"text": "Quintero...",
+"file": "booth/en/e5b99d86bcbc.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick are pushing. Dan?",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick are pushing. Dan?",
+"file": "booth/en/259c039534f9.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick have changed something, Dan.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick have changed something, Dan.",
+"file": "booth/en/e83816513ae1.mp3",
+"duration_s": 1.859,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick have their goal.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick have their goal.",
+"file": "booth/en/5d153b59e8dc.mp3",
+"duration_s": 1.307,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick keep moving it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick keep moving it around.",
+"file": "booth/en/4b7e2dad6cc4.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick look different now.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick look different now.",
+"file": "booth/en/b9d48389336e.mp3",
+"duration_s": 1.427,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick on top at the moment. Dan?",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick on top at the moment. Dan?",
+"file": "booth/en/1872dd8c8e9f.mp3",
+"duration_s": 2.243,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick still looking for a way in.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick still looking for a way in.",
+"file": "booth/en/541142cd9840.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Redwick work it short.",
+"lang": "en",
+"role": "pbp",
+"text": "Redwick work it short.",
+"file": "booth/en/91250f086f2a.mp3",
+"duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sakamoto!",
+"lang": "en",
+"role": "pbp",
+"text": "Sakamoto!",
+"file": "booth/en/372c37d3c7b3.mp3",
+"duration_s": 0.899,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sakamoto.",
+"lang": "en",
+"role": "pbp",
+"text": "Sakamoto.",
+"file": "booth/en/ccd304d8c476.mp3",
+"duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sakamoto...",
+"lang": "en",
+"role": "pbp",
+"text": "Sakamoto...",
+"file": "booth/en/81e7ef5cf581.mp3",
+"duration_s": 0.947,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sorensen!",
+"lang": "en",
+"role": "pbp",
+"text": "Sorensen!",
+"file": "booth/en/3dac08225c1c.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sorensen.",
+"lang": "en",
+"role": "pbp",
+"text": "Sorensen.",
+"file": "booth/en/c2b2b417490f.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Sorensen...",
+"lang": "en",
+"role": "pbp",
+"text": "Sorensen...",
+"file": "booth/en/4466e90b84c1.mp3",
+"duration_s": 0.899,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Szabo!",
+"lang": "en",
+"role": "pbp",
+"text": "Szabo!",
+"file": "booth/en/92e17d92e63d.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Szabo.",
+"lang": "en",
+"role": "pbp",
+"text": "Szabo.",
+"file": "booth/en/3b5863ea627c.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Szabo...",
+"lang": "en",
+"role": "pbp",
+"text": "Szabo...",
+"file": "booth/en/59555d75c6e5.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Takeda!",
+"lang": "en",
+"role": "pbp",
+"text": "Takeda!",
+"file": "booth/en/cea888b8c9c5.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Takeda.",
+"lang": "en",
+"role": "pbp",
+"text": "Takeda.",
+"file": "booth/en/b551a50fbaa0.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Takeda...",
+"lang": "en",
+"role": "pbp",
+"text": "Takeda...",
+"file": "booth/en/11a950ea1aec.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Tessaro!",
+"lang": "en",
+"role": "pbp",
+"text": "Tessaro!",
+"file": "booth/en/a200c5a226f1.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Tessaro.",
+"lang": "en",
+"role": "pbp",
+"text": "Tessaro.",
+"file": "booth/en/1126e3de4f2e.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Tessaro...",
+"lang": "en",
+"role": "pbp",
+"text": "Tessaro...",
+"file": "booth/en/776b3b4afa29.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|This is all Ostwick now.",
+"lang": "en",
+"role": "pbp",
+"text": "This is all Ostwick now.",
+"file": "booth/en/70c608d7b560.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|This is all Redwick now.",
+"lang": "en",
+"role": "pbp",
+"text": "This is all Redwick now.",
+"file": "booth/en/fc63c9086534.mp3",
+"duration_s": 1.523,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vasquez!",
+"lang": "en",
+"role": "pbp",
+"text": "Vasquez!",
+"file": "booth/en/dc128b2d39a5.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vasquez.",
+"lang": "en",
+"role": "pbp",
+"text": "Vasquez.",
+"file": "booth/en/c196b0d37538.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vasquez...",
+"lang": "en",
+"role": "pbp",
+"text": "Vasquez...",
+"file": "booth/en/dccf422bfe34.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vellacott!",
+"lang": "en",
+"role": "pbp",
+"text": "Vellacott!",
+"file": "booth/en/646f3b502222.mp3",
+"duration_s": 0.827,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vellacott.",
+"lang": "en",
+"role": "pbp",
+"text": "Vellacott.",
+"file": "booth/en/13fa8d8bebfa.mp3",
+"duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Vellacott...",
+"lang": "en",
+"role": "pbp",
+"text": "Vellacott...",
+"file": "booth/en/1ffc8ab85af2.mp3",
+"duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Welcome along. Ostwick against Redwick, and we're under way.",
+"lang": "en",
+"role": "pbp",
+"text": "Welcome along. Ostwick against Redwick, and we're under way.",
+"file": "booth/en/d92d358ad3ed.mp3",
+"duration_s": 3.491,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Welcome along. Redwick against Ostwick, and we're under way.",
+"lang": "en",
+"role": "pbp",
+"text": "Welcome along. Redwick against Ostwick, and we're under way.",
+"file": "booth/en/7888e6d8152c.mp3",
+"duration_s": 3.683,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Yilmaz!",
+"lang": "en",
+"role": "pbp",
+"text": "Yilmaz!",
+"file": "booth/en/aafeee7cb04a.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Yilmaz.",
+"lang": "en",
+"role": "pbp",
+"text": "Yilmaz.",
+"file": "booth/en/7ef8f6868302.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Yilmaz...",
+"lang": "en",
+"role": "pbp",
+"text": "Yilmaz...",
+"file": "booth/en/e2f3a1d23d90.mp3",
+"duration_s": 0.779,
+"voice": "am_michael"
+},
+{
+"key": "co|Castrovane.",
+"lang": "es",
+"role": "co",
+"text": "Castrovane.",
+"file": "booth/es/93d57a37dd76.mp3",
+"duration_s": 0.875,
+"voice": "em_alex"
+},
+{
+"key": "co|Duarte.",
+"lang": "es",
+"role": "co",
+"text": "Duarte.",
+"file": "booth/es/bbbf0249c2f1.mp3",
+"duration_s": 0.659,
+"voice": "em_alex"
+},
+{
+"key": "co|Dunmarrow.",
+"lang": "es",
+"role": "co",
+"text": "Dunmarrow.",
+"file": "booth/es/8dce450a3333.mp3",
+"duration_s": 0.755,
+"voice": "em_alex"
+},
+{
+"key": "co|Ekwueme.",
+"lang": "es",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/es/ca451484c395.mp3",
+"duration_s": 0.707,
+"voice": "em_alex"
+},
+{
+"key": "co|Galvan.",
+"lang": "es",
+"role": "co",
+"text": "Galvan.",
+"file": "booth/es/5794d2375cb6.mp3",
+"duration_s": 0.635,
+"voice": "em_alex"
+},
+{
+"key": "co|Halvorsen.",
+"lang": "es",
+"role": "co",
+"text": "Halvorsen.",
+"file": "booth/es/f1efd1356029.mp3",
+"duration_s": 0.779,
+"voice": "em_alex"
+},
+{
+"key": "co|Holmberg.",
+"lang": "es",
+"role": "co",
+"text": "Holmberg.",
+"file": "booth/es/2b333d3031d1.mp3",
+"duration_s": 0.707,
+"voice": "em_alex"
+},
+{
+"key": "co|Kimura.",
+"lang": "es",
+"role": "co",
+"text": "Kimura.",
+"file": "booth/es/d37ff5a03840.mp3",
+"duration_s": 0.659,
+"voice": "em_alex"
+},
+{
+"key": "co|Lindqvist.",
+"lang": "es",
+"role": "co",
+"text": "Lindqvist.",
+"file": "booth/es/c6e5445e7fa7.mp3",
+"duration_s": 0.803,
+"voice": "em_alex"
+},
+{
+"key": "co|Lisowski.",
+"lang": "es",
+"role": "co",
+"text": "Lisowski.",
+"file": "booth/es/4713feed1882.mp3",
+"duration_s": 0.851,
+"voice": "em_alex"
+},
+{
+"key": "co|Lundgren.",
+"lang": "es",
+"role": "co",
+"text": "Lundgren.",
+"file": "booth/es/3a3bb02967db.mp3",
+"duration_s": 0.683,
+"voice": "em_alex"
+},
+{
+"key": "co|Marravi.",
+"lang": "es",
+"role": "co",
+"text": "Marravi.",
+"file": "booth/es/985f44e311c7.mp3",
+"duration_s": 0.659,
+"voice": "em_alex"
+},
+{
+"key": "co|Mbeki.",
+"lang": "es",
+"role": "co",
+"text": "Mbeki.",
+"file": "booth/es/a866b02903f2.mp3",
+"duration_s": 0.683,
+"voice": "em_alex"
+},
+{
+"key": "co|Morales.",
+"lang": "es",
+"role": "co",
+"text": "Morales.",
+"file": "booth/es/dd943cc90fd9.mp3",
+"duration_s": 0.707,
+"voice": "em_alex"
+},
+{
+"key": "co|Moreau.",
+"lang": "es",
+"role": "co",
+"text": "Moreau.",
+"file": "booth/es/efbb65476d76.mp3",
+"duration_s": 0.683,
+"voice": "em_alex"
+},
+{
+"key": "co|Nwosu.",
+"lang": "es",
+"role": "co",
+"text": "Nwosu.",
+"file": "booth/es/1a64d0182a9e.mp3",
+"duration_s": 0.851,
+"voice": "em_alex"
+},
+{
+"key": "co|Okonkwo.",
+"lang": "es",
+"role": "co",
+"text": "Okonkwo.",
+"file": "booth/es/e75694bf159c.mp3",
+"duration_s": 0.731,
+"voice": "em_alex"
+},
+{
+"key": "co|Okowande.",
+"lang": "es",
+"role": "co",
+"text": "Okowande.",
+"file": "booth/es/4d4f64d497e8.mp3",
+"duration_s": 0.899,
+"voice": "em_alex"
+},
+{
+"key": "co|Oyelaran.",
+"lang": "es",
+"role": "co",
+"text": "Oyelaran.",
+"file": "booth/es/aa2f8e55b8e3.mp3",
+"duration_s": 0.779,
+"voice": "em_alex"
+},
+{
+"key": "co|Pavic.",
+"lang": "es",
+"role": "co",
+"text": "Pavic.",
+"file": "booth/es/6d4f523d154e.mp3",
+"duration_s": 0.587,
+"voice": "em_alex"
+},
+{
+"key": "co|Quennell.",
+"lang": "es",
+"role": "co",
+"text": "Quennell.",
+"file": "booth/es/db6457ecb7f0.mp3",
+"duration_s": 0.635,
+"voice": "em_alex"
+},
+{
+"key": "co|Quintero.",
+"lang": "es",
+"role": "co",
+"text": "Quintero.",
+"file": "booth/es/7ffade83ef51.mp3",
+"duration_s": 0.731,
+"voice": "em_alex"
+},
+{
+"key": "co|Sakamoto.",
+"lang": "es",
+"role": "co",
+"text": "Sakamoto.",
+"file": "booth/es/8b0ceb387753.mp3",
+"duration_s": 0.851,
+"voice": "em_alex"
+},
+{
+"key": "co|Sorensen.",
+"lang": "es",
+"role": "co",
+"text": "Sorensen.",
+"file": "booth/es/e4a3cfdbd333.mp3",
+"duration_s": 0.779,
+"voice": "em_alex"
+},
+{
+"key": "co|Szabo.",
+"lang": "es",
+"role": "co",
+"text": "Szabo.",
+"file": "booth/es/381264d01606.mp3",
+"duration_s": 0.635,
+"voice": "em_alex"
+},
+{
+"key": "co|Takeda.",
+"lang": "es",
+"role": "co",
+"text": "Takeda.",
+"file": "booth/es/8a0eced280af.mp3",
+"duration_s": 0.659,
+"voice": "em_alex"
+},
+{
+"key": "co|Tessaro.",
+"lang": "es",
+"role": "co",
+"text": "Tessaro.",
+"file": "booth/es/2d629996c1f0.mp3",
+"duration_s": 0.755,
+"voice": "em_alex"
+},
+{
+"key": "co|Vasquez.",
+"lang": "es",
+"role": "co",
+"text": "Vasquez.",
+"file": "booth/es/87343f87cb75.mp3",
+"duration_s": 0.731,
+"voice": "em_alex"
+},
+{
+"key": "co|Vellacott.",
+"lang": "es",
+"role": "co",
+"text": "Vellacott.",
+"file": "booth/es/c2eb8247b1e9.mp3",
+"duration_s": 0.947,
+"voice": "em_alex"
+},
+{
+"key": "co|Yilmaz.",
+"lang": "es",
+"role": "co",
+"text": "Yilmaz.",
+"file": "booth/es/f9f3b36e41b8.mp3",
+"duration_s": 0.731,
+"voice": "em_alex"
+},
+{
+"key": "co|el Ostwick.",
+"lang": "es",
+"role": "co",
+"text": "el Ostwick.",
+"file": "booth/es/ca11e0a7bc2f.mp3",
+"duration_s": 0.851,
+"voice": "em_alex"
+},
+{
+"key": "co|el Redwick.",
+"lang": "es",
+"role": "co",
+"text": "el Redwick.",
+"file": "booth/es/e827c9d823b7.mp3",
+"duration_s": 0.851,
+"voice": "em_alex"
+},
+{
+"key": "pbp|Ahora todo es del Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora todo es del Ostwick.",
+"file": "booth/es/65626a774faf.mp3",
+"duration_s": 1.571,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahora todo es del Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora todo es del Redwick.",
+"file": "booth/es/a02461f54612.mp3",
+"duration_s": 1.571,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Aprieta el Ostwick. ¿Andrés?",
+"lang": "es",
+"role": "pbp",
+"text": "Aprieta el Ostwick. ¿Andrés?",
+"file": "booth/es/fecfb139955a.mp3",
+"duration_s": 1.643,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Aprieta el Redwick. ¿Andrés?",
+"lang": "es",
+"role": "pbp",
+"text": "Aprieta el Redwick. ¿Andrés?",
+"file": "booth/es/82a5406d3ba1.mp3",
+"duration_s": 1.619,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Bienvenidos. el Ostwick contra el Redwick, y arranca el partido.",
+"lang": "es",
+"role": "pbp",
+"text": "Bienvenidos. el Ostwick contra el Redwick, y arranca el partido.",
+"file": "booth/es/6420d28dcaab.mp3",
+"duration_s": 3.371,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Bienvenidos. el Redwick contra el Ostwick, y arranca el partido.",
+"lang": "es",
+"role": "pbp",
+"text": "Bienvenidos. el Redwick contra el Ostwick, y arranca el partido.",
+"file": "booth/es/e4598a6af472.mp3",
+"duration_s": 3.395,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Buen momento del Ostwick. ¿Andrés?",
+"lang": "es",
+"role": "pbp",
+"text": "Buen momento del Ostwick. ¿Andrés?",
+"file": "booth/es/ae74d81f7245.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Buen momento del Redwick. ¿Andrés?",
+"lang": "es",
+"role": "pbp",
+"text": "Buen momento del Redwick. ¿Andrés?",
+"file": "booth/es/dd8de46c4d56.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Buenas noches. el Ostwick y el Redwick, echa a rodar el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "Buenas noches. el Ostwick y el Redwick, echa a rodar el balón.",
+"file": "booth/es/eff5ee6f41a9.mp3",
+"duration_s": 3.419,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Buenas noches. el Redwick y el Ostwick, echa a rodar el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "Buenas noches. el Redwick y el Ostwick, echa a rodar el balón.",
+"file": "booth/es/961a22050c4a.mp3",
+"duration_s": 3.467,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Castrovane!",
+"lang": "es",
+"role": "pbp",
+"text": "Castrovane!",
+"file": "booth/es/d04ef6b44b21.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Castrovane.",
+"lang": "es",
+"role": "pbp",
+"text": "Castrovane.",
+"file": "booth/es/b8cfce1d0d46.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Castrovane...",
+"lang": "es",
+"role": "pbp",
+"text": "Castrovane...",
+"file": "booth/es/37d3dbbe5eab.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Córner para el Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Córner para el Ostwick.",
+"file": "booth/es/1d5bb7bd7d75.mp3",
+"duration_s": 1.307,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Córner para el Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Córner para el Redwick.",
+"file": "booth/es/8d6a66437b79.mp3",
+"duration_s": 1.283,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Duarte!",
+"lang": "es",
+"role": "pbp",
+"text": "Duarte!",
+"file": "booth/es/ae3a64330390.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Duarte.",
+"lang": "es",
+"role": "pbp",
+"text": "Duarte.",
+"file": "booth/es/34c7a02d59ea.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Duarte...",
+"lang": "es",
+"role": "pbp",
+"text": "Duarte...",
+"file": "booth/es/8b2bf3b0d3e3.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Dunmarrow!",
+"lang": "es",
+"role": "pbp",
+"text": "Dunmarrow!",
+"file": "booth/es/269ab2a03328.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Dunmarrow.",
+"lang": "es",
+"role": "pbp",
+"text": "Dunmarrow.",
+"file": "booth/es/e9f96beefca2.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Dunmarrow...",
+"lang": "es",
+"role": "pbp",
+"text": "Dunmarrow...",
+"file": "booth/es/0bbfbc5010bb.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/es/789605bcdfa4.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/es/cf799a31feb1.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/es/b2f034003bb3.mp3",
+"duration_s": 0.731,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Ostwick ha cambiado algo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Ostwick ha cambiado algo.",
+"file": "booth/es/fca6c19b0dfe.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Ostwick se ha reordenado, Andrés.",
+"lang": "es",
+"role": "pbp",
+"text": "El Ostwick se ha reordenado, Andrés.",
+"file": "booth/es/cf3e1e4f8f30.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Ostwick sigue buscando un hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Ostwick sigue buscando un hueco.",
+"file": "booth/es/0239a1d44453.mp3",
+"duration_s": 1.955,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Ostwick sigue moviendo el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Ostwick sigue moviendo el balón.",
+"file": "booth/es/22e0d7440510.mp3",
+"duration_s": 2.003,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Redwick ha cambiado algo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Redwick ha cambiado algo.",
+"file": "booth/es/4041a643a5b2.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Redwick se ha reordenado, Andrés.",
+"lang": "es",
+"role": "pbp",
+"text": "El Redwick se ha reordenado, Andrés.",
+"file": "booth/es/14e8141e6b42.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Redwick sigue buscando un hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Redwick sigue buscando un hueco.",
+"file": "booth/es/9136c195a03e.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Redwick sigue moviendo el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Redwick sigue moviendo el balón.",
+"file": "booth/es/28c91679aa4f.mp3",
+"duration_s": 1.931,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Galvan!",
+"lang": "es",
+"role": "pbp",
+"text": "Galvan!",
+"file": "booth/es/0be78baf8050.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Galvan.",
+"lang": "es",
+"role": "pbp",
+"text": "Galvan.",
+"file": "booth/es/3917e0730230.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Galvan...",
+"lang": "es",
+"role": "pbp",
+"text": "Galvan...",
+"file": "booth/es/66b4369f23b2.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Habrá tiro libre, para el Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Habrá tiro libre, para el Ostwick.",
+"file": "booth/es/311188ba923d.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Habrá tiro libre, para el Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Habrá tiro libre, para el Redwick.",
+"file": "booth/es/8193e369970e.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Halvorsen!",
+"lang": "es",
+"role": "pbp",
+"text": "Halvorsen!",
+"file": "booth/es/57490464edb4.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Halvorsen.",
+"lang": "es",
+"role": "pbp",
+"text": "Halvorsen.",
+"file": "booth/es/95f1116b04eb.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Halvorsen...",
+"lang": "es",
+"role": "pbp",
+"text": "Halvorsen...",
+"file": "booth/es/c98977351c5c.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Holmberg!",
+"lang": "es",
+"role": "pbp",
+"text": "Holmberg!",
+"file": "booth/es/e6c8f3ab9350.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Holmberg.",
+"lang": "es",
+"role": "pbp",
+"text": "Holmberg.",
+"file": "booth/es/200af37e29bb.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Holmberg...",
+"lang": "es",
+"role": "pbp",
+"text": "Holmberg...",
+"file": "booth/es/0d0ede1830fc.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Kimura!",
+"lang": "es",
+"role": "pbp",
+"text": "Kimura!",
+"file": "booth/es/97f7fce724ea.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Kimura.",
+"lang": "es",
+"role": "pbp",
+"text": "Kimura.",
+"file": "booth/es/69abaf15177e.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Kimura...",
+"lang": "es",
+"role": "pbp",
+"text": "Kimura...",
+"file": "booth/es/65f51a93d1c5.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lindqvist!",
+"lang": "es",
+"role": "pbp",
+"text": "Lindqvist!",
+"file": "booth/es/925862720c92.mp3",
+"duration_s": 0.803,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lindqvist.",
+"lang": "es",
+"role": "pbp",
+"text": "Lindqvist.",
+"file": "booth/es/62757a6599e5.mp3",
+"duration_s": 0.803,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lindqvist...",
+"lang": "es",
+"role": "pbp",
+"text": "Lindqvist...",
+"file": "booth/es/c51d83787108.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lisowski!",
+"lang": "es",
+"role": "pbp",
+"text": "Lisowski!",
+"file": "booth/es/acafd5d9db28.mp3",
+"duration_s": 0.803,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lisowski.",
+"lang": "es",
+"role": "pbp",
+"text": "Lisowski.",
+"file": "booth/es/d506bdcea474.mp3",
+"duration_s": 0.827,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lisowski...",
+"lang": "es",
+"role": "pbp",
+"text": "Lisowski...",
+"file": "booth/es/c6ca30e7f2fb.mp3",
+"duration_s": 0.875,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lundgren!",
+"lang": "es",
+"role": "pbp",
+"text": "Lundgren!",
+"file": "booth/es/e94c9c46188d.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lundgren.",
+"lang": "es",
+"role": "pbp",
+"text": "Lundgren.",
+"file": "booth/es/8381a7aeef1f.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Lundgren...",
+"lang": "es",
+"role": "pbp",
+"text": "Lundgren...",
+"file": "booth/es/9b06228af708.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Marravi!",
+"lang": "es",
+"role": "pbp",
+"text": "Marravi!",
+"file": "booth/es/fdd044144a0d.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Marravi.",
+"lang": "es",
+"role": "pbp",
+"text": "Marravi.",
+"file": "booth/es/b67cd6a8d276.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Marravi...",
+"lang": "es",
+"role": "pbp",
+"text": "Marravi...",
+"file": "booth/es/ac558def5c83.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Mbeki!",
+"lang": "es",
+"role": "pbp",
+"text": "Mbeki!",
+"file": "booth/es/66ecef4cda01.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Mbeki.",
+"lang": "es",
+"role": "pbp",
+"text": "Mbeki.",
+"file": "booth/es/8d8eac8c8916.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Mbeki...",
+"lang": "es",
+"role": "pbp",
+"text": "Mbeki...",
+"file": "booth/es/437a9b22f4eb.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Morales!",
+"lang": "es",
+"role": "pbp",
+"text": "Morales!",
+"file": "booth/es/2eb6436fde1b.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Morales.",
+"lang": "es",
+"role": "pbp",
+"text": "Morales.",
+"file": "booth/es/5ed720de8538.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Morales...",
+"lang": "es",
+"role": "pbp",
+"text": "Morales...",
+"file": "booth/es/9703864030ae.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Moreau!",
+"lang": "es",
+"role": "pbp",
+"text": "Moreau!",
+"file": "booth/es/aa0838027499.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Moreau.",
+"lang": "es",
+"role": "pbp",
+"text": "Moreau.",
+"file": "booth/es/1ed96c008e04.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Moreau...",
+"lang": "es",
+"role": "pbp",
+"text": "Moreau...",
+"file": "booth/es/7ef9f7e51344.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Nwosu!",
+"lang": "es",
+"role": "pbp",
+"text": "Nwosu!",
+"file": "booth/es/18fbc24ec818.mp3",
+"duration_s": 0.827,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Nwosu.",
+"lang": "es",
+"role": "pbp",
+"text": "Nwosu.",
+"file": "booth/es/bb270ce6b7b3.mp3",
+"duration_s": 0.827,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Nwosu...",
+"lang": "es",
+"role": "pbp",
+"text": "Nwosu...",
+"file": "booth/es/895c7d2c9151.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okonkwo!",
+"lang": "es",
+"role": "pbp",
+"text": "Okonkwo!",
+"file": "booth/es/8df5cb508d44.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okonkwo.",
+"lang": "es",
+"role": "pbp",
+"text": "Okonkwo.",
+"file": "booth/es/5fae5d1030cd.mp3",
+"duration_s": 0.731,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okonkwo...",
+"lang": "es",
+"role": "pbp",
+"text": "Okonkwo...",
+"file": "booth/es/acc901432dcd.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okowande!",
+"lang": "es",
+"role": "pbp",
+"text": "Okowande!",
+"file": "booth/es/51cff9bf385c.mp3",
+"duration_s": 0.827,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okowande.",
+"lang": "es",
+"role": "pbp",
+"text": "Okowande.",
+"file": "booth/es/26fe4dbd9e1c.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Okowande...",
+"lang": "es",
+"role": "pbp",
+"text": "Okowande...",
+"file": "booth/es/6f50b7974dd9.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Oyelaran!",
+"lang": "es",
+"role": "pbp",
+"text": "Oyelaran!",
+"file": "booth/es/8881010728b0.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Oyelaran.",
+"lang": "es",
+"role": "pbp",
+"text": "Oyelaran.",
+"file": "booth/es/896eb0a543ad.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Oyelaran...",
+"lang": "es",
+"role": "pbp",
+"text": "Oyelaran...",
+"file": "booth/es/36a9a4e97e3f.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pavic!",
+"lang": "es",
+"role": "pbp",
+"text": "Pavic!",
+"file": "booth/es/2582e43d9f1a.mp3",
+"duration_s": 0.611,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pavic.",
+"lang": "es",
+"role": "pbp",
+"text": "Pavic.",
+"file": "booth/es/57ab874cccab.mp3",
+"duration_s": 0.611,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pavic...",
+"lang": "es",
+"role": "pbp",
+"text": "Pavic...",
+"file": "booth/es/c4bf62050da2.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quennell!",
+"lang": "es",
+"role": "pbp",
+"text": "Quennell!",
+"file": "booth/es/05723b9f0b57.mp3",
+"duration_s": 0.587,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quennell.",
+"lang": "es",
+"role": "pbp",
+"text": "Quennell.",
+"file": "booth/es/e4fa8d5fa2ed.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quennell...",
+"lang": "es",
+"role": "pbp",
+"text": "Quennell...",
+"file": "booth/es/7bf34f5354eb.mp3",
+"duration_s": 0.587,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quintero!",
+"lang": "es",
+"role": "pbp",
+"text": "Quintero!",
+"file": "booth/es/799022cc9ac4.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quintero.",
+"lang": "es",
+"role": "pbp",
+"text": "Quintero.",
+"file": "booth/es/f94fd2c7b7fc.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Quintero...",
+"lang": "es",
+"role": "pbp",
+"text": "Quintero...",
+"file": "booth/es/bda4b24c315c.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sakamoto!",
+"lang": "es",
+"role": "pbp",
+"text": "Sakamoto!",
+"file": "booth/es/73afa518c909.mp3",
+"duration_s": 0.899,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sakamoto.",
+"lang": "es",
+"role": "pbp",
+"text": "Sakamoto.",
+"file": "booth/es/a5db2bd41dc1.mp3",
+"duration_s": 0.875,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sakamoto...",
+"lang": "es",
+"role": "pbp",
+"text": "Sakamoto...",
+"file": "booth/es/79d405c32f8e.mp3",
+"duration_s": 0.899,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sorensen!",
+"lang": "es",
+"role": "pbp",
+"text": "Sorensen!",
+"file": "booth/es/ec1035d62950.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sorensen.",
+"lang": "es",
+"role": "pbp",
+"text": "Sorensen.",
+"file": "booth/es/7f9afd2c786c.mp3",
+"duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sorensen...",
+"lang": "es",
+"role": "pbp",
+"text": "Sorensen...",
+"file": "booth/es/1d190ff8058d.mp3",
+"duration_s": 0.803,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Szabo!",
+"lang": "es",
+"role": "pbp",
+"text": "Szabo!",
+"file": "booth/es/11ee0dcc17f0.mp3",
+"duration_s": 0.587,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Szabo.",
+"lang": "es",
+"role": "pbp",
+"text": "Szabo.",
+"file": "booth/es/477988a17b71.mp3",
+"duration_s": 0.587,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Szabo...",
+"lang": "es",
+"role": "pbp",
+"text": "Szabo...",
+"file": "booth/es/561188f6e425.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Takeda!",
+"lang": "es",
+"role": "pbp",
+"text": "Takeda!",
+"file": "booth/es/f6305bd8907e.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Takeda.",
+"lang": "es",
+"role": "pbp",
+"text": "Takeda.",
+"file": "booth/es/a4822474b45c.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Takeda...",
+"lang": "es",
+"role": "pbp",
+"text": "Takeda...",
+"file": "booth/es/1397c661b2e6.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Tessaro!",
+"lang": "es",
+"role": "pbp",
+"text": "Tessaro!",
+"file": "booth/es/faeb4020780c.mp3",
+"duration_s": 0.731,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Tessaro.",
+"lang": "es",
+"role": "pbp",
+"text": "Tessaro.",
+"file": "booth/es/332ad758624c.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Tessaro...",
+"lang": "es",
+"role": "pbp",
+"text": "Tessaro...",
+"file": "booth/es/8d38567a20bf.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vasquez!",
+"lang": "es",
+"role": "pbp",
+"text": "Vasquez!",
+"file": "booth/es/bf2ba4642114.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vasquez.",
+"lang": "es",
+"role": "pbp",
+"text": "Vasquez.",
+"file": "booth/es/020bbb808a79.mp3",
+"duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vasquez...",
+"lang": "es",
+"role": "pbp",
+"text": "Vasquez...",
+"file": "booth/es/ae81f3b8aa0c.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vellacott!",
+"lang": "es",
+"role": "pbp",
+"text": "Vellacott!",
+"file": "booth/es/0e04397df66a.mp3",
+"duration_s": 0.899,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vellacott.",
+"lang": "es",
+"role": "pbp",
+"text": "Vellacott.",
+"file": "booth/es/57ed50228279.mp3",
+"duration_s": 0.899,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vellacott...",
+"lang": "es",
+"role": "pbp",
+"text": "Vellacott...",
+"file": "booth/es/d774b5d0f39d.mp3",
+"duration_s": 0.923,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Yilmaz!",
+"lang": "es",
+"role": "pbp",
+"text": "Yilmaz!",
+"file": "booth/es/e639ce627f22.mp3",
+"duration_s": 0.611,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Yilmaz.",
+"lang": "es",
+"role": "pbp",
+"text": "Yilmaz.",
+"file": "booth/es/0a5e151abb09.mp3",
+"duration_s": 0.611,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Yilmaz...",
+"lang": "es",
+"role": "pbp",
+"text": "Yilmaz...",
+"file": "booth/es/092137ee0a1c.mp3",
+"duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|¡Gol del Ostwick!",
+"lang": "es",
+"role": "pbp",
+"text": "¡Gol del Ostwick!",
+"file": "booth/es/ed539636740e.mp3",
+"duration_s": 1.091,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|¡Gol del Redwick!",
+"lang": "es",
+"role": "pbp",
+"text": "¡Gol del Redwick!",
+"file": "booth/es/34123de9ada6.mp3",
+"duration_s": 1.091,
+"voice": "ef_dora"
+},
+{
+"key": "co|Castrovane.",
+"lang": "it",
+"role": "co",
+"text": "Castrovane.",
+"file": "booth/it/7e5a814af96b.mp3",
+"duration_s": 0.995,
+"voice": "im_nicola"
+},
+{
+"key": "co|Duarte.",
+"lang": "it",
+"role": "co",
+"text": "Duarte.",
+"file": "booth/it/0446851eb334.mp3",
+"duration_s": 0.755,
+"voice": "im_nicola"
+},
+{
+"key": "co|Dunmarrow.",
+"lang": "it",
+"role": "co",
+"text": "Dunmarrow.",
+"file": "booth/it/d818f231984e.mp3",
+"duration_s": 0.827,
+"voice": "im_nicola"
+},
+{
+"key": "co|Ekwueme.",
+"lang": "it",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/it/6e51924af621.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
+"key": "co|Galvan.",
+"lang": "it",
+"role": "co",
+"text": "Galvan.",
+"file": "booth/it/cf418b6f1c19.mp3",
+"duration_s": 0.659,
+"voice": "im_nicola"
+},
+{
+"key": "co|Halvorsen.",
+"lang": "it",
+"role": "co",
+"text": "Halvorsen.",
+"file": "booth/it/e03e2ad098ff.mp3",
+"duration_s": 0.851,
+"voice": "im_nicola"
+},
+{
+"key": "co|Holmberg.",
+"lang": "it",
+"role": "co",
+"text": "Holmberg.",
+"file": "booth/it/566708e5bf0f.mp3",
+"duration_s": 0.755,
+"voice": "im_nicola"
+},
+{
+"key": "co|Kimura.",
+"lang": "it",
+"role": "co",
+"text": "Kimura.",
+"file": "booth/it/644e085d35c3.mp3",
+"duration_s": 0.707,
+"voice": "im_nicola"
+},
+{
+"key": "co|Lindqvist.",
+"lang": "it",
+"role": "co",
+"text": "Lindqvist.",
+"file": "booth/it/0703bfdf23fd.mp3",
+"duration_s": 0.827,
+"voice": "im_nicola"
+},
+{
+"key": "co|Lisowski.",
+"lang": "it",
+"role": "co",
+"text": "Lisowski.",
+"file": "booth/it/29cf3a63bbbc.mp3",
+"duration_s": 0.827,
+"voice": "im_nicola"
+},
+{
+"key": "co|Lundgren.",
+"lang": "it",
+"role": "co",
+"text": "Lundgren.",
+"file": "booth/it/a7f58da0370f.mp3",
+"duration_s": 0.707,
+"voice": "im_nicola"
+},
+{
+"key": "co|Marravi.",
+"lang": "it",
+"role": "co",
+"text": "Marravi.",
+"file": "booth/it/a693676b9200.mp3",
+"duration_s": 0.803,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mbeki.",
+"lang": "it",
+"role": "co",
+"text": "Mbeki.",
+"file": "booth/it/f2d51d35bfdb.mp3",
+"duration_s": 0.707,
+"voice": "im_nicola"
+},
+{
+"key": "co|Morales.",
+"lang": "it",
+"role": "co",
+"text": "Morales.",
+"file": "booth/it/222ac73e0a5b.mp3",
+"duration_s": 0.707,
+"voice": "im_nicola"
+},
+{
+"key": "co|Moreau.",
+"lang": "it",
+"role": "co",
+"text": "Moreau.",
+"file": "booth/it/ba1f1521830a.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
+"key": "co|Nwosu.",
+"lang": "it",
+"role": "co",
+"text": "Nwosu.",
+"file": "booth/it/4c468f18c72f.mp3",
+"duration_s": 0.683,
+"voice": "im_nicola"
+},
+{
+"key": "co|Okonkwo.",
+"lang": "it",
+"role": "co",
+"text": "Okonkwo.",
+"file": "booth/it/0b69e12840b0.mp3",
+"duration_s": 0.755,
+"voice": "im_nicola"
+},
+{
+"key": "co|Okowande.",
+"lang": "it",
+"role": "co",
+"text": "Okowande.",
+"file": "booth/it/52dcc9f739d8.mp3",
+"duration_s": 0.899,
+"voice": "im_nicola"
+},
+{
+"key": "co|Oyelaran.",
+"lang": "it",
+"role": "co",
+"text": "Oyelaran.",
+"file": "booth/it/b59a3001beac.mp3",
+"duration_s": 0.851,
+"voice": "im_nicola"
+},
+{
+"key": "co|Pavic.",
+"lang": "it",
+"role": "co",
+"text": "Pavic.",
+"file": "booth/it/99e95be43b7b.mp3",
+"duration_s": 0.635,
+"voice": "im_nicola"
+},
+{
+"key": "co|Quennell.",
+"lang": "it",
+"role": "co",
+"text": "Quennell.",
+"file": "booth/it/909b390b28ca.mp3",
+"duration_s": 0.659,
+"voice": "im_nicola"
+},
+{
+"key": "co|Quintero.",
+"lang": "it",
+"role": "co",
+"text": "Quintero.",
+"file": "booth/it/e7fbfe12dc99.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
+"key": "co|Sakamoto.",
+"lang": "it",
+"role": "co",
+"text": "Sakamoto.",
+"file": "booth/it/6896cb6804a3.mp3",
+"duration_s": 0.899,
+"voice": "im_nicola"
+},
+{
+"key": "co|Sorensen.",
+"lang": "it",
+"role": "co",
+"text": "Sorensen.",
+"file": "booth/it/cd9e444e6528.mp3",
+"duration_s": 0.899,
+"voice": "im_nicola"
+},
+{
+"key": "co|Szabo.",
+"lang": "it",
+"role": "co",
+"text": "Szabo.",
+"file": "booth/it/fc52bd63ae5a.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
+"key": "co|Takeda.",
+"lang": "it",
+"role": "co",
+"text": "Takeda.",
+"file": "booth/it/144ed7eaf654.mp3",
+"duration_s": 0.755,
+"voice": "im_nicola"
+},
+{
+"key": "co|Tessaro.",
+"lang": "it",
+"role": "co",
+"text": "Tessaro.",
+"file": "booth/it/3f11c9782dc9.mp3",
+"duration_s": 0.827,
+"voice": "im_nicola"
+},
+{
+"key": "co|Vasquez.",
+"lang": "it",
+"role": "co",
+"text": "Vasquez.",
+"file": "booth/it/a8b073b76e7a.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
+"key": "co|Vellacott.",
+"lang": "it",
+"role": "co",
+"text": "Vellacott.",
+"file": "booth/it/1f357016021a.mp3",
+"duration_s": 0.899,
+"voice": "im_nicola"
+},
+{
+"key": "co|Yilmaz.",
+"lang": "it",
+"role": "co",
+"text": "Yilmaz.",
+"file": "booth/it/6544424fcde8.mp3",
+"duration_s": 0.707,
+"voice": "im_nicola"
+},
+{
+"key": "co|del Redwick.",
+"lang": "it",
+"role": "co",
+"text": "del Redwick.",
+"file": "booth/it/036a74779f0d.mp3",
+"duration_s": 0.875,
+"voice": "im_nicola"
+},
+{
+"key": "co|dell'Ostwick.",
+"lang": "it",
+"role": "co",
+"text": "dell'Ostwick.",
+"file": "booth/it/8eb9adb904bd.mp3",
+"duration_s": 0.971,
+"voice": "im_nicola"
+},
+{
+"key": "co|il Redwick.",
+"lang": "it",
+"role": "co",
+"text": "il Redwick.",
+"file": "booth/it/d8a2da266ba6.mp3",
+"duration_s": 0.851,
+"voice": "im_nicola"
+},
+{
+"key": "co|l'Ostwick.",
+"lang": "it",
+"role": "co",
+"text": "l'Ostwick.",
+"file": "booth/it/c270cf1e92c8.mp3",
+"duration_s": 0.827,
+"voice": "im_nicola"
+},
+{
+"key": "pbp|Adesso è tutto il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Adesso è tutto il Redwick.",
+"file": "booth/it/2990c723a3a6.mp3",
+"duration_s": 1.667,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Adesso è tutto l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Adesso è tutto l'Ostwick.",
+"file": "booth/it/b287323071aa.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Benvenuti. il Redwick contro l'Ostwick, si parte.",
+"lang": "it",
+"role": "pbp",
+"text": "Benvenuti. il Redwick contro l'Ostwick, si parte.",
+"file": "booth/it/e8ff2d45c07d.mp3",
+"duration_s": 2.843,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Benvenuti. l'Ostwick contro il Redwick, si parte.",
+"lang": "it",
+"role": "pbp",
+"text": "Benvenuti. l'Ostwick contro il Redwick, si parte.",
+"file": "booth/it/5edd37f8a883.mp3",
+"duration_s": 2.771,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Buonasera. il Redwick e l'Ostwick, comincia la partita.",
+"lang": "it",
+"role": "pbp",
+"text": "Buonasera. il Redwick e l'Ostwick, comincia la partita.",
+"file": "booth/it/ae75429ca781.mp3",
+"duration_s": 3.131,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Buonasera. l'Ostwick e il Redwick, comincia la partita.",
+"lang": "it",
+"role": "pbp",
+"text": "Buonasera. l'Ostwick e il Redwick, comincia la partita.",
+"file": "booth/it/b84051977357.mp3",
+"duration_s": 3.131,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Calcio d'angolo per il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Calcio d'angolo per il Redwick.",
+"file": "booth/it/20e2323d9521.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Calcio d'angolo per l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Calcio d'angolo per l'Ostwick.",
+"file": "booth/it/74622bcc5ddd.mp3",
+"duration_s": 1.835,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Calcio di punizione per il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Calcio di punizione per il Redwick.",
+"file": "booth/it/ed694cc17059.mp3",
+"duration_s": 2.075,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Calcio di punizione per l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Calcio di punizione per l'Ostwick.",
+"file": "booth/it/0fc6745a57f4.mp3",
+"duration_s": 2.123,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Castrovane!",
+"lang": "it",
+"role": "pbp",
+"text": "Castrovane!",
+"file": "booth/it/6f35df021d95.mp3",
+"duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Castrovane.",
+"lang": "it",
+"role": "pbp",
+"text": "Castrovane.",
+"file": "booth/it/a1597d39c692.mp3",
+"duration_s": 1.043,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Castrovane...",
+"lang": "it",
+"role": "pbp",
+"text": "Castrovane...",
+"file": "booth/it/a41e6b1f98df.mp3",
+"duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Duarte!",
+"lang": "it",
+"role": "pbp",
+"text": "Duarte!",
+"file": "booth/it/34a3bcb24414.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Duarte.",
+"lang": "it",
+"role": "pbp",
+"text": "Duarte.",
+"file": "booth/it/d2c12aa6a230.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Duarte...",
+"lang": "it",
+"role": "pbp",
+"text": "Duarte...",
+"file": "booth/it/83e3c334ffbb.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Dunmarrow!",
+"lang": "it",
+"role": "pbp",
+"text": "Dunmarrow!",
+"file": "booth/it/9e5d08afed65.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Dunmarrow.",
+"lang": "it",
+"role": "pbp",
+"text": "Dunmarrow.",
+"file": "booth/it/86d1a0fcd0b9.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Dunmarrow...",
+"lang": "it",
+"role": "pbp",
+"text": "Dunmarrow...",
+"file": "booth/it/1916cd4a974c.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/it/4cc528ed43cb.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/it/aed4230d7f1c.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/it/179298d4f137.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Galvan!",
+"lang": "it",
+"role": "pbp",
+"text": "Galvan!",
+"file": "booth/it/c848be98195f.mp3",
+"duration_s": 0.755,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Galvan.",
+"lang": "it",
+"role": "pbp",
+"text": "Galvan.",
+"file": "booth/it/dc6b3bcf43ba.mp3",
+"duration_s": 0.779,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Galvan...",
+"lang": "it",
+"role": "pbp",
+"text": "Galvan...",
+"file": "booth/it/d50443f94a7d.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Halvorsen!",
+"lang": "it",
+"role": "pbp",
+"text": "Halvorsen!",
+"file": "booth/it/cf330246b878.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Halvorsen.",
+"lang": "it",
+"role": "pbp",
+"text": "Halvorsen.",
+"file": "booth/it/5be4c874288c.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Halvorsen...",
+"lang": "it",
+"role": "pbp",
+"text": "Halvorsen...",
+"file": "booth/it/f21b655b4ea6.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Holmberg!",
+"lang": "it",
+"role": "pbp",
+"text": "Holmberg!",
+"file": "booth/it/57fc1d4ab85f.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Holmberg.",
+"lang": "it",
+"role": "pbp",
+"text": "Holmberg.",
+"file": "booth/it/4adfac105729.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Holmberg...",
+"lang": "it",
+"role": "pbp",
+"text": "Holmberg...",
+"file": "booth/it/072d158fef30.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Redwick cerca ancora un varco.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Redwick cerca ancora un varco.",
+"file": "booth/it/4b504e150cbb.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Redwick continua a far girare palla.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Redwick continua a far girare palla.",
+"file": "booth/it/03ca1b0f2879.mp3",
+"duration_s": 2.363,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Redwick ha cambiato qualcosa, Marco.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Redwick ha cambiato qualcosa, Marco.",
+"file": "booth/it/1a843c893914.mp3",
+"duration_s": 2.459,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Redwick sembra cambiato.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Redwick sembra cambiato.",
+"file": "booth/it/245be08d8c1e.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Kimura!",
+"lang": "it",
+"role": "pbp",
+"text": "Kimura!",
+"file": "booth/it/b955661dae09.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Kimura.",
+"lang": "it",
+"role": "pbp",
+"text": "Kimura.",
+"file": "booth/it/5548e8fef0c4.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Kimura...",
+"lang": "it",
+"role": "pbp",
+"text": "Kimura...",
+"file": "booth/it/5edad89efb08.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Ostwick cerca ancora un varco.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Ostwick cerca ancora un varco.",
+"file": "booth/it/d43084639cee.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Ostwick continua a far girare palla.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Ostwick continua a far girare palla.",
+"file": "booth/it/b9aa5ba418dd.mp3",
+"duration_s": 2.315,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Ostwick ha cambiato qualcosa, Marco.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Ostwick ha cambiato qualcosa, Marco.",
+"file": "booth/it/270d66e470e5.mp3",
+"duration_s": 2.411,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Ostwick sembra cambiato.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Ostwick sembra cambiato.",
+"file": "booth/it/b4061b22c243.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lindqvist!",
+"lang": "it",
+"role": "pbp",
+"text": "Lindqvist!",
+"file": "booth/it/7a5a027e49e9.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lindqvist.",
+"lang": "it",
+"role": "pbp",
+"text": "Lindqvist.",
+"file": "booth/it/c45b134e7da2.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lindqvist...",
+"lang": "it",
+"role": "pbp",
+"text": "Lindqvist...",
+"file": "booth/it/63336f535dce.mp3",
+"duration_s": 0.995,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lisowski!",
+"lang": "it",
+"role": "pbp",
+"text": "Lisowski!",
+"file": "booth/it/852cf328198b.mp3",
+"duration_s": 1.043,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lisowski.",
+"lang": "it",
+"role": "pbp",
+"text": "Lisowski.",
+"file": "booth/it/24e8f3963cef.mp3",
+"duration_s": 1.019,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lisowski...",
+"lang": "it",
+"role": "pbp",
+"text": "Lisowski...",
+"file": "booth/it/b4d9ea1bba18.mp3",
+"duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lundgren!",
+"lang": "it",
+"role": "pbp",
+"text": "Lundgren!",
+"file": "booth/it/467f115062db.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lundgren.",
+"lang": "it",
+"role": "pbp",
+"text": "Lundgren.",
+"file": "booth/it/7cab4b9a4fda.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Lundgren...",
+"lang": "it",
+"role": "pbp",
+"text": "Lundgren...",
+"file": "booth/it/0ba78864cf38.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Marravi!",
+"lang": "it",
+"role": "pbp",
+"text": "Marravi!",
+"file": "booth/it/1a9ddcb84665.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Marravi.",
+"lang": "it",
+"role": "pbp",
+"text": "Marravi.",
+"file": "booth/it/b993ce5d388c.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Marravi...",
+"lang": "it",
+"role": "pbp",
+"text": "Marravi...",
+"file": "booth/it/4e814c7d0ab0.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Mbeki!",
+"lang": "it",
+"role": "pbp",
+"text": "Mbeki!",
+"file": "booth/it/a14c93a7500d.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Mbeki.",
+"lang": "it",
+"role": "pbp",
+"text": "Mbeki.",
+"file": "booth/it/056a5c17bd2d.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Mbeki...",
+"lang": "it",
+"role": "pbp",
+"text": "Mbeki...",
+"file": "booth/it/70e4594da6ff.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Momento del Redwick. Marco?",
+"lang": "it",
+"role": "pbp",
+"text": "Momento del Redwick. Marco?",
+"file": "booth/it/c87fe5f69f4d.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Momento dell'Ostwick. Marco?",
+"lang": "it",
+"role": "pbp",
+"text": "Momento dell'Ostwick. Marco?",
+"file": "booth/it/c9b282da1c65.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Morales!",
+"lang": "it",
+"role": "pbp",
+"text": "Morales!",
+"file": "booth/it/d9a7d79e0bb6.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Morales.",
+"lang": "it",
+"role": "pbp",
+"text": "Morales.",
+"file": "booth/it/34184fbc1bbd.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Morales...",
+"lang": "it",
+"role": "pbp",
+"text": "Morales...",
+"file": "booth/it/956c2f25085a.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Moreau!",
+"lang": "it",
+"role": "pbp",
+"text": "Moreau!",
+"file": "booth/it/f1859f74724b.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Moreau.",
+"lang": "it",
+"role": "pbp",
+"text": "Moreau.",
+"file": "booth/it/953ad52428b9.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Moreau...",
+"lang": "it",
+"role": "pbp",
+"text": "Moreau...",
+"file": "booth/it/34546621d7d2.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nwosu!",
+"lang": "it",
+"role": "pbp",
+"text": "Nwosu!",
+"file": "booth/it/11eddf4740f9.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nwosu.",
+"lang": "it",
+"role": "pbp",
+"text": "Nwosu.",
+"file": "booth/it/11b06f985d35.mp3",
+"duration_s": 0.827,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nwosu...",
+"lang": "it",
+"role": "pbp",
+"text": "Nwosu...",
+"file": "booth/it/718e7972adf5.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okonkwo!",
+"lang": "it",
+"role": "pbp",
+"text": "Okonkwo!",
+"file": "booth/it/2d440b87714d.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okonkwo.",
+"lang": "it",
+"role": "pbp",
+"text": "Okonkwo.",
+"file": "booth/it/fb7a9ca092e6.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okonkwo...",
+"lang": "it",
+"role": "pbp",
+"text": "Okonkwo...",
+"file": "booth/it/bd7566639e47.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okowande!",
+"lang": "it",
+"role": "pbp",
+"text": "Okowande!",
+"file": "booth/it/77f0a839914e.mp3",
+"duration_s": 1.019,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okowande.",
+"lang": "it",
+"role": "pbp",
+"text": "Okowande.",
+"file": "booth/it/b81ccd0ff9b8.mp3",
+"duration_s": 1.019,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Okowande...",
+"lang": "it",
+"role": "pbp",
+"text": "Okowande...",
+"file": "booth/it/3dc2fe421534.mp3",
+"duration_s": 0.995,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Oyelaran!",
+"lang": "it",
+"role": "pbp",
+"text": "Oyelaran!",
+"file": "booth/it/1aa52b1fb6d8.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Oyelaran.",
+"lang": "it",
+"role": "pbp",
+"text": "Oyelaran.",
+"file": "booth/it/ff67d7afb784.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Oyelaran...",
+"lang": "it",
+"role": "pbp",
+"text": "Oyelaran...",
+"file": "booth/it/c6a98fc36d8e.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pavic!",
+"lang": "it",
+"role": "pbp",
+"text": "Pavic!",
+"file": "booth/it/82b8e75f6fff.mp3",
+"duration_s": 0.731,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pavic.",
+"lang": "it",
+"role": "pbp",
+"text": "Pavic.",
+"file": "booth/it/1d34a580cf61.mp3",
+"duration_s": 0.731,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pavic...",
+"lang": "it",
+"role": "pbp",
+"text": "Pavic...",
+"file": "booth/it/e1bdb0c8ad91.mp3",
+"duration_s": 0.755,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quennell!",
+"lang": "it",
+"role": "pbp",
+"text": "Quennell!",
+"file": "booth/it/c99893c1fcd8.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quennell.",
+"lang": "it",
+"role": "pbp",
+"text": "Quennell.",
+"file": "booth/it/644cc52e471a.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quennell...",
+"lang": "it",
+"role": "pbp",
+"text": "Quennell...",
+"file": "booth/it/9f285b422a89.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quintero!",
+"lang": "it",
+"role": "pbp",
+"text": "Quintero!",
+"file": "booth/it/563f5c866fab.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quintero.",
+"lang": "it",
+"role": "pbp",
+"text": "Quintero.",
+"file": "booth/it/63e6836963ef.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Quintero...",
+"lang": "it",
+"role": "pbp",
+"text": "Quintero...",
+"file": "booth/it/24182539dca0.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sakamoto!",
+"lang": "it",
+"role": "pbp",
+"text": "Sakamoto!",
+"file": "booth/it/592e0851511c.mp3",
+"duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sakamoto.",
+"lang": "it",
+"role": "pbp",
+"text": "Sakamoto.",
+"file": "booth/it/5a8fd321cd9c.mp3",
+"duration_s": 1.043,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sakamoto...",
+"lang": "it",
+"role": "pbp",
+"text": "Sakamoto...",
+"file": "booth/it/f89f3483c70e.mp3",
+"duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sorensen!",
+"lang": "it",
+"role": "pbp",
+"text": "Sorensen!",
+"file": "booth/it/b2741d155adb.mp3",
+"duration_s": 0.995,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sorensen.",
+"lang": "it",
+"role": "pbp",
+"text": "Sorensen.",
+"file": "booth/it/02fe06e31fe0.mp3",
+"duration_s": 0.995,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Sorensen...",
+"lang": "it",
+"role": "pbp",
+"text": "Sorensen...",
+"file": "booth/it/5ebd9eb700c7.mp3",
+"duration_s": 1.019,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Spinge il Redwick. Marco?",
+"lang": "it",
+"role": "pbp",
+"text": "Spinge il Redwick. Marco?",
+"file": "booth/it/49f8c67ee1e0.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Spinge l'Ostwick. Marco?",
+"lang": "it",
+"role": "pbp",
+"text": "Spinge l'Ostwick. Marco?",
+"file": "booth/it/30f30cf02bd6.mp3",
+"duration_s": 1.763,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Szabo!",
+"lang": "it",
+"role": "pbp",
+"text": "Szabo!",
+"file": "booth/it/bbe5d9bbd792.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Szabo.",
+"lang": "it",
+"role": "pbp",
+"text": "Szabo.",
+"file": "booth/it/264a65a21f58.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Szabo...",
+"lang": "it",
+"role": "pbp",
+"text": "Szabo...",
+"file": "booth/it/a00d7d17cc4c.mp3",
+"duration_s": 0.827,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Takeda!",
+"lang": "it",
+"role": "pbp",
+"text": "Takeda!",
+"file": "booth/it/5743963d6d7b.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Takeda.",
+"lang": "it",
+"role": "pbp",
+"text": "Takeda.",
+"file": "booth/it/f1196ffa90d0.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Takeda...",
+"lang": "it",
+"role": "pbp",
+"text": "Takeda...",
+"file": "booth/it/61a08fab0192.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tessaro!",
+"lang": "it",
+"role": "pbp",
+"text": "Tessaro!",
+"file": "booth/it/5787327ec57f.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tessaro.",
+"lang": "it",
+"role": "pbp",
+"text": "Tessaro.",
+"file": "booth/it/c571aa1e3a3a.mp3",
+"duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tessaro...",
+"lang": "it",
+"role": "pbp",
+"text": "Tessaro...",
+"file": "booth/it/347190f9329a.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vasquez!",
+"lang": "it",
+"role": "pbp",
+"text": "Vasquez!",
+"file": "booth/it/dec5296107e1.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vasquez.",
+"lang": "it",
+"role": "pbp",
+"text": "Vasquez.",
+"file": "booth/it/78049a8f4492.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vasquez...",
+"lang": "it",
+"role": "pbp",
+"text": "Vasquez...",
+"file": "booth/it/b17e307718c0.mp3",
+"duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vellacott!",
+"lang": "it",
+"role": "pbp",
+"text": "Vellacott!",
+"file": "booth/it/edb65f62c154.mp3",
+"duration_s": 1.091,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vellacott.",
+"lang": "it",
+"role": "pbp",
+"text": "Vellacott.",
+"file": "booth/it/2bd4fd8ff271.mp3",
+"duration_s": 1.091,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Vellacott...",
+"lang": "it",
+"role": "pbp",
+"text": "Vellacott...",
+"file": "booth/it/2e18d8e60fae.mp3",
+"duration_s": 1.115,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Yilmaz!",
+"lang": "it",
+"role": "pbp",
+"text": "Yilmaz!",
+"file": "booth/it/90c09ccecbb8.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Yilmaz.",
+"lang": "it",
+"role": "pbp",
+"text": "Yilmaz.",
+"file": "booth/it/4ec990f9e993.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Yilmaz...",
+"lang": "it",
+"role": "pbp",
+"text": "Yilmaz...",
+"file": "booth/it/1e8000192c9d.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|del Redwick!",
+"lang": "it",
+"role": "pbp",
+"text": "del Redwick!",
+"file": "booth/it/ecd4b283b41b.mp3",
+"duration_s": 1.043,
+"voice": "if_sara"
+},
+{
+"key": "pbp|dell'Ostwick!",
+"lang": "it",
+"role": "pbp",
+"text": "dell'Ostwick!",
+"file": "booth/it/128c0999f93d.mp3",
+"duration_s": 1.163,
+"voice": "if_sara"
+}
+],
+"names": {
+"it": {
+"players": {
+"T01-1": "Oyelaran",
+"T01-2": "Dunmarrow",
+"T01-3": "Holmberg",
+"T01-4": "Halvorsen",
+"T01-5": "Ekwueme",
+"T01-6": "Yilmaz",
+"T01-7": "Lindqvist",
+"T01-8": "Okonkwo",
+"T01-9": "Okowande",
+"T01-10": "Galvan",
+"T01-11": "Marravi",
+"T01-14": "Lundgren",
+"T01-15": "Vasquez",
+"T01-19": "Pavic",
+"T01-22": "Sorensen",
+"T02-1": "Sakamoto",
+"T02-2": "Mbeki",
+"T02-3": "Quennell",
+"T02-4": "Szabo",
+"T02-5": "Nwosu",
+"T02-6": "Tessaro",
+"T02-7": "Lisowski",
+"T02-8": "Castrovane",
+"T02-9": "Duarte",
+"T02-10": "Morales",
+"T02-11": "Quintero",
+"T02-14": "Kimura",
+"T02-15": "Moreau",
+"T02-16": "Vellacott",
+"T02-19": "Takeda"
+},
+"teams": {
+"T01": {
+"": "il Redwick",
+"of": "del Redwick"
+},
+"T02": {
+"": "l'Ostwick",
+"of": "dell'Ostwick"
+}
+}
+},
+"en": {
+"players": {
+"T01-1": "Oyelaran",
+"T01-2": "Dunmarrow",
+"T01-3": "Holmberg",
+"T01-4": "Halvorsen",
+"T01-5": "Ekwueme",
+"T01-6": "Yilmaz",
+"T01-7": "Lindqvist",
+"T01-8": "Okonkwo",
+"T01-9": "Okowande",
+"T01-10": "Galvan",
+"T01-11": "Marravi",
+"T01-14": "Lundgren",
+"T01-15": "Vasquez",
+"T01-19": "Pavic",
+"T01-22": "Sorensen",
+"T02-1": "Sakamoto",
+"T02-2": "Mbeki",
+"T02-3": "Quennell",
+"T02-4": "Szabo",
+"T02-5": "Nwosu",
+"T02-6": "Tessaro",
+"T02-7": "Lisowski",
+"T02-8": "Castrovane",
+"T02-9": "Duarte",
+"T02-10": "Morales",
+"T02-11": "Quintero",
+"T02-14": "Kimura",
+"T02-15": "Moreau",
+"T02-16": "Vellacott",
+"T02-19": "Takeda"
+},
+"teams": {
+"T01": {
+"": "Redwick",
+"of": "Redwick"
+},
+"T02": {
+"": "Ostwick",
+"of": "Ostwick"
+}
+}
+},
+"es": {
+"players": {
+"T01-1": "Oyelaran",
+"T01-2": "Dunmarrow",
+"T01-3": "Holmberg",
+"T01-4": "Halvorsen",
+"T01-5": "Ekwueme",
+"T01-6": "Yilmaz",
+"T01-7": "Lindqvist",
+"T01-8": "Okonkwo",
+"T01-9": "Okowande",
+"T01-10": "Galvan",
+"T01-11": "Marravi",
+"T01-14": "Lundgren",
+"T01-15": "Vasquez",
+"T01-19": "Pavic",
+"T01-22": "Sorensen",
+"T02-1": "Sakamoto",
+"T02-2": "Mbeki",
+"T02-3": "Quennell",
+"T02-4": "Szabo",
+"T02-5": "Nwosu",
+"T02-6": "Tessaro",
+"T02-7": "Lisowski",
+"T02-8": "Castrovane",
+"T02-9": "Duarte",
+"T02-10": "Morales",
+"T02-11": "Quintero",
+"T02-14": "Kimura",
+"T02-15": "Moreau",
+"T02-16": "Vellacott",
+"T02-19": "Takeda"
+},
+"teams": {
+"T01": {
+"": "el Redwick",
+"of": "del Redwick"
+},
+"T02": {
+"": "el Ostwick",
+"of": "del Ostwick"
+}
+}
+}
+}
+}
