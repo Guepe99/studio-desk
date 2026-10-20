@@ -659,3 +659,13 @@ def test_a_goal_ordinal_passes_only_for_a_cited_goal():
     assert rules.check_answer("Il primo gol al minuto 10, il terzo al minuto 25.", facts, 2700, "it", ids, (2, 1)) == []
     assert any("'secondo'" in f for f in rules.check_answer("Il secondo gol al minuto 25.", facts, 2700, "it", ids, (2, 1)))
     assert rules.check_answer("The third goal came at minute 25.", facts[1:], 2700, "en", ids, (2, 1)) == []
+    level = goal(4, 2, 2, 1800)
+    assert rules.check_answer("Il pareggio è arrivato al minuto 30.", [level], 2700, "it", {level["fact_id"]}, (2, 2)) == []
+    assert rules.check_answer("Il pareggio è arrivato al minuto 25.", facts, 2700, "it", ids, (2, 1)) == \
+        ["equaliser not in the facts: 'pareggio'"]
+    assert rules.check_answer("Al minuto 25 il 2-1, poi il 2-2 al minuto 30.", facts[1:] + [level], 2700, "it",
+                              {facts[1]["fact_id"], level["fact_id"]}, (2, 2)) == []
+    assert rules.check_answer("Al minuto 25 il 2-0.", facts[1:], 2700, "it", {facts[1]["fact_id"]}, (2, 1)) == \
+        ["score not the score at ts: '2-0'"]
+    assert rules.check_answer("Il 2-1 è arrivato.", facts[1:], 2700, "it", {facts[1]["fact_id"]}, (2, 2)) == \
+        ["score not the score at ts: '2-1'"]

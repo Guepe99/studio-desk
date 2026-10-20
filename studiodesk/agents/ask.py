@@ -44,7 +44,7 @@ INSTRUCTIONS = (
     "written with digits as there, in the words of the answer's language with a decimal comma in Italian and Spanish (\"uno sprint a 32,8 km/h\"): never quote "
     "a label or write the word label. Never compute a total, count, difference or average, never write a number "
     "in words. Quote the value of at least one fact you cite; for a goal that is its scorer "
-    "and minute, never its value (1.0 is the goal count, not something to write). Write a minute only as 'minute N' in English, 'minuto N' in Italian or Spanish, "
+    "and minute, never its value (1.0 is the goal count, not something to write). A goal is an equaliser only when its label leaves the score level (\"Goal 2-2\"). Write a minute only as 'minute N' in English, 'minuto N' in Italian or Spanish, "
     "or N', with N the `minute` of a fact you cite, never worked out from ts. Give a score only when the question asks for it, "
     "as get_match_info gives it, home side first (2-1 when the home side leads 2-1). "
     "Put the fact_id of every fact you rely on in fact_ids and never write fact ids in the answer. "

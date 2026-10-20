@@ -643,6 +643,9 @@ _GOAL_ORDINALS = {w: k for words in (
 _GOAL_ORDINALS |= {"primero": 1, "tercero": 3}
 _GOAL_ORDINAL = re.compile(r"(?<!\w)(?:" + "|".join(_GOAL_ORDINALS) + r")(?!\w)", re.IGNORECASE)
 _GOAL_LABEL = re.compile(r"\bGoal (\d+)-(\d+)\b")
+# an equaliser is a claim about the score: the goal at the minute that follows the word must leave it level
+_EQUALISER = re.compile(r"\b(?:equali[sz]\w*|pareggi\w*|parit[àa]|empat\w*)", re.IGNORECASE)
+_MINUTE_AFTER = re.compile(r"\bmin(?:ut[eo]s?|\.)?\s*(\d+(?:\+\d+)?)|(\d+(?:\+\d+)?)'", re.IGNORECASE)
 _ASK_NOT_A_NUMBER = re.compile(
     r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bfirst[- ]time\b|\bfirst touch\b|"
     r"\bsecond balls?\b|\b(?:first|second) post\b|\bboth (?:teams|sides)\b|"
@@ -727,11 +730,22 @@ def check_answer(text, facts, p1, lang, ids, score=None):
         return " "
     rest = _MINUTE.sub(said, normalise(text))
 
+    after_goal = {tuple(map(int, g)): stoppage(minute(f["ts"], f["period"], p1), f["period"])
+                  for f in facts if f["kind"] == "score" for g in _GOAL_LABEL.findall(f["label_en"])}
+
+    def at_its_goal(said):
+        """A cited goal's own label ("Goal 2-1") is the score right after it, said next to its minute."""
+        mi = after_goal.get(said)
+        return mi is not None and any(
+            re.search(rf"(?<![\d+]){re.escape(mi)}(?![\d+])", text[max(0, o.start() - 40):o.end() + 40])
+            for o in re.finditer(rf"(?<!\d){said[0]}\s*-\s*{said[1]}(?!\d)", text))
+
     def scored(mt):
         nonlocal quoted
         if _NUM.match(rest, mt.start(2)).group(2):  # "from 3 to 5 m" is a range with a unit, not a score
             return mt.group(0)
-        if score is None or tuple(map(int, mt.groups())) != tuple(score):  # home first, as on the score bug
+        said = tuple(map(int, mt.groups()))
+        if (score is None or said != tuple(score)) and not at_its_goal(said):  # home first, as on the score bug
             flags.append(f"score not the score at ts: '{mt.group(0)}'")
         quoted |= any(f["kind"] == "score" for f in facts)
         return " "
@@ -761,6 +775,12 @@ def check_answer(text, facts, p1, lang, ids, score=None):
     flags += [f"number in words: roman numeral '{w}'" for w in _ROMAN.findall(rest)]
     quoted = quoted or _NUM.search(_FACT_ID.sub("", rest)) or any(display_label(f).lower() in text.lower() for f in facts)
     flags += ["answer quotes no cited fact"] * (not quoted)
+    level = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts if f["kind"] == "score"
+             for a, b in _GOAL_LABEL.findall(f["label_en"]) if a == b}
+    for mt in _EQUALISER.finditer(text):
+        at = _MINUTE_AFTER.search(text[mt.end():mt.end() + 60])
+        if not (level if at is None else (at.group(1) or at.group(2)) in level):
+            flags.append(f"equaliser not in the facts: '{mt.group(0)}'")
     kinds, events = {f["kind"] for f in facts}, _EVENT_NOT.sub("", text)
     flags += [f"event not in the facts: {kind}" for kind, p in _EVENTS.items() if kind not in kinds and p.search(events)]
     flags += ["link or address in the answer"] * bool(_LINK.search(text))
