@@ -102,15 +102,11 @@ def timing(traces, stories):
 def live_delay(traces, stories, start_s, from_ts, speed):
     """(kind, seconds) per story of a real-speed run: wall time from its event, as the clock released it,
     to the director's cues. The clock starts after the launch time start_s, so these are upper bounds."""
-    by_id, rounds, out = {s["story_id"]: s for s in stories}, {}, []
-    for t in sorted(traces, key=lambda t: t["seq"]):
-        rounds.setdefault(t["ts"], []).append(t)
-    for rs in rounds.values():
-        cue = [t for t in rs if t["agent"] == "director"]
-        if not cue:
-            continue
-        sids = json.loads(rs[0]["story_ids"]) if isinstance(rs[0]["story_ids"], str) else rs[0]["story_ids"]
-        out += [(by_id[i]["kind"], at(cue[-1]["at"]) - (start_s + (by_id[i]["ts"] - from_ts) / speed))
+    by_id, out = {s["story_id"]: s for s in stories}, []
+    # each cue trace names its own stories: live, a round's AI tail traces later, among the next rounds
+    for t in (t for t in traces if t["agent"] == "director"):
+        sids = json.loads(t["story_ids"]) if isinstance(t["story_ids"], str) else t["story_ids"]
+        out += [(by_id[i]["kind"], at(t["at"]) - (start_s + (by_id[i]["ts"] - from_ts) / speed))
                 for i in sids or [] if i in by_id]
     return out
 
@@ -243,7 +239,7 @@ The Content Safety checks (one call per story,
 The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
 real time, and the replay places each graphic at its story's moment in the match, not where the
 round ended. What their traces measure:
-a round (story finder, analyst, three commentators, verifier, rewrites, director) took
+a round (story finder, director, analyst, three commentators, verifier, rewrites) took
 {statistics.median(walls):.1f} seconds of wall time at the median, at most {max(walls):.1f} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event

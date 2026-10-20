@@ -620,3 +620,13 @@ def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
     with TestClient(api.app):
         with closing(db.connect(config.RUNTIME_DB, readonly=True)) as conn:
             assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+
+
+def test_goals_quoted_by_their_minutes_are_answered_with_the_minute_word_of_the_language(studio, m001):
+    # live on 20/10 the model gave goals and minutes only, and wrote "minuto 10" in English
+    studio.reply("Okowande scored in minuto 10 and Minuto 13.", [S1, "F-SCORE-000002"])
+    r = studio.visitor().post("/api/ask", json=body(ts=3100.0)).json()
+    assert r["status"] == "answered", reason()
+    assert r["answer"] == "Okowande scored in minute 10 and Minute 13."
+    assert m001("Okowande scored in minute 11.", [S1]) == "declined"
+    assert rules.minute_word("Gol al minute 10.", "it") == "Gol al minuto 10."

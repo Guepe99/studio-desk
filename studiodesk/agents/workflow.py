@@ -13,6 +13,7 @@ or times out is replaced by rules and template sentences: the broadcast never wa
 """
 import asyncio
 import contextvars
+import copy
 import json
 import time
 import uuid
@@ -242,6 +243,7 @@ class Round:
     batch: Batch
     stories: list
     cues: list = field(default_factory=list)
+    used: dict | None = None  # desk.used before this round went on air, for the writers' style checks
 
 
 @dataclass
@@ -292,6 +294,8 @@ class Desk:
         self.used = defaultdict(lambda: {"loud": set(), "openings": set()})  # lang -> what style_issues rations
         self.spent = set()                   # phrasebook openers already on air: each one once a match
         self.slots = asyncio.Semaphore(config.MAX_PARALLEL_CALLS)
+        self.first = asyncio.Semaphore(1)    # the story finder's own slot: on air does not queue behind a round's tail
+        self.tails = []                      # live: the rounds' AI work still running after they went on air
 
     async def mcp(self, tool, **args):
         return await mcp_call(self.session, tool, match_id=self.match_id, **args)
@@ -373,7 +377,7 @@ class Desk:
             if self.over_budget():
                 raise RuntimeError("run budget reached")
             try:
-                async with self.slots:
+                async with self.first if agent == "story_finder" else self.slots:
                     resp = await asyncio.wait_for(self.agents[agent].run(text, options={"response_format": schema}),
                                                   config.AGENT_TIMEOUT_S)
                 break
@@ -564,6 +568,18 @@ class Desk:
             self.queue.append(s)
         self.save_cues(rnd.cues)
 
+    def update(self, rnd):
+        """A round already on air gets what the AI tail added: the analysis, the cited facts, the verifier's record."""
+        at = {s["story_id"]: i for i, s in enumerate(self.queue)}
+        for s in rnd.stories:
+            s["default_status"] = "needs_review"  # until Content Safety passes it, as in save
+            self.queue[at[s["story_id"]]] = s
+            self.rt.execute("UPDATE stories SET risk = ?, fact_ids = ?, analysis_en = ?, verifier = ? "
+                            "WHERE match_id = ? AND story_id = ? AND run_id = ?",
+                            (s["risk"], json.dumps(s["fact_ids"]), s["analysis_en"],
+                             json.dumps(s["verifier"], ensure_ascii=False), self.match_id, s["story_id"], self.run_id))
+        self.rt.commit()
+
     def save_cues(self, cues):
         for c in cues:
             self.cue_n += 1
@@ -579,8 +595,8 @@ def _rule_picks(cands):
     return must + [c for c in cands if c["kind"] not in rules.MUST_TELL][:1]
 
 
-def template_story(desk, s, reason):
-    air = desk.on_air(s)
+def template_story(desk, s, reason, air=None):
+    air = air or desk.on_air(s)
     s["analysis_en"] = s["analysis_en"] or rules.analysis_template(desk.m, s)
     what = "Phrasebook line used, no AI proposal" if air["on_air"] == "phrasebook" else "Fact-only sentence used"
     s["verifier"] = {"status": "template", "attempts": 0,
@@ -589,6 +605,8 @@ def template_story(desk, s, reason):
 
 
 def build_workflow(desk):
+    """Two workflows: on air (story finder, then the director with the phrasebook's lines) and the AI tail
+    that follows it (analyst, commentators, verifier), which only adds to the desk."""
     m = lambda: desk.m  # noqa: E731
     ids = lambda rnd: [s["story_id"] for s in rnd.stories]  # noqa: E731
 
@@ -634,6 +652,18 @@ def build_workflow(desk):
             await ctx.yield_output(Round(batch, []))
             return
         await ctx.send_message(Round(batch, stories))
+
+    @executor(id="director")
+    async def director(rnd: Round, ctx: WorkflowContext[Round, Round]) -> None:
+        rnd.used = copy.deepcopy(dict(desk.used))
+        for s in rnd.stories:  # on air go the phrasebook's lines, so the cues need no AI text
+            s["verifier"] = {"status": "pending", "attempts": 0, "flagged": [], **desk.on_air(s)}
+            desk.finish(s)
+        rnd.cues = desk.director.plan(rnd.stories, rnd.batch.ts)
+        desk.trace("director", "cue", _n(len(rnd.stories), "story", "stories"),
+                   _n(len(rnd.cues), "cue") + " for " + _n(len({c["audience"] for c in rnd.cues}), "audience"),
+                   [i for s in rnd.stories for i in s["fact_ids"]], story_ids=ids(rnd))
+        await ctx.yield_output(rnd)
 
     @executor(id="analyst")
     async def analyst(rnd: Round, ctx: WorkflowContext[Round]) -> None:
@@ -715,7 +745,7 @@ def build_workflow(desk):
         return got
 
     @executor(id="verifier")
-    async def verifier(drafts: list[Drafts], ctx: WorkflowContext[Round]) -> None:
+    async def verifier(drafts: list[Drafts], ctx: WorkflowContext[Round, Round]) -> None:
         rnd = drafts[0].round
         by_sid = {s["story_id"]: s for s in rnd.stories}
         allowed = {sid: rules.story_allowed(m(), s) for sid, s in by_sid.items()}
@@ -752,7 +782,7 @@ def build_workflow(desk):
                         problems[k] += j
             else:
                 style = {k: st for k, t in pending.items() if k not in problems and (st := gaps.get(k, []) + rules.style_issues(
-                    t, k[1], by_sid[k[0]]["kind"], desk.used[k[1]], m()))}
+                    t, k[1], by_sid[k[0]]["kind"], rnd.used.get(k[1]), m()))}
             to_judge = {k: t for k, t in pending.items() if k not in problems and k not in style and k not in judged_ok}
             notes = {(sid, "analysis"): st["analysis_en"] for sid, st in by_sid.items()} if round_no == 0 else {}
             issues, judged, usage, failed = await judge(rnd, {**to_judge, **notes})
@@ -795,7 +825,7 @@ def build_workflow(desk):
                 proposals = {lang: rules.strip_citations(texts[(sid, lang)]) for lang in rules.LANGS}
             else:
                 status = "template"
-            air = desk.on_air(s)
+            air = {k: s["verifier"][k] for k in ("on_air", "opener")}
             s["unjudged"] = status != "template" and (sid not in analysis_judged or any(
                 (sid, lang) not in judged_ok for lang in rules.LANGS))
             unjudged_any |= s["unjudged"]
@@ -811,23 +841,15 @@ def build_workflow(desk):
         desk.trace("verifier", "check", _n(len(texts), "text") + f" in {len(rules.LANGS)} languages",
                    ", ".join(f"{k} {v}" for k, v in statuses.items()) + (f" (claims not judged: {judge_error or 'no verdict'})" if unjudged_any else ""),
                    [i for s in rnd.stories for i in s["fact_ids"]], dict(usage_all), ids(rnd))
-        await ctx.send_message(rnd)
-
-    @executor(id="director")
-    async def director(rnd: Round, ctx: WorkflowContext[Round, Round]) -> None:
-        rnd.cues = desk.director.plan(rnd.stories, rnd.batch.ts)
-        desk.trace("director", "cue", _n(len(rnd.stories), "story", "stories"),
-                   _n(len(rnd.cues), "cue") + " for " + _n(len({c["audience"] for c in rnd.cues}), "audience"),
-                   [i for s in rnd.stories for i in s["fact_ids"]], story_ids=ids(rnd))
         await ctx.yield_output(rnd)
 
     writers = [commentator(lang) for lang in rules.LANGS]
-    return (WorkflowBuilder(name="studiodesk-stories", start_executor=story_finder)
-            .add_edge(story_finder, analyst)
+    air = WorkflowBuilder(name="studiodesk-air", start_executor=story_finder).add_edge(story_finder, director).build()
+    tail = (WorkflowBuilder(name="studiodesk-tail", start_executor=analyst)
             .add_fan_out_edges(analyst, writers)
             .add_fan_in_edges(writers, verifier)
-            .add_edge(verifier, director)
             .build())
+    return air, tail
 
 
 def build_agents(desk, client, tools):
@@ -872,10 +894,23 @@ class WindowClock(MatchClock):
         return super()._wait(ts - self.offset, start)
 
 
-async def run_batch(desk, workflow, batch):
+async def run_tail(desk, tail, rnd):
+    try:
+        rnd = (await tail.run(rnd)).get_outputs()[-1]
+    except Exception as e:  # noqa: BLE001 - the round stays on air with the phrasebook's lines
+        for s in rnd.stories:
+            if s["verifier"]["status"] == "pending":
+                template_story(desk, s, f"workflow error: {rules.brief_error(e)}",
+                               {k: s["verifier"][k] for k in ("on_air", "opener")})
+    desk.update(rnd)
+
+
+async def run_batch(desk, batch, wait=True):
+    """One batch on air; then its AI tail, awaited (replays stay the same run to run) or, live, left running."""
     if batch.candidates:
+        air, tail = build_workflow(desk)  # a workflow runs one input at a time, and live tails overlap
         try:
-            rnd = (await workflow.run(batch)).get_outputs()[-1]
+            rnd = (await air.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
             stories = [desk.new_story(c, 0.5, c["note"]) for c in _rule_picks(batch.candidates)]
             stories = [template_story(desk, s, f"workflow error: {rules.brief_error(e)}") for s in stories]
@@ -883,6 +918,12 @@ async def run_batch(desk, workflow, batch):
             desk.trace("director", "fallback", "workflow failed", _n(len(stories), "template story", "template stories"),
                        [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
         desk.save(rnd)
+        if any(s["verifier"]["status"] == "pending" for s in rnd.stories):
+            job = run_tail(desk, tail, rnd)
+            if wait:
+                await job
+            else:
+                desk.tails.append(asyncio.create_task(job))
     if batch.window_end is not None:
         desk.save_cues(desk.director.window_cue(batch.window_end))
 
@@ -904,15 +945,15 @@ async def run_match(match_id, client, rt, *, speed=0.0, from_ts=None, to_ts=None
                                                load_prompts=False, parse_tool_results=_tool_text)
                 await tools[name].connect()
             build_agents(desk, client, tools)
-            workflow = build_workflow(desk)
             await desk.start(from_ts)
             async for _ in clock:
                 if batch := await desk.ingest(clock.now):
-                    await run_batch(desk, workflow, batch)
+                    await run_batch(desk, batch, wait=not speed)
                     log(f"{rules.minute(clock.now, 2 if desk.m.p1 and clock.now > desk.m.p1 else 1, desk.m.p1 or 1e9)}' "
                         f"stories {desk.story_n} calls {desk.calls} cost ${desk.cost:.4f}")
             if batch := await desk.ingest(clock.now, full_time=clock.end >= clock.full_end):
-                await run_batch(desk, workflow, batch)
+                await run_batch(desk, batch, wait=not speed)
+            await asyncio.gather(*desk.tails)
     finally:
         mcp_server.set_clock(None)
     statuses = Counter(s["verifier"]["status"] for s in desk.queue)

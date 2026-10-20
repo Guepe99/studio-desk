@@ -103,6 +103,8 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
     `not_checked` story is `needs_review` whatever its risk (feat/verifier3).
   - `texts` is `{"en": .., "it": .., "es": ..}`.
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
+    In a live run a story is saved as it goes on air with `"status": "pending"`, and its row is
+    updated when the verifier is done; a finished run holds no `pending`.
     `flagged` is empty on `pass`; on `rewritten` it says what the earlier drafts got wrong, on
     `template` why the drafts were not used (packs before feat/texts4 may hold other strings).
     Since feat/phrasebook it also holds `on_air` (`"phrasebook"` or `"template"`: who wrote

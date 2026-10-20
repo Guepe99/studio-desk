@@ -24,10 +24,13 @@ The replay makes no model calls, so it has no daily quota. Each session allows 3
 ## How it works
 
 ```
-match clock --event--> facts (MCP server) --batch--> story_finder -> analyst -> commentator_en ┐
-                                                                            -> commentator_it ├-> verifier -> director -> desk
-                                                                            -> commentator_es ┘
+match clock --event--> facts (MCP server) --batch--> story_finder -> director -> on air
+                                                                            └-> analyst -> commentator_en ┐
+                                                                                        -> commentator_it ├-> verifier -> desk
+                                                                                        -> commentator_es ┘
 ```
+
+The director puts a story on air as soon as the story finder has chosen it, with the phrasebook's lines. The analyst, the commentators and the verifier then add the analysis and their proposals to the desk.
 
 - **Agents.** A Microsoft Agent Framework workflow running gpt-5-mini in Azure AI Foundry (Sweden Central). Agents read the match only through a Model Context Protocol (MCP) server whose clock follows the match, so they cannot see later events.
 - **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id; models never write numbers. The desk shows which facts a story uses.

@@ -511,6 +511,13 @@ def normalise(text):
     return re.sub(r"\d", lambda mt: str(unicodedata.decimal(mt.group(0), 0)), text)
 
 
+def minute_word(text, lang):
+    """The minute word in the answer's language: the model writes "minuto 10" in English now and then."""
+    word = "minute" if lang == "en" else "minuto"
+    return re.sub(r"\bminut[eo](?= \d)", lambda m: word.capitalize() if m.group(0)[0].isupper() else word, text,
+                  flags=re.IGNORECASE)
+
+
 def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
     text = _FACT_ID.sub("", _CITATION.sub("", text))
@@ -685,14 +692,17 @@ def check_answer(text, facts, p1, lang, ids, score=None):
     characters ("Ⅲ") or roman numerals; the answer quotes at least one cited fact; no event (card, penalty,
     injury, own goal, offside, VAR, substitution) without a cited fact of that kind; no link; in `lang`."""
     flags = ["number in words: letter-number character"] * any(unicodedata.category(c) == "Nl" for c in text)
-    minutes = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts}
+    own = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts}
+    minutes = set(own)
     for f in facts:
         for mt in _LABEL_MINUTES.finditer(display_label(f)):
             minutes |= set(mt.groups())
     quoted = False
 
     def said(mt):
+        nonlocal quoted
         flags.extend(f"minute not in the facts: '{g}'" for g in mt.groups() if g and g not in minutes)
+        quoted |= any(g in own for g in mt.groups())  # a cited fact's own minute quotes that fact
         return " "
     rest = _MINUTE.sub(said, normalise(text))
 
@@ -1683,7 +1693,7 @@ def risk(story):
     if story.get("kind") == "recap" and story["verifier"]["status"] == "template":
         return r  # the score and pass accuracy written by code: the half-time and full-time card always airs
     r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
-          "template": 0.3}[story["verifier"]["status"]]  # a rewrite for style alone fixed no fact
+          "template": 0.3, "pending": 0.3}[story["verifier"]["status"]]  # pending: on air, not yet verified  # a rewrite for style alone fixed no fact
     r += config.AUTO_APPROVE_RISK if story.get("unjudged") else 0.0  # claims without numbers not checked
     r += 0.1 if story["player_id"] else 0.0              # claims about one person
     r += 0.25 * (1 - min(max(story.get("confidence", 0.5), 0.0), 1.0))
