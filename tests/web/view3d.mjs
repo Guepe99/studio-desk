@@ -329,12 +329,25 @@ try {
       const kept = await page.evaluate(() => {
         const v = window.studioDesk.view3d, n = document.querySelector("#notice");
         n.textContent = "page notice"; n.hidden = false;
-        v._notice("Loading the 3D view"); v._notice("");
+        v._notice(() => "Loading the 3D view"); v._notice(null);
         const out = n.hidden ? null : n.textContent;
         n.textContent = ""; n.hidden = true; v.prior = "";
         return out;
       });
       if (kept !== "page notice") fail(`the 3D notice wiped the page's notice (now ${JSON.stringify(kept)})`);
+      // a 3D notice on screen follows a change of language
+      const relang = await page.evaluate(async () => {
+        const v = window.studioDesk.view3d, n = document.querySelector("#notice"), lang = (l) => document.querySelector(`[data-lang="${l}"]`).click();
+        v._notice(() => v.t("lost3d"));
+        const en = n.textContent;
+        lang("it");
+        await new Promise((r) => setTimeout(r, 50));
+        const it = n.textContent;
+        lang("en");
+        v._notice(null);
+        return [en, it];
+      });
+      if (!relang[0] || relang[0] === relang[1]) fail(`the 3D notice kept its language: ${JSON.stringify(relang)}`);
 
       // seek sweep over the whole match, twice: after the first (players clone their motion clips
       // lazily, scene3d/players.js) the second must leave the heap and the scene the same size

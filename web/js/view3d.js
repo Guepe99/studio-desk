@@ -118,7 +118,7 @@ export class View3D {
 
   set(mode) {
     this.mode = VIEWS.includes(mode) ? mode : "2d";
-    if (this.notice) this._notice("");
+    if (this.notice) this._notice(null);
     if (this.mode !== "2d" && !this.scene && !this.loading) {
       this._status(this.t("load3d"));
       this.loading = this._load().then(() => this._status(""), (err) => {
@@ -126,7 +126,7 @@ export class View3D {
         console.warn(`3D view: ${err.message}`);
         this.failed = true;
         this.set("2d");
-        this._notice(this.t("fail3d").replace("{e}", err.message));
+        this._notice(() => this.t("fail3d").replace("{e}", err.message));
       });
     }
     this._apply();
@@ -142,7 +142,7 @@ export class View3D {
     s.engine.onContextLostObservable.add(() => {
       this.lost = true;
       this.set("2d");
-      this._notice(this.t("lost3d"));
+      this._notice(() => this.t("lost3d"));
     });
     await loadMotion(s).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
     new AwarenessRig(s);
@@ -178,14 +178,17 @@ export class View3D {
     const { radar, badge } = this.els;
     radar.setAttribute("aria-label", this.t(radar.classList.contains("is-3d") ? "swap3d" : "swap2d"));
     if (badge.classList.contains("on")) badge.textContent = this.t("replay");
+    if (this.notice) this.els.notice.textContent = this.say();
   }
 
-  // The 3D view's own notice; the page's notice (a missing graphic) comes back when it clears.
-  _notice(text) {
+  // The 3D view's own notice, made by `say` so it follows the page language; the page's notice
+  // (a missing graphic) comes back when it clears.
+  _notice(say) {
     const n = this.els.notice;
-    if (text && !this.notice) this.prior = n.hidden ? "" : n.textContent;
-    this.notice = !!text;
-    n.textContent = text || this.prior || "";
+    if (say && !this.notice) this.prior = n.hidden ? "" : n.textContent;
+    this.notice = !!say;
+    this.say = say;
+    n.textContent = say?.() || this.prior || "";
     n.hidden = !n.textContent;
     this.onChange();
   }
@@ -270,7 +273,7 @@ export class View3D {
       this.watch = false;
       this.slow = true;
       this.set("2d");
-      this._notice(this.t("slow3d").replace("{fps}", this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })));
+      this._notice(() => this.t("slow3d").replace("{fps}", this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })));
     }
   }
 }
