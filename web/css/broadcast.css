@@ -178,6 +178,7 @@ body { display: flex; }
 .desk-head :focus-visible { outline-color: var(--green); }
 .desk-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .desk-title h2 { margin: 0; font-size: 24px; font-weight: 800; }
+.desk-purpose { margin: 4px 0 0; color: var(--lilac-100); font-size: 15px; font-weight: 600; line-height: 1.3; }
 #desk-close { color: var(--page); background: var(--purple); border-color: var(--page); }
 #desk-close:hover { background: var(--purple-500); }
 .desk-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 6px; flex-wrap: wrap; }
@@ -202,9 +203,18 @@ body { display: flex; }
 .banner { margin: 0; padding: 8px 16px; background: var(--yellow); color: var(--purple); font-weight: 700; }
 .banner.warn { background: var(--error); color: var(--page); }
 .banner:empty { display: none; } /* stays in the page as a live region */
+/* the outcome of the last decision, with its Undo; empty, it takes no room but stays a live region */
+.done { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 16px; background: var(--lilac-50); border-bottom: 1px solid var(--lilac-100); }
+.done:has(.done-msg:empty) { padding: 0; border: 0; }
+.done-msg { margin: 0; font-weight: 700; }
 #desk button:disabled { cursor: progress; }
 #desk .switch:disabled { opacity: .7; }
 .desk-body { flex: 1; overflow-y: auto; padding: 14px 16px; overscroll-behavior: contain; }
+/* a short screen: the head would leave the stories no room, so the whole desk scrolls as one */
+@media (max-height: 500px) {
+  #desk { overflow-y: auto; overscroll-behavior: contain; }
+  .desk-body { flex: none; overflow: visible; }
+}
 .desk-foot { padding: 8px 16px; border-top: 1px solid var(--lilac-100); background: var(--lilac-25); color: var(--purple-400); font-size: 14px; }
 .empty { color: var(--purple-400); }
 
@@ -232,6 +242,9 @@ body { display: flex; }
 .st-auto_approved::before, .st-approved::before, .st-edited::before, .v-pass::before, .s-passed::before { background: var(--green); }
 .default { color: var(--purple-400); }
 .risk { display: inline-flex; align-items: center; gap: 6px; color: var(--purple-400); font-variant-numeric: tabular-nums; }
+.risk b { color: var(--purple); }
+.risk small { font-size: 13px; }
+.risk-tip { margin: 0 0 6px; color: var(--purple-400); font-size: 15px; max-width: 60ch; }
 .meter { display: inline-block; width: 56px; height: 6px; border-radius: 3px; background: var(--lilac-100); position: relative; overflow: hidden; }
 .meter span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--purple-400); }
 .meter::after { content: ""; position: absolute; left: 35%; top: 0; bottom: 0; width: 2px; background: var(--purple); }
@@ -262,16 +275,12 @@ body { display: flex; }
 .events { margin: 6px 0 0; color: var(--purple-400); }
 .analysis { margin: 6px 0 0; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.act { min-width: 84px; }
-/* the decision taken: a filled pill with a check, so it never relies on colour */
-.act[aria-pressed="true"]::before { content: ""; display: inline-block; width: 5px; height: 10px; margin: 0 9px 3px 0; vertical-align: middle;
-  border: solid currentColor; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
-.act-approved[aria-pressed="true"], .act-edited[aria-pressed="true"] { background: var(--green); color: var(--purple); }
-.act-approved[aria-pressed="true"]:hover, .act-edited[aria-pressed="true"]:hover { background: var(--green); }
-.act-rejected[aria-pressed="true"], .act-rejected[aria-pressed="true"]:hover { background: var(--error); border-color: var(--error); color: var(--page); }
-.link { background: none; border: 0; color: var(--purple); font: 700 15px/1 var(--font); cursor: pointer; padding: 6px 2px; min-height: 28px;
+/* one filled action named by its outcome (Put on air), Edit outlined, Reject quiet */
+.act.ctl { min-width: 84px; }
+.link, .quiet { background: none; border: 0; color: var(--purple); font: 700 15px/1 var(--font); cursor: pointer; padding: 6px 2px; min-height: 28px;
   text-decoration: underline; text-underline-offset: 3px; border-radius: var(--r-chip); }
-.link:hover { text-decoration-thickness: 2px; }
+.link:hover, .quiet:hover { text-decoration-thickness: 2px; }
+.quiet { padding: 6px 8px; font-weight: 600; color: var(--purple-400); }
 .actions .link { margin-left: auto; }
 .editor textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--page); color: var(--purple); border: 1.5px solid var(--purple-400); border-radius: var(--r-box);
   padding: 8px 10px; font: 400 17px/1.35 var(--font); }
@@ -284,7 +293,8 @@ body { display: flex; }
 .totals div { background: var(--lilac-50); border-radius: var(--r-box); padding: 8px 12px; color: var(--purple-400); }
 .totals b { display: block; color: var(--purple); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .log { width: 100%; border-collapse: collapse; font-size: 14px; }
-.log th { text-align: left; color: var(--purple-400); font-weight: 600; border-bottom: 1px solid var(--lilac-100); padding: 4px; position: sticky; top: -14px; background: var(--page); }
+.log-wrap { overflow-x: auto; border-radius: var(--r-chip); } /* a narrow desk scrolls the table sideways, never cuts a column */
+.log th { text-align: left; color: var(--purple-400); font-weight: 600; border-bottom: 1px solid var(--lilac-100); padding: 4px; background: var(--page); }
 .log td { border-bottom: 1px solid var(--lilac-100); padding: 5px 4px; vertical-align: top; }
 .log .sid { display: table; margin: 2px 0 0; }
 .fid, .eid, .sid { white-space: nowrap; }
@@ -328,8 +338,9 @@ li[data-agent="verifier"] { --agent: var(--green); }
 .io, .fids, .flabel, .story-text { overflow-wrap: anywhere; }
 /* touch: 44 px targets (WCAG 2.5.5) */
 @media (pointer: coarse) {
-  .link, .switch, .flagged summary, .evidence summary, .minute { min-height: 44px; }
-  .flagged summary, .evidence summary { display: flex; align-items: center; }
+  .link, .quiet, .switch, .flagged summary, .evidence summary, .minute { min-height: 44px; }
+  /* a summary stays a list item, so it keeps its disclosure triangle; the padding makes the 44 px */
+  .flagged summary, .evidence summary { padding: 12px 0; }
 }
 
 /* ---- Agent activity (activity.js): under the pitch, the hand-offs the replay clock has reached.
@@ -342,18 +353,15 @@ li[data-agent="verifier"] { --agent: var(--green); }
 .act-steps { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
   min-height: 84px; } /* the height of a card: the pitch does not jump when the first one arrives */
 .act-steps li { min-width: 0; background: var(--lilac-50); border-radius: var(--r-box); padding: 6px 8px; font-size: 14px; line-height: 1.2; }
+/* a name is never cut: it wraps at its space in a narrow card */
 .act-name { display: inline-block; max-width: 100%; vertical-align: top; padding: 1px 6px; border-radius: var(--r-chip); background: var(--agent); color: var(--agent-ink);
-  font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  font-weight: 800; font-size: 13px; }
 .act-step { color: var(--purple-400); font-weight: 600; }
 .fallback .act-step { color: var(--purple); font-weight: 800; }
 .act-out { margin: 3px 0 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--purple); }
-.act-meta { margin: 2px 0 0; color: var(--purple-400); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.act-model::after { content: ", "; }
+.act-meta { margin: 2px 0 0; color: var(--purple-400); font-size: 13px; }
 @container (max-width: 1100px) {
-  .act-meta span { display: block; overflow: hidden; text-overflow: ellipsis; }
-  .act-model::after { content: none; }
-  .act-meta:has(> :only-child) { min-height: 2.4em; } /* code steps: every card keeps the same height */
-  .act-steps { min-height: 104px; }
+  .act-steps { min-height: 104px; } /* a name on two lines */
 }
 .act-steps li.act-empty { grid-column: 1 / -1; background: none; padding: 4px 0; color: var(--purple-400); }
 .act-steps li.new { animation: act-in .35s ease-out both; animation-delay: calc(var(--i) * 120ms); }
@@ -362,14 +370,15 @@ li[data-agent="verifier"] { --agent: var(--green); }
 /* Phone: one line, the latest step only */
 @media (max-width: 700px), (max-height: 500px) {
   #activity { display: flex; align-items: baseline; gap: 8px; font-size: 13px; white-space: nowrap; }
-  .act-title { flex: none; font-size: 12px; }
+  /* too narrow for both: the title gives way, never the agent's name */
+  .act-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
   .act-sum, .act-meta { display: none; }
-  .act-steps { display: block; flex: 1; min-width: 0; min-height: 0; }
+  .act-steps { display: block; flex: 1; min-width: auto; min-height: 0; } /* never narrower than the name */
   .act-steps li { display: flex; align-items: baseline; gap: 6px; background: none; padding: 0; font-size: 13px; }
   .act-steps li:not(:last-child) { display: none; }
-  .act-steps li.act-empty { display: block; padding: 0; overflow: hidden; text-overflow: ellipsis; } /* Urbanist is wider than the old condensed face */
+  .act-steps li.act-empty { display: block; padding: 0; overflow: hidden; text-overflow: ellipsis; contain: inline-size; } /* Urbanist is wider than the old condensed face; it never widens the strip */
   .act-steps li.new { animation: none; }
-  .act-name { flex: none; font-size: 12px; }
-  .act-out { display: block; flex: 1; min-width: 0; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
+  .act-name { flex: none; font-size: 12px; white-space: nowrap; }
+  .act-out { display: block; flex: 1; width: 0; min-width: 0; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
 }
 #next-moment[aria-disabled="true"] { cursor: default; }

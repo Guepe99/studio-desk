@@ -2,6 +2,7 @@
 import { SdGraphic, esc } from "../shared/sd-graphic.mjs";
 
 const H = 92; // pixels for a momentum of 10
+const WORDS = { en: ["MOMENTUM", "Kick-off", "Now"], it: ["INERZIA", "Calcio d'inizio", "Ora"], es: ["DOMINIO", "Inicio", "Ahora"] };
 
 export default class Momentum extends SdGraphic {
   css() {
@@ -23,11 +24,12 @@ export default class Momentum extends SdGraphic {
   }
 
   html() {
-    return `<div class="box"><div class="kicker">MOMENTUM</div><div class="card panel">
+    const [kicker, start, now] = WORDS[this.lang] ?? WORDS.en;
+    return `<div class="box"><div class="kicker">${kicker}</div><div class="card panel">
       <div class="row home"><div class="team"></div><div class="bars"></div></div>
       <div class="mid"></div>
       <div class="row away"><div class="team"></div><div class="bars"></div></div>
-      <div class="foot"><span>Kick-off</span><span>Now</span></div></div>
+      <div class="foot"><span>${esc(start)}</span><span>${now}</span></div></div>
       <div class="factslot"></div></div>`;
   }
 

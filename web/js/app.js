@@ -29,11 +29,17 @@ const STRINGS = {
     next: "Next key moment", nonext: "No more key moments",
     nokey: "No key moments", actTitle: "Agents at work", actWait: "No agent hand-offs yet at this point of the match",
     actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
-    actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}", actTok: "{n} tok",
+    actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
+    aioff: "AI off", view: "View", broadcast: "Match broadcast", activity: "Agent activity",
   },
-  // the controls, Ask and the agent strip are translated; every other key falls back to English
+  // every key in every language: a missing one would fall back to English
   it: {
+    play: "Riproduci", pause: "Pausa", seek: "Tempo di gioco", speed: "Velocità di riproduzione", half2: "2° tempo",
+    language: "Lingua", p1: "1T", p2: "2T", loading: "Caricamento della partita", error: "Impossibile caricare la partita {m}. {e}",
+    minute: "Minuto {n}, {p}", h1: "primo tempo", h2: "secondo tempo", goal: "Gol",
+    nographic: "Alcune grafiche non si sono caricate: {g}.",
+    aioff: "IA spenta", view: "Vista", broadcast: "Diretta della partita", activity: "Attività degli agenti",
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
     pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
@@ -50,9 +56,13 @@ const STRINGS = {
     actNone: "Nessuna traccia degli agenti in questo replay", actSum: "Passaggi di consegne finora: {n}, {tokens} token, {usd}",
     actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
     actRules: "solo regole", actCode: "solo codice",
-    ag_story_finder: "Cerca storie", ag_analyst: "Analista", ag_commentator: "Commentatore", ag_verifier: "Verificatore", ag_director: "Regista",
   },
   es: {
+    play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "2.ª parte",
+    language: "Idioma", p1: "1T", p2: "2T", loading: "Cargando el partido", error: "No se pudo cargar el partido {m}. {e}",
+    minute: "Minuto {n}, {p}", h1: "primera parte", h2: "segunda parte", goal: "Gol",
+    nographic: "Algunos gráficos no se pudieron cargar: {g}.",
+    aioff: "IA apagada", view: "Vista", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
     pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
@@ -69,7 +79,6 @@ const STRINGS = {
     actNone: "No hay trazas de los agentes en esta repetición", actSum: "Relevos hasta ahora: {n}, {tokens} tokens, {usd}",
     actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
     actRules: "reglas, sin modelo", actCode: "código, sin modelo",
-    ag_story_finder: "Buscahistorias", ag_analyst: "Analista", ag_commentator: "Comentarista", ag_verifier: "Verificador", ag_director: "Realizador",
   },
 };
 
@@ -120,7 +129,8 @@ relayout.observe(controls);
 relayout.observe(strip);
 
 function applyStrings() {
-  // the page chrome is English; the graphics and story texts carry the chosen language
+  // the whole page follows the language; agent output inside it is marked lang="en" where it is shown
+  document.documentElement.lang = state.lang;
   for (const el of [$("#overlay"), deck]) el.lang = state.lang;
   // the audience control is translated, so a screen reader reads it in the chosen language
   for (const el of [$('[data-i18n-aria="audience"]'), $("#audience-pick"), $("#ask"), $("#ask-open")]) el.lang = state.lang;
@@ -299,8 +309,9 @@ function wireControls() {
   });
   // widening the window docks the desk: a drawer left open would keep the page inert
   matchMedia("(max-width: 1099px)").addEventListener("change", (e) => { if (!e.matches) desk.setDrawer(false); });
-  $("#desk").addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest("textarea")) desk.closeDrawer();
+  // the open drawer is modal: Esc closes it wherever focus is (the page behind is inert, focus may sit on body)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest?.("textarea")) desk.closeDrawer();
   });
   // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
   // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well.
