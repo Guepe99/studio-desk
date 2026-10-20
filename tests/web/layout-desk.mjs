@@ -194,8 +194,7 @@ async function run(w, h) {
   await shot(page, `${PFX}-${tag}-strip.png`);
 
   // 11. Italian everywhere outside the agents' own output
-  if (!(await page.isVisible("#lang"))) await page.click("#viewing-open");   // behind Viewing on a small screen
-  await page.selectOption("#lang", "it");
+  await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "it");
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
   await openDesk();

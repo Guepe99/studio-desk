@@ -69,7 +69,7 @@ test("the video player keys, scoped as N is", () => {
   assert.deepEqual(key("f"), ["fullscreen"]);
   assert.deepEqual(key("?", frame, { shiftKey: true }), ["keys"]);
   for (const k of ["n", " ", "x", "ArrowUp", "Enter", "Escape"]) assert.equal(key(k), null, k); // N and Space have their own handlers
-  for (const target of [at(), at("#desk"), at("#controls", "select"), at("textarea"), at("#controls", "input:not([type=range])")]) {
+  for (const target of [at(), at("#desk"), at("#controls", "select"), at("textarea"), at("#controls", "input:not([type=range])"), at("#controls", '[role="menu"]')]) {   // the settings menu: its arrows move through it
     for (const k of ["k", "j", "5", "?", "f"]) assert.equal(key(k, target), null, k);
   }
   for (const mod of ["ctrlKey", "altKey", "metaKey", "shiftKey"]) assert.equal(key("l", frame, { [mod]: true }), null, mod);

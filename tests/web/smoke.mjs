@@ -13,7 +13,8 @@
 // bug against the score facts, no goal dots on the track; seek keys and aria-valuetext with the score; shirt-number contrast; the 2D pitch (players and ball on
 // the tracking, disc colours, the players named on air lit, draw time); the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
-// phone landscape and portrait (every control reachable by scrolling, with the Viewing menu open,
+// the settings menu (speed, audience, language, each beside the gear when not the default);
+// phone landscape and portrait (every control reachable by scrolling, with the settings menu open,
 // graphic text at least 11 px in portrait, the agent strip on one line); Next key moment for analyst and a team; the agent strip after seeks and
 // at 64x. Screenshots go to out/shots/.
 import { createRequire } from "node:module";
@@ -103,6 +104,13 @@ const seekTo = async (page, ts) => {
   // and at least one drawn frame after the seek: on a loaded machine 250 ms can pass without one
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 };
+// a settings item, as a visitor picks it: the gear opens the menu, a click picks, Escape closes the menu
+const pick = async (page, sel) => {
+  if (await page.$eval("#settings-menu", (m) => m.hidden)) await page.click("#settings");
+  await page.click(`#settings-menu ${sel}`);
+  if (!(await page.$eval("#settings-menu", (m) => m.hidden))) await page.keyboard.press("Escape");
+};
+const setLang = (page, lang) => pick(page, `[data-lang="${lang}"]`);
 const scorebug = (page) => page.evaluate(() => ({
   h: document.querySelector(".sb-h").textContent, a: document.querySelector(".sb-a").textContent,
   minute: document.querySelector(".sb-min").textContent, period: document.querySelector(".sb-period").textContent,
@@ -267,22 +275,23 @@ try {
     for (const kind of ["team", "player"]) {
       const auds = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith(`${kind}:`)))].sort();
       if (!auds.length) { fail(`modes: ${MATCH} has no ${kind} cues`); continue; }
-      await page.click(`[data-audience="${kind}"]`);
-      const offered = (await page.$$eval("#audience-pick option", (os) => os.map((o) => o.value))).sort();
-      if (offered.join() !== auds.join()) fail(`${kind}: picker offers ${offered.join()}, cues.json has ${auds.join()}`);
+      const offered = (await page.$$eval(`#settings-menu [data-audience^="${kind}:"]`, (os) => os.map((o) => o.dataset.audience))).sort();
+      if (offered.join() !== auds.join()) fail(`${kind}: the menu offers ${offered.join()}, cues.json has ${auds.join()}`);
       if (kind === "player") { // each entry ends with the minute of the player's first graphic (late substitutes)
-        const wrong = await page.evaluate(() => [...document.querySelectorAll("#audience-pick option")].filter((o) => {
-          const sd = window.studioDesk, ts = Math.min(...sd.match.cues.filter((c) => c.audience === o.value).map((c) => c.ts));
-          return !o.textContent.endsWith(`, ${sd.match.clock(ts).minute}'`);
+        const wrong = await page.evaluate(() => [...document.querySelectorAll('#settings-menu [data-audience^="player:"]')].filter((o) => {
+          const sd = window.studioDesk, ts = Math.min(...sd.match.cues.filter((c) => c.audience === o.dataset.audience).map((c) => c.ts));
+          return !o.textContent.endsWith(`, ${sd.match.clock(ts).label}'`);
         }).map((o) => o.textContent));
         if (wrong.length) fail(`player picker without the first minute: ${wrong.slice(0, 3).join(" | ")}`);
       }
       let seen = 0;
       for (const aud of auds) {
-        await page.selectOption("#audience-pick", aud);
-        const [got, on] = await page.evaluate((k) => [window.studioDesk.state.audience,
-          document.querySelector(`[data-audience="${k}"]`).getAttribute("aria-pressed")], kind);
-        if (got !== aud || on !== "true") fail(`${aud}: state ${got}, aria-pressed ${on}`);
+        await pick(page, `[data-audience="${aud}"]`);
+        const [got, on, badge] = await page.evaluate((a) => [window.studioDesk.state.audience,
+          document.querySelector(`[data-audience="${a}"]`).getAttribute("aria-checked"), document.querySelector("#settings-state").textContent], aud);
+        const short = await page.$eval(`[data-audience="${aud}"]`, (b) => b.dataset.short);
+        if (got !== aud || on !== "true") fail(`${aud}: state ${got}, aria-checked ${on}`);
+        if (badge !== short) fail(`${aud}: beside the gear "${badge}", want "${short}"`);
         const mine = cues.filter((x) => x.audience === aud), ids = new Set(mine.map((x) => x.cue_id));
         for (const c of mine) {
           await seekTo(page, due(c) + Math.min(2, c.duration_s / 2));
@@ -297,21 +306,22 @@ try {
       if (!seen) fail(`${kind}: no cue on air to check`);
       console.log(`${kind}: ${auds.length} audiences, ${seen} cues checked`);
     }
-    // keyboard: Enter on the button, arrows in the picker
-    await page.focus('[data-audience="team"]');
+    // keyboard: the gear, the arrows to a team, Enter picks it
+    await page.focus("#settings");
     await page.keyboard.press("Enter");
-    const before = await page.evaluate(() => window.studioDesk.state.audience);
-    await page.focus("#audience-pick");
-    const lastTeam = await page.$eval("#audience-pick option:last-child", (o) => o.value);
-    await page.keyboard.press(before === lastTeam ? "ArrowUp" : "ArrowDown");
-    const after = await page.evaluate(() => [window.studioDesk.state.audience, document.querySelector('[data-audience="team"]').getAttribute("aria-pressed")]);
-    if (!before.startsWith("team:") || after[0] === before || !after[0].startsWith("team:") || after[1] !== "true") fail(`keyboard: team ${before} -> ${after.join(" ")}`);
-    await page.click('[data-audience="analyst"]');
-    if (!(await page.$eval("#audience-pick", (el) => el.hidden))) fail("picker still shown for the analyst audience");
+    const team = await page.$eval('#settings-menu [data-audience^="team:"]', (b) => b.dataset.audience);
+    let steps = 0;
+    while (steps++ < 40 && (await page.evaluate(() => document.activeElement?.dataset.audience)) !== team) await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    const after = await page.evaluate((a) => [window.studioDesk.state.audience, document.querySelector(`[data-audience="${a}"]`).getAttribute("aria-checked")], team);
+    if (after[0] !== team || after[1] !== "true") fail(`keyboard: team ${team} -> ${after.join(" ")}`);
+    await page.keyboard.press("Escape");
+    await pick(page, '[data-audience="analyst"]');
+    if (!(await page.$eval("#settings-state", (el) => el.hidden))) fail("something beside the gear for the analyst audience at 1x");
   });
 
   await check("real-time path", async () => {
-    await page.click('[data-audience="analyst"]');
+    await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
     const first = cues.find((c) => c.audience === "analyst");
     await page.evaluate((ts) => { window.studioDesk.seek(ts); window.studioDesk.state.speed = 1; window.studioDesk.setPlaying(true); }, first.ts - 1);
     await page.waitForTimeout(2600);
@@ -327,14 +337,19 @@ try {
       new MutationObserver(() => window.__toggles++).observe(document.querySelector("#play"), { attributeFilter: ["class"] });
     });
     // a single-key shortcut only inside the broadcast and its controls (WCAG 2.1.4): not on the page body
-    for (const [sel, want] of [["#play", 1], ['[data-speed="4"]', 1], ["#frame", 1], ["body", 0]]) {
+    // on the gear Space opens the settings menu, in the menu it picks the item (a menu button)
+    for (const [sel, want] of [["#play", 1], ["#settings", 0], ["#frame", 1], ["body", 0], ['[data-speed="1"]', 0]]) {
       const before = await page.evaluate(() => [window.__toggles, window.studioDesk.state.speed]);
-      if (sel === "body") await page.evaluate(() => document.activeElement.blur()); else await page.focus(sel);
+      if (sel === "body") await page.evaluate(() => document.activeElement.blur());
+      else if (sel.startsWith("[")) { await page.click("#settings"); await page.focus(`#settings-menu ${sel}`); }
+      else await page.focus(sel);
       await page.keyboard.press("Space");
       await page.waitForTimeout(150);
       const after = await page.evaluate(() => [window.__toggles, window.studioDesk.state.speed]);
       if (after[0] - before[0] !== want) fail(`space on ${sel}: play toggled ${after[0] - before[0]} times, wanted ${want}`);
       if (after[1] !== before[1]) fail(`space on ${sel}: speed changed to ${after[1]}`);
+      if (sel === "#settings" && await page.evaluate(() => document.querySelector("#settings-menu").hidden || document.activeElement?.dataset.speed !== "1")) fail("space on the gear: the menu did not open on its first item");
+      if (sel !== "#play" && sel !== "#frame" && sel !== "body") await page.keyboard.press("Escape");
     }
     await page.click("#frame", { position: { x: 5, y: 5 } });
     if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("space: a click on the frame does not focus it");
@@ -351,10 +366,10 @@ try {
       if ((await page.textContent("#time")) !== want.minute) fail(`clock at ${ts}: the seek row says ${await page.textContent("#time")}, want ${want.minute}`);
     }
     // in Italian the period is 1°T, never "1T" (read as the language code)
-    await page.selectOption("#lang", "it");
+    await setLang(page, "it");
     await seekTo(page, 1);
     const it = await scorebug(page);
-    await page.selectOption("#lang", "en");
+    await setLang(page, "en");
     if (it.period !== "1°T") fail(`Italian period label "${it.period}", want 1°T`);
   });
 
@@ -414,15 +429,15 @@ try {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("l");
     if (Math.abs((await st()).ts - r0 - 15) > 0.05) fail(`seek bar: ArrowRight then L moved ${((await st()).ts - r0).toFixed(2)} s, want 15`);
-    // never in a select, never on the page body
-    for (const where of ["#lang", "body"]) {
+    // never in the settings menu, never on the page body
+    for (const where of ["menu", "body"]) {
       await seekTo(page, 600 % DUR);
-      if (where === "body") await page.evaluate(() => document.activeElement.blur()); else await page.focus(where);
-      const lang = await page.$eval("#lang", (el) => el.value);
+      if (where === "body") await page.evaluate(() => document.activeElement.blur());
+      else { await page.click("#settings"); await page.focus('#settings-menu [data-lang="en"]'); }
       for (const k of ["l", "5", "k"]) await page.keyboard.press(k);
       const s1 = await st();
       if (Math.abs(s1.ts - 600 % DUR) > 0.01 || s1.playing) fail(`keys on ${where}: moved to ${s1.ts.toFixed(1)}, playing ${s1.playing}`);
-      if (where === "#lang" && (await page.$eval("#lang", (el) => el.value)) !== lang) await page.selectOption("#lang", lang);
+      if (where === "menu") await page.keyboard.press("Escape");
     }
     // ?: the list in a modal dialog, in the page's language; Escape closes it and gives the focus back
     await page.focus("#frame");
@@ -461,7 +476,7 @@ try {
   // mapping written again above), each isolated disc in its kit or keeper colour, and the players
   // named by the graphics on air (payload.player_id, or the players of the facts they cite) lit.
   await check("pitch", async () => {
-    await page.click('[data-audience="analyst"]');
+    await pick(page, '[data-audience="analyst"]');
     const factPlayer = new Map(facts.filter((f) => f.player_id).map((f) => [f.fact_id, f.player_id]));
     const moments = ["nameplate", "pass_shot", "why_card"].flatMap((g) => cues.filter((c) => c.audience === "analyst" && c.graphic === g).slice(0, 3))
       .map((c) => c.ts + Math.min(2, c.duration_s / 2));
@@ -584,8 +599,7 @@ try {
       .find((s) => s.kind === "comeback")?.story_id;
     if (MATCH === "M001" && !comeback) fail("next: no comeback in M001's stories");
     for (const aud of ["analyst", team]) {
-      if (aud === "analyst") await page.click('[data-audience="analyst"]');
-      else { await page.click('[data-audience="team"]'); await page.selectOption("#audience-pick", aud); }
+      await pick(page, `[data-audience="${aud}"]`);
       const stops = stopsFor(aud);
       if (!stops.length && aud === "analyst") fail("next analyst: no story cue on air");
       if (MATCH === "M001" && aud === "analyst" && stops.some((c) => c.story_id === comeback)) fail("next: the comeback that shares the goal's event is a stop of its own");
@@ -616,18 +630,18 @@ try {
       console.log(`next ${aud}: ${stops.length} moments`);
     }
     // labels and their language
-    await page.click('[data-audience="analyst"]');
+    await pick(page, '[data-audience="analyst"]');
     await seekTo(page, await page.evaluate(() => window.studioDesk.end));
     for (const [lang, label] of [["it", "Nessun altro momento chiave"], ["es", "No hay más momentos clave"]]) {
-      await page.selectOption("#lang", lang);
+      await setLang(page, lang);
       await nextFrame(page);
       const b = await nextBtn();
       if (b.label !== label || b.lang !== lang) fail(`next: label ${JSON.stringify(b.label)} lang ${b.lang}, wanted ${label} in ${lang}`);
     }
-    await page.click('[data-audience="analyst"]');
+    await pick(page, '[data-audience="analyst"]');
     await seekTo(page, 0);
     for (const [lang, label] of [["it", "Prossimo momento chiave"], ["es", "Siguiente momento clave"], ["en", "Next key moment"]]) {
-      await page.selectOption("#lang", lang);
+      await setLang(page, lang);
       await nextFrame(page);
       const b = await nextBtn();
       if (b.label !== label || b.lang !== lang || b.off) fail(`next at 0: ${JSON.stringify(b)}, wanted ${label} in ${lang}`);
@@ -647,14 +661,14 @@ try {
     await page.keyboard.press("n");
     await nextFrame(page);
     if (await clock() !== 0) fail("next: N on the page body moved the clock");
-    await page.click('[data-speed="64"]');
+    await pick(page, '[data-speed="64"]');
     await page.focus("#frame");
     await page.keyboard.press("n");
     await nextFrame(page);
-    const sp = await page.evaluate(() => ({ speed: window.studioDesk.state.speed, pressed: document.querySelector('[data-speed="1"]').getAttribute("aria-pressed") }));
+    const sp = await page.evaluate(() => ({ speed: window.studioDesk.state.speed, pressed: document.querySelector('[data-speed="1"]').getAttribute("aria-checked") }));
     if (sp.speed !== 1 || sp.pressed !== "true") fail(`next: after a jump at 64x the speed is ${JSON.stringify(sp)}, wanted 1x`);
     if (first !== undefined && Math.abs(await clock() - first) > 0.01) fail("next: N with the focus on the frame did not jump");
-    await page.click('[data-speed="1"]');
+    await pick(page, '[data-speed="1"]');
 
     // the Ask box is outside the broadcast: a typed n is text, not a jump
     const p = await open(browser, { viewport: { width: 1280, height: 720 } }, { route: askStub() });
@@ -734,7 +748,7 @@ try {
     }
     for (const [lang, title, sum, made] of [["it", "Gli agenti al lavoro", "Passaggi di consegne finora: ", "Come è nata la grafica in onda: "],
       ["es", "Los agentes en acción", "Relevos hasta ahora: ", "Cómo se hizo el gráfico en pantalla: "], ["en", "Agents at work", "Hand-offs so far: ", "How the graphic on air was made: "]]) {
-      await page.selectOption("#lang", lang);
+      await setLang(page, lang);
       for (const [ts, start] of [[quiet, sum], [onAir?.ts + 1, made]]) {
         if (!Number.isFinite(ts)) continue;
         await seekTo(page, ts);
@@ -806,7 +820,7 @@ try {
     });
   }
 
-  await page.click('[data-audience="analyst"]');
+  await pick(page, '[data-audience="analyst"]');
   await seekTo(page, DUR + 4);
   if (!(await onScreen(page)).live.some((x) => x.graphic === "why_card" && x.step === 0)) fail("full-time recap not on screen after the last frame");
   await page.screenshot({ path: `${shots}/web2d-fulltime.png` });
@@ -890,7 +904,7 @@ try {
     await p.click('[data-audience="casual"]');
     if ((await seen()).facts) fail("ask: fact ids shown to the casual fan");
     await p.click('[data-audience="analyst"]');
-    await p.selectOption("#lang", "it");
+    await setLang(p, "it");
     if ((await seen()).title !== "Chiedi allo studio") fail(`ask: Italian title "${(await seen()).title}"`);
     const langs = () => p.evaluate(() => ["#ask", "#ask-open", "#ask-live"].map((s) => document.querySelector(s).lang).join(" "));
     if (await langs() !== "it it en") fail(`ask: lang attributes in Italian "${await langs()}"`);
@@ -898,9 +912,9 @@ try {
     await p.press("#ask-q", "Enter");
     await p.waitForFunction(() => document.querySelector("#ask-live").lang === "it" && document.querySelector("#ask-live").textContent, null, { timeout: 5000 })
       .catch(() => fail("ask: the Italian answer is not announced in Italian"));
-    await p.selectOption("#lang", "es");
+    await setLang(p, "es");
     if (await langs() !== "es es it") fail(`ask: lang attributes in Spanish "${await langs()}"`);
-    await p.selectOption("#lang", "en");
+    await setLang(p, "en");
     // Send pressed with the mouse: focus stays on it while the studio works, and a second press sends nothing
     await p.fill("#ask-q", "slow");
     const before = sent.length;
@@ -934,14 +948,14 @@ try {
     await p.click("#ask-open");
     await p.press("#ask-q", "Escape");
     if (!(await p.evaluate(() => document.querySelector("#ask").hidden && document.activeElement?.id === "ask-open"))) fail("ask: Escape did not close the panel back to its button");
-    // the model goes away while the panel is open: no box, no button, and the focus on the language control
+    // the model goes away while the panel is open: no box, no button, and the focus on the settings
     await p.click("#ask-open");
     await p.fill("#ask-q", "gone");
     await p.press("#ask-q", "Enter");
     await p.waitForFunction(() => document.querySelector("#ask-open").hidden, null, { timeout: 5000 }).catch(() => {});
     const off = await p.evaluate(() => ({ panel: document.querySelector("#ask").hidden, button: document.querySelector("#ask-open").hidden,
       focus: document.activeElement?.id || document.activeElement?.tagName }));
-    if (!off.panel || !off.button || off.focus !== "lang") fail(`ask 503: panel hidden ${off.panel}, button hidden ${off.button}, focus on ${off.focus}`);
+    if (!off.panel || !off.button || off.focus !== "settings") fail(`ask 503: panel hidden ${off.panel}, button hidden ${off.button}, focus on ${off.focus}`);
     await p.waitForFunction(() => /not available/.test(document.querySelector("#ask-live").textContent), null, { timeout: 2000 })
       .catch(() => fail("ask 503: the box went without a message"));
     await p.context().close();
@@ -954,12 +968,12 @@ try {
       // the voice button and the desk's offline label are shown by now, and the layout has followed them
       await phone.waitForFunction(() => window.studioDesk?.voice && window.studioDesk.desk.ready);
       await phone.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      // the page may be taller than the screen (it scrolls), never wider; speed, audience and language sit behind Viewing
+      // the page may be taller than the screen (it scrolls), never wider; speed, audience and language sit in the settings
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
-      await phone.click("#viewing-open");
+      await phone.click("#settings");
       const lost = await unreachable(phone);
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);
-      await phone.click("#viewing-open");
+      await phone.click("#settings");
       await seekTo(phone, shotAt);
       const strip = await phone.evaluate(() => {
         const r = document.querySelector("#activity").getBoundingClientRect();
@@ -976,9 +990,9 @@ try {
           if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h} ${graphic}: horizontal scroll`);
         }
       }
-      // the Player picker, the widest the controls get, still fits
-      await phone.click("#viewing-open");
-      await phone.click('[data-audience="player"]');
+      // a player and 64x, the longest the note beside the gear gets, still fit
+      await pick(phone, '[data-audience^="player:"]');
+      await pick(phone, '[data-speed="64"]');
       await phone.waitForTimeout(100);
       const lostPick = await unreachable(phone);
       if (lostPick.length) fail(`${w}x${h} player mode: controls out of reach: ${lostPick.join(", ")}`);
@@ -988,7 +1002,8 @@ try {
       { const why = await askFits(phone); if (why) fail(`${w}x${h}: Ask ${why}`); }
       await phone.screenshot({ path: `${shots}/web-ask-${w}x${h}.png` });
       await phone.press("#ask-q", "Escape");
-      await phone.click('[data-audience="analyst"]');
+      await pick(phone, '[data-audience="analyst"]');
+      await pick(phone, '[data-speed="1"]');
       await seekTo(phone, shotAt);
       await phone.screenshot({ path: `${shots}/web-fixes-${w}x${h}.png` });
       await phone.context().close();

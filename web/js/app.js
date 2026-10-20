@@ -13,12 +13,12 @@ import { shortcut } from "./keys.js";
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
   en: {
-    play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "2nd half",
+    play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "Jump to 2nd half",
     audience: "Audience", analyst: "Analyst", casual: "Casual fan", language: "Language",
     p1: "1H", p2: "2H", loading: "Loading match", error: "Could not load match {m}. {e}",
     minute: "Minute {n}, {p}, {home} {h}, {away} {a}", h1: "first half", h2: "second half",
     nographic: "Some graphics could not load: {g}.",
-    myteam: "My team", player: "Player", pickteam: "Choose the team", pickplayer: "Choose the player",
+    myteam: "My team", player: "Player",
     ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
     askHint: "Answers use only the match data up to the replay time.", askWait: "The studio is checking the match data.",
     askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts",
@@ -32,17 +32,16 @@ const STRINGS = {
     actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
     actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
-    aioff: "AI off", view: "View", broadcast: "Match broadcast", activity: "Agent activity",
+    aioff: "AI off", broadcast: "Match broadcast", activity: "Agent activity",
   },
   // every key in every language: a missing one would fall back to English
   it: {
-    play: "Riproduci", pause: "Pausa", seek: "Tempo di gioco", speed: "Velocità di riproduzione", half2: "2° tempo",
+    play: "Riproduci", pause: "Pausa", seek: "Tempo di gioco", speed: "Velocità di riproduzione", half2: "Vai al 2° tempo",
     language: "Lingua", p1: "1°T", p2: "2°T", loading: "Caricamento della partita", error: "Impossibile caricare la partita {m}. {e}",
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primo tempo", h2: "secondo tempo",
     nographic: "Alcune grafiche non si sono caricate: {g}.",
-    aioff: "IA spenta", view: "Vista", broadcast: "Diretta della partita", activity: "Attività degli agenti",
+    aioff: "IA spenta", broadcast: "Diretta della partita", activity: "Attività degli agenti",
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
-    pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
     askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
@@ -59,13 +58,12 @@ const STRINGS = {
     actRules: "solo regole", actCode: "solo codice",
   },
   es: {
-    play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "2.ª parte",
+    play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "Ir a la 2.ª parte",
     language: "Idioma", p1: "1T", p2: "2T", loading: "Cargando el partido", error: "No se pudo cargar el partido {m}. {e}",
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primera parte", h2: "segunda parte",
     nographic: "Algunos gráficos no se pudieron cargar: {g}.",
-    aioff: "IA apagada", view: "Vista", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
+    aioff: "IA apagada", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
-    pickteam: "Elige el equipo", pickplayer: "Elige el jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
     askYou: "Preguntaste", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos",
@@ -95,19 +93,22 @@ let match = null, host = null, desk = null, voice = null, ask = null, end = 0, m
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
-  en: { viewing: "Viewing", voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
+  en: { settings: "Settings", more: "More", minimap: "Minimap", show2d: "Show the 2D pitch large", show3d: "Show the 3D view large",
+    voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
     nextGoal: "Next goal", nonextGoal: "No more goals", nokeyGoal: "No goals",
     goalsHint: "AI graphics are off: this jumps to the goals",
     keysTitle: "Keyboard shortcuts", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
     keyFive: "Back or forward 5 seconds", keyJump: "Jump to 0%, 10% … 90% of the match", keyVoice: "AI voice-over on or off",
     keyFull: "Full screen on or off", keyList: "This list" },
-  it: { viewing: "Opzioni", voice: "Voce", voiceName: "Voce AI", goalAt: "Gol, {who}, {m}'",
+  it: { settings: "Impostazioni", more: "Altro", minimap: "Minimappa", show2d: "Mostra in grande il campo 2D", show3d: "Mostra in grande la vista 3D",
+    voice: "Voce", voiceName: "Voce AI", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
     goalsHint: "Grafiche AI spente: il pulsante salta ai gol",
     keysTitle: "Scorciatoie da tastiera", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
     keyFive: "Indietro o avanti di 5 secondi", keyJump: "Salta allo 0%, 10% … 90% della partita", keyVoice: "Voce AI accesa o spenta",
     keyFull: "Schermo intero sì o no", keyList: "Questo elenco" },
-  es: { viewing: "Opciones", voice: "Voz", voiceName: "Voz IA", goalAt: "Gol, {who}, {m}'",
+  es: { settings: "Ajustes", more: "Más", minimap: "Minimapa", show2d: "Mostrar en grande el campo 2D", show3d: "Mostrar en grande la vista 3D",
+    voice: "Voz", voiceName: "Voz IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
     goalsHint: "Gráficos IA apagados: el botón salta a los goles",
     keysTitle: "Atajos de teclado", keySpace: "Espacio", keyPlay: "Reproducir o pausar", keyTen: "Atrás o adelante 10 segundos",
@@ -127,7 +128,7 @@ for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[l
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
 // for the deck: beside the frame when a wide, short window leaves DECK_MIN px there, else below the controls.
 const MIN_PX = 11, SMALLEST = 17, COMPACT_PX = 30, DECK_MIN = 300;
-let compact = false, deckMode = "", scale = 1;
+let compact = false, deckMode = "", scale = 1, radarK = 1;
 
 function layout() {
   const app = $("#app"), cs = getComputedStyle(app), ask = $("#ask"), body = document.body.classList;
@@ -135,12 +136,7 @@ function layout() {
   const room = Math.max(160, W - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
   const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), gap = parseFloat(cs.rowGap) || 0;
   const head = $("#masthead").offsetHeight, top = head ? head + gap : 0;
-  // from the window alone, so hiding the button cannot change the answer
-  body.toggle("no-radar", Math.min(room, ((H - 120) * STAGE_W) / STAGE_H) < 600);
   body.remove("deck", "deck-side");
-  // the open Viewing menu does not count: opening it moves the page down, never the picture
-  const menu = $("#viewing"), menuOpen = menu.classList.contains("open");
-  menu.classList.remove("open");
   for (const el of [deck, ask]) el.style.width = el.style.maxHeight = "";
   // the header, the controls and the strip wrap: size them first, then give the frame the height that
   // is left. The strip counts at its height with cards (.reserve), so the picture does not move when
@@ -188,16 +184,27 @@ function layout() {
     deck.style.maxHeight = `${fh}px`;
     if (!DOCKED.matches) { ask.style.width = deck.style.width; ask.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
-  // in the radar the 2D pitch is drawn at RADAR of the stage
-  pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR : 1) * Math.min(window.devicePixelRatio || 1, 2));
+  // the minimap is never narrower than RADAR_MIN px: magnified on a small frame, as the score bug is
+  radarK = Math.max(1, RADAR_MIN / (RADAR_BOX.w * s));
+  $("#radar").style.scale = radarK > 1 ? String(radarK) : "";
+  // in the minimap the 2D pitch is drawn at RADAR of the stage
+  pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR * radarK : 1) * Math.min(window.devicePixelRatio || 1, 2));
+  minimapState();
   view3d?.resize();
   scale = s;
-  menu.classList.toggle("open", menuOpen);
   if (match) placeGoals();
   state.seeked = true; // graphics are rebuilt for the new size
   laidOut = heights();
-  // a small screen has no Radar (the inset would be a stamp): who had it, or a link that asks for it, gets 3D
-  if (body.contains("no-radar") && view3d?.mode === "split") view3d.set("3d");
+  if (!$("#settings-menu").hidden) placeMenu();
+}
+
+// The minimap item says whether the minimap is on (and cannot be turned on once the 3D view failed);
+// the inset's name says what a click on it does.
+function minimapState() {
+  const item = $("#minimap"), off = !!(view3d?.failed || view3d?.lost);
+  item.setAttribute("aria-checked", String(view3d?.mode === "split"));
+  item.setAttribute("aria-disabled", String(off));
+  $("#radar").setAttribute("aria-label", t(view3d?.main === "3d" ? "show2d" : "show3d"));
 }
 // a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
 let laidOut = "";
@@ -211,12 +218,14 @@ function applyStrings() {
   // the whole page follows the language; agent output inside it is marked lang="en" where it is shown
   document.documentElement.lang = state.lang;
   for (const el of [$("#overlay"), deck]) el.lang = state.lang;
-  // the audience control is translated, so a screen reader reads it in the chosen language
-  for (const el of [$('[data-i18n-aria="audience"]'), $("#audience-pick"), $("#ask"), $("#ask-open")]) el.lang = state.lang;
+  // the settings are translated, so a screen reader reads them in the chosen language (each language item keeps its own)
+  for (const el of [$("#settings-wrap"), $("#ask"), $("#ask-open")]) el.lang = state.lang;
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));
   if (match) goalLabels();
+  settingsState();
+  minimapState();
 }
 
 function setPlaying(on) {
@@ -228,7 +237,8 @@ function setPlaying(on) {
 
 function setSpeed(x) {
   state.speed = x;
-  pressed("data-speed", x);
+  checked("data-speed", x);
+  settingsState();
 }
 
 function seek(ts) {
@@ -237,8 +247,36 @@ function seek(ts) {
   voice?.reset();
 }
 
-function pressed(attr, value) {
-  for (const b of document.querySelectorAll(`[${attr}]`)) b.setAttribute("aria-pressed", String(b.getAttribute(attr) === String(value)));
+function checked(attr, value) {
+  for (const b of document.querySelectorAll(`[${attr}]`)) b.setAttribute("aria-checked", String(b.getAttribute(attr) === String(value)));
+}
+
+// Beside the gear, what is not the default: the speed (so nobody wonders why the match runs fast) and the audience
+function settingsState() {
+  const aud = document.querySelector(`[data-audience="${CSS.escape(state.audience)}"]`);
+  const said = [state.speed !== 1 ? `${state.speed}x` : "", state.audience !== "analyst" ? aud?.dataset.short ?? aud?.textContent ?? "" : ""];
+  const el = $("#settings-state");
+  el.textContent = said.filter(Boolean).join(" · ");
+  el.hidden = !el.textContent;
+}
+
+// The settings menu opens under the gear when it fits there, else over it, and never off the screen.
+function setMenu(open, focusGear = false) {
+  const menu = $("#settings-menu");
+  menu.hidden = !open;
+  $("#settings").setAttribute("aria-expanded", String(open));
+  if (open) placeMenu();
+  if (focusGear) $("#settings").focus();
+}
+function placeMenu() {
+  const menu = $("#settings-menu"), g = $("#settings").getBoundingClientRect(), wrap = $("#settings-wrap").getBoundingClientRect();
+  Object.assign(menu.style, { top: "", bottom: "", left: "", maxHeight: "" });
+  const m = menu.getBoundingClientRect(), below = window.innerHeight - g.bottom - 14, above = g.top - 14;
+  const down = m.height <= below || below >= above;
+  menu.style[down ? "top" : "bottom"] = "calc(100% + 6px)";
+  if (m.height > (down ? below : above)) menu.style.maxHeight = `${down ? below : above}px`;
+  const vw = document.documentElement.clientWidth;
+  menu.style.left = `${Math.min(Math.max(8, g.right - m.width), vw - 8 - m.width) - wrap.left}px`;
 }
 
 function cueSheet() {
@@ -405,66 +443,75 @@ function tick(now) {
 
 // The Radar box takes the first spot along the foot of the frame (centre, right, left) that no graphic
 // on the pitch covers; it steps aside only when they cover all three. Stage px, as view3d.css #radar.
-const RADAR_SPOTS = [740, 1440, 40], RADAR_BOX = { w: 440, h: 291, bottom: 20 };
+// Magnified on a small frame (radarK), it grows from its bottom left corner and the spots move in with it.
+const RADAR_BOX = { w: 440, h: 291, bottom: 20 }, RADAR_MIN = 120;
 function placeRadar() {
   const boxes = [...host.live.values(), ...host.leaving].filter((i) => !i.positioned && i.node === i.el)
     .map((i) => i.el.shadowRoot?.querySelector(".stage")?.firstElementChild).filter((b) => b?.offsetWidth);
-  const top = STAGE_H - RADAR_BOX.bottom - RADAR_BOX.h;
-  const x = RADAR_SPOTS.find((l) => boxes.every((b) => b.offsetLeft >= l + RADAR_BOX.w || b.offsetLeft + b.offsetWidth <= l || b.offsetTop + b.offsetHeight <= top));
+  const w = RADAR_BOX.w * radarK, top = STAGE_H - RADAR_BOX.bottom - RADAR_BOX.h * radarK;
+  const x = [(STAGE_W - w) / 2, STAGE_W - 40 - w, 40].find((l) => boxes.every((b) => b.offsetLeft >= l + w || b.offsetLeft + b.offsetWidth <= l || b.offsetTop + b.offsetHeight <= top));
   document.body.classList.toggle("radar-yield", x === undefined);
   if (x !== undefined) $("#radar").style.left = `${x}px`;
 }
 
 function wireControls() {
   $("#play").addEventListener("click", () => setPlaying(!state.playing));
-  for (const b of document.querySelectorAll("[data-speed]")) {
-    b.addEventListener("click", () => setSpeed(Number(b.dataset.speed)));
-  }
-  // "team" and "player" need a pick: the select lists the ones the cue sheet has cues for
-  const first = {}, last = {}; // audience -> its first cue: the picker says when a late substitute first appears
+  // My team and Player: one item per team and per player the cue sheet has cues for; a player's item
+  // says when he first appears (a late substitute)
+  const first = {};
   for (const c of match.cues) first[c.audience] = Math.min(first[c.audience] ?? Infinity, c.ts);
-  const auds = new Set(Object.keys(first));
+  const has = (aud) => first[aud] !== undefined;
   const choices = {
-    team: [match.home, match.away].filter((tm) => auds.has(`team:${tm.team_id}`)).map((tm) => [`team:${tm.team_id}`, tm.name]),
-    player: match.meta.players.filter((p) => auds.has(`player:${p.player_id}`))
-      .map((p) => [`player:${p.player_id}`,
-        `${p.name} (${match.teams[p.team_id]?.short_name ?? ""} ${p.shirt}), ${match.clock(first[`player:${p.player_id}`]).minute}'`]),
+    team: [match.home, match.away].filter((tm) => has(`team:${tm.team_id}`)).map((tm) => [`team:${tm.team_id}`, tm.name, tm.short_name]),
+    player: match.meta.players.filter((p) => has(`player:${p.player_id}`)).map((p) => [`player:${p.player_id}`,
+      `${p.name} (${match.teams[p.team_id]?.short_name ?? ""} ${p.shirt}), ${match.clock(first[`player:${p.player_id}`]).label}'`, p.name]),
   };
-  const pick = $("#audience-pick");
-  const setAudience = (aud) => {
-    const kind = aud.split(":")[0], list = choices[kind];
-    state.audience = aud;
-    pressed("data-audience", kind);
-    if (list) {
-      last[kind] = aud;
-      const key = kind === "team" ? "pickteam" : "pickplayer";
-      if (pick.dataset.i18nAria !== key || !pick.options.length) {
-        // names come from the data: Option sets them as text, never as markup
-        pick.replaceChildren(...list.map(([v, label]) => new Option(label, v)));
-        pick.dataset.i18nAria = key;
-        pick.setAttribute("aria-label", t(key));
-      }
-      pick.value = aud;
+  for (const [kind, list] of Object.entries(choices)) {
+    const group = $(`#mg-${kind}`).parentElement;
+    for (const [aud, label, short] of list) {
+      // names come from the data: set as text, never as markup
+      const b = Object.assign(document.createElement("button"), { type: "button", tabIndex: -1, textContent: label });
+      b.setAttribute("role", "menuitemradio");
+      b.setAttribute("aria-checked", "false");
+      Object.assign(b.dataset, { audience: aud, short });
+      group.append(b);
     }
-    if (pick.hidden !== !list) { pick.hidden = !list; layout(); } // the controls may wrap differently
-    refreshCues();
-  };
-  for (const b of document.querySelectorAll("[data-audience]")) {
-    const list = choices[b.dataset.audience];
-    if (list) b.hidden = !list.length;
-    b.addEventListener("click", () => setAudience(list ? last[b.dataset.audience] ?? list[0][0] : b.dataset.audience));
+    group.hidden = !list.length;
   }
-  pick.addEventListener("change", () => setAudience(pick.value));
-  $("#half2").addEventListener("click", () => seek(match.meta.period1_s));
-  // the Viewing menu of a narrow screen is a disclosure: Escape closes it and gives the focus back to its button
-  const viewing = $("#viewing"), viewingOpen = $("#viewing-open");
-  const setViewing = (open) => { viewing.classList.toggle("open", open); viewingOpen.setAttribute("aria-expanded", String(open)); };
-  viewingOpen.addEventListener("click", () => setViewing(!viewing.classList.contains("open")));
-  for (const el of [viewing, viewingOpen]) el.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !viewing.classList.contains("open") || !viewingOpen.offsetParent) return;
-    setViewing(false);
-    viewingOpen.focus();
+  const setLang = (lang) => {
+    state.lang = lang;
+    checked("data-lang", lang);
+    applyStrings(); lastBug = ""; refreshCues(); desk.render();
+  };
+  const menu = $("#settings-menu"), gear = $("#settings");
+  menu.addEventListener("click", (e) => {
+    const b = e.target.closest('[role^="menuitem"]');
+    if (!b || b.getAttribute("aria-disabled") === "true") return;
+    if (b.dataset.speed) setSpeed(Number(b.dataset.speed));
+    else if (b.dataset.audience) { state.audience = b.dataset.audience; checked("data-audience", state.audience); settingsState(); refreshCues(); }
+    else if (b.dataset.lang) setLang(b.dataset.lang);
+    else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
+    else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
+    else if (b.id === "keys-open") { setMenu(false, true); $("#keys").showModal(); }
   });
+  // a menu button: Enter or ArrowDown opens it on its first item, ArrowUp on its last; arrows, Home and End move,
+  // Escape closes it and gives the focus back to the gear, Tab closes it and moves on
+  const items = () => [...menu.querySelectorAll('[role^="menuitem"]')].filter((b) => b.offsetParent);
+  const openAt = (last) => { setMenu(true); const l = items(); l[last ? l.length - 1 : 0]?.focus(); };
+  gear.addEventListener("click", () => (menu.hidden ? openAt(false) : setMenu(false)));
+  gear.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    openAt(e.key === "ArrowUp");
+  });
+  menu.addEventListener("keydown", (e) => {
+    const l = items(), i = l.indexOf(document.activeElement);
+    const to = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: l.length - 1 }[e.key];
+    if (to !== undefined) { e.preventDefault(); l[(to + l.length) % l.length].focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); setMenu(false, true); }
+    else if (e.key === "Tab") setMenu(false, true);   // the Tab then moves on from the gear
+  });
+  document.addEventListener("pointerdown", (e) => { if (!menu.hidden && !e.target.closest?.("#settings-wrap")) setMenu(false); });
   $("#seek-range").addEventListener("input", (e) => seek(Number(e.target.value)));
   // the range keeps a fine step for dragging; keys move by useful match time instead
   const KEY_STEP = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 60, PageDown: -60 };
@@ -475,7 +522,6 @@ function wireControls() {
     seek(e.key === "Home" ? 0 : e.key === "End" ? end : state.ts + d);
     e.target.value = String(state.ts);
   });
-  $("#lang").addEventListener("change", (e) => { state.lang = e.target.value; applyStrings(); lastBug = ""; refreshCues(); desk.render(); });
   $("#desk-open").addEventListener("click", () => {
     const open = !document.body.classList.contains("desk-open");
     desk.setDrawer(open);
@@ -488,8 +534,9 @@ function wireControls() {
     if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest?.("textarea")) desk.closeDrawer();
   });
   // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
-  // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well.
-  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls");
+  // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well. On the gear Space opens
+  // the settings menu, in the menu it picks the item (a menu button), on the minimap it swaps the pictures.
+  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls") && !e.target.closest('#settings-wrap, #radar');
   window.addEventListener("keydown", (e) => {
     if (!spaceKey(e)) return;
     e.preventDefault();
@@ -577,9 +624,10 @@ async function main() {
   refreshCues();
   // hooks for tests and the lead's demo scripts
   window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
-  // 2D, 3D or Radar (?view=split): ?view= or what the device can draw; any change of view re-lays the page
+  // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
+  // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
-    notice: $("#notice"), status: $("#view-status"), buttons: document.querySelectorAll("[data-view]") }, layout);
+    notice: $("#notice"), status: $("#view-status") }, layout);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it

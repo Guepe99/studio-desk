@@ -5,8 +5,10 @@
 //
 // At 1280x720, 1920x1080, 844x390, 390x844, 320x568 and 320x180: the seek bar on its own row as wide
 // as the controls with the clock at its end, the buttons on the rows below; no sideways scroll, a page
-// that can scroll, every control reachable; under 700 px wide or 500 px high speed, audience and
-// language behind a "Viewing" disclosure that Escape closes with the focus back on it; graphic text
+// that can scroll, every control reachable; the buttons on one row under the seek bar, with speed,
+// audience, language and the minimap in a settings menu button (a gear) that opens on screen, moves
+// with the arrows, closes on Escape with the focus back on the gear, and says 4x and the audience
+// beside the gear when they are not the default; no 2D/3D switch; the half-time mark on the seek bar; graphic text
 // at least 11 px for every graphic; the score bug's text at least 11 px and inside the picture; goal
 // buttons only once the replay has reached the goal, named "Goal, <player> (<code>), <minute>'" on hover
 // too, showing the team code and the minute, 24 px, landing 3 s before the goal, one Tab stop after the
@@ -190,7 +192,7 @@ try {
         const c = document.querySelector("#controls"), cs = getComputedStyle(c);
         const inner = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
         const seek = box("#seek-range"), time = box("#time");
-        const above = [...c.querySelectorAll(":scope > button, :scope > .seg, :scope > #viewing > *")]
+        const above = [...c.querySelectorAll(":scope > button, :scope > #settings-wrap")]
           .filter((el) => el.getClientRects().length && el.getBoundingClientRect().top < seek.bottom - 1).map((el) => el.id || el.className);
         return { inner, seek: seek.width, time: time.width, sameRow: Math.abs((time.top + time.bottom) / 2 - (seek.top + seek.bottom) / 2) < 12,
           after: time.left >= seek.right - 1, above };
@@ -206,11 +208,11 @@ try {
       if (over > 0) fail(`${tag}: ${over} px of horizontal scroll`);
       const clip = await page.evaluate(() => [document.documentElement, document.body].map((el) => getComputedStyle(el).overflowY).filter((o) => o === "hidden" || o === "clip"));
       if (clip.length) fail(`${tag}: the page cannot scroll (overflow ${clip.join(", ")})`);
-      if (await shown(page, "#viewing-open")) await page.click("#viewing-open");
+      await page.click("#settings");
       const lost = await unreachable(page);
       if (lost.length) fail(`${tag}: controls out of reach: ${lost.join(", ")}`);
-      if ((await sideScroll(page)) > 0) fail(`${tag} with the Viewing menu open: horizontal scroll`);
-      if (await shown(page, "#viewing-open")) await page.click("#viewing-open");
+      if ((await sideScroll(page)) > 0) fail(`${tag} with the settings open: horizontal scroll`);
+      await page.keyboard.press("Escape");
       if (!phone) {
         // a desktop window needs no scroll for the show; a short one may leave the agent strip, whole, under
         // the fold (app.js keeps the graphics on the pitch first)
@@ -245,27 +247,66 @@ try {
     // C9: the first screen holds the picture, the graphics and the controls, at a quiet and a busy moment
     if (w >= 390 && h >= 390) await check(`${tag} first screen`, () => showFirst(page, tag, cues));
 
-    // 3: the Viewing disclosure on narrow or short screens, everything in the row on wide ones
-    await check(`${tag} viewing menu`, async () => {
-      const narrow = w < 700 || h <= 500;
-      const always = ["#play", "#seek-range", '[data-view="2d"]', '[data-view="3d"]', "#next-moment", ...(w < 1100 ? ["#desk-open"] : []), ...(hasVoice ? ["#voice"] : [])];   // from 1100 px the desk is docked open
+    // 3: one row of buttons under the seek bar, the rest in the settings menu
+    await check(`${tag} settings menu`, async () => {
+      const always = ["#play", "#seek-range", "#next-moment", "#settings", ...(w < 1100 ? ["#desk-open"] : []), ...(hasVoice ? ["#voice"] : [])];   // from 1100 px the desk is docked open
       for (const s of always) if (!(await shown(page, s))) fail(`${tag}: ${s} not shown`);
-      const inMenu = ['[data-speed="1"]', '[data-audience="analyst"]', "#lang"];
-      const seen = async () => (await Promise.all(inMenu.map((s) => shown(page, s)))).filter(Boolean).length;
-      if (!narrow) {
-        if (await shown(page, "#viewing-open")) fail(`${tag}: a Viewing button on a wide screen`);
-        if ((await seen()) !== inMenu.length) fail(`${tag}: speed, audience or language hidden on a wide screen`);
-        return;
-      }
-      if (!(await shown(page, "#viewing-open"))) { fail(`${tag}: no Viewing button`); return; }
-      if ((await seen()) !== 0) fail(`${tag}: speed, audience or language shown with the Viewing menu closed`);
-      await page.click("#viewing-open");
-      if (await page.getAttribute("#viewing-open", "aria-expanded") !== "true" || (await seen()) !== inMenu.length) fail(`${tag}: Viewing does not open`);
-      await page.focus('[data-speed="4"]');
+      if (await page.$("[data-view]")) fail(`${tag}: a 2D/3D switch on the page`);
+      const row = () => page.evaluate(() => {
+        const items = [...document.querySelectorAll("#controls > button, #settings")].filter((el) => el.getClientRects().length);
+        const mid = (el) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; };
+        const m0 = mid(document.querySelector("#play"));
+        return { off: items.filter((el) => Math.abs(mid(el) - m0) > 4).map((el) => el.id), cut: items.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.id) };
+      });
+      const r0 = await row();
+      if (r0.off.length) fail(`${tag}: the buttons wrap: ${r0.off.join(", ")} off the row of Play`);
+      if (r0.cut.length) fail(`${tag}: button text cut: ${r0.cut.join(", ")}`);
+      if (!(await page.$("#seek-marks .half"))) fail(`${tag}: no half-time mark on the seek bar`);
+      // a menu button: closed, then open on screen with the focus on its first item, arrows, Home and End move, Escape closes
+      const g = await page.evaluate(() => { const b = document.querySelector("#settings"); return [b.getAttribute("aria-haspopup"), b.getAttribute("aria-expanded"), b.getAttribute("aria-controls"), document.querySelector("#settings-menu").getAttribute("role")]; });
+      if (g.join() !== "menu,false,settings-menu,menu") fail(`${tag}: gear ${g.join()}`);
+      if (await shown(page, '[data-speed="1"]')) fail(`${tag}: settings shown with the menu closed`);
+      await page.focus("#settings");
+      await page.keyboard.press("Enter");
+      const m = await page.evaluate(() => {
+        const el = document.querySelector("#settings-menu"), r = el.getBoundingClientRect(), items = [...el.querySelectorAll("button")].filter((b) => b.getClientRects().length);
+        const groups = [...el.querySelectorAll('[role="group"]')].filter((x) => !x.hidden);
+        return { exp: document.querySelector("#settings").getAttribute("aria-expanded"), focus: document.activeElement?.dataset.speed,
+          rect: [r.left, r.top, r.right, r.bottom].map(Math.round), on: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
+          roles: items.filter((b) => !/^menuitem(radio|checkbox)?$/.test(b.getAttribute("role")) || b.tabIndex !== -1).length,
+          loose: items.filter((b) => b.getAttribute("role") === "menuitemradio" && !b.closest('[role="group"]')).length,
+          unnamed: groups.filter((x) => !document.getElementById(x.getAttribute("aria-labelledby"))?.textContent.trim()).length,
+          names: ["speed", "audience", "lang", "minimap"].map((k) => !!el.querySelector(k === "minimap" ? "#minimap" : `[data-${k}]`)).join() };
+      });
+      if (m.exp !== "true" || m.focus !== "1") fail(`${tag}: Enter on the gear: expanded ${m.exp}, focus on speed ${m.focus}`);
+      if (!m.on) fail(`${tag}: the menu ${m.rect.join(",")} is not all on the ${w}x${h} screen`);
+      if (m.roles || m.loose || m.unnamed || m.names !== "true,true,true,true") fail(`${tag}: menu items ${JSON.stringify(m)}`);
+      if ((await row()).off.length) fail(`${tag}: the open menu moves the buttons`);
+      await page.screenshot({ path: `${shots}/layout-menu-${tag}.png` });
+      const at = () => page.evaluate(() => document.activeElement?.dataset.speed ?? document.activeElement?.id);
+      await page.keyboard.press("ArrowDown");
+      const down = await at();
+      await page.keyboard.press("End");
+      const endAt = await at();
+      await page.keyboard.press("ArrowDown");
+      const wrap = await at();
+      if (down !== "4" || endAt !== "keys-open" || wrap !== "1") fail(`${tag}: menu arrows: ArrowDown ${down}, End ${endAt}, then ArrowDown ${wrap}`);
       await page.keyboard.press("Escape");
-      const st = await page.evaluate(() => ({ exp: document.querySelector("#viewing-open").getAttribute("aria-expanded"), focus: document.activeElement?.id }));
-      if (st.exp !== "false" || (await seen()) !== 0) fail(`${tag}: Escape does not close the Viewing menu`);
-      if (st.focus !== "viewing-open") fail(`${tag}: after Escape the focus is on ${st.focus}, not on Viewing`);
+      const st = await page.evaluate(() => ({ exp: document.querySelector("#settings").getAttribute("aria-expanded"), hidden: document.querySelector("#settings-menu").hidden, focus: document.activeElement?.id }));
+      if (st.exp !== "false" || !st.hidden || st.focus !== "settings") fail(`${tag}: Escape: ${JSON.stringify(st)}`);
+      await page.keyboard.press("ArrowUp");
+      if ((await at()) !== "keys-open") fail(`${tag}: ArrowUp on the gear opens on ${await at()}, not the last item`);
+      await page.keyboard.press("Escape");
+      // what is not the default shows by the gear (beside it, or on its edge on a phone) and the row holds: 4x, then the audience
+      await page.evaluate(() => { document.querySelector('[data-speed="4"]').click(); document.querySelector('[data-audience="casual"]').click(); });
+      const b = await page.evaluate(() => { const s = document.querySelector("#settings-state"), r = s.getBoundingClientRect(), gr = document.querySelector("#settings").getBoundingClientRect();
+        return { text: s.textContent, shown: !!s.getClientRects().length, near: r.left < gr.right + 16 && r.right > gr.left && r.top < gr.bottom + 16 && r.bottom > gr.top - 16, on: r.right <= document.documentElement.clientWidth }; });
+      const r1 = await row();
+      await page.screenshot({ path: `${shots}/layout-badge-${tag}.png` });
+      await page.evaluate(() => { document.querySelector('[data-speed="1"]').click(); document.querySelector('[data-audience="analyst"]').click(); });
+      if (b.text !== "4x · Casual fan" || !b.shown || !b.near || !b.on) fail(`${tag}: beside the gear ${JSON.stringify(b)}`);
+      if (r1.off.length) fail(`${tag}: with 4x and Casual fan beside the gear the buttons wrap: ${r1.off.join(", ")}`);
+      if (await shown(page, "#settings-state")) fail(`${tag}: something beside the gear at 1x for the analyst`);
     });
 
     // 4: every graphic's text at least 11 px on screen
@@ -360,18 +401,19 @@ try {
       await page.evaluate(() => scrollTo(0, 0));
     });
 
-    // 19: the Radar only where its inset is readable
-    await check(`${tag} radar`, async () => {
-      const on = await shown(page, '[data-view="split"]');
-      const fw = await page.evaluate(() => document.querySelector("#frame").getBoundingClientRect().width);
-      if (on && (w < 600 || fw < 560)) fail(`${tag}: Radar offered with a ${fw.toFixed(0)} px frame`);
-      if (!on && w >= 1280) fail(`${tag}: no Radar on a wide screen`);
+    // 19: the minimap at every size, its inset magnified to stay readable on a small frame (at least 120 px wide), inside the frame
+    await check(`${tag} minimap`, async () => {
+      const r = await page.evaluate(() => {
+        const el = document.querySelector("#radar"), was = el.hidden;
+        el.hidden = false;
+        const b = el.getBoundingClientRect(), f = document.querySelector("#frame").getBoundingClientRect();
+        el.hidden = was;
+        return { w: b.width, inside: b.left >= f.left - 1 && b.right <= f.right + 1 && b.bottom <= f.bottom + 1 && b.top >= f.top - 1,
+          item: document.querySelector("#minimap")?.getAttribute("aria-disabled") };
+      });
+      if (r.item !== "false") fail(`${tag}: the minimap item is ${r.item == null ? "missing" : `aria-disabled=${r.item}`}`);
+      if (!(r.w >= 119.5) || !r.inside) fail(`${tag}: the minimap inset ${r.w.toFixed(0)} px wide${r.inside ? "" : ", out of the frame"}`);
     });
-
-    if (phone && (await shown(page, "#viewing-open"))) {
-      await page.click("#viewing-open");
-      await page.screenshot({ path: `${shots}/layout-viewing-${tag}.png`, fullPage: true });
-    }
     if (w === 320) await page.screenshot({ path: `${shots}/layout-${tag}.png`, fullPage: true });
     await page.context().close();
   }
@@ -380,8 +422,7 @@ try {
   for (const [size, lang] of [[[1280, 650], "en"], [[1366, 640], "en"], [[1280, 720], "it"], [[844, 390], "it"]]) {
     const tag = `${size.join("x")} ${lang}`, p = await open(browser, size, size[1] < 600);
     await check(`${tag} first screen`, async () => {
-      // a script change: on a short screen the language is behind the Viewing menu
-      await p.evaluate((l) => { const el = document.querySelector("#lang"); el.value = l; el.dispatchEvent(new Event("change")); }, lang);
+      await p.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), lang);
       await frames(p);
       const cues = await p.evaluate(() => window.studioDesk.match.cues.filter((c) => c.lang === "en" && c.audience === "analyst").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })));
       await showFirst(p, tag, cues);
@@ -411,11 +452,11 @@ try {
   await check("voice word", async () => {
     if (!hasVoice) { console.log(`voice word: ${MATCH} has no voice clips, not checked`); return; }
     for (const [lang, word] of [["en", "Voice"], ["it", "Voce"], ["es", "Voz"]]) {
-      await page.selectOption("#lang", lang);
+      await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), lang);
       const v = await page.evaluate(() => { const b = document.querySelector("#voice"); return { text: b.textContent.trim(), cut: b.scrollWidth > b.clientWidth + 1 }; });
       if (v.text !== word || v.cut) fail(`voice word ${lang}: "${v.text}"${v.cut ? " cut" : ""}, wanted ${word}`);
     }
-    await page.selectOption("#lang", "en");
+    await page.evaluate(() => document.querySelector('[data-lang="en"]').click());
   });
 
   // 8 and 21: AI graphics off, Next key moment goes from goal to goal; a disabled pill has a solid edge
@@ -511,17 +552,24 @@ try {
         if (el) new MutationObserver(() => window.__said[k].push(el.hidden ? "" : el.textContent)).observe(el, { childList: true, characterData: true, subtree: true, attributes: true });
       }
     });
-    await page.click('[data-view="3d"]');
+    // the minimap item turns the 3D on, with the 2D pitch in the inset
+    await page.click("#settings");
+    await page.click("#minimap");
+    await page.keyboard.press("Escape");
     // the software renderer can take over 60 s to show it when other jobs share the machine
-    await page.waitForFunction(() => document.body.dataset.shownView === "3d", null, { timeout: 120000 });
+    await page.waitForFunction(() => document.body.dataset.shownView === "split", null, { timeout: 120000 });
     const said = await page.evaluate(() => window.__said);
     if (!said.status.some((t) => /Loading/.test(t))) fail(`3D loading: not said in the status line (${JSON.stringify(said)})`);
     if (said.notice.some((t) => /Loading/.test(t))) fail("3D loading: said in the alert");
     if (await page.evaluate(() => document.querySelector("#view-status")?.getAttribute("role")) !== "status") fail("3D loading: the status line is not role=status");
-    for (const view of ["3d", "2d"]) {
-      // a script click: with the software 3D renderer busy, Playwright's "stable" wait can time out
-      await page.evaluate((v) => document.querySelector(`[data-view="${v}"]`).click(), view);
+    // the 3D large, then swapped into the inset, then the minimap off (the 2D pitch alone)
+    for (const view of ["3d", "3d in the inset", "2d"]) {
+      // script clicks: with the software 3D renderer busy, Playwright's "stable" wait can time out
+      if (view === "3d in the inset") await page.evaluate(() => document.querySelector("#radar").click());
+      if (view === "2d") await page.evaluate(() => document.querySelector("#minimap").click());
       await frames(page);
+      const now = await page.evaluate(() => `${window.studioDesk.view3d.shown} ${window.studioDesk.view3d.main}`);
+      if (now !== { "3d": "split 3d", "3d in the inset": "split 2d", "2d": "2d 2d" }[view]) fail(`${view}: the page shows ${now}`);
       await page.focus("#frame");
       const hits = [];
       for (let i = 0; i < 60; i++) {

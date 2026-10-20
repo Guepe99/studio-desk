@@ -210,13 +210,13 @@ expect(v.sid === AUTO.story_id && v.playing && await page.evaluate(() => window.
 // the casual fan's card says the story in other words: the clip would not match it, so silence
 const casual = card(AUTO, "casual");
 if (casual?.payload.body === AUTO.texts.en) throw new Error("DEMO casual card now says the story text: update voice.mjs");
-await page.click('[data-audience="casual"]');
+await page.evaluate(() => document.querySelector('[data-audience="casual"]').click());
 await playFrom(casual.ts, 1);
 expect((await voice()).sid === null, "casual audience: a card in other words stays silent");
-await page.click('[data-audience="analyst"]');
+await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
 
 // a language switch stops the clip; in Italian the Italian clip plays, in Spanish (no clip) silence
-await page.selectOption("#lang", "it");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "it");
 await page.waitForTimeout(300);
 await frames();
 v = await voice();
@@ -224,14 +224,14 @@ expect(v.sid === null && !v.playing, "switching to Italian stops the English cli
 await playFrom(firstCue(AUTO), 1);
 v = await voice();
 expect(v.sid === AUTO.story_id && v.file === `${AUTO.story_id}.it.mp3` && v.playing, `Italian: the Italian clip plays (${JSON.stringify(v)})`);
-await page.selectOption("#lang", "es");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "es");
 await page.waitForTimeout(300);
 await frames();
 v = await voice();
 expect(v.sid === null && !v.playing, "switching to Spanish stops the Italian clip");
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "Spanish: no clip for this story, silent (never another language's)");
-await page.selectOption("#lang", "en");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "en");
 
 // a story flagged by Content Safety is held on the desk and never speaks, even once approved
 await page.evaluate((id) => { const d = window.studioDesk.desk; d.byId.get(id).safety = "flagged"; d.changed(); }, AUTO.story_id);

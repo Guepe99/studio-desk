@@ -9,15 +9,15 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 ## What to try
 
 1. Open a match and press Play. The page opens on M001; the others are [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002), [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003) and [M004](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M004). The seek bar has a button for each goal, and **Next key moment** jumps to the next story the agents found.
-2. Switch the view with the **2D**, **3D** and **Radar** buttons under the picture (Radar is 3D with a small 2D pitch in one corner). The 3D view runs in your browser and uses the same tracking data.
+2. On a computer the picture is 3D, with the 2D pitch as a small live minimap at the bottom. Click the minimap to swap the two, and click it again to swap them back. **Minimap** in the settings (the gear) turns it off. The 3D view runs in your browser and uses the same tracking data; a phone starts on the 2D pitch.
 3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level (low, medium or high). Use **Put on air**, **Edit** or **Reject** on a story; **Undo** in the line that confirms it reverses the last decision. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
 4. Look at the strip under the picture. It shows which agent is working and what it passed on. While a graphic is on air, it shows how that graphic was made.
-5. Switch the language to EN, IT or ES. The desk, the controls and the graphics change language. The numbers do not change, because code computes them from the fact ledger; the model never writes them.
+5. Switch the language to EN, IT or ES in the settings. The desk, the controls and the graphics change language. The numbers do not change, because code computes them from the fact ledger; the model never writes them.
 6. Turn on **Voice** to hear approved stories read aloud in the language on screen.
 7. Open **Ask the studio** and type a question about the match so far. The answer may use only facts up to the current replay time. If an answer fails the checks, the studio shows a fixed sentence instead of it.
 8. Open the **Traces** tab on the desk. It lists each step with the agent, model, tokens, time and cost.
 9. Turn the **AI graphics** switch on the desk off. Only the template graphics stay on air, and **Next key moment** becomes **Next goal**.
-10. Change the audience with the buttons in the control row: analyst, casual fan, fans of one team or fans of one player. On a phone, these settings are under **Viewing**.
+10. Change the audience in the settings: analyst, casual fan, fans of one team or fans of one player. The speed and the audience show beside the gear when they are not the default.
 
 The replay makes no model calls, so it has no daily quota. Each session allows 300 desk actions and 10 questions per day, and the whole site answers 40 questions per day, to stay inside the Azure AI Content Safety free tier. Every visitor gets their own session, so your choices never reach another judge, and each match starts clean.
 
