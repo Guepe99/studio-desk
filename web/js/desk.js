@@ -818,7 +818,7 @@ export class Desk {
     this.reasonsEl.setAttribute("role", "group");
     this.reasonsEl.setAttribute("aria-labelledby", "why-reject");
     this.reasonsEl.replaceChildren(h("span", { id: "why-reject" }, this.tx("whyReject")),
-      REASONS.map((r) => h("button", { type: "button", className: "ctl chip", "aria-pressed": String(mine.has(r)), "data-focus": `${id}:why:${r}`,
+      ...REASONS.map((r) => h("button", { type: "button", className: "ctl chip", "aria-pressed": String(mine.has(r)), "data-focus": `${id}:why:${r}`,
         onclick: (e) => toggle(r, e.currentTarget) }, this.tx(`r_${r}`))));
   }
 

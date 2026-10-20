@@ -518,6 +518,11 @@ def minute_word(text, lang):
                   flags=re.IGNORECASE)
 
 
+def decimal_comma(text, lang):
+    """Italian and Spanish write 32,8: the model copies the facts' 32.8 now and then."""
+    return text if lang == "en" else re.sub(r"(?<=\d)\.(?=\d)", ",", text)
+
+
 def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
     text = _FACT_ID.sub("", _CITATION.sub("", text))

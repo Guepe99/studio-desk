@@ -2,6 +2,8 @@
 // on the sheet of the audience on screen. Template cues (story_id null) are not key moments. With the AI
 // graphics off there are no story graphics: the button goes from goal to goal (score facts are not AI) and says so.
 
+import { inScope } from "./keys.js";
+
 export const LEAD_S = 3;
 const AFTER_S = 0.5; // a press right after landing moves on instead of landing on the same moment again
 const KEY = "n";
@@ -33,8 +35,7 @@ export function momentKey(targets, now, loaded) {
  *  and not in a text field: a single-key shortcut scoped to a component (WCAG 2.1.4). */
 export function isMomentKey(e) {
   if (e.key?.toLowerCase() !== KEY || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return false;
-  const el = e.target;
-  return !!el.closest?.("#frame, #controls") && !el.closest("input:not([type=range]), textarea, select, [contenteditable]");
+  return inScope(e.target);
 }
 
 export class Moments {

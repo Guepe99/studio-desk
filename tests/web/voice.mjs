@@ -3,7 +3,7 @@
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh voice.mjs   (Playwright image: it decodes MP3)
 //
 // Writes data/DEMO/voice.json and clips (copied from replays/M001/voice, any speech in the row's
-// language will do) with the text_sha1 of the DEMO stories, in English, Italian and Spanish, then checks at 1440x900: the button is off until pressed;
+// language will do) with the text_sha1 of the DEMO stories, in English, Italian and Spanish, then checks at 1440x900: the button is off until pressed; M toggles it;
 // at 1x a clip starts when an auto-approved story's cue goes on air; seeking stops it; a held
 // story stays silent until approved on the desk, then speaks; the AI switch stops a clip; an
 // edited story and 4x stay silent; a stale text_sha1 is never played; one Audio element plays every
@@ -159,6 +159,12 @@ expect(await page.evaluate(() => [...window.studioDesk.voice.clips.keys()].sort(
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "muted: no clip at the auto-approved cue");
 
+// M in the broadcast, as in a video player: on, then off again
+await page.focus("#frame");
+await page.keyboard.press("m");
+expect((await page.getAttribute("#voice", "aria-pressed")) === "true", "M turns the voice on");
+await page.keyboard.press("m");
+expect((await page.getAttribute("#voice", "aria-pressed")) === "false", "M turns the voice off again");
 await page.focus("#voice");
 await page.keyboard.press("Enter"); // keyboard press is a user gesture too
 expect((await page.getAttribute("#voice", "aria-pressed")) === "true", "Enter turns the voice on");
@@ -236,13 +242,13 @@ expect(v.sid === AUTO.story_id && v.playing && await page.evaluate(() => window.
 // the casual fan's card says the story in other words: the clip would not match it, so silence
 const casual = card(AUTO, "casual");
 if (casual?.payload.body === AUTO.texts.en) throw new Error("DEMO casual card now says the story text: update voice.mjs");
-await page.click('[data-audience="casual"]');
+await page.evaluate(() => document.querySelector('[data-audience="casual"]').click());
 await playFrom(casual.ts, 1);
 expect((await voice()).sid === null, "casual audience: a card in other words stays silent");
-await page.click('[data-audience="analyst"]');
+await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
 
 // a language switch stops the clip; in Italian the Italian clip plays, in Spanish (no clip) silence
-await page.selectOption("#lang", "it");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "it");
 await page.waitForTimeout(300);
 await frames();
 v = await voice();
@@ -250,14 +256,14 @@ expect(v.sid === null && !v.playing, "switching to Italian stops the English cli
 await playFrom(firstCue(AUTO), 1);
 v = await voice();
 expect(v.sid === AUTO.story_id && v.file === `${AUTO.story_id}.it.mp3` && v.playing, `Italian: the Italian clip plays (${JSON.stringify(v)})`);
-await page.selectOption("#lang", "es");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "es");
 await page.waitForTimeout(300);
 await frames();
 v = await voice();
 expect(v.sid === null && !v.playing, "switching to Spanish stops the Italian clip");
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "Spanish: no clip for this story, silent (never another language's)");
-await page.selectOption("#lang", "en");
+await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "en");
 
 // a story flagged by Content Safety is held on the desk and never speaks, even once approved
 await page.evaluate((id) => { const d = window.studioDesk.desk; d.byId.get(id).safety = "flagged"; d.changed(); }, AUTO.story_id);

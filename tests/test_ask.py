@@ -630,3 +630,12 @@ def test_goals_quoted_by_their_minutes_are_answered_with_the_minute_word_of_the_
     assert r["answer"] == "Okowande scored in minute 10 and Minute 13."
     assert m001("Okowande scored in minute 11.", [S1]) == "declined"
     assert rules.minute_word("Gol al minute 10.", "it") == "Gol al minuto 10."
+
+
+def test_italian_and_spanish_answers_get_the_decimal_comma(studio):
+    studio.reply("Nel primo tempo il momentum è arrivato a 7.8/10 in min 1-3.", [MOMENTUM])
+    r = studio.visitor().post("/api/ask", json=body(ts=200.0, lang="it")).json()
+    assert r["status"] == "answered", reason()
+    assert r["answer"] == "Nel primo tempo il momentum è arrivato a 7,8/10 in min 1-3."
+    assert rules.decimal_comma("Momentum 7.8/10 at 2'.", "en") == "Momentum 7.8/10 at 2'."
+    assert rules.decimal_comma("Momentum 7.8/10. Poi 2-1.", "es") == "Momentum 7,8/10. Poi 2-1."

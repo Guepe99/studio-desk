@@ -1,10 +1,13 @@
-// web/js/moments.js and web/js/activity.js: where "Next key moment" lands and which steps the strip shows.
+// web/js/moments.js and web/js/activity.js: where "Next key moment" lands and which steps the strip shows;
+// web/js/keys.js: the video player keys; web/js/match.js: the clock as a broadcast says it.
 //   node --test tests/web/moments.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
 import { reached, latestPerAgent, Activity } from "../../web/js/activity.js";
 import { agentName, TEXT, tr, riskBand, deskKey } from "../../web/js/desk.js";
+import { shortcut } from "../../web/js/keys.js";
+import { Match } from "../../web/js/match.js";
 
 const cue = (ts, story_id, duration_s = 6) => ({ ts, story_id, duration_s });
 
@@ -62,6 +65,36 @@ test("the desk keys work only with focus in the desk, never while typing, and on
   assert.equal(key("a", desk, { repeat: true }), null);
   assert.equal(key("j", desk, { repeat: true }), "next");
   assert.equal(key("x"), null);
+});
+
+test("the video player keys, scoped as N is", () => {
+  const at = (...inside) => ({ closest: (sel) => (sel.split(/,\s*/).some((s) => inside.includes(s)) ? {} : null) });
+  const frame = at("#frame"), controls = at("#controls");
+  const key = (k, target = frame, extra = {}) => shortcut({ key: k, target, ...extra });
+  assert.deepEqual(key("k"), ["play"]);
+  assert.deepEqual(key("K"), ["play"]); // Caps Lock
+  assert.deepEqual(key("j"), ["step", -10]);
+  assert.deepEqual(key("l", controls), ["step", 10]);
+  assert.deepEqual(key("ArrowLeft"), ["step", -5]);
+  assert.deepEqual(key("ArrowRight", frame, { repeat: true }), ["step", 5]); // held down it keeps moving
+  assert.deepEqual(key("0"), ["fraction", 0]);
+  assert.deepEqual(key("7"), ["fraction", 0.7]);
+  assert.deepEqual(key("m"), ["voice"]);
+  assert.deepEqual(key("f"), ["fullscreen"]);
+  assert.deepEqual(key("?", frame, { shiftKey: true }), ["keys"]);
+  for (const k of ["n", " ", "x", "ArrowUp", "Enter", "Escape"]) assert.equal(key(k), null, k); // N and Space have their own handlers
+  for (const target of [at(), at("#desk"), at("#controls", "select"), at("textarea"), at("#controls", "input:not([type=range])"), at("#controls", '[role="menu"]')]) {   // the settings menu: its arrows move through it
+    for (const k of ["k", "j", "5", "?", "f"]) assert.equal(key(k, target), null, k);
+  }
+  for (const mod of ["ctrlKey", "altKey", "metaKey", "shiftKey"]) assert.equal(key("l", frame, { [mod]: true }), null, mod);
+  for (const k of ["k", "m", "f", "?"]) assert.equal(key(k, frame, { repeat: true }), null, k);
+});
+
+test("the clock says stoppage time as 45+n and 90+n", () => {
+  const m = new Match({ entities: [], players: [], teams: [], period1_s: 2793.4, period2_s: 2834.5 }, [], [], [], new Float32Array());
+  const label = (ts) => m.clock(ts).label;
+  assert.deepEqual([0, 599, 2699, 2700, 2793.4, 2793.5, 2793.4 + 2699, 2793.4 + 2701, 1e9].map(label),
+    ["1", "10", "45", "45+1", "45+2", "46", "90", "90+1", "90+3"]);
 });
 
 test("the next moment is strictly ahead, so a second press moves on", () => {

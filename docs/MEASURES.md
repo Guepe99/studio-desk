@@ -47,15 +47,15 @@ The Content Safety checks (one call per story,
 
 Measured on a real-speed run (`python -m studiodesk.agents run M001 --speed 1 --from-ts
 300 --to-ts 1200`): M001 from minute 5 to minute
-20, on Azure, the way the desk runs live. The 2 goals reached the director's cue 19.1 and 21.7 seconds after the shot; the big chance after 22.1 seconds, judged once the play had settled for a few seconds. These are upper bounds: they
-count from when the program was launched, and its start-up before the match clock began took at least
-0.9 seconds. A story that needs a producer then waits for one; a story the director lets
+20, on Azure, the way the desk runs live. The 2 goals reached the director's cue 3.7 and 5.6 seconds after the shot; the big chance after 9.7 seconds, judged once the play had settled for a few seconds. These are upper bounds: they
+count from the second the workflow began, as its run id records it, before the match clock started; the
+program's start-up before that, 13.5 seconds, is left out. A story that needs a producer then waits for one; a story the director lets
 air by itself is on screen at that moment.
 
 The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
 real time, and the replay places each graphic at its story's moment in the match, not where the
 round ended. What their traces measure:
-a round (story finder, analyst, three commentators, verifier, rewrites, director) took
+a round (story finder, director, analyst, three commentators, verifier, rewrites) took
 16.7 seconds of wall time at the median, at most 34.1 seconds; the 77 rounds took 3.6 seconds of wall time per minute
 of match. Model calls added up to 4.3 seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event

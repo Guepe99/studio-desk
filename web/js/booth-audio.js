@@ -11,7 +11,7 @@
 import { planMatch, inputs, studioInputs, RULES } from "./booth.js";
 
 export const MIX = {
-  duck: 0.6,        // crowd gain under a voice (-4.4 dB): the bed then sits about 11 dB under the voices
+  duck: 0.5,        // crowd gain under a voice (-6 dB): the bed then sits about 9 to 10 dB under the voices
   duckIn: 0.05,     // time constants of the duck, s
   duckOut: 0.35,
   fade: 0.006,      // at each clip's ends, s

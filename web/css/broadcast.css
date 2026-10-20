@@ -92,14 +92,12 @@ body {
 .deck-side #app > #activity { grid-area: 5 / 1 / 6 / 3; justify-self: center; }
 .deck-item { position: relative; flex: none; overflow: hidden; }
 .deck-item > div { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
-/* the Radar inset would be a stamp on a small frame: the view is not offered there */
-.no-radar [data-view="split"] { display: none; }
 /* the docked desk stays in view while the page scrolls */
 @media (min-width: 1100px) { body > #desk { position: sticky; top: 0; height: 100vh; height: 100dvh; } }
 
 /* Score bug: purple bars, the score on a green block, the clock on the darker purple */
 #scorebug { position: absolute; left: 56px; top: 40px; height: 66px; display: flex; align-items: stretch; border-radius: var(--r-box); overflow: hidden;
-  font-family: var(--font); font-weight: 800; line-height: 1; color: var(--page); box-shadow: var(--shadow); }
+  font-family: var(--font); font-weight: 800; line-height: 1; color: var(--page); box-shadow: var(--shadow); transform-origin: 0 0; }
 .sb-team { display: flex; align-items: center; gap: 12px; background: var(--purple); padding: 0 18px; font-size: 38px; }
 .sb-home { padding-left: 22px; }
 .sb-chip { width: 10px; height: 38px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--lilac-100); }   /* a dark team colour stays visible on the purple bar */
@@ -107,7 +105,8 @@ body {
 .sb-sep { width: 12px; height: 4px; border-radius: 2px; background: var(--purple); }
 .sb-clock { display: flex; align-items: center; gap: 12px; background: var(--purple-700); padding: 0 24px 0 18px; }
 .sb-min { font-size: 38px; color: var(--green); font-variant-numeric: tabular-nums; min-width: 58px; text-align: right; }
-.sb-period { font-size: 24px; font-weight: 700; color: var(--lilac-100); }
+.sb-period { font-size: 30px; font-weight: 700; color: var(--lilac-100); }
+.no-period .sb-period { display: none; }   /* a small frame (app.js) */
 
 /* Controls: every button and every segment is a pill. Selected = filled purple, unselected = outlined. */
 #controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; flex: none; font-size: 16px; }
@@ -136,26 +135,57 @@ body {
 #voice svg { flex: none; width: 20px; height: 20px; fill: currentColor; }
 #voice[hidden], #voice .i-on, #voice[aria-pressed="true"] .i-off { display: none; }
 #voice[aria-pressed="true"] .i-on { display: inline; }
-.seg { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-/* Viewing: speed, 2nd half, audience and language. In the row on wide screens; on a narrow or short
-   screen one disclosure button opens them as a row of their own under the buttons (app.js). */
-#viewing { display: contents; }
-#viewing-open { display: none; }
-#viewing-open::after { content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 2px 4px 9px; vertical-align: middle;
-  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-#viewing-open[aria-expanded="true"]::after { margin-bottom: -2px; transform: rotate(-135deg); }
+/* One row as in a video player: play, voice and the next moment on the left; the settings, Ask and the desk on the right */
+#settings-wrap { position: relative; margin-left: auto; display: flex; align-items: center; gap: 6px; }
+#controls > :not(#seek-row, #notice, #view-status) { flex: none; }
+#settings .hole { fill: var(--page); }
+#settings:hover .hole { fill: var(--lilac-100); }
+#settings[aria-expanded="true"] { background: var(--purple); color: var(--page); }
+#settings[aria-expanded="true"] .hole { fill: var(--purple); }
+/* what is not the default (4x, an audience), in view without opening the menu */
+#settings-state { font-weight: 800; font-size: 14px; line-height: 1; padding: 5px 8px; border-radius: var(--r-chip); background: var(--orange); color: var(--purple); white-space: nowrap; }
+#settings-state[hidden] { display: none; }
+/* the menu: labelled groups in columns, the checked item filled; app.js opens it under or over the gear, on screen */
+#settings-menu { position: absolute; z-index: 30; width: max-content; max-width: calc(100vw - 16px); overflow-y: auto; padding: 12px 14px;
+  display: grid; grid-template-columns: repeat(3, minmax(150px, auto)); gap: 12px 18px; align-items: start;
+  background: var(--page); border: 1.5px solid var(--purple); border-radius: var(--r-box); box-shadow: var(--shadow); }
+#settings-menu[hidden], .mg[hidden] { display: none; }
+.mg { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+.mg.chips { flex-direction: row; flex-wrap: wrap; }
+.mh { flex: 1 0 100%; margin: 0 0 2px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--purple-400); }
+.mg button { font: 700 15px/1.2 var(--font); color: var(--purple); background: var(--page); border: 1.5px solid transparent; border-radius: var(--r-pill);
+  min-height: 34px; padding: 6px 12px; text-align: left; cursor: pointer; }
+.mg.chips button { border-color: var(--purple); min-width: 48px; text-align: center; }
+.mg button:hover, .mg button:focus-visible { background: var(--lilac-100); }
+.mg button[aria-checked="true"] { background: var(--purple); color: var(--page); }
+/* every item of a list keeps room for the check, so the names line up; the check is not read out (aria-checked says it) */
+.mg:not(.chips) button::before { content: "\2713\00a0" / ""; visibility: hidden; }
+.mg:not(.chips) button[aria-checked="true"]::before { visibility: visible; }
+.mg button[aria-disabled="true"] { color: var(--purple-400); cursor: not-allowed; background: none; }
+/* narrow or short screens: the labels give way to icons (each keeps its name), the menu is tighter, on a narrow one in two columns */
 @media (max-width: 699px), (max-height: 500px) {
-  #viewing-open { display: inline-block; }
-  #viewing { display: none; }
-  #viewing.open { display: flex; flex: 1 0 100%; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 8px; border-radius: var(--r-box); background: var(--lilac-50); }
+  #voice span { display: none; }
+  #voice { padding: 0; width: 40px; justify-content: center; }
+  #next-moment, #ask-open { font-size: 0; width: 40px; padding: 0; background-repeat: no-repeat; background-position: center; background-size: 20px 20px; }
+  #next-moment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 5v14l9-7z' fill='%2337003c'/%3E%3Cpath d='M12 5v14l9-7z' fill='%2337003c'/%3E%3C/svg%3E"); }
+  #ask-open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 4h18v12H3z' fill='%2337003c'/%3E%3Cpath d='M6 15h6l-6 5z' fill='%2337003c'/%3E%3C/svg%3E"); }
+  #settings-menu { row-gap: 8px; }
+  .mg.chips { gap: 3px; }
+  .mg.chips button { min-width: 0; padding: 6px 8px; }
 }
+@media (max-width: 699px) {
+  /* play, voice, next, the gear, ask and the desk on one row at 390 px */
+  #controls { column-gap: 6px; }
+  #desk-open { padding: 0 10px; }
+  #desk-open .off { margin-left: 4px; }
+  #settings-menu { grid-template-columns: repeat(2, minmax(140px, auto)); padding: 10px; column-gap: 10px; }
+  .mg button { font-size: 14px; min-height: 30px; padding: 4px 8px; }
+  /* no room on the row for the state: it sits on the gear's lower edge, as a badge does */
+  #settings-state { position: absolute; top: 100%; left: 50%; transform: translate(-50%, -70%); font-size: 11px; padding: 3px 6px; pointer-events: none; }
+}
+@media (max-height: 500px) { #voice, #next-moment, #ask-open { width: 34px; } }
+@media (pointer: coarse) and (min-height: 501px) and (max-width: 699px) { #voice, #next-moment, #ask-open { width: 44px; } }
 .readout { font-weight: 800; font-size: 18px; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--purple); }
-select { font: 700 15px/1 var(--font); color: var(--purple); background: var(--page); border: 1.5px solid var(--purple); border-radius: var(--r-pill);
-  height: 36px; padding: 0 32px 0 14px; cursor: pointer;
-  /* a drawn chevron (two convex bars) says it opens; the native arrow does not fit the pill */
-  appearance: none; background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 8px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M0 1.4L1.4 0 7.4 6 6 7.4z' fill='%2337003c'/%3E%3Cpath d='M10.6 0L12 1.4 6 7.4 4.6 6z' fill='%2337003c'/%3E%3C/svg%3E"); }
-select:hover { background-color: var(--lilac-100); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Seek bar: a row of its own, the clock at its end; the played part purple, the rest a light track with a
@@ -166,6 +196,7 @@ select:hover { background-color: var(--lilac-100); }
 #goals button { position: absolute; top: 0; height: 24px; min-width: 24px; padding: 0 6px; border: 1.5px solid var(--purple); border-radius: var(--r-pill);
   font: 800 12px/1 var(--font); letter-spacing: .02em; cursor: pointer; }
 #goals button:hover { box-shadow: 0 0 0 2px var(--lilac-100); }
+#goals.tight .gm { display: none; }
 #seek { grid-area: 2 / 1; position: relative; min-width: 0; height: 36px; }
 #seek-row #time { grid-area: 2 / 2; }
 #seek-marks { position: absolute; left: 9px; right: 9px; top: 0; bottom: 0; pointer-events: none; }
@@ -174,7 +205,6 @@ select:hover { background-color: var(--lilac-100); }
 #seek-marks .tick { position: absolute; top: 25px; width: 1px; height: 5px; background: var(--purple-400); }
 #seek-marks .tick.major { height: 9px; background: var(--purple); }
 #seek-marks .half { position: absolute; top: 8px; width: 2px; height: 20px; background: var(--purple); }
-#seek-marks .goal { position: absolute; top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 2px solid var(--purple); }
 #seek-range { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; border-radius: var(--r-pill); }
 #seek-range::-webkit-slider-runnable-track { height: 36px; background: transparent; }
 #seek-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: 9px; border-radius: 50%; background: var(--purple); border: 3px solid var(--page); box-shadow: 0 0 0 1.5px var(--purple); }
@@ -185,23 +215,36 @@ select:hover { background-color: var(--lilac-100); }
 @media (max-height: 500px) {
   #app { gap: 6px; padding: 6px 16px; }
   #controls { gap: 6px; }
-  .ctl, select { height: 30px; font-size: 14px; padding: 0 10px; }
-  select { padding-right: 28px; background-position: right 10px center; }
+  .ctl { height: 30px; font-size: 14px; padding: 0 10px; }
   .ctl.icon { width: 34px; }
   .readout { font-size: 15px; min-width: 32px; }
   #seek { height: 30px; }
   #seek-marks::before, #seek-marks .fill { top: 12px; }
   #seek-marks .tick { top: 21px; }
   #seek-marks .half { top: 5px; }
-  #seek-marks .goal { top: 0; }
   #seek-range::-webkit-slider-runnable-track { height: 30px; }
   #seek-range::-webkit-slider-thumb { margin-top: 6px; }
 }
 /* touch screens with room for it: 44 px targets */
 @media (pointer: coarse) and (min-height: 501px) {
-  .ctl, select { height: 44px; }
+  .ctl { height: 44px; }
   .ctl.icon { width: 44px; }
 }
+
+/* F: the broadcast column fills the screen, on the page's white; a phone can still scroll to its controls */
+#app:fullscreen { overflow-y: auto; background: var(--page); }
+/* ?: the keyboard shortcuts, a native modal dialog (Escape or Close shut it, the focus goes back) */
+#keys { border: none; border-radius: var(--r-card); box-shadow: var(--shadow); color: var(--purple); background: var(--page);
+  font-size: 16px; line-height: 1.35; padding: 20px 24px; max-width: min(460px, calc(100vw - 32px)); }
+#keys::backdrop { background: rgba(30, 0, 33, .45); }
+#keys h2 { margin: 0 0 14px; font-size: 20px; font-weight: 800; }
+#keys dl { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+#keys h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; }
+#keys dt, #keys dd { margin: 0; }
+#keys dt { white-space: nowrap; }
+#keys kbd { display: inline-block; min-width: 26px; padding: 4px 6px; border: 1.5px solid var(--purple); border-radius: 6px;
+  font: 700 14px/1 var(--font); text-align: center; }
+#keys form { text-align: right; }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

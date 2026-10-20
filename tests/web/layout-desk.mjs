@@ -43,14 +43,8 @@ const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 const expect = (ok, msg) => { if (!ok) fail(msg); };
 const ENGLISH = /\b(Approve|Put on air|Keep on air|Take out|Reject|Edit|Held|On air|Off air|Needs you|Done|Next|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo|Details|Swap|voice-over|Loading|Picked|Wrote|Rewrote|Checked|rundown|Your actions)\b|\bS-\d{6}\b/;
 const FACT_ID = /F-[A-Z0-9_]+-\d+/;
-// the language control: the settings menu's buttons, or the older select
-const setLang = (page, l) => page.evaluate((x) => {
-  const b = document.querySelector(`[data-lang="${x}"]`);
-  if (b) { b.click(); return; }
-  const el = document.querySelector("#lang");
-  el.value = x;
-  el.dispatchEvent(new Event("change"));
-}, l);
+// the language: a button in the settings menu
+const setLang = (page, l) => page.evaluate((x) => document.querySelector(`[data-lang="${x}"]`).click(), l);
 
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 

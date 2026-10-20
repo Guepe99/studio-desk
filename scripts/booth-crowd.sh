@@ -3,7 +3,7 @@
 # levels them to a fixed loudness, mono 24 kHz 48 kbit/s like the voice clips, into web/vendor/crowd-audio/.
 #   scripts/booth-crowd.sh SOURCE_DIR      (SOURCE_DIR holds <role>-<freesound id>/<id>-hq.mp3)
 # The files are read only by ffmpeg. Loudness targets: the bed sits 7 dB under the voices (about -20 LUFS) before the
-# player ducks it; the reactions are louder and duck too.
+# player ducks it; the reactions are louder and duck too; the goal roar stays at -24 so the scorer's name is heard over it.
 set -euo pipefail
 src=${1:?source dir}
 out=$(cd "$(dirname "$0")/.." && pwd)/web/vendor/crowd-audio
@@ -28,5 +28,5 @@ make() {
 make bed bed-206003/206003-hq.mp3 "$MONO,atrim=2:80,asetpts=N/SR/TB[x];[1:a]$MONO,atrim=0:2,asetpts=N/SR/TB[y];[x][y]acrossfade=d=2:c1=tri:c2=tri" -27
 make anticipation anticipation-829453/829453-hq.mp3 "$MONO,atrim=44:54,asetpts=N/SR/TB,afade=t=in:d=0.5,afade=t=out:st=9:d=1" -24
 make ooh ooh-494362/494362-hq.mp3 "$MONO,atrim=2.5:8,asetpts=N/SR/TB,afade=t=in:d=0.15,afade=t=out:st=3.5:d=2" -22
-make roar roar-528799/528799-hq.mp3 "$MONO,atrim=2:24,asetpts=N/SR/TB,afade=t=in:d=0.3,afade=t=out:st=16:d=6" -20
+make roar roar-528799/528799-hq.mp3 "$MONO,atrim=2:24,asetpts=N/SR/TB,afade=t=in:d=0.3,afade=t=out:st=16:d=6" -24
 make whistle whistle-218318/218318-hq.mp3 "aresample=24000,atrim=0:1.6,asetpts=N/SR/TB,afade=t=out:st=1.0:d=0.6" -16

@@ -98,12 +98,13 @@ export class Scene3D {
     }
   }
 
-  // Cap the render resolution (profile.maxWidth), times the optimizer's extra scaling.
+  // Cap the render resolution (profile.maxWidth), times the optimizer's extra scaling. No more pixels
+  // than the screen shows: in the minimap the canvas sits in the scaled stage, smaller than its layout size.
   resize() {
     const cssW = this.canvas.clientWidth || 1280;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1, onScreen = this.canvas.getBoundingClientRect().width || cssW;
     const maxW = Math.min(this.profile.maxWidth, cssW < 900 ? 1100 : 1920);
-    this.engine.setHardwareScalingLevel(Math.max(1 / dpr, cssW / maxW) * this.scale);
+    this.engine.setHardwareScalingLevel(Math.max(cssW / (onScreen * dpr), cssW / maxW) * this.scale);
     this.engine.resize();
   }
 

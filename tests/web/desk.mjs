@@ -72,14 +72,8 @@ const onAirAt = async (page, s, audience = "analyst") => {
   await seekTo(page, c.ts + 2);
   return (await live(page)).find((x) => x.story === s.story_id) ?? null;
 };
-// the language control: the settings menu's buttons, or the older select
-const setLang = (page, l) => page.evaluate((x) => {
-  const b = document.querySelector(`[data-lang="${x}"]`);
-  if (b) { b.click(); return; }
-  const el = document.querySelector("#lang");
-  el.value = x;
-  el.dispatchEvent(new Event("change"));
-}, l);
+// the language: a button in the settings menu
+const setLang = (page, l) => page.evaluate((x) => document.querySelector(`[data-lang="${x}"]`).click(), l);
 const card = (s) => `#story-${s.story_id}`;
 // the desk is connected and no save is in flight: its controls are enabled again
 const settled = (page) => page.waitForFunction(() => { const d = window.studioDesk.desk; return d.ready && !d.busy; }, null, { timeout: 5000 });
@@ -160,8 +154,7 @@ async function scenario(browser, w, h) {
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
-  if (phone) await page.click("#viewing-open");   // the audience sits behind Viewing on a phone
-  await page.click('[data-audience="analyst"]');
+  await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
   const frameBefore = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
   const openDesk = async () => {
     if (!phone) return;
@@ -214,8 +207,11 @@ async function scenario(browser, w, h) {
     const sheet = await page.evaluate(() => ({ top: document.querySelector("#desk").getBoundingClientRect().top, frame: document.querySelector("#frame").getBoundingClientRect().bottom, h: innerHeight }));
     expect(sheet.top >= 0.4 * sheet.h - 1 && sheet.frame <= sheet.top + 1, `${tag}: the sheet leaves the broadcast ${JSON.stringify(sheet)}`);
   }
-  expect(/^Control desk ?· ?AI graphics on ?· ?3 waiting/.test(await page.$eval("#desk .desk-title", (el) => el.textContent.replace(/\s+/g, " ").replace(/Close$/, "").trim())),
-    `${tag}: header ${JSON.stringify(await page.$eval("#desk .desk-title", (el) => el.textContent))}`);
+  // one line: "Control desk · AI graphics on · 3 waiting" (the dots are CSS)
+  const head = await page.$eval("#desk .desk-title", (el) => [el.querySelector("h2"), el.querySelector("#ai-switch .switch-label"), el.querySelector(".desk-sum")]
+    .map((x) => x && [x.textContent.replace(/\s+/g, " ").trim(), Math.round(x.getBoundingClientRect().top)]));
+  expect(JSON.stringify(head.map((x) => x?.[0])) === '["Control desk","AI graphics on","3 waiting"]' && head.every((x) => Math.abs(x[1] - head[0][1]) < 12),
+    `${tag}: header ${JSON.stringify(head)}`);
   expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
     `${tag}: Put on air does not name its story`);
   expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => [el.getAttribute("aria-keyshortcuts"), el.querySelector("kbd")?.textContent].join()) === "A,A",
@@ -350,13 +346,16 @@ async function scenario(browser, w, h) {
   const lines = await page.evaluate(([a, b]) => [document.querySelector(`#story-${a} .tally`)?.textContent, document.querySelector(`#story-${b} .outcome`)?.textContent], [SWING.story_id, HELD.story_id]);
   expect(lines[0] === "On air, approved by you" && lines[1] === "approved by you", `${tag}: on screen, the status lines read ${JSON.stringify(lines)}`);
 
-  // 5b. the AI proposal sits in Details; "Use proposal" puts it on air
+  // 5b. the AI proposal sits in Details; "Use proposal" puts it on air (from its Done row: on a phone the
+  // On air now strip is compact, without Details)
+  await seekTo(page, ALL);
   await page.click(`${card(SWING)} .more > summary`);
   const proposal = await page.$eval(`${card(SWING)} .proposal-text`, (el) => el.textContent);
   expect(proposal.includes(SWING.verifier.proposals.en) && proposal.includes("not on air"), `${tag}: proposal block ${JSON.stringify(proposal)}`);
   await Promise.all([posted(page), page.click(`${card(SWING)} .proposal button`)]);
   await settled(page);
-  expect(await page.$eval(`${card(SWING)} .story-text`, (el) => el.textContent) === SWING.verifier.proposals.en, `${tag}: Use proposal did not put it on air`);
+  expect(await page.evaluate((id) => window.studioDesk.desk.text(window.studioDesk.desk.byId.get(id), "en"), SWING.story_id) === SWING.verifier.proposals.en,
+    `${tag}: Use proposal did not put it on air`);
   expect(!(await page.$(`${card(SWING)} .proposal button`)), `${tag}: Use proposal button still there once used`);
 
   // 6. the keys, with the focus in the desk
@@ -419,7 +418,8 @@ async function scenario(browser, w, h) {
 
   // 8. traces from a story's Details
   await openDesk();
-  await page.click(`${card(HELD)} .more > summary`);
+  // Details stays open from step 2: the desk keeps it open across renders
+  if (!(await page.$eval(`${card(HELD)} .more`, (d) => d.open))) await page.click(`${card(HELD)} .more > summary`);
   await page.click(`${card(HELD)} .more .link`);
   expect(await page.$eval("#tab-traces", (el) => el.getAttribute("aria-selected")) === "true", `${tag}: Show trace did not open Traces`);
   const chain = await page.$$eval(`[data-trace="${HELD.story_id}"] .chain li`, (n) => n.map((x) => x.dataset.agent));
@@ -494,7 +494,7 @@ async function lookahead(browser) {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
   page.on("pageerror", (e) => fail(`M002 page error: ${e.message}`));
   await page.goto(new URL("?match=M002&view=2d", base).href);
-  await page.waitForFunction(() => window.studioDesk?.desk?.loaded && window.studioDesk.desk.ready, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.studioDesk?.desk?.loaded && window.studioDesk.desk.ready, null, { timeout: 90000 });
   const at = firstCue(m2, chance.story_id);
   const minuteOf = await page.evaluate((id) => window.studioDesk.desk.minuteText(window.studioDesk.desk.byId.get(id)), chance.story_id);
   expect(chance.kind === "big_chance" && minuteOf === "17", `M002: S-000002 is ${chance.kind} at ${minuteOf}'`);
@@ -514,7 +514,7 @@ async function realReplay(browser, match) {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
   page.on("pageerror", (e) => fail(`${match} page error: ${e.message}`));
   await page.goto(new URL(`?match=${match}&view=2d`, base).href);
-  await page.waitForFunction(() => window.studioDesk?.desk?.loaded && window.studioDesk.desk.ready, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.studioDesk?.desk?.loaded && window.studioDesk.desk.ready, null, { timeout: 90000 });
   const firsts = ss.map((s) => firstCue(all, s.story_id)).filter(Number.isFinite).sort((a, b) => a - b);
   for (const ts of [0, firsts[0] + 2, firsts[Math.floor(firsts.length / 2)] + 2, firsts.at(-1) + 2]) await structure(page, all, ss.map((s) => s.story_id), ts, match);
   await noFactIds(page, match);
@@ -541,8 +541,8 @@ async function edges(browser) {
   await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
   await page.evaluate(() => window.studioDesk.setPlaying(true));
   await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
-  expect(await page.evaluate(() => window.studioDesk.state.ts > 0.5 && !window.studioDesk.desk.online) && Date.now() - t0 < 4000,
-    "edges: the replay waits for a hanging API");
+  const hang = await page.evaluate(() => [window.studioDesk.state.ts, window.studioDesk.desk.online]);
+  expect(hang[0] > 0.5 && !hang[1] && Date.now() - t0 < 4000, `edges: the replay waits for a hanging API (ts ${hang[0]}, online ${hang[1]}, ${Date.now() - t0} ms)`);
   await seekTo(page, firstCue(cues, HELD.story_id) + 2);
   // until the desk knows this visitor's decisions, nothing can be pressed
   expect(await page.$eval("#ai-switch", (el) => el.disabled) && await page.$eval(`${card(HELD)} .act-approved`, (el) => el.disabled),

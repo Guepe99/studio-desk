@@ -51,9 +51,7 @@ export class Ask {
     this.announce(this.t("askOff"), this.state.lang);
     this.form.hidden = this.button.hidden = this.panel.hidden = true;
     this.button.setAttribute("aria-expanded", "false");
-    // the Desk button is hidden on wide screens, the language inside the closed Viewing menu on narrow ones
-    const lang = this.controls.querySelector("#lang");
-    (lang?.offsetParent ? lang : this.controls.querySelector("#viewing-open"))?.focus();
+    this.controls.querySelector("#settings")?.focus();
     this.onLayout();
   }
 

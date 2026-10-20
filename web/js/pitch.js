@@ -62,9 +62,14 @@ export function namedPlayers(cues, factPlayer) {
   return ids;
 }
 
+// the grass's opacity in the minimap over the 3D view, as a game's radar: the 3D picture shows through,
+// lines, dots and ball stay opaque (view3d.mjs reads it back)
+export const SEE_THROUGH = 0.7;
+
 export class Pitch {
   constructor(canvas) {
     this.canvas = canvas;
+    this.seeThrough = 1;   // app.js sets SEE_THROUGH while the 2D pitch is the minimap
     this.ctx = canvas.getContext("2d");
     this.bg = document.createElement("canvas");
     this.drawn = { players: [], ball: null };   // what the last draw put where, in stage pixels (tests read it)
@@ -100,10 +105,16 @@ export class Pitch {
     v.addColorStop(1, "rgba(0,16,4,0.35)");
     g.fillStyle = v;
     g.fillRect(0, 0, STAGE_W, STAGE_H);
+    const see = this.seeThrough < 1;
+    if (see) {   // keep the grass at that opacity, then draw the lines over it opaque
+      g.globalCompositeOperation = "destination-in";
+      g.fillStyle = `rgba(0,0,0,${this.seeThrough})`;
+      g.fillRect(0, 0, STAGE_W, STAGE_H);
+      g.globalCompositeOperation = "source-over";
+    }
 
-    // lines at least one CSS pixel wide, so they stay crisp in Split and on a phone
-    g.strokeStyle = "rgba(255,255,255,0.86)";
-    g.fillStyle = "rgba(255,255,255,0.86)";
+    // lines at least one CSS pixel wide, so they stay crisp in the minimap and on a phone
+    g.strokeStyle = g.fillStyle = see ? "#fff" : "rgba(255,255,255,0.86)";
     g.lineWidth = Math.max(3, 1 / this.css);
     g.lineJoin = "miter";
     const P = (x, y) => toStage(x, y);
@@ -153,6 +164,7 @@ export class Pitch {
   draw(match, ts, cues) {
     const g = this.ctx;
     g.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.seeThrough < 1) g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     g.drawImage(this.bg, 0, 0);
     g.setTransform(this.k, 0, 0, this.k, 0, 0);
     if (this._match !== match) {   // per match: keeper colours and the fact -> player map
@@ -191,15 +203,17 @@ export class Pitch {
     const ring = R * 0.2, edge = Math.max(1.2, 0.9 / this.css);
     // shadow and dark edge in one path: the team shape, a little larger, nudged down and right like
     // the 3D view's light, so it rims every disc against the grass and falls as a shadow below
-    const so = R * 0.2 + edge;
-    g.fillStyle = "rgba(4,10,22,0.5)";
-    g.beginPath();
-    for (const { pl, x, y } of players) {
-      const cx = x + R * 0.1, cy = y + R * 0.15;
-      if (match.teams[pl.team_id].side === "away") g.rect(cx - (R + so) * 0.86, cy - (R + so) * 0.86, (R + so) * 1.72, (R + so) * 1.72);
-      else { g.moveTo(cx + R + so, cy); g.arc(cx, cy, R + so, 0, TAU); }
-    }
-    g.fill();
+    // In the see-through minimap the frame behind can be bright or dark: the edge is an opaque dark
+    // keyline inside a white one, centred, so every disc has an edge that stands out on either.
+    const see = this.seeThrough < 1, so = R * 0.2 + edge;
+    // one path per disc: a path of many shapes fills nothing in the software renderer the tests run
+    const rims = (grow, ox, oy) => {
+      for (const { pl, x, y } of players) { shape(x + ox, y + oy, R + grow, match.teams[pl.team_id].side === "away"); g.fill(); }
+    };
+    const key = Math.max(so, 1.5 / this.css), halo = Math.max(edge, 1.5 / this.css);   // each at least 1.5 CSS px
+    if (see) { g.fillStyle = "#fff"; rims(key + halo, 0, 0); }
+    g.fillStyle = see ? "rgb(4,10,22)" : "rgba(4,10,22,0.5)";
+    rims(see ? key : so, see ? 0 : R * 0.1, see ? 0 : R * 0.15);
 
     // direction pointers, one path: a wedge from the disc edge, longer when running faster
     g.fillStyle = "rgba(255,255,255,0.92)";
