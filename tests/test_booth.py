@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from studiodesk import booth, names
+from studiodesk import booth, config, names
 
 LINES = booth.load_lines()
 META = {"teams": [{"team_id": "T01", "name": "Redwick Wanderers"}, {"team_id": "T02", "name": "Ostwick FC"}],
@@ -95,3 +95,15 @@ def test_dry_run_counts_without_rendering(tmp_path):
     fake = FakeRender()
     jobs = booth.build(booth.shared_texts(LINES, "it"), "it", tmp_path, LINES, render=fake, dry_run=True, log=lambda s: None)
     assert jobs and fake.calls == [] and not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("root", [config.ROOT / "web" / "booth", *sorted((config.ROOT / "replays").glob("M*/")),
+                                  config.ROOT / "tests" / "web" / "booth-demo"], ids=lambda p: p.name)
+def test_committed_clips_match_their_manifest(root):
+    if not (root / "booth.json").exists():
+        pytest.skip("no booth clips here")
+    rows = json.loads((root / "booth.json").read_text())["clips"]
+    listed = {(root / r["file"]).resolve() for r in rows}
+    assert all(p.is_file() for p in listed)
+    assert {p.resolve() for p in root.rglob("*.mp3")} <= listed  # no stale clip left behind
+    assert not any(names.is_forbidden(r["text"]) for r in rows)

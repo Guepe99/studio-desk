@@ -3,7 +3,8 @@
 # and the six voices at a pinned revision, checked by SHA256. About 1.7 GB under .tts/ (git-ignored); delete it when done.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-REV=f3ff3571791e39611d31c381e3a41a3af07b4987
+REV=$(sed -n 's/^REPO, REV = .*"\([0-9a-f]\{40\}\)".*/\1/p' scripts/booth_kokoro.py)
+[ ${#REV} = 40 ] || { echo "no pinned revision in scripts/booth_kokoro.py"; exit 1; }
 export HF_HOME="$PWD/.tts/hf"
 python3 -m venv .tts/kokoro
 .tts/kokoro/bin/pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu

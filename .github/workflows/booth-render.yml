@@ -4,12 +4,12 @@ name: booth-render
 # an artifact; they are merged locally (docs/commentary.md, "Build on CI") and committed.
 #   gh workflow run booth-render.yml && gh run download <run id> -D <dir>
 # A manual run needs the workflow on the default branch; before the merge a push to feat/booth that
-# changes this file starts it.
+# changes this file or the renderer starts it.
 on:
   workflow_dispatch:
   push:
     branches: [feat/booth]
-    paths: [.github/workflows/booth-render.yml]
+    paths: [.github/workflows/booth-render.yml, scripts/booth_kokoro.py, scripts/booth-kokoro-setup.sh]
 permissions:
   contents: read
 jobs:
