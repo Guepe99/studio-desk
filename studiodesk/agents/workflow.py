@@ -194,6 +194,11 @@ class InProcessMCPTool(MCPTool):
         raise NotImplementedError
 
 
+
+def _n(k, one, many=None):
+    """"1 story", "2 stories": a count with its noun for the traces."""
+    return f"{k} {one if k == 1 else many or one + 's'}"
+
 def _tool_text(result):
     if result.structuredContent is not None:
         data = result.structuredContent.get("result", result.structuredContent)
@@ -622,8 +627,8 @@ def build_workflow(desk):
         others = [p for p in picks if p[0]["kind"] not in rules.MUST_TELL][:MAX_PICKS]
         stories = [desk.new_story(c, conf, a, *choice.get(id(c), ())) for c, conf, a in sorted(
             [p for p in picks if p[0]["kind"] in rules.MUST_TELL] + must + others, key=lambda p: rules.air_order(p[0]))]
-        desk.trace("story_finder", "pick", f"{len(cands)} candidates: " + ", ".join(c["kind"] for c in cands),
-                   f"{len(stories)} stories: " + ", ".join(f"{s['story_id']} {s['kind']}" for s in stories) + note,
+        desk.trace("story_finder", "pick", _n(len(cands), "candidate") + ": " + ", ".join(c["kind"] for c in cands),
+                   _n(len(stories), "story", "stories") + ": " + ", ".join(f"{s['story_id']} {s['kind']}" for s in stories) + note,
                    [i for s in stories for i in s["fact_ids"]], usage, [s["story_id"] for s in stories])
         if not stories:
             await ctx.yield_output(Round(batch, []))
@@ -654,8 +659,8 @@ def build_workflow(desk):
                 fallback += bool(bad)
             else:
                 s["analysis_en"] = rules.analysis_template(desk.m, s)
-        desk.trace("analyst", "analyse", f"{len(rnd.stories)} stories",
-                   f"{len(got)} analyses" + (f", {fallback} replaced by the facts" if fallback else "") + note,
+        desk.trace("analyst", "analyse", _n(len(rnd.stories), "story", "stories"),
+                   _n(len(got), "analysis", "analyses") + (f", {fallback} replaced by the facts" if fallback else "") + note,
                    [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
         await ctx.send_message(rnd)
 
@@ -668,8 +673,8 @@ def build_workflow(desk):
                 drafts = Drafts(rnd, lang, {x.story_id: x.text for x in out.lines})
             except Exception as e:  # noqa: BLE001
                 usage, drafts = getattr(e, "usage", None), Drafts(rnd, lang, {}, rules.brief_error(e))
-            desk.trace(f"commentator_{lang}", "draft", f"{len(rnd.stories)} stories",
-                       f"{len(drafts.texts)} lines" + (f" fallback: {drafts.error}" if drafts.error else ""),
+            desk.trace(f"commentator_{lang}", "draft", _n(len(rnd.stories), "story", "stories"),
+                       _n(len(drafts.texts), "line") + (f" fallback: {drafts.error}" if drafts.error else ""),
                        [i for s in rnd.stories for i in s["fact_ids"]], usage, ids(rnd))
             await ctx.send_message(drafts)
         return write
@@ -706,7 +711,7 @@ def build_workflow(desk):
             got, usage = {}, getattr(e, "usage", None)
             todo = {sid: p + [f"rewrite failed: {rules.brief_error(e)}"] for sid, p in todo.items()}
         desk.trace(f"commentator_{lang}", "rewrite", f"verifier asks to fix {', '.join(todo)}",
-                   f"{len(got)} lines", [], usage, list(todo))
+                   _n(len(got), "line"), [], usage, list(todo))
         return got
 
     @executor(id="verifier")
@@ -803,7 +808,7 @@ def build_workflow(desk):
             desk.finish(s)
             statuses[status] += 1
         usage_all["calls"] = usage_all.get("calls", 0)
-        desk.trace("verifier", "check", f"{len(texts)} texts in {len(rules.LANGS)} languages",
+        desk.trace("verifier", "check", _n(len(texts), "text") + f" in {len(rules.LANGS)} languages",
                    ", ".join(f"{k} {v}" for k, v in statuses.items()) + (f" (claims not judged: {judge_error or 'no verdict'})" if unjudged_any else ""),
                    [i for s in rnd.stories for i in s["fact_ids"]], dict(usage_all), ids(rnd))
         await ctx.send_message(rnd)
@@ -811,8 +816,8 @@ def build_workflow(desk):
     @executor(id="director")
     async def director(rnd: Round, ctx: WorkflowContext[Round, Round]) -> None:
         rnd.cues = desk.director.plan(rnd.stories, rnd.batch.ts)
-        desk.trace("director", "cue", f"{len(rnd.stories)} stories",
-                   f"{len(rnd.cues)} cues for {len({c['audience'] for c in rnd.cues})} audiences",
+        desk.trace("director", "cue", _n(len(rnd.stories), "story", "stories"),
+                   _n(len(rnd.cues), "cue") + " for " + _n(len({c["audience"] for c in rnd.cues}), "audience"),
                    [i for s in rnd.stories for i in s["fact_ids"]], story_ids=ids(rnd))
         await ctx.yield_output(rnd)
 
@@ -875,7 +880,7 @@ async def run_batch(desk, workflow, batch):
             stories = [desk.new_story(c, 0.5, c["note"]) for c in _rule_picks(batch.candidates)]
             stories = [template_story(desk, s, f"workflow error: {rules.brief_error(e)}") for s in stories]
             rnd = Round(batch, stories, desk.director.plan(stories, batch.ts))
-            desk.trace("director", "fallback", "workflow failed", f"{len(stories)} template stories",
+            desk.trace("director", "fallback", "workflow failed", _n(len(stories), "template story", "template stories"),
                        [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
         desk.save(rnd)
     if batch.window_end is not None:

@@ -3,7 +3,7 @@
     .venv/bin/python scripts/measures.py [--runtime-dir out] [--out docs/MEASURES.md] [M001 M002 ...]
 
 Reads, per match: the AI pack `replays/<match>/stories.json`, the runtime database of the run that
-made it (`<runtime-dir>/runtime12-<match>.sqlite`: traces and audit) and, for the first measure only,
+made it (`<runtime-dir>/runtime15-<match>.sqlite`: traces and audit) and, for the first measure only,
 the hidden `storylines` table of `data/matches.sqlite` (`STUDIODESK_MATCHES_DB` overrides it). Like
 scripts/eval_stories.py, this is an evaluation script: agents, the MCP server and the API never read
 the storylines. Nothing is written but the markdown page.
@@ -23,7 +23,7 @@ from studiodesk.agents import rules  # noqa: E402
 import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
-RUNTIME = "runtime12-{}.sqlite"  # the run of out/regen12.sh that made the committed packs
+RUNTIME = "runtime15-{}.sqlite"  # the run of out/regen15.sh that made the committed packs
 # out/live1x.sh: M001 from 5:00 to 20:00 at real speed; the start file holds the wall time it was launched
 LIVE = {"match": "M001", "runtime": "live1x-M001.sqlite", "start": "live1x-start.txt", "from_ts": 300.0, "to_ts": 1200.0, "speed": 1.0}
 
@@ -197,7 +197,7 @@ def markdown(rows, live=None):
 
 What the system did on the {n} replay matches ({", ".join(r["match_id"] for r in rows)}), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
-databases of the run that made them (`out/runtime12-<match>.sqlite`, traces and audit). Rerun the
+databases of the run that made them (`out/runtime15-<match>.sqlite`, traces and audit). Rerun the
 script after a regeneration; every number below comes from it.
 
 {chr(10).join(lines)}
