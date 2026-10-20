@@ -40,49 +40,58 @@
     <div id="deck"></div>
 
     <div id="controls">
-      <!-- the seek bar has its own row under the picture, the clock at its end, as in a video player -->
+      <!-- the seek bar has its own row under the picture, the clock at its end, as in a video player;
+           the goal buttons sit above it but come after it in the Tab order -->
       <div id="seek-row">
-        <div id="goals"></div>
         <div id="seek">
           <div id="seek-marks" aria-hidden="true"></div>
           <input id="seek-range" type="range" min="0" max="1" step="0.1" value="0" aria-label="Match time" data-i18n-aria="seek">
         </div>
+        <div id="goals"></div>
         <span id="time" class="readout">0'</span>
       </div>
-      <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play" aria-keyshortcuts="Space">
+      <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play" aria-keyshortcuts="Space K">
         <!-- icons: one convex shape per path; Chromium on ANGLE over software Vulkan drops concave or multi-part paths (tests/web/voice.mjs) -->
         <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M7 4.5v15l12-7.5z"/><path class="i-pause" d="M6 4.5h4.2v15H6z"/><path class="i-pause" d="M13.8 4.5H18v15h-4.2z"/></svg>
       </button>
-      <div class="seg" role="group" aria-label="View" data-i18n-aria="view">
-        <button class="ctl" type="button" data-view="2d" aria-pressed="true">2D</button>
-        <button class="ctl" type="button" data-view="3d" aria-pressed="false">3D</button>
-        <button class="ctl" type="button" data-view="split" aria-pressed="false">Radar</button>
-      </div>
       <button id="voice" class="ctl" type="button" aria-label="AI voice-over" data-i18n-aria="voiceName" aria-pressed="false" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9h4v6h-4z"/><path d="M7.5 9l5-4.5v15l-5-4.5z"/><path class="i-on" d="M14.5 8.5a4.5 4.5 0 0 1 0 7z"/><path class="i-on" d="M17.5 5.5a8 8 0 0 1 0 13z"/><path class="i-off" d="M14.6 9.4l1.4-1.4 6.6 6.6-1.4 1.4z"/><path class="i-off" d="M21.2 8l1.4 1.4-6.6 6.6-1.4-1.4z"/></svg>
         <span data-i18n="voice">Voice</span>
       </button>
       <button id="next-moment" class="ctl" type="button" aria-disabled="true">Next key moment</button>
-      <!-- narrow screens: speed, audience and language behind one disclosure; wide screens show them in the row -->
-      <button id="viewing-open" class="ctl" type="button" aria-expanded="false" aria-controls="viewing" data-i18n="viewing">Viewing</button>
-      <div id="viewing">
-        <div class="seg" role="group" aria-label="Playback speed" data-i18n-aria="speed">
-          <button class="ctl" type="button" data-speed="1" aria-pressed="true">1x</button>
-          <button class="ctl" type="button" data-speed="4">4x</button>
-          <button class="ctl" type="button" data-speed="16">16x</button>
-          <button class="ctl" type="button" data-speed="64">64x</button>
+      <!-- the settings: one menu button (a gear), its state beside it when it is not the default (4x, an audience) -->
+      <div id="settings-wrap">
+        <button id="settings" class="ctl icon" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="settings-menu"
+          aria-label="Settings" data-i18n-aria="settings" aria-describedby="settings-state">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.4 1.5h3.2v21h-3.2z"/><path d="M10.4 1.5h3.2v21h-3.2z" transform="rotate(45 12 12)"/><path d="M10.4 1.5h3.2v21h-3.2z" transform="rotate(90 12 12)"/><path d="M10.4 1.5h3.2v21h-3.2z" transform="rotate(135 12 12)"/><circle cx="12" cy="12" r="7.4"/><circle class="hole" cx="12" cy="12" r="3.2"/></svg>
+        </button>
+        <span id="settings-state"></span>
+        <!-- arrows move through the items, Escape closes it and the focus goes back to the gear (app.js) -->
+        <div id="settings-menu" role="menu" aria-labelledby="settings" hidden>
+          <div class="mg chips" role="group" aria-labelledby="mg-speed"><p id="mg-speed" class="mh" aria-hidden="true" data-i18n="speed">Playback speed</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-speed="1" aria-checked="true">1x</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-speed="4" aria-checked="false">4x</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-speed="16" aria-checked="false">16x</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-speed="64" aria-checked="false">64x</button>
+          </div>
+          <div class="mg" role="group" aria-labelledby="mg-audience"><p id="mg-audience" class="mh" aria-hidden="true" data-i18n="audience">Audience</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="analyst" aria-checked="true" data-i18n="analyst">Analyst</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="casual" aria-checked="false" data-i18n="casual">Casual fan</button>
+          </div>
+          <!-- one item per team and per player the cue sheet has cues for (app.js) -->
+          <div class="mg" role="group" aria-labelledby="mg-team" hidden><p id="mg-team" class="mh" aria-hidden="true" data-i18n="myteam">My team</p></div>
+          <div class="mg" role="group" aria-labelledby="mg-player" hidden><p id="mg-player" class="mh" aria-hidden="true" data-i18n="player">Player</p></div>
+          <div class="mg chips" role="group" aria-labelledby="mg-lang"><p id="mg-lang" class="mh" aria-hidden="true" data-i18n="language">Language</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-lang="en" lang="en" aria-label="English" aria-checked="true">EN</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-lang="it" lang="it" aria-label="Italiano" aria-checked="false">IT</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-lang="es" lang="es" aria-label="Español" aria-checked="false">ES</button>
+          </div>
+          <div class="mg" role="group" aria-labelledby="mg-more"><p id="mg-more" class="mh" aria-hidden="true" data-i18n="more">More</p>
+            <button id="minimap" type="button" role="menuitemcheckbox" tabindex="-1" aria-checked="false" data-i18n="minimap">Minimap</button>
+            <button id="half2" type="button" role="menuitem" tabindex="-1" data-i18n="half2">Jump to 2nd half</button>
+            <button id="keys-open" type="button" role="menuitem" tabindex="-1" data-i18n="keysTitle">Keyboard shortcuts</button>
+          </div>
         </div>
-        <button id="half2" class="ctl" type="button" data-i18n="half2">2nd half</button>
-        <div class="seg" role="group" aria-label="Audience" data-i18n-aria="audience">
-          <button class="ctl" type="button" data-audience="analyst" aria-pressed="true" data-i18n="analyst">Analyst</button>
-          <button class="ctl" type="button" data-audience="casual" data-i18n="casual">Casual fan</button>
-          <button class="ctl" type="button" data-audience="team" data-i18n="myteam" hidden>My team</button>
-          <button class="ctl" type="button" data-audience="player" data-i18n="player" hidden>Player</button>
-        </div>
-        <select id="audience-pick" data-i18n-aria="pickteam" hidden></select>
-        <label class="lang"><span class="sr" data-i18n="language">Language</span>
-          <select id="lang"><option value="en">EN</option><option value="it">IT</option><option value="es">ES</option></select>
-        </label>
       </div>
       <button id="ask-open" class="ctl" type="button" aria-controls="ask" aria-expanded="false" data-i18n="ask" hidden>Ask the studio</button>
       <button id="desk-open" class="ctl" type="button" aria-controls="desk" aria-expanded="false">Desk <span class="count"></span><span class="off" hidden>offline</span></button>
@@ -105,5 +114,20 @@
     </section>
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
+  <!-- ? with the focus in the broadcast or its controls (keys.js) -->
+  <dialog id="keys" aria-labelledby="keys-title">
+    <h2 id="keys-title" data-i18n="keysTitle">Keyboard shortcuts</h2>
+    <dl>
+      <dt><kbd data-i18n="keySpace">Space</kbd> <kbd>K</kbd></dt><dd data-i18n="keyPlay">Play or pause</dd>
+      <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd data-i18n="keyTen">Back or forward 10 seconds</dd>
+      <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd data-i18n="keyFive">Back or forward 5 seconds</dd>
+      <dt><kbd>0</kbd> &hellip; <kbd>9</kbd></dt><dd data-i18n="keyJump">Jump to 0%, 10% &hellip; 90% of the match</dd>
+      <dt><kbd>N</kbd></dt><dd data-i18n="next">Next key moment</dd>
+      <dt><kbd>M</kbd></dt><dd data-i18n="keyVoice">AI voice-over on or off</dd>
+      <dt><kbd>F</kbd></dt><dd data-i18n="keyFull">Full screen on or off</dd>
+      <dt><kbd>?</kbd></dt><dd data-i18n="keyList">This list</dd>
+    </dl>
+    <form method="dialog"><button class="ctl" data-i18n="close">Close</button></form>
+  </dialog>
 </body>
 </html>

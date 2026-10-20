@@ -78,8 +78,7 @@ async function scenario(browser, w, h) {
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
-  if (phone) await page.click("#viewing-open");   // the audience sits behind Viewing on a phone
-  await page.click('[data-audience="analyst"]');
+  await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
   const frameBefore = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
   const openDesk = async () => {
     if (!phone) return;
@@ -264,7 +263,7 @@ async function scenario(browser, w, h) {
   await page.click("#tab-stories");
   for (const lang of ["it", "es"]) {
     if (phone) await closeDesk();
-    await page.selectOption("#lang", lang);
+    await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), lang);
     await openDesk();
     const text = await page.$eval(`${card(HELD)} .story-text`, (el) => [el.lang, el.textContent]);
     expect(text[0] === lang && text[1] === HELD.texts[lang], `${tag} ${lang}: card text ${JSON.stringify(text)}`);
@@ -277,7 +276,7 @@ async function scenario(browser, w, h) {
     await shootAir(lang);
   }
   if (phone) await closeDesk();
-  await page.selectOption("#lang", "en");
+  await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "en");
 
   // 9. the broadcast never moved
   const frameAfter = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
@@ -344,7 +343,7 @@ async function edges(browser) {
   await page.click(`${card(AUTO)} .act-edited`);
   await page.fill(`${card(AUTO)} textarea[lang="en"]`, "Draft in English");
   await page.fill(`${card(AUTO)} textarea[lang="it"]`, "Bozza in italiano");
-  await page.selectOption("#lang", "es");
+  await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "es");
   expect(await page.inputValue(`${card(AUTO)} textarea[lang="en"]`) === "Draft in English", "edges: the English draft did not survive a language switch");
   await page.route("**/api/decisions", (r) => (r.request().method() === "POST"
     ? r.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: [{ msg: "pattern" }] }) }) : r.continue()));

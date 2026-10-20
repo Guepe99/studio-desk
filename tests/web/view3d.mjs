@@ -1,13 +1,20 @@
-// The 2D, 3D and Radar (split) views of the broadcast page (web/js/view3d.js) on a whole match. For each
+// The 2D, 3D and minimap (split: 3D large, the 2D pitch in the inset) views of the broadcast page
+// (web/js/view3d.js) on a whole match. For each
 // view it opens index.html?match=$MATCH&view=<view> and seeks to three moments (a nameplate on air,
 // a graphic in the second half, a goal replay), and checks that the 3D players stand where the
 // tracking says (the rigs may move a body by a step: the ball rig's reach, a keeper's dive, a
 // celebration kept apart), that the 3D ball is the tracking ball within the ball rig's 1.5 m, that
 // the graphics on air are the ones the 2D page shows, and that a nameplate sits on its 3D player.
-// Then on the 3D page: the frame rate while playing, a seek sweep over the whole match twice (the
-// heap and the scene must not grow), and the fall back to 2D under the frame-rate floor; on a page
-// without WebGL: the fall back at load and the 2D default. Screenshots of the three views go to
-// out/shots/view3d-{2d,3d,split}.png and view3d-replay.png.
+// On the minimap page: the inset hidden while the 3D loads, a click, Enter or Space on it swaps the
+// pictures in the same box, its name says what a click does (in each language), the swap icon only on
+// hover and focus, the 2D inset see-through (no box fill, the grass at 60 to 75% alpha read from the
+// canvas, opaque lines, discs and ball, keylines at 3:1 on a white and a black frame; the 3D inset and the
+// large 2D pitch opaque), and the frame rate with the 3D large and with the 3D in the inset against the 3D
+// alone (the 3D in the inset draws fewer pixels). Then on the 3D page: the frame rate while playing, a
+// seek sweep over the whole match twice (the heap and the scene must not grow), and the fall back to
+// 2D under the frame-rate floor; on a page without WebGL: the fall back at load, the 2D default and no
+// inset. Screenshots of the three views go to out/shots/view3d-{2d,3d,split}.png, view3d-radar-swapped.png
+// and view3d-replay.png.
 //
 //   [WEBGL=2] MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh view3d.mjs
 import { createRequire } from "node:module";
@@ -46,10 +53,31 @@ async function open(view, { noWebGL = false, quiet = false } = {}) {
   });
   await page.goto(new URL(`index.html?match=${MATCH}${view ? `&view=${view}` : ""}`, base).href);
   await page.waitForFunction(() => window.studioDesk?.view3d, null, { timeout: 120000 });
+  // while the scene loads the 2D pitch is alone, never beside an empty 3D inset
+  page.early = await page.evaluate(() => ({ loading: !window.studioDesk.view3d.scene, radar: !document.querySelector("#radar").hidden }));
   await page.waitForFunction(() => { const v = window.studioDesk.view3d; return v.mode === "2d" || v.scene || v.failed; }, null, { timeout: 300000 });
   await page.evaluate(() => document.fonts.ready);
   return page;
 }
+
+// The frame rate playing at 1x for 5 s from 1200 s (the floor is off while measuring), and the 3D picture's drawn size
+const playFps = (page) => page.evaluate(async () => {
+  const sd = window.studioDesk, e = sd.view3d.scene.engine;
+  sd.view3d.floor = 0;
+  sd.seek(1200); sd.setPlaying(true);
+  await new Promise((r) => setTimeout(r, 2000));
+  let n = 0, drawn = 0;
+  const o = sd.view3d.scene.scene.onAfterRenderObservable.add(() => drawn++);
+  const t0 = performance.now();
+  await new Promise((done) => { const f = () => { n++; if (performance.now() - t0 < 5000) requestAnimationFrame(f); else done(); }; requestAnimationFrame(f); });
+  sd.setPlaying(false);
+  sd.view3d.scene.scene.onAfterRenderObservable.remove(o);
+  const c = document.querySelector("#view3d");
+  return { fps: n / ((performance.now() - t0) / 1000), drawn: drawn / n, px: e.getRenderWidth() * e.getRenderHeight(), css: c.clientWidth * c.clientHeight,
+    profile: sd.view3d.scene.debug.profile, renderer: e.webGLVersion };
+});
+const fpsLine = (f) => `${f.fps.toFixed(1)} fps, ${(f.drawn * 100).toFixed(0)}% of them drawn, 3D drawn at ${(f.px / 1e3).toFixed(0)}k px (profile ${f.profile}, WebGL ${f.renderer})`;
+const fps = {};
 
 // Seek, draw, wait for the graphics, place them again (as sample3d.js __setTime does).
 const seekTo = (page, ts) => page.evaluate(async (x) => {
@@ -123,7 +151,7 @@ try {
     };
   });
   console.log(`default views ${pure.defaults}; ${pure.reps.length} goal replays for ${pure.goals.length} goals`);
-  if (pure.defaults.join() !== "3d,2d,2d,2d") fail(`default view rule: ${pure.defaults}`);
+  if (pure.defaults.join() !== "split,2d,2d,2d") fail(`default view rule: ${pure.defaults}`);
   pure.at.forEach(([before, in1, in16, after], k) => {
     const r = pure.reps[k];
     if (before.replay || !in1.replay || in16.replay || after.replay || Math.abs(in1.ts - (r.src + 1)) > 1e-9) fail(`replay clock ${k}: ${JSON.stringify([before, in1, in16, after])}`);
@@ -140,8 +168,9 @@ try {
   else fail("no goal replay fits this match");
 
   const seen = {};
-  for (const view of ["2d", "3d", "split"]) {
+  for (const view of ["2d", "split", "3d"]) {   // split before 3d: the 3D page compares their frame rates
     const page = view === "2d" ? page2d : await open(view);
+    if (view === "split" && (!page.early.loading || page.early.radar)) fail(`split while the 3D loads: ${JSON.stringify(page.early)}, wanted the inset hidden`);
     const t0 = Date.now();
     for (const [name, ts] of moments) {
       if (!(await seekTo(page, ts))) fail(`${view} at ${name}: the paused 3D picture never finished drawing`);
@@ -177,41 +206,102 @@ try {
     console.log(`${view}: three moments in ${((Date.now() - t0) / 1000).toFixed(0)} s, screenshot out/shots/view3d-${view}.png`);
 
     if (view === "split") {
-      // a click on the radar swaps the pictures: the 2D pitch fills the frame, the 3D goes in the box,
-      // and the graphics follow the 2D pitch; a second click puts them back
+      // a click on the minimap swaps the pictures in the same box: the 2D pitch fills the frame, the 3D
+      // goes in the box, and the graphics follow the 2D pitch; Enter and Space swap them back and again
+      const box = () => page.evaluate(() => {
+        const r = document.querySelector("#radar").getBoundingClientRect(), v = window.studioDesk.view3d;
+        return { main: v.main, pitchIn: document.querySelector("#pitch").parentElement.id, canvasIn: document.querySelector("#view3d").parentElement.id,
+          label: document.querySelector("#radar").getAttribute("aria-label"), box: [r.left, r.top, r.width, r.height].map(Math.round).join(),
+          icon: getComputedStyle(document.querySelector("#radar .swap")).display !== "none" };
+      });
+      // the 2D minimap is see-through like a game's radar: the box has no fill, the grass is drawn at
+      // pitch.js SEE_THROUGH, lines, discs and ball are opaque, and each disc has a dark keyline inside a
+      // white one, which stand out (3:1) on the grass over a white and over a black 3D frame
+      const see = () => page.evaluate(() => {
+        const cv = document.querySelector("#pitch"), g = cv.getContext("2d"), sd = window.studioDesk, k = sd.pitch.k;
+        const bg = getComputedStyle(document.querySelector("#radar")).backgroundColor;
+        const boxAlpha = /rgba/.test(bg) ? Number(bg.split(",")[3].replace(")", "")) : 1;
+        const d = g.getImageData(0, 0, cv.width, cv.height).data, hist = new Map();
+        for (let i = 3; i < d.length; i += 4 * 7) hist.set(d[i], (hist.get(d[i]) ?? 0) + 1);
+        const grass = [...hist].sort((a, b) => b[1] - a[1])[0][0];
+        let gi = 3; while (d[gi] !== grass) gi += 4;
+        const px = (x, y) => { const i = (Math.round(y) * cv.width + Math.round(x)) * 4; return [d[i], d[i + 1], d[i + 2], d[i + 3]]; };
+        const lum = ([r, gg, b]) => [r, gg, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+          .reduce((s, v, j) => s + v * [0.2126, 0.7152, 0.0722][j], 0);
+        const ps = sd.pitch.drawn.players, R = ps[0]?.r ?? 0, keylines = [];
+        for (const p of ps) {
+          if (p.focus || ps.some((q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 4 * R)) continue;   // a lit disc has its signal ring
+          const ray = [];
+          for (let a = 0; a < 8; a++) for (let r = R * k; r < R * k * 1.8 + 6; r += 0.5) ray.push(px(p.x * k + r * Math.cos(a * Math.PI / 4), p.y * k + r * Math.sin(a * Math.PI / 4)));
+          keylines.push({ center: px(p.x * k, p.y * k)[3], white: ray.some((c) => c[3] > 245 && lum(c) > 0.6), dark: ray.some((c) => c[3] > 245 && lum(c) < 0.03) });
+        }
+        const b = sd.pitch.drawn.ball;
+        return { boxAlpha, grass: grass / 255, grassRGB: [d[gi - 3], d[gi - 2], d[gi - 1]], opaque: hist.get(255) ?? 0,
+          ball: b ? px(b[0] * k, b[1] * k)[3] : 255, keylines };
+      });
+      const contrast = (a, b) => { const l = (c) => c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, j) => s + v * [0.2126, 0.7152, 0.0722][j], 0);
+        const [x, y] = [l(a), l(b)].sort((p, q) => p - q); return (y + 0.05) / (x + 0.05); };
+      const over = (rgb, a, back) => rgb.map((v) => a * v + (1 - a) * back);
       await seekTo(page, moments[0][1]);
+      await page.mouse.move(5, 5);
+      const before = await box();
+      const st = await see();
+      console.log(`minimap see-through: box alpha ${st.boxAlpha}, grass alpha ${st.grass.toFixed(3)}, keylines ${JSON.stringify(st.keylines.slice(0, 3))}`);
+      if (st.boxAlpha !== 0 || !(st.grass >= 0.6 && st.grass <= 0.75)) fail(`minimap: not see-through, box alpha ${st.boxAlpha}, grass alpha ${st.grass}`);
+      if (!st.opaque || st.ball !== 255 || !st.keylines.length || st.keylines.some((q) => q.center !== 255 || !q.white || !q.dark)) fail(`minimap: lines, discs or ball not opaque or a disc without its keylines ${JSON.stringify(st)}`);
+      const onWhite = contrast([4, 10, 22], over(st.grassRGB, st.grass, 255)), onBlack = contrast([255, 255, 255], over(st.grassRGB, st.grass, 0));
+      if (!(onWhite >= 3 && onBlack >= 3)) fail(`minimap keylines: dark ${onWhite.toFixed(2)}:1 on a white frame, white ${onBlack.toFixed(2)}:1 on a black one`);
+      if (before.main !== "3d" || before.pitchIn !== "radar" || before.label !== "Show the 2D pitch large" || before.icon) fail(`minimap: ${JSON.stringify(before)}`);
+      await page.hover("#radar");
+      if (!(await box()).icon) fail("minimap: no swap icon on hover");
+      fps.split = await playFps(page);
       await page.click("#radar");
       await seekTo(page, moments[0][1]);
-      const sw = await page.evaluate(() => ({ main: window.studioDesk.view3d.main, pitchIn: document.querySelector("#pitch").parentElement.id,
-        canvasIn: document.querySelector("#view3d").parentElement.id, label: document.querySelector("#radar").getAttribute("aria-label") }));
+      const sw = await box();
       const r = await measure(page);
-      if (sw.main !== "2d" || sw.pitchIn !== "stage" || sw.canvasIn !== "radar" || !/3D picture large/.test(sw.label)) fail(`radar swap: ${JSON.stringify(sw)}`);
+      if (sw.main !== "2d" || sw.pitchIn !== "stage" || sw.canvasIn !== "radar" || sw.label !== "Show the 3D view large") fail(`minimap swap: ${JSON.stringify(sw)}`);
+      if (sw.box !== before.box) fail(`minimap swap: the box moved from ${before.box} to ${sw.box}`);
+      const st2 = await see();
+      if (st2.boxAlpha !== 1 || st2.grass !== 1) fail(`minimap swap: the 3D inset or the large 2D pitch not opaque, box alpha ${st2.boxAlpha}, grass alpha ${st2.grass}`);
+      if (r.radar.covered) fail("minimap swap: the inset sits under a graphic");
       for (const g of r.graphics) if (g.nameplate && g.nameplate.visible && !(g.nameplate.offset < 2)) fail(`radar swap: nameplate ${g.nameplate.offset.toFixed(1)} px off its player on the 2D pitch`);
       await page.screenshot({ path: `${shots}/view3d-radar-swapped.png` });
-      await page.keyboard.press("Tab"); // keyboard: the radar is a button
-      await page.focus("#radar");
+      fps.swapped = await playFps(page);
+      await seekTo(page, moments[0][1]);
+      // in Italian the name says it in Italian
+      await page.evaluate(() => document.querySelector('[data-lang="it"]').click());
+      const it = await page.getAttribute("#radar", "aria-label");
+      await page.evaluate(() => document.querySelector('[data-lang="en"]').click());
+      if (it !== "Mostra in grande la vista 3D") fail(`minimap name in Italian: "${it}"`);
+      // keyboard: the minimap is a button; the icon shows on focus; Space swaps and does not play
+      await page.mouse.move(5, 5);
+      await page.focus("#frame");
+      await page.keyboard.press("Tab");
+      for (let i = 0; i < 30 && (await page.evaluate(() => document.activeElement?.id)) !== "radar"; i++) await page.keyboard.press("Tab");
+      const focusIcon = (await box()).icon;
       await page.keyboard.press("Enter");
-      const back = await page.evaluate(() => ({ main: window.studioDesk.view3d.main, pitchIn: document.querySelector("#pitch").parentElement.id }));
-      if (back.main !== "3d" || back.pitchIn !== "radar") fail(`radar swap back: ${JSON.stringify(back)}`);
+      const back = await box();
+      if (back.main !== "3d" || back.pitchIn !== "radar" || !focusIcon) fail(`minimap swap back with Enter: ${JSON.stringify(back)}, icon on focus ${focusIcon}`);
+      await page.keyboard.press("Space");
+      await page.waitForTimeout(150);
+      const sp = await page.evaluate(() => ({ main: window.studioDesk.view3d.main, playing: window.studioDesk.state.playing }));
+      if (sp.main !== "2d" || sp.playing) fail(`Space on the minimap: ${JSON.stringify(sp)}, wanted a swap and no play`);
+      await page.keyboard.press("Space");
+      await page.screenshot({ path: `${shots}/view3d-split-focus.png` });
     }
 
     if (view === "3d") {
-      // frame rate while playing at 1x (the floor is off while measuring)
-      const fps = await page.evaluate(async () => {
-        const sd = window.studioDesk;
-        sd.view3d.floor = 0;
-        sd.seek(1200); sd.setPlaying(true);
-        await new Promise((r) => setTimeout(r, 2000));
-        let n = 0, drawn = 0;
-        const o = sd.view3d.scene.scene.onAfterRenderObservable.add(() => drawn++);
-        const t0 = performance.now();
-        await new Promise((done) => { const f = () => { n++; if (performance.now() - t0 < 5000) requestAnimationFrame(f); else done(); }; requestAnimationFrame(f); });
-        sd.setPlaying(false);
-        sd.view3d.scene.scene.onAfterRenderObservable.remove(o);
-        return { fps: n / ((performance.now() - t0) / 1000), drawn: drawn / n, profile: sd.view3d.scene.debug.profile, renderer: sd.view3d.scene.engine.webGLVersion };
-      });
-      console.log(`3D at 1280x720 playing 1x: ${fps.fps.toFixed(1)} fps, ${(fps.drawn * 100).toFixed(0)}% of them drawn (profile ${fps.profile}, WebGL ${fps.renderer})`);
-      if (!(fps.drawn > 0.9)) fail(`playing, the 3D picture was drawn in only ${(fps.drawn * 100).toFixed(0)}% of the page frames`);
+      // frame rate while playing at 1x: the 3D alone, then with the minimap (3D large) and swapped (3D in the inset)
+      fps["3d"] = await playFps(page);
+      for (const [k, f] of Object.entries(fps)) {
+        console.log(`${{ "3d": "3D alone", split: "minimap, 3D large", swapped: "minimap swapped, 3D in the inset" }[k]} at 1280x720 playing 1x: ${fpsLine(f)}`);
+        if (!(f.drawn > 0.9)) fail(`${k} playing, the 3D picture was drawn in only ${(f.drawn * 100).toFixed(0)}% of the page frames`);
+      }
+      // the 3D in the inset is a fraction of the size of the 3D alone; with the 3D large it is the same size
+      // (the drawn pixels also follow the quality steps, which move with the machine's load)
+      if (fps.swapped && !(fps.swapped.px < fps["3d"].px / 4)) fail(`the 3D in the inset draws ${fps.swapped.px} px, the 3D alone ${fps["3d"].px}`);
+      if (fps.split && fps.split.css !== fps["3d"].css) fail(`the 3D with the minimap is ${fps.split.css} px, the 3D alone ${fps["3d"].css}`);
+      const fps3d = fps["3d"];
 
       // the 3D canvas is no tab stop; a pause ends a run of play for the frame-rate watch (a pause
       // inside the window must not read as a slow frame rate), and the quality steps wait while paused
@@ -220,6 +310,8 @@ try {
         v.floor = floor;
         sd.seek(1500); sd.setPlaying(true); await wait(4000);
         sd.setPlaying(false); await wait(500);
+        // and a page frame after the pause: at under 1 fps 500 ms can pass without one
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const paused = { held: v.scene.held, scale: v.scene.scale };
         await wait(2500);
         paused.after = v.scene.scale;
@@ -227,7 +319,7 @@ try {
         const out = { tab: document.querySelector("#view3d").tabIndex, paused, shown: v.shown, notice: v.notice };
         sd.setPlaying(false); v.floor = 0;
         return out;
-      }, fps.fps * 0.6);
+      }, fps3d.fps * 0.6);
       console.log(`pause and resume: ${JSON.stringify(pause)}`);
       if (pause.tab !== -1) fail(`the 3D canvas is a tab stop (tabIndex ${pause.tab})`);
       if (!pause.paused.held || pause.paused.scale !== pause.paused.after) fail(`the quality steps ran while the picture was paused: ${JSON.stringify(pause)}`);
@@ -271,7 +363,7 @@ try {
       console.log(`scene before ${JSON.stringify(c0)}, after one sweep ${JSON.stringify(c1)}`);
       if (JSON.stringify(c1) !== JSON.stringify(c2)) fail(`scene grew over the second sweep: ${JSON.stringify(c1)} -> ${JSON.stringify(c2)}`);
 
-      // under the frame-rate floor the page goes back to 2D with a notice; picking 3D again keeps it
+      // under the frame-rate floor the page goes back to 2D with a notice; the minimap turned on again keeps the 3D
       const slow = await page.evaluate(async () => {
         const sd = window.studioDesk, v = sd.view3d;
         v.floor = 1000;
@@ -280,17 +372,17 @@ try {
         while (v.shown !== "2d" && performance.now() - t0 < 30000) await new Promise((r) => setTimeout(r, 200));
         const after = (performance.now() - t0) / 1000, notice = document.querySelector("#notice"), pitch = document.querySelector("#pitch");
         const out = { shown: v.shown, after, notice: notice.hidden ? null : notice.textContent, pitch: !pitch.hidden && pitch.parentElement.id === "stage" };
-        document.querySelector('[data-view="3d"]').click();
+        document.querySelector("#minimap").click();
         await new Promise((r) => setTimeout(r, 12000));
         out.kept = v.shown;
         sd.setPlaying(false);
         return out;
       });
-      console.log(`floor at 1000 fps: back to ${slow.shown} after ${slow.after.toFixed(1)} s ("${slow.notice}"); 3D picked again: ${slow.kept}`);
+      console.log(`floor at 1000 fps: back to ${slow.shown} after ${slow.after.toFixed(1)} s ("${slow.notice}"); minimap turned on again: ${slow.kept}`);
       if (slow.shown !== "2d" || !slow.notice || !slow.pitch) fail(`no fall back under the frame-rate floor: ${JSON.stringify(slow)}`);
-      if (slow.kept !== "3d") fail("3D picked by hand after the fall back did not stay");
+      if (slow.kept !== "split") fail(`the minimap turned on by hand after the fall back did not stay (${slow.kept})`);
 
-      // a lost WebGL context: back to the 2D pitch with a notice, 3D and Radar off
+      // a lost WebGL context: back to the 2D pitch with a notice, the minimap item off
       page.lostOnPurpose = true;
       const lost = await page.evaluate(async () => {
         const v = window.studioDesk.view3d;
@@ -298,29 +390,29 @@ try {
         await new Promise((r) => setTimeout(r, 500));
         const pitch = document.querySelector("#pitch"), n = document.querySelector("#notice");
         return { shown: v.mode, pitch: !pitch.hidden && pitch.parentElement.id === "stage", notice: n.hidden ? null : n.textContent,
-          disabled: [...document.querySelectorAll("[data-view]")].filter((b) => b.disabled).map((b) => b.dataset.view) };
+          disabled: document.querySelector("#minimap").getAttribute("aria-disabled") };
       });
       console.log(`context lost: ${JSON.stringify(lost)}`);
-      if (lost.shown !== "2d" || !lost.pitch || !lost.notice || lost.disabled.join() !== "3d,split") fail(`no fall back after a lost WebGL context: ${JSON.stringify(lost)}`);
+      if (lost.shown !== "2d" || !lost.pitch || !lost.notice || lost.disabled !== "true") fail(`no fall back after a lost WebGL context: ${JSON.stringify(lost)}`);
     }
     if (view !== "2d") await page.context().close();
   }
   await page2d.context().close();
 
-  // without WebGL: the default is 2D and Babylon never loads; asking for 3D falls back with a notice
-  for (const view of [null, "3d"]) {
-    const page = await open(view, { noWebGL: true, quiet: view === "3d" });
+  // without WebGL: the default is 2D and Babylon never loads; asking for 3D or the minimap falls back with a notice, no inset
+  for (const view of [null, "3d", "split"]) {
+    const page = await open(view, { noWebGL: true, quiet: !!view });
     await page.waitForTimeout(500);
     const r = await page.evaluate(() => {
       const sd = window.studioDesk, n = document.querySelector("#notice"), c = document.querySelector("#pitch");
       const px = c.getContext("2d").getImageData(c.width >> 1, c.height >> 1, 1, 1).data;
       return { shown: sd.view3d.shown, failed: !!sd.view3d.failed, babylon: !!window.BABYLON, notice: n.hidden ? null : n.textContent,
-        disabled: [...document.querySelectorAll("[data-view]")].filter((b) => b.disabled).map((b) => b.dataset.view), drawn: px[3] === 255 && !c.hidden };
+        disabled: document.querySelector("#minimap").getAttribute("aria-disabled"), radar: !document.querySelector("#radar").hidden, drawn: px[3] === 255 && !c.hidden };
     });
     console.log(`without WebGL, ${view ? `?view=${view}` : "no ?view"}: shows ${r.shown}, notice "${r.notice}", disabled ${r.disabled}, 2D pitch drawn ${r.drawn}`);
-    if (r.shown !== "2d" || !r.drawn) fail(`without WebGL the page is not on the 2D pitch: ${JSON.stringify(r)}`);
+    if (r.shown !== "2d" || !r.drawn || r.radar) fail(`without WebGL the page is not on the 2D pitch: ${JSON.stringify(r)}`);
     if (view === null && (r.babylon || r.notice)) fail(`without WebGL the default view loaded the 3D: ${JSON.stringify(r)}`);
-    if (view === "3d" && (!r.failed || !r.notice || r.disabled.join() !== "3d,split")) fail(`no fall back without WebGL: ${JSON.stringify(r)}`);
+    if (view && (!r.failed || !r.notice || r.disabled !== "true")) fail(`no fall back without WebGL: ${JSON.stringify(r)}`);
     await page.context().close();
   }
 } finally {

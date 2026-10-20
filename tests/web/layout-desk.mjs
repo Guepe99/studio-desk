@@ -221,13 +221,12 @@ async function run(w, h) {
   await shot(page, `${PFX}-${tag}-strip.png`);
 
   // 11. Italian everywhere outside the agents' own output
-  if (!(await page.isVisible("#lang"))) await page.click("#viewing-open");   // behind Viewing on a small screen
-  await page.selectOption("#lang", "it");
+  await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "it");
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
   await openDesk();
   // N7 again in Italian and Spanish, from the top of the desk
-  const setLang = (l) => page.evaluate((x) => { const el = document.querySelector("#lang"); el.value = x; el.dispatchEvent(new Event("change")); }, l);
+  const setLang = (l) => page.evaluate((x) => document.querySelector(`[data-lang="${x}"]`).click(), l);
   if (roomy) for (const lang of ["it", "es", "it"]) {
     await setLang(lang);
     await page.evaluate(() => { for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = 0; });

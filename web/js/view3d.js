@@ -1,6 +1,7 @@
 // The whole match in 3D on the broadcast page (index.html): the scene of scene3d.js with its rigs,
-// on the page's clock, as the main picture (3D) or with the 2D pitch beside it (Split). Babylon and
-// the scene load only when a 3D view is asked for; until the scene is ready the 2D pitch stays up.
+// on the page's clock, as the main picture with the 2D pitch as a live minimap (split, the default; a
+// click on the minimap swaps the two) or alone (3D, the minimap off in the settings). Babylon and the
+// scene load only when a 3D view is asked for; until the scene is ready the 2D pitch stays up alone.
 //
 // The rigs plan the ball, the awareness layer and the keepers for a stretch of match time. Here
 // that stretch is a window around the clock (WINDOW), planned again when the clock leaves it, so a
@@ -23,7 +24,7 @@ const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
 const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4 };
 const BABYLON = ["vendor/babylonjs/9.29.0/babylon.js", "vendor/babylonjs/9.29.0/babylon.glTF2FileLoader.min.js"];
-export const VIEWS = ["2d", "3d", "split"];   // "split" is the Radar: one picture large, the other small
+export const VIEWS = ["2d", "3d", "split"];   // "split" is the minimap: one picture large, the other small
 // The radar shows the pitch lines and a margin (1420 x 940 stage px around the 1359 x 880 pitch) at
 // this scale; view3d.css places it with the same numbers.
 export const RADAR = 440 / 1420;
@@ -43,9 +44,9 @@ export function probe() {
   };
 }
 
-// 3D on a computer with WebGL 2 and a GPU; a phone, WebGL 1 or a software renderer start in 2D
-// (a software renderer draws the scene at 3 to 6 fps on this server).
-export const defaultView = (env) => (env.webgl2 && !env.phone && !env.software ? "3d" : "2d");
+// 3D with the 2D minimap on a computer with WebGL 2 and a GPU; a phone, WebGL 1 or a software renderer
+// start in 2D (a software renderer draws the scene at 3 to 6 fps on this server).
+export const defaultView = (env) => (env.webgl2 && !env.phone && !env.software ? "split" : "2d");
 
 // The goal replays that fit before the restart: [{from, to, src, end}] in page time; src is the
 // match time the replay starts from, end the goal it goes in (-1 at x = 0, 1 at x = 105).
@@ -74,8 +75,8 @@ const script = (src) => new Promise((ok, ko) => {
 });
 
 export class View3D {
-  // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, status, buttons}; onChange: the page
-  // lays itself out again (the shown view or the notice changed); t: the page strings.
+  // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, status}; onChange: the page
+  // lays itself out again (the shown view, the notice or failed/lost changed); t: the page strings.
   constructor(match, els, onChange, t) {
     Object.assign(this, { match, els, onChange, t });
     this.mode = "2d";          // what the visitor asked for
@@ -87,14 +88,16 @@ export class View3D {
     this.watch = true;         // off once the visitor picks 3D again after a slow fallback
     this.fps = null;
     this.frames = [];
-    this.swapped = false;      // Radar: the 2D pitch large and the 3D picture small
+    this.swapped = false;      // the minimap swapped: the 2D pitch large and the 3D picture small
     this.home = els.canvas.parentElement;
     els.radar.addEventListener("click", () => { this.swapped = !this.swapped; this._apply(); });
     document.addEventListener("visibilitychange", () => { this.since = null; });
-    for (const b of els.buttons) b.addEventListener("click", () => {
-      if (this.slow) this.watch = false;   // the visitor asked for it, slow or not
-      this.set(b.dataset.view);
-    });
+  }
+
+  // The visitor's choice (the minimap item of the settings): kept even when it is slow.
+  pick(mode) {
+    if (this.slow) this.watch = false;
+    this.set(mode);
   }
 
   // The view on screen: the 2D pitch until the scene is ready.
@@ -104,7 +107,6 @@ export class View3D {
 
   set(mode) {
     this.mode = VIEWS.includes(mode) ? mode : "2d";
-    for (const b of this.els.buttons) b.setAttribute("aria-pressed", String(b.dataset.view === this.mode));
     if (this.notice) this._notice("");
     if (this.mode !== "2d" && !this.scene && !this.loading) {
       this._status(this.t("load3d"));
@@ -112,7 +114,6 @@ export class View3D {
         this._status("");
         console.warn(`3D view: ${err.message}`);
         this.failed = true;
-        for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
         this.set("2d");
         this._notice(this.t("fail3d").replace("{e}", err.message));
       });
@@ -131,7 +132,6 @@ export class View3D {
     this.els.canvas.tabIndex = -1;   // Babylon makes the canvas a tab stop; nothing in it takes keys
     s.engine.onContextLostObservable.add(() => {
       this.lost = true;
-      for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
       this.set("2d");
       this._notice(this.t("lost3d"));
     });
