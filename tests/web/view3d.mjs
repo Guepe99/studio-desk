@@ -89,7 +89,9 @@ const measure = (page) => page.evaluate(() => {
   const on = s.players.filter((p) => p.holder.isEnabled());
   res.players = { want: want.size, shown: on.length, missing: [...want].filter((i) => !on.some((p) => p.i === i)).length,
     extra: on.filter((p) => !want.has(p.i)).length,
-    off: on.filter((p) => want.has(p.i)).map((p) => { const t = m.at(p.i, vts); return Math.hypot(p.holder.position.x + 52.5 - t[0], p.holder.position.z + 34 - t[1]); }) };
+    // a team-mate running over to a scorer (awareness.js JOIN) leaves his track on purpose: measured against that run
+    off: on.filter((p) => want.has(p.i)).map((p) => { const t = m.at(p.i, vts), j = s.awareness?.aw?._join(p.i, vts) ?? { dx: 0, dy: 0 };
+      return Math.hypot(p.holder.position.x + 52.5 - t[0] - j.dx, p.holder.position.z + 34 - t[1] - j.dy); }) };
   const b = m.at(0, vts), bp = s.ball.position;
   res.ball = s.rig.plan._net(vts) || !b ? null : Math.hypot(bp.x + 52.5 - b[0], bp.z + 34 - b[1]);
   return res;
