@@ -2197,6 +2197,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|A goal like that changes the mood.",
+"lang": "en",
+"role": "co",
+"text": "A goal like that changes the mood.",
+"file": "en/559639143af6.mp3",
+"duration_s": 1.547,
+"voice": "am_fenrir"
+},
+{
 "key": "co|A lot of the game is being played in the middle.",
 "lang": "en",
 "role": "co",
@@ -2233,6 +2242,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|Both sides are keeping their shape well, for me.",
+"lang": "en",
+"role": "co",
+"text": "Both sides are keeping their shape well, for me.",
+"file": "en/58593543d93a.mp3",
+"duration_s": 2.051,
+"voice": "am_fenrir"
+},
+{
 "key": "co|Both sides are trying to find a rhythm.",
 "lang": "en",
 "role": "co",
@@ -2248,6 +2266,15 @@
 "text": "But there's no way through.",
 "file": "en/fb5e479bc1f5.mp3",
 "duration_s": 1.163,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Clinical, that.",
+"lang": "en",
+"role": "co",
+"text": "Clinical, that.",
+"file": "en/b4bc5f4e598d.mp3",
+"duration_s": 0.851,
 "voice": "am_fenrir"
 },
 {
@@ -2269,6 +2296,33 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|For me it's a chess match right now.",
+"lang": "en",
+"role": "co",
+"text": "For me it's a chess match right now.",
+"file": "en/49029843de82.mp3",
+"duration_s": 1.595,
+"voice": "am_fenrir"
+},
+{
+"key": "co|For me the defence will be unhappy with that.",
+"lang": "en",
+"role": "co",
+"text": "For me the defence will be unhappy with that.",
+"file": "en/f4fad2e5a935.mp3",
+"duration_s": 2.099,
+"voice": "am_fenrir"
+},
+{
+"key": "co|For me the tempo is just right here.",
+"lang": "en",
+"role": "co",
+"text": "For me the tempo is just right here.",
+"file": "en/525c81e924e9.mp3",
+"duration_s": 1.691,
+"voice": "am_fenrir"
+},
+{
 "key": "co|From",
 "lang": "en",
 "role": "co",
@@ -2284,6 +2338,15 @@
 "text": "Good goalkeeping, that.",
 "file": "en/6785236c7705.mp3",
 "duration_s": 1.115,
+"voice": "am_fenrir"
+},
+{
+"key": "co|Great composure there.",
+"lang": "en",
+"role": "co",
+"text": "Great composure there.",
+"file": "en/cf35f8795c23.mp3",
+"duration_s": 1.139,
 "voice": "am_fenrir"
 },
 {
@@ -2359,12 +2422,129 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|I have a feeling something is about to happen.",
+"lang": "en",
+"role": "co",
+"text": "I have a feeling something is about to happen.",
+"file": "en/9c4fbafdf6ff.mp3",
+"duration_s": 2.123,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I like how patient they are.",
+"lang": "en",
+"role": "co",
+"text": "I like how patient they are.",
+"file": "en/4a6a9ae9d156.mp3",
+"duration_s": 1.187,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I like the shape of both sides.",
+"lang": "en",
+"role": "co",
+"text": "I like the shape of both sides.",
+"file": "en/9bed59c08b9d.mp3",
+"duration_s": 1.475,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I love the build-up to that.",
+"lang": "en",
+"role": "co",
+"text": "I love the build-up to that.",
+"file": "en/0a9938024efa.mp3",
+"duration_s": 1.379,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I think that was well deserved.",
+"lang": "en",
+"role": "co",
+"text": "I think that was well deserved.",
+"file": "en/c271adb09125.mp3",
+"duration_s": 1.523,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I think the full-backs could push on more.",
+"lang": "en",
+"role": "co",
+"text": "I think the full-backs could push on more.",
+"file": "en/d8c2216be049.mp3",
+"duration_s": 1.811,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I think the midfield is where it's tight.",
+"lang": "en",
+"role": "co",
+"text": "I think the midfield is where it's tight.",
+"file": "en/8b582c3c7154.mp3",
+"duration_s": 1.763,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I think the spacing between the lines is good.",
+"lang": "en",
+"role": "co",
+"text": "I think the spacing between the lines is good.",
+"file": "en/fc8501b8e85c.mp3",
+"duration_s": 2.123,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I think they're happy to slow it down.",
+"lang": "en",
+"role": "co",
+"text": "I think they're happy to slow it down.",
+"file": "en/ed3ce2fc966b.mp3",
+"duration_s": 1.619,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I thought that was coming.",
+"lang": "en",
+"role": "co",
+"text": "I thought that was coming.",
+"file": "en/22e8cb47b082.mp3",
+"duration_s": 1.139,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I'd like to see a bit more urgency.",
+"lang": "en",
+"role": "co",
+"text": "I'd like to see a bit more urgency.",
+"file": "en/374bb126aa55.mp3",
+"duration_s": 1.739,
+"voice": "am_fenrir"
+},
+{
+"key": "co|I'd say they're waiting for a mistake.",
+"lang": "en",
+"role": "co",
+"text": "I'd say they're waiting for a mistake.",
+"file": "en/3935be490b7f.mp3",
+"duration_s": 1.547,
+"voice": "am_fenrir"
+},
+{
 "key": "co|Intensity,",
 "lang": "en",
 "role": "co",
 "text": "Intensity,",
 "file": "en/7377cbb7e96d.mp3",
 "duration_s": 0.827,
+"voice": "am_fenrir"
+},
+{
+"key": "co|It feels a bit cagey at the moment.",
+"lang": "en",
+"role": "co",
+"text": "It feels a bit cagey at the moment.",
+"file": "en/0ff1eb9087b4.mp3",
+"duration_s": 1.619,
 "voice": "am_fenrir"
 },
 {
@@ -2392,6 +2572,15 @@
 "text": "It's been a tight, physical contest.",
 "file": "en/a4d08f7d2cb0.mp3",
 "duration_s": 1.787,
+"voice": "am_fenrir"
+},
+{
+"key": "co|It's very even, to my mind.",
+"lang": "en",
+"role": "co",
+"text": "It's very even, to my mind.",
+"file": "en/2f90d610f306.mp3",
+"duration_s": 1.427,
 "voice": "am_fenrir"
 },
 {
@@ -2521,6 +2710,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|That will lift the whole team.",
+"lang": "en",
+"role": "co",
+"text": "That will lift the whole team.",
+"file": "en/93612af86cab.mp3",
+"duration_s": 1.235,
+"voice": "am_fenrir"
+},
+{
 "key": "co|That's",
 "lang": "en",
 "role": "co",
@@ -2566,6 +2764,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|That's the moment they needed.",
+"lang": "en",
+"role": "co",
+"text": "That's the moment they needed.",
+"file": "en/520f5261ffb0.mp3",
+"duration_s": 1.211,
+"voice": "am_fenrir"
+},
+{
 "key": "co|That's the press.",
 "lang": "en",
 "role": "co",
@@ -2590,6 +2797,15 @@
 "text": "That's the sort of chance they need to take.",
 "file": "en/ab785ffe0b70.mp3",
 "duration_s": 1.835,
+"voice": "am_fenrir"
+},
+{
+"key": "co|The keeper had little chance, I think.",
+"lang": "en",
+"role": "co",
+"text": "The keeper had little chance, I think.",
+"file": "en/3378f79e6155.mp3",
+"duration_s": 1.739,
 "voice": "am_fenrir"
 },
 {
@@ -2644,6 +2860,15 @@
 "text": "The referee is letting it flow when he can.",
 "file": "en/c911ad1bad87.mp3",
 "duration_s": 2.051,
+"voice": "am_fenrir"
+},
+{
+"key": "co|The tempo has dropped, I think.",
+"lang": "en",
+"role": "co",
+"text": "The tempo has dropped, I think.",
+"file": "en/d79666b38a53.mp3",
+"duration_s": 1.475,
 "voice": "am_fenrir"
 },
 {
@@ -2710,6 +2935,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|To my eye they're very compact.",
+"lang": "en",
+"role": "co",
+"text": "To my eye they're very compact.",
+"file": "en/d4cf4dc3caf7.mp3",
+"duration_s": 1.451,
+"voice": "am_fenrir"
+},
+{
 "key": "co|Watch the run before the finish,",
 "lang": "en",
 "role": "co",
@@ -2719,12 +2953,30 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|What a way to score.",
+"lang": "en",
+"role": "co",
+"text": "What a way to score.",
+"file": "en/21b55a5a72aa.mp3",
+"duration_s": 0.875,
+"voice": "am_fenrir"
+},
+{
 "key": "co|You can feel the tension building.",
 "lang": "en",
 "role": "co",
 "text": "You can feel the tension building.",
 "file": "en/8f094617d65c.mp3",
 "duration_s": 1.571,
+"voice": "am_fenrir"
+},
+{
+"key": "co|You have to admire the finish.",
+"lang": "en",
+"role": "co",
+"text": "You have to admire the finish.",
+"file": "en/6d938d8efa77.mp3",
+"duration_s": 1.379,
 "voice": "am_fenrir"
 },
 {
@@ -2863,12 +3115,57 @@
 "voice": "am_fenrir"
 },
 {
+"key": "pbp|A break in play.",
+"lang": "en",
+"role": "pbp",
+"text": "A break in play.",
+"file": "en/25e23478c0ee.mp3",
+"duration_s": 1.115,
+"voice": "am_michael"
+},
+{
+"key": "pbp|A little lull in play.",
+"lang": "en",
+"role": "pbp",
+"text": "A little lull in play.",
+"file": "en/efede2a0065f.mp3",
+"duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|A moment to regroup.",
+"lang": "en",
+"role": "pbp",
+"text": "A moment to regroup.",
+"file": "en/d86213f47462.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
 "key": "pbp|A raking ball from",
 "lang": "en",
 "role": "pbp",
 "text": "A raking ball from",
 "file": "en/0d551704f53e.mp3",
 "duration_s": 1.211,
+"voice": "am_michael"
+},
+{
+"key": "pbp|A short pause here.",
+"lang": "en",
+"role": "pbp",
+"text": "A short pause here.",
+"file": "en/50d887381315.mp3",
+"duration_s": 1.187,
+"voice": "am_michael"
+},
+{
+"key": "pbp|All the way back to",
+"lang": "en",
+"role": "pbp",
+"text": "All the way back to",
+"file": "en/9d03be3c973e.mp3",
+"duration_s": 1.187,
 "voice": "am_michael"
 },
 {
@@ -2905,6 +3202,33 @@
 "text": "Away it goes.",
 "file": "en/b992da5d9bbb.mp3",
 "duration_s": 1.019,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Back it goes to",
+"lang": "en",
+"role": "pbp",
+"text": "Back it goes to",
+"file": "en/197146b93e3d.mp3",
+"duration_s": 1.091,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Back the way it came,",
+"lang": "en",
+"role": "pbp",
+"text": "Back the way it came,",
+"file": "en/8cda24c21153.mp3",
+"duration_s": 1.211,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Back to",
+"lang": "en",
+"role": "pbp",
+"text": "Back to",
+"file": "en/8a3622999a25.mp3",
+"duration_s": 0.755,
 "voice": "am_michael"
 },
 {
@@ -2950,6 +3274,15 @@
 "text": "Booted clear.",
 "file": "en/978ad150638b.mp3",
 "duration_s": 0.947,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brief stoppage.",
+"lang": "en",
+"role": "pbp",
+"text": "Brief stoppage.",
+"file": "en/2336b575a0c8.mp3",
+"duration_s": 1.019,
 "voice": "am_michael"
 },
 {
@@ -3022,6 +3355,24 @@
 "text": "Diagonal from",
 "file": "en/c850854ca196.mp3",
 "duration_s": 0.995,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Everyone back in position.",
+"lang": "en",
+"role": "pbp",
+"text": "Everyone back in position.",
+"file": "en/8a07a36269a8.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Everything on hold for a second.",
+"lang": "en",
+"role": "pbp",
+"text": "Everything on hold for a second.",
+"file": "en/04c5e0b8f80d.mp3",
+"duration_s": 1.835,
 "voice": "am_michael"
 },
 {
@@ -3448,6 +3799,33 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Play stopped for a moment.",
+"lang": "en",
+"role": "pbp",
+"text": "Play stopped for a moment.",
+"file": "en/7e7a9cb579eb.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Play will resume in a moment.",
+"lang": "en",
+"role": "pbp",
+"text": "Play will resume in a moment.",
+"file": "en/dd2c6ea36f81.mp3",
+"duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Played back for",
+"lang": "en",
+"role": "pbp",
+"text": "Played back for",
+"file": "en/0569e21697cf.mp3",
+"duration_s": 0.971,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Pulled back by",
 "lang": "en",
 "role": "pbp",
@@ -3475,12 +3853,39 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Recycled back to",
+"lang": "en",
+"role": "pbp",
+"text": "Recycled back to",
+"file": "en/535476dbb55e.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Red card! Off goes",
 "lang": "en",
 "role": "pbp",
 "text": "Red card! Off goes",
 "file": "en/1e7fef0b5466.mp3",
 "duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Reset, back to",
+"lang": "en",
+"role": "pbp",
+"text": "Reset, back to",
+"file": "en/234a1ef1935d.mp3",
+"duration_s": 1.115,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Safe ball back to",
+"lang": "en",
+"role": "pbp",
+"text": "Safe ball back to",
+"file": "en/76047d7d25f2.mp3",
+"duration_s": 1.259,
 "voice": "am_michael"
 },
 {
@@ -3601,6 +4006,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|The ball is dead for now.",
+"lang": "en",
+"role": "pbp",
+"text": "The ball is dead for now.",
+"file": "en/3f05d62430ad.mp3",
+"duration_s": 1.427,
+"voice": "am_michael"
+},
+{
 "key": "pbp|The flag goes up against",
 "lang": "en",
 "role": "pbp",
@@ -3673,6 +4087,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|They'll restart shortly.",
+"lang": "en",
+"role": "pbp",
+"text": "They'll restart shortly.",
+"file": "en/55f255de9802.mp3",
+"duration_s": 1.283,
+"voice": "am_michael"
+},
+{
 "key": "pbp|They've scored!",
 "lang": "en",
 "role": "pbp",
@@ -3697,6 +4120,24 @@
 "text": "Too quick for him,",
 "file": "en/1d4277d319e0.mp3",
 "duration_s": 1.043,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Waiting to get going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Waiting to get going again.",
+"file": "en/637e0089e2f2.mp3",
+"duration_s": 1.523,
+"voice": "am_michael"
+},
+{
+"key": "pbp|We wait for the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "We wait for the restart.",
+"file": "en/7d56deb610bc.mp3",
+"duration_s": 1.283,
 "voice": "am_michael"
 },
 {
@@ -3817,6 +4258,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|carrying it.",
+"lang": "en",
+"role": "pbp",
+"text": "carrying it.",
+"file": "en/7a082798b902.mp3",
+"duration_s": 0.755,
+"voice": "am_michael"
+},
+{
 "key": "pbp|claims it.",
 "lang": "en",
 "role": "pbp",
@@ -3934,6 +4384,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|gets it back.",
+"lang": "en",
+"role": "pbp",
+"text": "gets it back.",
+"file": "en/497faea3dcb6.mp3",
+"duration_s": 0.971,
+"voice": "am_michael"
+},
+{
 "key": "pbp|gives away the free kick.",
 "lang": "en",
 "role": "pbp",
@@ -4048,6 +4507,15 @@
 "text": "has it.",
 "file": "en/72ed7869ef20.mp3",
 "duration_s": 0.659,
+"voice": "am_michael"
+},
+{
+"key": "pbp|has time here.",
+"lang": "en",
+"role": "pbp",
+"text": "has time here.",
+"file": "en/bda1a840a077.mp3",
+"duration_s": 1.019,
 "voice": "am_michael"
 },
 {
@@ -4186,6 +4654,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|looking for an opening.",
+"lang": "en",
+"role": "pbp",
+"text": "looking for an opening.",
+"file": "en/f6354a4bee09.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|looking for options.",
+"lang": "en",
+"role": "pbp",
+"text": "looking for options.",
+"file": "en/822a6f450a07.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
 "key": "pbp|looking for someone in the middle.",
 "lang": "en",
 "role": "pbp",
@@ -4228,6 +4714,15 @@
 "text": "now.",
 "file": "en/c302d1be3d0e.mp3",
 "duration_s": 0.515,
+"voice": "am_michael"
+},
+{
+"key": "pbp|on the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "on the ball.",
+"file": "en/739f3bb9ef44.mp3",
+"duration_s": 0.827,
 "voice": "am_michael"
 },
 {
@@ -4348,6 +4843,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|sets it up.",
+"lang": "en",
+"role": "pbp",
+"text": "sets it up.",
+"file": "en/f3c8bcf01cc6.mp3",
+"duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|shapes to play it.",
+"lang": "en",
+"role": "pbp",
+"text": "shapes to play it.",
+"file": "en/88e5956241de.mp3",
+"duration_s": 1.043,
+"voice": "am_michael"
+},
+{
 "key": "pbp|shoots, and it's wide.",
 "lang": "en",
 "role": "pbp",
@@ -4429,6 +4942,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|takes a touch.",
+"lang": "en",
+"role": "pbp",
+"text": "takes a touch.",
+"file": "en/702d1ddcf501.mp3",
+"duration_s": 0.923,
+"voice": "am_michael"
+},
+{
 "key": "pbp|takes the corner.",
 "lang": "en",
 "role": "pbp",
@@ -4456,6 +4978,15 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|to start again.",
+"lang": "en",
+"role": "pbp",
+"text": "to start again.",
+"file": "en/1f9bd063e3d8.mp3",
+"duration_s": 1.043,
+"voice": "am_michael"
+},
+{
 "key": "pbp|tries his luck...",
 "lang": "en",
 "role": "pbp",
@@ -4471,6 +5002,33 @@
 "text": "tries, but loses it.",
 "file": "en/c9d7857c6e19.mp3",
 "duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|turns and looks.",
+"lang": "en",
+"role": "pbp",
+"text": "turns and looks.",
+"file": "en/d2fee97f3d25.mp3",
+"duration_s": 1.043,
+"voice": "am_michael"
+},
+{
+"key": "pbp|waits for the run.",
+"lang": "en",
+"role": "pbp",
+"text": "waits for the run.",
+"file": "en/8e8f8aa77a28.mp3",
+"duration_s": 1.043,
+"voice": "am_michael"
+},
+{
+"key": "pbp|weighs it up.",
+"lang": "en",
+"role": "pbp",
+"text": "weighs it up.",
+"file": "en/5c180a6ab463.mp3",
+"duration_s": 0.827,
 "voice": "am_michael"
 },
 {
@@ -4525,6 +5083,15 @@
 "text": "with the tackle.",
 "file": "en/4845dc6b1c8e.mp3",
 "duration_s": 0.995,
+"voice": "am_michael"
+},
+{
+"key": "pbp|with time on the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "with time on the ball.",
+"file": "en/1efef2255fcb.mp3",
+"duration_s": 1.187,
 "voice": "am_michael"
 },
 {
@@ -7012,6 +7579,42 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Creo que guardan bien las distancias.",
+"lang": "es",
+"role": "co",
+"text": "Creo que guardan bien las distancias.",
+"file": "es/f0431ca42b5b.mp3",
+"duration_s": 2.267,
+"voice": "em_alex"
+},
+{
+"key": "co|Creo que la defensa no estará contenta.",
+"lang": "es",
+"role": "co",
+"text": "Creo que la defensa no estará contenta.",
+"file": "es/fa7fff685c5d.mp3",
+"duration_s": 2.339,
+"voice": "em_alex"
+},
+{
+"key": "co|Creo que los laterales podrían subir más.",
+"lang": "es",
+"role": "co",
+"text": "Creo que los laterales podrían subir más.",
+"file": "es/5ba42e74371c.mp3",
+"duration_s": 2.483,
+"voice": "em_alex"
+},
+{
+"key": "co|Creo que quieren bajar el ritmo.",
+"lang": "es",
+"role": "co",
+"text": "Creo que quieren bajar el ritmo.",
+"file": "es/8f05c25b58ec.mp3",
+"duration_s": 2.027,
+"voice": "em_alex"
+},
+{
 "key": "co|Cómo ha cuidado el balón",
 "lang": "es",
 "role": "co",
@@ -7027,6 +7630,15 @@
 "text": "Desde",
 "file": "es/153d0b4cc62a.mp3",
 "duration_s": 0.659,
+"voice": "em_alex"
+},
+{
+"key": "co|Diría que esperan el error.",
+"lang": "es",
+"role": "co",
+"text": "Diría que esperan el error.",
+"file": "es/a304133362e5.mp3",
+"duration_s": 1.619,
 "voice": "em_alex"
 },
 {
@@ -7048,6 +7660,15 @@
 "voice": "em_alex"
 },
 {
+"key": "co|El portero poco podía hacer, creo.",
+"lang": "es",
+"role": "co",
+"text": "El portero poco podía hacer, creo.",
+"file": "es/cbd9fec73720.mp3",
+"duration_s": 2.171,
+"voice": "em_alex"
+},
+{
 "key": "co|El ritmo apenas baja.",
 "lang": "es",
 "role": "co",
@@ -7063,6 +7684,15 @@
 "text": "El árbitro deja jugar cuando puede.",
 "file": "es/8e5bd02dd911.mp3",
 "duration_s": 2.171,
+"voice": "em_alex"
+},
+{
+"key": "co|Era el gol que necesitaban.",
+"lang": "es",
+"role": "co",
+"text": "Era el gol que necesitaban.",
+"file": "es/a3e2881c4e1d.mp3",
+"duration_s": 1.763,
 "voice": "em_alex"
 },
 {
@@ -7102,6 +7732,24 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Esto le da confianza a todo el equipo.",
+"lang": "es",
+"role": "co",
+"text": "Esto le da confianza a todo el equipo.",
+"file": "es/edd63d1e1896.mp3",
+"duration_s": 2.315,
+"voice": "em_alex"
+},
+{
+"key": "co|Frialdad absoluta.",
+"lang": "es",
+"role": "co",
+"text": "Frialdad absoluta.",
+"file": "es/a61769e28e98.mp3",
+"duration_s": 1.379,
+"voice": "em_alex"
+},
+{
 "key": "co|Fíjense en el sprint antes del remate:",
 "lang": "es",
 "role": "co",
@@ -7129,6 +7777,15 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Hay que aplaudir la definición.",
+"lang": "es",
+"role": "co",
+"text": "Hay que aplaudir la definición.",
+"file": "es/85e9b2142d97.mp3",
+"duration_s": 1.763,
+"voice": "em_alex"
+},
+{
 "key": "co|Imparable.",
 "lang": "es",
 "role": "co",
@@ -7153,6 +7810,15 @@
 "text": "Llegó a",
 "file": "es/5290a6aaa293.mp3",
 "duration_s": 0.779,
+"voice": "em_alex"
+},
+{
+"key": "co|Lo veía venir.",
+"lang": "es",
+"role": "co",
+"text": "Lo veía venir.",
+"file": "es/f38aff4a8a0f.mp3",
+"duration_s": 1.067,
 "voice": "em_alex"
 },
 {
@@ -7189,6 +7855,69 @@
 "text": "Línea alta, a",
 "file": "es/6e228b60360e.mp3",
 "duration_s": 1.139,
+"voice": "em_alex"
+},
+{
+"key": "co|Me encanta toda la jugada.",
+"lang": "es",
+"role": "co",
+"text": "Me encanta toda la jugada.",
+"file": "es/cab38aff0cb4.mp3",
+"duration_s": 1.739,
+"voice": "em_alex"
+},
+{
+"key": "co|Me gusta el orden de los dos equipos.",
+"lang": "es",
+"role": "co",
+"text": "Me gusta el orden de los dos equipos.",
+"file": "es/39f8bc71448d.mp3",
+"duration_s": 2.195,
+"voice": "em_alex"
+},
+{
+"key": "co|Me gusta esta paciencia.",
+"lang": "es",
+"role": "co",
+"text": "Me gusta esta paciencia.",
+"file": "es/2d6370ad9cc7.mp3",
+"duration_s": 1.691,
+"voice": "em_alex"
+},
+{
+"key": "co|Me gustaría ver algo más de valentía.",
+"lang": "es",
+"role": "co",
+"text": "Me gustaría ver algo más de valentía.",
+"file": "es/22f183a755b1.mp3",
+"duration_s": 2.363,
+"voice": "em_alex"
+},
+{
+"key": "co|Me parece que el ritmo ha bajado.",
+"lang": "es",
+"role": "co",
+"text": "Me parece que el ritmo ha bajado.",
+"file": "es/b488c3cdf9e2.mp3",
+"duration_s": 2.003,
+"voice": "em_alex"
+},
+{
+"key": "co|Me parece una fase un poco trabada.",
+"lang": "es",
+"role": "co",
+"text": "Me parece una fase un poco trabada.",
+"file": "es/0a76c83488b5.mp3",
+"duration_s": 2.267,
+"voice": "em_alex"
+},
+{
+"key": "co|Mucha calma delante de la portería.",
+"lang": "es",
+"role": "co",
+"text": "Mucha calma delante de la portería.",
+"file": "es/00885a5e28e7.mp3",
+"duration_s": 2.195,
 "voice": "em_alex"
 },
 {
@@ -7246,6 +7975,51 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Para mí ahora es una partida de ajedrez.",
+"lang": "es",
+"role": "co",
+"text": "Para mí ahora es una partida de ajedrez.",
+"file": "es/3c54caa2ffd8.mp3",
+"duration_s": 2.459,
+"voice": "em_alex"
+},
+{
+"key": "co|Para mí el partido se juega en el centro.",
+"lang": "es",
+"role": "co",
+"text": "Para mí el partido se juega en el centro.",
+"file": "es/74df1b149c51.mp3",
+"duration_s": 2.291,
+"voice": "em_alex"
+},
+{
+"key": "co|Para mí el ritmo ahora es el adecuado.",
+"lang": "es",
+"role": "co",
+"text": "Para mí el ritmo ahora es el adecuado.",
+"file": "es/7537f5069a46.mp3",
+"duration_s": 2.339,
+"voice": "em_alex"
+},
+{
+"key": "co|Para mí es merecido.",
+"lang": "es",
+"role": "co",
+"text": "Para mí es merecido.",
+"file": "es/338068ac4ab3.mp3",
+"duration_s": 1.403,
+"voice": "em_alex"
+},
+{
+"key": "co|Para mí las líneas están bien escalonadas.",
+"lang": "es",
+"role": "co",
+"text": "Para mí las líneas están bien escalonadas.",
+"file": "es/2f70313af338.mp3",
+"duration_s": 2.555,
+"voice": "em_alex"
+},
+{
 "key": "co|Partido muy disputado, muy físico.",
 "lang": "es",
 "role": "co",
@@ -7270,6 +8044,15 @@
 "text": "Pudo hacerlo mejor, y lo sabe.",
 "file": "es/0905f0ca6fb1.mp3",
 "duration_s": 1.859,
+"voice": "em_alex"
+},
+{
+"key": "co|Qué gol.",
+"lang": "es",
+"role": "co",
+"text": "Qué gol.",
+"file": "es/c01e0ae73575.mp3",
+"duration_s": 0.659,
 "voice": "em_alex"
 },
 {
@@ -7318,12 +8101,30 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Tengo la sensación de que puede pasar algo.",
+"lang": "es",
+"role": "co",
+"text": "Tengo la sensación de que puede pasar algo.",
+"file": "es/42ead4ab089b.mp3",
+"duration_s": 2.651,
+"voice": "em_alex"
+},
+{
 "key": "co|Tienen el impulso,",
 "lang": "es",
 "role": "co",
 "text": "Tienen el impulso,",
 "file": "es/152c35f3ffb6.mp3",
 "duration_s": 1.259,
+"voice": "em_alex"
+},
+{
+"key": "co|Un gol así cambia el ánimo.",
+"lang": "es",
+"role": "co",
+"text": "Un gol así cambia el ánimo.",
+"file": "es/bf060a5d0cae.mp3",
+"duration_s": 1.787,
 "voice": "em_alex"
 },
 {
@@ -7342,6 +8143,24 @@
 "text": "Y",
 "file": "es/b1b8d39cd796.mp3",
 "duration_s": 0.251,
+"voice": "em_alex"
+},
+{
+"key": "co|Yo lo veo muy igualado.",
+"lang": "es",
+"role": "co",
+"text": "Yo lo veo muy igualado.",
+"file": "es/27aea05bd08c.mp3",
+"duration_s": 1.571,
+"voice": "em_alex"
+},
+{
+"key": "co|Yo los veo muy juntos.",
+"lang": "es",
+"role": "co",
+"text": "Yo los veo muy juntos.",
+"file": "es/996b7cc0bc19.mp3",
+"duration_s": 1.523,
 "voice": "em_alex"
 },
 {
@@ -7750,6 +8569,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Atrás hasta",
+"lang": "es",
+"role": "pbp",
+"text": "Atrás hasta",
+"file": "es/4deaf8473a53.mp3",
+"duration_s": 0.947,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Atrás para",
 "lang": "es",
 "role": "pbp",
@@ -7777,6 +8605,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Balón parado.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón parado.",
+"file": "es/2cc60b140379.mp3",
+"duration_s": 0.971,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Balón tenso de",
 "lang": "es",
 "role": "pbp",
@@ -7801,6 +8638,15 @@
 "text": "Bombea",
 "file": "es/78d44f4c1e68.mp3",
 "duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Breve pausa.",
+"lang": "es",
+"role": "pbp",
+"text": "Breve pausa.",
+"file": "es/21669b6d3b2c.mp3",
+"duration_s": 0.971,
 "voice": "ef_dora"
 },
 {
@@ -7975,6 +8821,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Descarga atrás en",
+"lang": "es",
+"role": "pbp",
+"text": "Descarga atrás en",
+"file": "es/df2aa68ee556.mp3",
+"duration_s": 1.427,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Desde cerca... ¡fuera! ¿Cómo no ha entrado, Andrés?",
 "lang": "es",
 "role": "pbp",
@@ -8143,6 +8998,15 @@
 "text": "Es falta.",
 "file": "es/5179567695d6.mp3",
 "duration_s": 0.803,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos para seguir.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos para seguir.",
+"file": "es/8ce163eeefbc.mp3",
+"duration_s": 1.403,
 "voice": "ef_dora"
 },
 {
@@ -8317,12 +9181,48 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Hacia atrás,",
+"lang": "es",
+"role": "pbp",
+"text": "Hacia atrás,",
+"file": "es/d1b1859be244.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Intercepta",
 "lang": "es",
 "role": "pbp",
 "text": "Intercepta",
 "file": "es/0564ce036e95.mp3",
 "duration_s": 0.923,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Juega atrás para",
+"lang": "es",
+"role": "pbp",
+"text": "Juega atrás para",
+"file": "es/9f85f0adb512.mp3",
+"duration_s": 1.163,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Juego interrumpido.",
+"lang": "es",
+"role": "pbp",
+"text": "Juego interrumpido.",
+"file": "es/d2b117aa957e.mp3",
+"duration_s": 1.163,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Juego parado un momento.",
+"lang": "es",
+"role": "pbp",
+"text": "Juego parado un momento.",
+"file": "es/94d2a6caabaa.mp3",
+"duration_s": 1.547,
 "voice": "ef_dora"
 },
 {
@@ -8413,6 +9313,15 @@
 "text": "La salida de",
 "file": "es/33709648f59b.mp3",
 "duration_s": 0.947,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|La tiene",
+"lang": "es",
+"role": "pbp",
+"text": "La tiene",
+"file": "es/2a2e7719c226.mp3",
+"duration_s": 0.659,
 "voice": "ef_dora"
 },
 {
@@ -8533,6 +9442,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Otra vez",
+"lang": "es",
+"role": "pbp",
+"text": "Otra vez",
+"file": "es/e426b02bbf81.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Para",
 "lang": "es",
 "role": "pbp",
@@ -8542,12 +9460,30 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Pase atrás a",
+"lang": "es",
+"role": "pbp",
+"text": "Pase atrás a",
+"file": "es/29b18ff60693.mp3",
+"duration_s": 1.091,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Pase largo de",
 "lang": "es",
 "role": "pbp",
 "text": "Pase largo de",
 "file": "es/cb60f47b597a.mp3",
 "duration_s": 1.067,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pausa en el campo.",
+"lang": "es",
+"role": "pbp",
+"text": "Pausa en el campo.",
+"file": "es/75d665d3ebcf.mp3",
+"duration_s": 1.187,
 "voice": "ef_dora"
 },
 {
@@ -8677,6 +9613,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Recicla con",
+"lang": "es",
+"role": "pbp",
+"text": "Recicla con",
+"file": "es/f056c764133b.mp3",
+"duration_s": 0.923,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Recupera",
 "lang": "es",
 "role": "pbp",
@@ -8758,12 +9703,39 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Se espera la reanudación.",
+"lang": "es",
+"role": "pbp",
+"text": "Se espera la reanudación.",
+"file": "es/84b1e3d5e322.mp3",
+"duration_s": 1.499,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Se reanuda el partido.",
 "lang": "es",
 "role": "pbp",
 "text": "Se reanuda el partido.",
 "file": "es/485ceec8e9b3.mp3",
 "duration_s": 1.427,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se reanuda enseguida.",
+"lang": "es",
+"role": "pbp",
+"text": "Se reanuda enseguida.",
+"file": "es/3c8736eede37.mp3",
+"duration_s": 1.307,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se reinicia con",
+"lang": "es",
+"role": "pbp",
+"text": "Se reinicia con",
+"file": "es/4999223fd696.mp3",
+"duration_s": 1.067,
 "voice": "ef_dora"
 },
 {
@@ -8830,6 +9802,69 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Todo detenido un instante.",
+"lang": "es",
+"role": "pbp",
+"text": "Todo detenido un instante.",
+"file": "es/256f108bb1ad.mp3",
+"duration_s": 1.619,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Todos otra vez en posición.",
+"lang": "es",
+"role": "pbp",
+"text": "Todos otra vez en posición.",
+"file": "es/6f0757a5710a.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Un momento de pausa.",
+"lang": "es",
+"role": "pbp",
+"text": "Un momento de pausa.",
+"file": "es/ffdce646e183.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Una pequeña pausa aquí.",
+"lang": "es",
+"role": "pbp",
+"text": "Una pequeña pausa aquí.",
+"file": "es/d000a19d305b.mp3",
+"duration_s": 1.523,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Unos segundos y seguimos.",
+"lang": "es",
+"role": "pbp",
+"text": "Unos segundos y seguimos.",
+"file": "es/24e93ef365a8.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelta a empezar,",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelta a empezar,",
+"file": "es/aca577721880.mp3",
+"duration_s": 1.067,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a",
+"file": "es/2b6d2f482449.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Vuelve a rodar el balón, segunda parte.",
 "lang": "es",
 "role": "pbp",
@@ -8881,6 +9916,42 @@
 "text": "busca la portería de falta directa...",
 "file": "es/d77cb64768d8.mp3",
 "duration_s": 2.219,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|busca una salida.",
+"lang": "es",
+"role": "pbp",
+"text": "busca una salida.",
+"file": "es/599a24cfdc77.mp3",
+"duration_s": 1.235,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|con el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "con el balón.",
+"file": "es/899a4d28953b.mp3",
+"duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|conduce.",
+"lang": "es",
+"role": "pbp",
+"text": "conduce.",
+"file": "es/fa96425f53ba.mp3",
+"duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|controla.",
+"lang": "es",
+"role": "pbp",
+"text": "controla.",
+"file": "es/b1ba1f8d4a81.mp3",
+"duration_s": 0.707,
 "voice": "ef_dora"
 },
 {
@@ -8956,6 +10027,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|espera el desmarque.",
+"lang": "es",
+"role": "pbp",
+"text": "espera el desmarque.",
+"file": "es/b2d12ab46585.mp3",
+"duration_s": 1.331,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|está en fuera de juego.",
 "lang": "es",
 "role": "pbp",
@@ -8980,6 +10060,15 @@
 "text": "gol!",
 "file": "es/5aeecb9c4c18.mp3",
 "duration_s": 0.539,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|intenta armar la jugada.",
+"lang": "es",
+"role": "pbp",
+"text": "intenta armar la jugada.",
+"file": "es/354dd39000a2.mp3",
+"duration_s": 1.643,
 "voice": "ef_dora"
 },
 {
@@ -9028,12 +10117,30 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|levanta la cabeza.",
+"lang": "es",
+"role": "pbp",
+"text": "levanta la cabeza.",
+"file": "es/f21a4bd7d294.mp3",
+"duration_s": 1.307,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|llegó antes que nadie.",
 "lang": "es",
 "role": "pbp",
 "text": "llegó antes que nadie.",
 "file": "es/81ff04c5e554.mp3",
 "duration_s": 1.427,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|mira a su alrededor.",
+"lang": "es",
+"role": "pbp",
+"text": "mira a su alrededor.",
+"file": "es/259b871dfca3.mp3",
+"duration_s": 1.235,
 "voice": "ef_dora"
 },
 {
@@ -9127,12 +10234,30 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|se gira y busca compañero.",
+"lang": "es",
+"role": "pbp",
+"text": "se gira y busca compañero.",
+"file": "es/f33f25ef4629.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|se marcha.",
 "lang": "es",
 "role": "pbp",
 "text": "se marcha.",
 "file": "es/9068dca8363d.mp3",
 "duration_s": 0.779,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|se toma su tiempo.",
+"lang": "es",
+"role": "pbp",
+"text": "se toma su tiempo.",
+"file": "es/5fef32592c58.mp3",
+"duration_s": 1.187,
 "voice": "ef_dora"
 },
 {
@@ -9151,6 +10276,15 @@
 "text": "supera a su marcador.",
 "file": "es/964ac7fad740.mp3",
 "duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|tiene espacio.",
+"lang": "es",
+"role": "pbp",
+"text": "tiene espacio.",
+"file": "es/0fe4012d9a3f.mp3",
+"duration_s": 0.971,
 "voice": "ef_dora"
 },
 {
@@ -11809,6 +12943,15 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Bisogna applaudire la conclusione.",
+"lang": "it",
+"role": "co",
+"text": "Bisogna applaudire la conclusione.",
+"file": "it/908153ec1016.mp3",
+"duration_s": 2.195,
+"voice": "im_nicola"
+},
+{
 "key": "co|Bravo il portiere.",
 "lang": "it",
 "role": "co",
@@ -11836,6 +12979,15 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Che gol.",
+"lang": "it",
+"role": "co",
+"text": "Che gol.",
+"file": "it/36a73200312a.mp3",
+"duration_s": 0.659,
+"voice": "im_nicola"
+},
+{
 "key": "co|Che potenza,",
 "lang": "it",
 "role": "co",
@@ -11845,12 +12997,39 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Credo che i terzini potrebbero spingere di più.",
+"lang": "it",
+"role": "co",
+"text": "Credo che i terzini potrebbero spingere di più.",
+"file": "it/1c956f225725.mp3",
+"duration_s": 2.795,
+"voice": "im_nicola"
+},
+{
+"key": "co|Credo che vogliano rallentare.",
+"lang": "it",
+"role": "co",
+"text": "Credo che vogliano rallentare.",
+"file": "it/7a95366afada.mp3",
+"duration_s": 1.979,
+"voice": "im_nicola"
+},
+{
 "key": "co|Da",
 "lang": "it",
 "role": "co",
 "text": "Da",
 "file": "it/bd7163b5ea66.mp3",
 "duration_s": 0.515,
+"voice": "im_nicola"
+},
+{
+"key": "co|Direi che aspettano l'errore.",
+"lang": "it",
+"role": "co",
+"text": "Direi che aspettano l'errore.",
+"file": "it/d16a5ecea5fd.mp3",
+"duration_s": 1.835,
 "voice": "im_nicola"
 },
 {
@@ -11872,6 +13051,33 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Era il gol che serviva.",
+"lang": "it",
+"role": "co",
+"text": "Era il gol che serviva.",
+"file": "it/a8121bbdcdd8.mp3",
+"duration_s": 1.619,
+"voice": "im_nicola"
+},
+{
+"key": "co|Freddezza assoluta.",
+"lang": "it",
+"role": "co",
+"text": "Freddezza assoluta.",
+"file": "it/9c2db2121786.mp3",
+"duration_s": 1.547,
+"voice": "im_nicola"
+},
+{
+"key": "co|Grande lucidità lì davanti.",
+"lang": "it",
+"role": "co",
+"text": "Grande lucidità lì davanti.",
+"file": "it/edea70d865c8.mp3",
+"duration_s": 1.955,
+"voice": "im_nicola"
+},
+{
 "key": "co|Guardate lo scatto prima del tiro:",
 "lang": "it",
 "role": "co",
@@ -11887,6 +13093,15 @@
 "text": "Hanno l'inerzia,",
 "file": "it/6f5535979fd0.mp3",
 "duration_s": 1.043,
+"voice": "im_nicola"
+},
+{
+"key": "co|Ho la sensazione che possa succedere qualcosa.",
+"lang": "it",
+"role": "co",
+"text": "Ho la sensazione che possa succedere qualcosa.",
+"file": "it/94fecd4974f0.mp3",
+"duration_s": 3.059,
 "voice": "im_nicola"
 },
 {
@@ -11935,6 +13150,15 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Il portiere poteva fare poco, credo.",
+"lang": "it",
+"role": "co",
+"text": "Il portiere poteva fare poco, credo.",
+"file": "it/566669c997ee.mp3",
+"duration_s": 2.387,
+"voice": "im_nicola"
+},
+{
 "key": "co|Il ritmo non cala quasi mai.",
 "lang": "it",
 "role": "co",
@@ -11950,6 +13174,24 @@
 "text": "Imparabile.",
 "file": "it/2780ac0c16ab.mp3",
 "duration_s": 0.995,
+"voice": "im_nicola"
+},
+{
+"key": "co|Io la vedo molto equilibrata.",
+"lang": "it",
+"role": "co",
+"text": "Io la vedo molto equilibrata.",
+"file": "it/8812f139e241.mp3",
+"duration_s": 1.931,
+"voice": "im_nicola"
+},
+{
+"key": "co|Io le vedo molto corte.",
+"lang": "it",
+"role": "co",
+"text": "Io le vedo molto corte.",
+"file": "it/73a6ce4b13e0.mp3",
+"duration_s": 1.691,
 "voice": "im_nicola"
 },
 {
@@ -12034,6 +13276,60 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Me lo aspettavo.",
+"lang": "it",
+"role": "co",
+"text": "Me lo aspettavo.",
+"file": "it/d27501874a98.mp3",
+"duration_s": 1.235,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mi pare che il ritmo sia calato.",
+"lang": "it",
+"role": "co",
+"text": "Mi pare che il ritmo sia calato.",
+"file": "it/26db1bfe7804.mp3",
+"duration_s": 2.099,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mi piace l'ordine delle due squadre.",
+"lang": "it",
+"role": "co",
+"text": "Mi piace l'ordine delle due squadre.",
+"file": "it/04f0f42e3a07.mp3",
+"duration_s": 2.291,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mi piace questa pazienza.",
+"lang": "it",
+"role": "co",
+"text": "Mi piace questa pazienza.",
+"file": "it/625ba2aadeb2.mp3",
+"duration_s": 1.835,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mi piace tutta l'azione.",
+"lang": "it",
+"role": "co",
+"text": "Mi piace tutta l'azione.",
+"file": "it/e71e6cbf67bc.mp3",
+"duration_s": 1.691,
+"voice": "im_nicola"
+},
+{
+"key": "co|Mi sembra una fase un po' bloccata.",
+"lang": "it",
+"role": "co",
+"text": "Mi sembra una fase un po' bloccata.",
+"file": "it/970cb18fdce6.mp3",
+"duration_s": 2.195,
+"voice": "im_nicola"
+},
+{
 "key": "co|Nessuno ha corso di più.",
 "lang": "it",
 "role": "co",
@@ -12097,12 +13393,84 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Per me adesso è una partita a scacchi.",
+"lang": "it",
+"role": "co",
+"text": "Per me adesso è una partita a scacchi.",
+"file": "it/4df2fe9b2ec1.mp3",
+"duration_s": 2.267,
+"voice": "im_nicola"
+},
+{
+"key": "co|Per me la partita si gioca tutta in mezzo.",
+"lang": "it",
+"role": "co",
+"text": "Per me la partita si gioca tutta in mezzo.",
+"file": "it/3c83909bf285.mp3",
+"duration_s": 2.483,
+"voice": "im_nicola"
+},
+{
+"key": "co|Per me è meritato.",
+"lang": "it",
+"role": "co",
+"text": "Per me è meritato.",
+"file": "it/2a955d603fa8.mp3",
+"duration_s": 1.355,
+"voice": "im_nicola"
+},
+{
 "key": "co|Poteva fare meglio, lo sa.",
 "lang": "it",
 "role": "co",
 "text": "Poteva fare meglio, lo sa.",
 "file": "it/bc0293e27431.mp3",
 "duration_s": 1.715,
+"voice": "im_nicola"
+},
+{
+"key": "co|Questo dà fiducia a tutta la squadra.",
+"lang": "it",
+"role": "co",
+"text": "Questo dà fiducia a tutta la squadra.",
+"file": "it/eac043180bae.mp3",
+"duration_s": 2.411,
+"voice": "im_nicola"
+},
+{
+"key": "co|Secondo me il ritmo adesso è giusto.",
+"lang": "it",
+"role": "co",
+"text": "Secondo me il ritmo adesso è giusto.",
+"file": "it/d37e6f3dec2f.mp3",
+"duration_s": 2.339,
+"voice": "im_nicola"
+},
+{
+"key": "co|Secondo me la difesa non sarà contenta.",
+"lang": "it",
+"role": "co",
+"text": "Secondo me la difesa non sarà contenta.",
+"file": "it/57ff7cc0ad15.mp3",
+"duration_s": 2.531,
+"voice": "im_nicola"
+},
+{
+"key": "co|Secondo me le linee sono ben distanziate.",
+"lang": "it",
+"role": "co",
+"text": "Secondo me le linee sono ben distanziate.",
+"file": "it/bc20713cac44.mp3",
+"duration_s": 2.651,
+"voice": "im_nicola"
+},
+{
+"key": "co|Secondo me tengono bene le distanze.",
+"lang": "it",
+"role": "co",
+"text": "Secondo me tengono bene le distanze.",
+"file": "it/a99691c07dde.mp3",
+"duration_s": 2.315,
 "voice": "im_nicola"
 },
 {
@@ -12166,6 +13534,24 @@
 "text": "Un attimo di respiro per tutte e due.",
 "file": "it/856ab8ab8fcf.mp3",
 "duration_s": 2.291,
+"voice": "im_nicola"
+},
+{
+"key": "co|Un gol così cambia l'umore.",
+"lang": "it",
+"role": "co",
+"text": "Un gol così cambia l'umore.",
+"file": "it/39b58b294c77.mp3",
+"duration_s": 1.835,
+"voice": "im_nicola"
+},
+{
+"key": "co|Vorrei vedere un po' più di coraggio.",
+"lang": "it",
+"role": "co",
+"text": "Vorrei vedere un po' più di coraggio.",
+"file": "it/fcc804da428b.mp3",
+"duration_s": 2.099,
 "voice": "im_nicola"
 },
 {
@@ -12556,6 +13942,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Appoggio arretrato per",
+"lang": "it",
+"role": "pbp",
+"text": "Appoggio arretrato per",
+"file": "it/49ea6bb3ab33.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Appoggio per",
 "lang": "it",
 "role": "pbp",
@@ -12571,6 +13966,15 @@
 "text": "Atterrato",
 "file": "it/20e4f2dc219d.mp3",
 "duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Attimo di pausa in campo.",
+"lang": "it",
+"role": "pbp",
+"text": "Attimo di pausa in campo.",
+"file": "it/b05a2d18c047.mp3",
+"duration_s": 1.787,
 "voice": "if_sara"
 },
 {
@@ -12616,6 +14020,15 @@
 "text": "Bella giocata di",
 "file": "it/d69e48ba90f1.mp3",
 "duration_s": 1.283,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Breve pausa.",
+"lang": "it",
+"role": "pbp",
+"text": "Breve pausa.",
+"file": "it/149557b84f82.mp3",
+"duration_s": 1.139,
 "voice": "if_sara"
 },
 {
@@ -12670,6 +14083,15 @@
 "text": "Cartellino rosso! Fuori",
 "file": "it/ebd0d182af6f.mp3",
 "duration_s": 1.331,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ce l'ha",
+"lang": "it",
+"role": "pbp",
+"text": "Ce l'ha",
+"file": "it/ee7911745d38.mp3",
+"duration_s": 0.611,
 "voice": "if_sara"
 },
 {
@@ -12880,6 +14302,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Dietro, su",
+"lang": "it",
+"role": "pbp",
+"text": "Dietro, su",
+"file": "it/e1523f1ed77e.mp3",
+"duration_s": 0.875,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Dribbling di",
 "lang": "it",
 "role": "pbp",
@@ -13069,6 +14500,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Gioco fermo per un attimo.",
+"lang": "it",
+"role": "pbp",
+"text": "Gioco fermo per un attimo.",
+"file": "it/8e8ae0836231.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Gioco interrotto.",
+"lang": "it",
+"role": "pbp",
+"text": "Gioco interrotto.",
+"file": "it/e24a63675861.mp3",
+"duration_s": 1.427,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Gol",
 "lang": "it",
 "role": "pbp",
@@ -13147,6 +14596,24 @@
 "text": "In ritardo,",
 "file": "it/3fbac7de01ad.mp3",
 "duration_s": 1.115,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Indietro fino a",
+"lang": "it",
+"role": "pbp",
+"text": "Indietro fino a",
+"file": "it/01d8d6557b79.mp3",
+"duration_s": 1.211,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Indietro per",
+"lang": "it",
+"role": "pbp",
+"text": "Indietro per",
+"file": "it/ddeda769b59a.mp3",
+"duration_s": 1.043,
 "voice": "if_sara"
 },
 {
@@ -13366,6 +14833,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Palla indietro a",
+"lang": "it",
+"role": "pbp",
+"text": "Palla indietro a",
+"file": "it/d416ef3707cf.mp3",
+"duration_s": 1.163,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Palla lunga di",
 "lang": "it",
 "role": "pbp",
@@ -13381,6 +14857,15 @@
 "text": "Palla scavalcata per",
 "file": "it/d5ea4803f305.mp3",
 "duration_s": 1.355,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pallone fermo.",
+"lang": "it",
+"role": "pbp",
+"text": "Pallone fermo.",
+"file": "it/a942b5522d0d.mp3",
+"duration_s": 1.211,
 "voice": "if_sara"
 },
 {
@@ -13453,6 +14938,15 @@
 "text": "Pericolo sventato da",
 "file": "it/657b0382c2b6.mp3",
 "duration_s": 1.523,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pochi secondi e si riparte.",
+"lang": "it",
+"role": "pbp",
+"text": "Pochi secondi e si riparte.",
+"file": "it/dd81bf579417.mp3",
+"duration_s": 1.907,
 "voice": "if_sara"
 },
 {
@@ -13555,6 +15049,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riciclo, di nuovo",
+"lang": "it",
+"role": "pbp",
+"text": "Riciclo, di nuovo",
+"file": "it/fb97ea4f5a8b.mp3",
+"duration_s": 1.307,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricomincia da",
+"lang": "it",
+"role": "pbp",
+"text": "Ricomincia da",
+"file": "it/0793f59580f2.mp3",
+"duration_s": 1.091,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Ricomincia la partita, secondo tempo.",
 "lang": "it",
 "role": "pbp",
@@ -13609,6 +15121,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Si aspetta per ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Si aspetta per ripartire.",
+"file": "it/9edd02c0da24.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si attende la ripresa del gioco.",
+"lang": "it",
+"role": "pbp",
+"text": "Si attende la ripresa del gioco.",
+"file": "it/ac16e60e3abb.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Si libera del marcatore,",
 "lang": "it",
 "role": "pbp",
@@ -13618,12 +15148,30 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Si riparte da",
+"lang": "it",
+"role": "pbp",
+"text": "Si riparte da",
+"file": "it/3b4247dc9273.mp3",
+"duration_s": 1.139,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Si riparte.",
 "lang": "it",
 "role": "pbp",
 "text": "Si riparte.",
 "file": "it/e05f9451c5b5.mp3",
 "duration_s": 1.139,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si riprende a breve.",
+"lang": "it",
+"role": "pbp",
+"text": "Si riprende a breve.",
+"file": "it/f44e7325b679.mp3",
+"duration_s": 1.427,
 "voice": "if_sara"
 },
 {
@@ -13744,6 +15292,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Torna da",
+"lang": "it",
+"role": "pbp",
+"text": "Torna da",
+"file": "it/7acfd94b428e.mp3",
+"duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Torna indietro,",
+"lang": "it",
+"role": "pbp",
+"text": "Torna indietro,",
+"file": "it/2cbf28d52059.mp3",
+"duration_s": 1.187,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Trattenuta di",
 "lang": "it",
 "role": "pbp",
@@ -13777,6 +15343,42 @@
 "text": "Troppo veloce,",
 "file": "it/986493e02f74.mp3",
 "duration_s": 1.235,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti di nuovo in posizione.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti di nuovo in posizione.",
+"file": "it/c3901b15f12a.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutto fermo per un istante.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutto fermo per un istante.",
+"file": "it/149edf9ec91f.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Un momento di sosta.",
+"lang": "it",
+"role": "pbp",
+"text": "Un momento di sosta.",
+"file": "it/56d9233396c6.mp3",
+"duration_s": 1.571,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Una piccola pausa qui.",
+"lang": "it",
+"role": "pbp",
+"text": "Una piccola pausa qui.",
+"file": "it/91bc92848f9e.mp3",
+"duration_s": 1.595,
 "voice": "if_sara"
 },
 {
@@ -13861,12 +15463,39 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|alza la testa.",
+"lang": "it",
+"role": "pbp",
+"text": "alza la testa.",
+"file": "it/d9e58111e21d.mp3",
+"duration_s": 1.235,
+"voice": "if_sara"
+},
+{
+"key": "pbp|aspetta il movimento.",
+"lang": "it",
+"role": "pbp",
+"text": "aspetta il movimento.",
+"file": "it/60ca96010652.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
 "key": "pbp|c'è irregolarità.",
 "lang": "it",
 "role": "pbp",
 "text": "c'è irregolarità.",
 "file": "it/6a4b3e99225f.mp3",
 "duration_s": 1.331,
+"voice": "if_sara"
+},
+{
+"key": "pbp|cerca il corridoio.",
+"lang": "it",
+"role": "pbp",
+"text": "cerca il corridoio.",
+"file": "it/68e81bcf25ae.mp3",
+"duration_s": 1.451,
 "voice": "if_sara"
 },
 {
@@ -13888,12 +15517,39 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|cerca lo spazio.",
+"lang": "it",
+"role": "pbp",
+"text": "cerca lo spazio.",
+"file": "it/0ee627261c50.mp3",
+"duration_s": 1.331,
+"voice": "if_sara"
+},
+{
 "key": "pbp|cerca un compagno in area.",
 "lang": "it",
 "role": "pbp",
 "text": "cerca un compagno in area.",
 "file": "it/dc90388e95be.mp3",
 "duration_s": 1.763,
+"voice": "if_sara"
+},
+{
+"key": "pbp|con il pallone.",
+"lang": "it",
+"role": "pbp",
+"text": "con il pallone.",
+"file": "it/23e6b748fed4.mp3",
+"duration_s": 1.163,
+"voice": "if_sara"
+},
+{
+"key": "pbp|controlla.",
+"lang": "it",
+"role": "pbp",
+"text": "controlla.",
+"file": "it/3f16de9e93ce.mp3",
+"duration_s": 0.995,
 "voice": "if_sara"
 },
 {
@@ -13966,6 +15622,24 @@
 "text": "fuori.",
 "file": "it/7a010c47454b.mp3",
 "duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|gira e cerca un compagno.",
+"lang": "it",
+"role": "pbp",
+"text": "gira e cerca un compagno.",
+"file": "it/7a19b0137fe8.mp3",
+"duration_s": 1.691,
+"voice": "if_sara"
+},
+{
+"key": "pbp|ha spazio.",
+"lang": "it",
+"role": "pbp",
+"text": "ha spazio.",
+"file": "it/ef6cd24b875f.mp3",
+"duration_s": 1.043,
 "voice": "if_sara"
 },
 {
@@ -14095,6 +15769,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|prende tempo.",
+"lang": "it",
+"role": "pbp",
+"text": "prende tempo.",
+"file": "it/084bb7f374b2.mp3",
+"duration_s": 1.163,
+"voice": "if_sara"
+},
+{
+"key": "pbp|prova a impostare.",
+"lang": "it",
+"role": "pbp",
+"text": "prova a impostare.",
+"file": "it/fa7fb6f72f05.mp3",
+"duration_s": 1.331,
+"voice": "if_sara"
+},
+{
 "key": "pbp|respinto.",
 "lang": "it",
 "role": "pbp",
@@ -14128,6 +15820,15 @@
 "text": "se ne va.",
 "file": "it/c0dcdeb87e91.mp3",
 "duration_s": 0.827,
+"voice": "if_sara"
+},
+{
+"key": "pbp|si guarda intorno.",
+"lang": "it",
+"role": "pbp",
+"text": "si guarda intorno.",
+"file": "it/8a90234cd281.mp3",
+"duration_s": 1.427,
 "voice": "if_sara"
 },
 {

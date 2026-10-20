@@ -433,6 +433,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Back to the centre circle for Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Back to the centre circle for Calderholt.",
+"file": "booth/en/e7f8d7d9445d.mp3",
+"duration_s": 2.219,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Back to the centre circle for Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Back to the centre circle for Harbour Vale.",
+"file": "booth/en/800e7b1d813a.mp3",
+"duration_s": 2.339,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Bianchi!",
 "lang": "en",
 "role": "pbp",
@@ -457,6 +475,24 @@
 "text": "Bianchi...",
 "file": "booth/en/de1669361e99.mp3",
 "duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Big celebrations from Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Big celebrations from Calderholt.",
+"file": "booth/en/bd90066ac545.mp3",
+"duration_s": 2.051,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Big celebrations from Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Big celebrations from Harbour Vale.",
+"file": "booth/en/f7d3a838efe4.mp3",
+"duration_s": 2.219,
 "voice": "am_michael"
 },
 {
@@ -487,12 +523,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Calderholt are delighted.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt are delighted.",
+"file": "booth/en/15af708c44d4.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Calderholt are pushing. Dan?",
 "lang": "en",
 "role": "pbp",
 "text": "Calderholt are pushing. Dan?",
 "file": "booth/en/ae1612919480.mp3",
 "duration_s": 1.811,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt celebrate.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt celebrate.",
+"file": "booth/en/758e3d81e3d0.mp3",
+"duration_s": 1.307,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt enjoy that one.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt enjoy that one.",
+"file": "booth/en/ebd1b501a039.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt gather themselves for the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt gather themselves for the restart.",
+"file": "booth/en/fac448948ff5.mp3",
+"duration_s": 2.435,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt get it going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt get it going again.",
+"file": "booth/en/4be9df0ac03c.mp3",
+"duration_s": 1.763,
 "voice": "am_michael"
 },
 {
@@ -505,12 +586,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Calderholt have plenty to cheer.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt have plenty to cheer.",
+"file": "booth/en/86e08156b06a.mp3",
+"duration_s": 1.787,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt have the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt have the ball.",
+"file": "booth/en/3250376f8b3b.mp3",
+"duration_s": 1.427,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt have the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt have the restart.",
+"file": "booth/en/9ce39344b3ea.mp3",
+"duration_s": 1.595,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Calderholt have their goal.",
 "lang": "en",
 "role": "pbp",
 "text": "Calderholt have their goal.",
 "file": "booth/en/61bcff8eb30a.mp3",
 "duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt have to reset.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt have to reset.",
+"file": "booth/en/4b0b0d44b78c.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt in no hurry.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt in no hurry.",
+"file": "booth/en/7afff75248fa.mp3",
+"duration_s": 1.475,
 "voice": "am_michael"
 },
 {
@@ -523,12 +649,75 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Calderholt keep the ball moving.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt keep the ball moving.",
+"file": "booth/en/3bccfa6fba4e.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt keeping it.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt keeping it.",
+"file": "booth/en/353545db5243.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt knocking it about.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt knocking it about.",
+"file": "booth/en/def6b733473d.mp3",
+"duration_s": 1.595,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Calderholt look different now.",
 "lang": "en",
 "role": "pbp",
 "text": "Calderholt look different now.",
 "file": "booth/en/56ebcb3d50ba.mp3",
 "duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt looking for a way through.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt looking for a way through.",
+"file": "booth/en/2da2131981b7.mp3",
+"duration_s": 2.027,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt move it across.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt move it across.",
+"file": "booth/en/9f8f4762298c.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt must regroup.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt must regroup.",
+"file": "booth/en/a88741ed4a8f.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt need a response now.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt need a response now.",
+"file": "booth/en/611ffcb9b09b.mp3",
+"duration_s": 1.811,
 "voice": "am_michael"
 },
 {
@@ -541,6 +730,42 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Calderholt probing.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt probing.",
+"file": "booth/en/00921a714daa.mp3",
+"duration_s": 1.211,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt ready to go again.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt ready to go again.",
+"file": "booth/en/1a0c2b1ad1ef.mp3",
+"duration_s": 1.859,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt recycle it.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt recycle it.",
+"file": "booth/en/3289c1f164b0.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt set to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt set to restart.",
+"file": "booth/en/43681bb5c9e2.mp3",
+"duration_s": 1.595,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Calderholt still looking for a way in.",
 "lang": "en",
 "role": "pbp",
@@ -550,12 +775,93 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Calderholt take their time over it.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt take their time over it.",
+"file": "booth/en/a0436d47c27e.mp3",
+"duration_s": 1.955,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt to kick off again.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt to kick off again.",
+"file": "booth/en/585b48036327.mp3",
+"duration_s": 1.691,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt to restart.",
+"file": "booth/en/e5ae25bdf812.mp3",
+"duration_s": 1.427,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt wait to kick off.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt wait to kick off.",
+"file": "booth/en/cc4388e43954.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt will get us going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt will get us going again.",
+"file": "booth/en/5f1a7c170887.mp3",
+"duration_s": 2.171,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt will get us going.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt will get us going.",
+"file": "booth/en/9b0e31657f51.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt will take it.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt will take it.",
+"file": "booth/en/56340dca76e1.mp3",
+"duration_s": 1.355,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt with the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt with the restart.",
+"file": "booth/en/3a5aa54a062f.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Calderholt work it short.",
 "lang": "en",
 "role": "pbp",
 "text": "Calderholt work it short.",
 "file": "booth/en/ba94ddbe2d11.mp3",
 "duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Calderholt working it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Calderholt working it around.",
+"file": "booth/en/43949ed4dfcf.mp3",
+"duration_s": 1.715,
 "voice": "am_michael"
 },
 {
@@ -583,6 +889,24 @@
 "text": "Castrovane...",
 "file": "booth/en/1d631f0fbc9b.mp3",
 "duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Composed from Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Composed from Calderholt.",
+"file": "booth/en/c2b2ba92c5ac.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Composed from Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Composed from Harbour Vale.",
+"file": "booth/en/7e9ae0d4acd6.mp3",
+"duration_s": 1.619,
 "voice": "am_michael"
 },
 {
@@ -748,12 +1072,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Harbour Vale are delighted.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale are delighted.",
+"file": "booth/en/fa1929cb0e8c.mp3",
+"duration_s": 1.643,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Harbour Vale are pushing. Dan?",
 "lang": "en",
 "role": "pbp",
 "text": "Harbour Vale are pushing. Dan?",
 "file": "booth/en/867b0495303e.mp3",
 "duration_s": 1.931,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale celebrate.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale celebrate.",
+"file": "booth/en/bbb25b999fab.mp3",
+"duration_s": 1.355,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale enjoy that one.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale enjoy that one.",
+"file": "booth/en/2371a6f36782.mp3",
+"duration_s": 1.811,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale gather themselves for the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale gather themselves for the restart.",
+"file": "booth/en/a08c3d43df73.mp3",
+"duration_s": 2.579,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale get it going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale get it going again.",
+"file": "booth/en/5715d8bf935b.mp3",
+"duration_s": 1.859,
 "voice": "am_michael"
 },
 {
@@ -766,12 +1135,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Harbour Vale have plenty to cheer.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale have plenty to cheer.",
+"file": "booth/en/7ea3510245bc.mp3",
+"duration_s": 1.907,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale have the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale have the ball.",
+"file": "booth/en/27640ece8178.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale have the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale have the restart.",
+"file": "booth/en/a020c191724b.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Harbour Vale have their goal.",
 "lang": "en",
 "role": "pbp",
 "text": "Harbour Vale have their goal.",
 "file": "booth/en/5f56350ae96b.mp3",
 "duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale have to reset.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale have to reset.",
+"file": "booth/en/da3e43b58656.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale in no hurry.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale in no hurry.",
+"file": "booth/en/35bb305e1631.mp3",
+"duration_s": 1.547,
 "voice": "am_michael"
 },
 {
@@ -784,12 +1198,75 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Harbour Vale keep the ball moving.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale keep the ball moving.",
+"file": "booth/en/31350a50f6df.mp3",
+"duration_s": 1.859,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale keeping it.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale keeping it.",
+"file": "booth/en/3c12383fb5e0.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale knocking it about.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale knocking it about.",
+"file": "booth/en/30d3828edc53.mp3",
+"duration_s": 1.691,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Harbour Vale look different now.",
 "lang": "en",
 "role": "pbp",
 "text": "Harbour Vale look different now.",
 "file": "booth/en/a668b8fed696.mp3",
 "duration_s": 1.787,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale looking for a way through.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale looking for a way through.",
+"file": "booth/en/b9dcbec59981.mp3",
+"duration_s": 2.123,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale move it across.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale move it across.",
+"file": "booth/en/3837f041237f.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale must regroup.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale must regroup.",
+"file": "booth/en/c91dbc5d5d0b.mp3",
+"duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale need a response now.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale need a response now.",
+"file": "booth/en/56f4f19ef9b5.mp3",
+"duration_s": 1.931,
 "voice": "am_michael"
 },
 {
@@ -802,6 +1279,42 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Harbour Vale probing.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale probing.",
+"file": "booth/en/092d8073d10c.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale ready to go again.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale ready to go again.",
+"file": "booth/en/d447af743205.mp3",
+"duration_s": 1.955,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale recycle it.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale recycle it.",
+"file": "booth/en/a74ebeedfa0e.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale set to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale set to restart.",
+"file": "booth/en/a2520630ae8b.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Harbour Vale still looking for a way in.",
 "lang": "en",
 "role": "pbp",
@@ -811,12 +1324,93 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Harbour Vale take their time over it.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale take their time over it.",
+"file": "booth/en/d59c15ffaefd.mp3",
+"duration_s": 2.099,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale to kick off again.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale to kick off again.",
+"file": "booth/en/56e6b2d7b752.mp3",
+"duration_s": 1.835,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale to restart.",
+"file": "booth/en/a8b7c6d10429.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale wait to kick off.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale wait to kick off.",
+"file": "booth/en/89c8d13b3e00.mp3",
+"duration_s": 1.835,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale will get us going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale will get us going again.",
+"file": "booth/en/450fb542e324.mp3",
+"duration_s": 2.195,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale will get us going.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale will get us going.",
+"file": "booth/en/b0a5a420c1a0.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale will take it.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale will take it.",
+"file": "booth/en/1c5e3ee3dccb.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale with the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale with the restart.",
+"file": "booth/en/f11965dd297c.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Harbour Vale work it short.",
 "lang": "en",
 "role": "pbp",
 "text": "Harbour Vale work it short.",
 "file": "booth/en/d23224209c3a.mp3",
 "duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Harbour Vale working it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Harbour Vale working it around.",
+"file": "booth/en/05decbf4e019.mp3",
+"duration_s": 1.883,
 "voice": "am_michael"
 },
 {
@@ -844,6 +1438,60 @@
 "text": "Holmberg...",
 "file": "booth/en/d59f978372cf.mp3",
 "duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Huge moment for Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Huge moment for Calderholt.",
+"file": "booth/en/844527b6d4d6.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Huge moment for Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Huge moment for Harbour Vale.",
+"file": "booth/en/8014098a98ae.mp3",
+"duration_s": 1.691,
+"voice": "am_michael"
+},
+{
+"key": "pbp|It's Calderholt ball.",
+"lang": "en",
+"role": "pbp",
+"text": "It's Calderholt ball.",
+"file": "booth/en/e1906505c694.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|It's Harbour Vale ball.",
+"lang": "en",
+"role": "pbp",
+"text": "It's Harbour Vale ball.",
+"file": "booth/en/53139e2325b2.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Joy for Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Joy for Calderholt.",
+"file": "booth/en/75fb6126745e.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Joy for Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Joy for Harbour Vale.",
+"file": "booth/en/d1a89da5b42a.mp3",
+"duration_s": 1.283,
 "voice": "am_michael"
 },
 {
@@ -979,6 +1627,24 @@
 "text": "Moreau...",
 "file": "booth/en/945b52c4fa0e.mp3",
 "duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nice and calm from Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Nice and calm from Calderholt.",
+"file": "booth/en/feb4f9a1059d.mp3",
+"duration_s": 1.859,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nice and calm from Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Nice and calm from Harbour Vale.",
+"file": "booth/en/bc37c39fd240.mp3",
+"duration_s": 1.883,
 "voice": "am_michael"
 },
 {
@@ -1144,6 +1810,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Patient from Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Patient from Calderholt.",
+"file": "booth/en/5337ca557ccb.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Patient from Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Patient from Harbour Vale.",
+"file": "booth/en/ca1bb15142ec.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Pavic!",
 "lang": "en",
 "role": "pbp",
@@ -1171,6 +1855,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Possession with Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Possession with Calderholt.",
+"file": "booth/en/09adf10f3ac3.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Possession with Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Possession with Harbour Vale.",
+"file": "booth/en/19436e75faaa.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Quintero!",
 "lang": "en",
 "role": "pbp",
@@ -1195,6 +1897,42 @@
 "text": "Quintero...",
 "file": "booth/en/e5b99d86bcbc.mp3",
 "duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart coming, Calderholt to go.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart coming, Calderholt to go.",
+"file": "booth/en/0fe6b172fa77.mp3",
+"duration_s": 2.267,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart coming, Harbour Vale to go.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart coming, Harbour Vale to go.",
+"file": "booth/en/0e8aa5eb1a91.mp3",
+"duration_s": 2.411,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart for Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart for Calderholt.",
+"file": "booth/en/f81e0cf7f50f.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart for Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart for Harbour Vale.",
+"file": "booth/en/5a8249a17d3f.mp3",
+"duration_s": 1.523,
 "voice": "am_michael"
 },
 {
@@ -1333,6 +2071,60 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|The Calderholt bench is up.",
+"lang": "en",
+"role": "pbp",
+"text": "The Calderholt bench is up.",
+"file": "booth/en/09b0d3b8c364.mp3",
+"duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Calderholt fans love that.",
+"lang": "en",
+"role": "pbp",
+"text": "The Calderholt fans love that.",
+"file": "booth/en/45d4d4b0f9c3.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Calderholt players pile in.",
+"lang": "en",
+"role": "pbp",
+"text": "The Calderholt players pile in.",
+"file": "booth/en/d46a98aff4cf.mp3",
+"duration_s": 1.811,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Harbour Vale bench is up.",
+"lang": "en",
+"role": "pbp",
+"text": "The Harbour Vale bench is up.",
+"file": "booth/en/9309e5fbf85d.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Harbour Vale fans love that.",
+"lang": "en",
+"role": "pbp",
+"text": "The Harbour Vale fans love that.",
+"file": "booth/en/fb81f4dcc593.mp3",
+"duration_s": 1.835,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Harbour Vale players pile in.",
+"lang": "en",
+"role": "pbp",
+"text": "The Harbour Vale players pile in.",
+"file": "booth/en/cafaf9dfb887.mp3",
+"duration_s": 1.907,
+"voice": "am_michael"
+},
+{
 "key": "pbp|This is all Calderholt now.",
 "lang": "en",
 "role": "pbp",
@@ -1402,6 +2194,24 @@
 "text": "Vellacott...",
 "file": "booth/en/1ffc8ab85af2.mp3",
 "duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Waiting on Calderholt.",
+"lang": "en",
+"role": "pbp",
+"text": "Waiting on Calderholt.",
+"file": "booth/en/d9445754043f.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Waiting on Harbour Vale.",
+"lang": "en",
+"role": "pbp",
+"text": "Waiting on Harbour Vale.",
+"file": "booth/en/3b70627bc950.mp3",
+"duration_s": 1.475,
 "voice": "am_michael"
 },
 {
@@ -1738,6 +2548,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Abrazos en el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Abrazos en el Calderholt.",
+"file": "booth/es/fbbcb8eea95a.mp3",
+"duration_s": 1.595,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Abrazos en el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Abrazos en el Harbour Vale.",
+"file": "booth/es/198949d553c3.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Achterberg!",
 "lang": "es",
 "role": "pbp",
@@ -1762,6 +2590,24 @@
 "text": "Achterberg...",
 "file": "booth/es/49bd5bc1a51d.mp3",
 "duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahora hace falta una reacción del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora hace falta una reacción del Calderholt.",
+"file": "booth/es/8a143c5ce7f2.mp3",
+"duration_s": 2.459,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahora hace falta una reacción del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora hace falta una reacción del Harbour Vale.",
+"file": "booth/es/a04b1f9565a4.mp3",
+"duration_s": 2.603,
 "voice": "ef_dora"
 },
 {
@@ -1798,6 +2644,42 @@
 "text": "Aprieta el Harbour Vale. ¿Andrés?",
 "file": "booth/es/8e885f6ac801.mp3",
 "duration_s": 1.931,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón al centro, saca el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón al centro, saca el Calderholt.",
+"file": "booth/es/08eaaa5e4778.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón al centro, saca el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón al centro, saca el Harbour Vale.",
+"file": "booth/es/c0524d86934d.mp3",
+"duration_s": 2.243,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón del Calderholt.",
+"file": "booth/es/599c199f7a3a.mp3",
+"duration_s": 1.355,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón del Harbour Vale.",
+"file": "booth/es/0657a272a76e.mp3",
+"duration_s": 1.451,
 "voice": "ef_dora"
 },
 {
@@ -1936,6 +2818,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Celebra el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Celebra el Calderholt.",
+"file": "booth/es/1e7f0b77865a.mp3",
+"duration_s": 1.379,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Celebra el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Celebra el Harbour Vale.",
+"file": "booth/es/f55c4a043379.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Con paciencia el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Con paciencia el Calderholt.",
+"file": "booth/es/2d1386aea0b9.mp3",
+"duration_s": 1.667,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Con paciencia el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Con paciencia el Harbour Vale.",
+"file": "booth/es/f6e649c835c0.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Córner para el Calderholt.",
 "lang": "es",
 "role": "pbp",
@@ -1954,6 +2872,33 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Calderholt busca el hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt busca el hueco.",
+"file": "booth/es/655c4aec8427.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt construye con calma.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt construye con calma.",
+"file": "booth/es/cd47c2f503ff.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt espera para sacar de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt espera para sacar de centro.",
+"file": "booth/es/8a7b67385205.mp3",
+"duration_s": 2.531,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Calderholt ha cambiado algo.",
 "lang": "es",
 "role": "pbp",
@@ -1963,12 +2908,84 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Calderholt intenta recomponerse.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt intenta recomponerse.",
+"file": "booth/es/1237370dedb8.mp3",
+"duration_s": 2.291,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt juega en corto.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt juega en corto.",
+"file": "booth/es/b31268434357.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt la hace circular.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt la hace circular.",
+"file": "booth/es/192f272f1be1.mp3",
+"duration_s": 1.883,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt listo para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt listo para reanudar.",
+"file": "booth/es/d8b7b27bcc31.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt mueve el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt mueve el balón.",
+"file": "booth/es/41e37403a7e7.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Calderholt se ha reordenado, Andrés.",
 "lang": "es",
 "role": "pbp",
 "text": "El Calderholt se ha reordenado, Andrés.",
 "file": "booth/es/9c946b81fd22.mp3",
 "duration_s": 2.267,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt se prepara para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt se prepara para reanudar.",
+"file": "booth/es/885d142a5ae3.mp3",
+"duration_s": 2.267,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt se reorganiza para el saque.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt se reorganiza para el saque.",
+"file": "booth/es/f39bef5f288c.mp3",
+"duration_s": 2.411,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt se toma su tiempo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt se toma su tiempo.",
+"file": "booth/es/bedeeabad34a.mp3",
+"duration_s": 1.979,
 "voice": "ef_dora"
 },
 {
@@ -1990,6 +3007,60 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Calderholt tantea.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt tantea.",
+"file": "booth/es/e02cef029ebd.mp3",
+"duration_s": 1.379,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt tiene el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt tiene el balón.",
+"file": "booth/es/f767a5251305.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Calderholt tiene que reaccionar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Calderholt tiene que reaccionar.",
+"file": "booth/es/8c5c4805c345.mp3",
+"duration_s": 1.931,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale busca el hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale busca el hueco.",
+"file": "booth/es/9f988f1cd295.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale construye con calma.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale construye con calma.",
+"file": "booth/es/87b762b738ba.mp3",
+"duration_s": 2.171,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale espera para sacar de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale espera para sacar de centro.",
+"file": "booth/es/4ea897416ede.mp3",
+"duration_s": 2.507,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Harbour Vale ha cambiado algo.",
 "lang": "es",
 "role": "pbp",
@@ -1999,12 +3070,84 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Harbour Vale intenta recomponerse.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale intenta recomponerse.",
+"file": "booth/es/b2b212032e30.mp3",
+"duration_s": 2.339,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale juega en corto.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale juega en corto.",
+"file": "booth/es/8ad89ae00655.mp3",
+"duration_s": 1.907,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale la hace circular.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale la hace circular.",
+"file": "booth/es/3f88c61a6514.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale listo para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale listo para reanudar.",
+"file": "booth/es/100f0e793b27.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale mueve el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale mueve el balón.",
+"file": "booth/es/f234936bd4ab.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Harbour Vale se ha reordenado, Andrés.",
 "lang": "es",
 "role": "pbp",
 "text": "El Harbour Vale se ha reordenado, Andrés.",
 "file": "booth/es/4ed558116147.mp3",
 "duration_s": 2.387,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale se prepara para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale se prepara para reanudar.",
+"file": "booth/es/ad8c87569938.mp3",
+"duration_s": 2.387,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale se reorganiza para el saque.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale se reorganiza para el saque.",
+"file": "booth/es/36899f409273.mp3",
+"duration_s": 2.603,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale se toma su tiempo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale se toma su tiempo.",
+"file": "booth/es/3740ea5cd441.mp3",
+"duration_s": 2.075,
 "voice": "ef_dora"
 },
 {
@@ -2023,6 +3166,123 @@
 "text": "El Harbour Vale sigue moviendo el balón.",
 "file": "booth/es/58fefb77cd42.mp3",
 "duration_s": 2.267,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale tantea.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale tantea.",
+"file": "booth/es/32b9506bc795.mp3",
+"duration_s": 1.475,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale tiene el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale tiene el balón.",
+"file": "booth/es/933cd0b15246.mp3",
+"duration_s": 1.811,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Harbour Vale tiene que reaccionar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Harbour Vale tiene que reaccionar.",
+"file": "booth/es/f39f8aec8e4f.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El banquillo del Calderholt se levanta.",
+"lang": "es",
+"role": "pbp",
+"text": "El banquillo del Calderholt se levanta.",
+"file": "booth/es/38c69e28b270.mp3",
+"duration_s": 2.171,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El banquillo del Harbour Vale se levanta.",
+"lang": "es",
+"role": "pbp",
+"text": "El banquillo del Harbour Vale se levanta.",
+"file": "booth/es/385a1780e5ad.mp3",
+"duration_s": 2.291,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El saque es del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "El saque es del Calderholt.",
+"file": "booth/es/a75156d78d4b.mp3",
+"duration_s": 1.715,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El saque es del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "El saque es del Harbour Vale.",
+"file": "booth/es/fd813563c710.mp3",
+"duration_s": 1.811,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Elabora el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Elabora el Calderholt.",
+"file": "booth/es/743dc11da12f.mp3",
+"duration_s": 1.379,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Elabora el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Elabora el Harbour Vale.",
+"file": "booth/es/984f7c47f093.mp3",
+"duration_s": 1.571,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Estalla la alegría del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Estalla la alegría del Calderholt.",
+"file": "booth/es/7e9ee61dce27.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Estalla la alegría del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Estalla la alegría del Harbour Vale.",
+"file": "booth/es/21482128bcb2.mp3",
+"duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Festeja el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Festeja el Calderholt.",
+"file": "booth/es/b6b14352e9f7.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Festeja el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Festeja el Harbour Vale.",
+"file": "booth/es/9f3d18640d49.mp3",
+"duration_s": 1.595,
 "voice": "ef_dora"
 },
 {
@@ -2077,6 +3337,24 @@
 "text": "Galvan...",
 "file": "booth/es/66b4369f23b2.mp3",
 "duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Gran alegría para el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Gran alegría para el Calderholt.",
+"file": "booth/es/95c17335fe9d.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Gran alegría para el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Gran alegría para el Harbour Vale.",
+"file": "booth/es/dfa04855d266.mp3",
+"duration_s": 1.931,
 "voice": "ef_dora"
 },
 {
@@ -2206,6 +3484,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|La afición del Calderholt estalla.",
+"lang": "es",
+"role": "pbp",
+"text": "La afición del Calderholt estalla.",
+"file": "booth/es/8e680b346f65.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|La afición del Harbour Vale estalla.",
+"lang": "es",
+"role": "pbp",
+"text": "La afición del Harbour Vale estalla.",
+"file": "booth/es/631a9e68bbef.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Le toca reanudar a el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Le toca reanudar a el Calderholt.",
+"file": "booth/es/5c223bbeddcf.mp3",
+"duration_s": 2.003,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Le toca reanudar a el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Le toca reanudar a el Harbour Vale.",
+"file": "booth/es/317e410c0b02.mp3",
+"duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Lindqvist!",
 "lang": "es",
 "role": "pbp",
@@ -2257,6 +3571,60 @@
 "text": "Lisowski...",
 "file": "booth/es/c6ca30e7f2fb.mp3",
 "duration_s": 0.875,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Locura en el banquillo del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Locura en el banquillo del Calderholt.",
+"file": "booth/es/eeffd72a79f3.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Locura en el banquillo del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Locura en el banquillo del Harbour Vale.",
+"file": "booth/es/0469f08ff667.mp3",
+"duration_s": 2.243,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Maneja el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Maneja el Calderholt.",
+"file": "booth/es/b01be7e4beb2.mp3",
+"duration_s": 1.379,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Maneja el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Maneja el Harbour Vale.",
+"file": "booth/es/7b8fa9f93427.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Momento importante para el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Momento importante para el Calderholt.",
+"file": "booth/es/4c835d6a7991.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Momento importante para el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Momento importante para el Harbour Vale.",
+"file": "booth/es/efd2a9af0105.mp3",
+"duration_s": 2.291,
 "voice": "ef_dora"
 },
 {
@@ -2476,6 +3844,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Paciencia del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Paciencia del Calderholt.",
+"file": "booth/es/633970cfea8d.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Paciencia del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Paciencia del Harbour Vale.",
+"file": "booth/es/e753af5ae840.mp3",
+"duration_s": 1.667,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Pavic!",
 "lang": "es",
 "role": "pbp",
@@ -2500,6 +3886,42 @@
 "text": "Pavic...",
 "file": "booth/es/c4bf62050da2.mp3",
 "duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pone el balón en juego el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Pone el balón en juego el Calderholt.",
+"file": "booth/es/d6e50dbce539.mp3",
+"duration_s": 2.171,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pone el balón en juego el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Pone el balón en juego el Harbour Vale.",
+"file": "booth/es/8a7c8ac2230b.mp3",
+"duration_s": 2.315,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Posesión del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Posesión del Calderholt.",
+"file": "booth/es/bd3de6be96ea.mp3",
+"duration_s": 1.523,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Posesión del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Posesión del Harbour Vale.",
+"file": "booth/es/57c5f8290cd6.mp3",
+"duration_s": 1.667,
 "voice": "ef_dora"
 },
 {
@@ -2530,6 +3952,60 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Qué fiesta para el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Qué fiesta para el Calderholt.",
+"file": "booth/es/e20d2f23988f.mp3",
+"duration_s": 1.667,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Qué fiesta para el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Qué fiesta para el Harbour Vale.",
+"file": "booth/es/53eed7323733.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el Calderholt.",
+"file": "booth/es/2804bfa355dd.mp3",
+"duration_s": 1.427,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el Harbour Vale.",
+"file": "booth/es/25b0b6d1fb25.mp3",
+"duration_s": 1.643,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanudación para el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanudación para el Calderholt.",
+"file": "booth/es/712a1431a8c2.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanudación para el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanudación para el Harbour Vale.",
+"file": "booth/es/d2be0f0f73f1.mp3",
+"duration_s": 1.907,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Rinaldi!",
 "lang": "es",
 "role": "pbp",
@@ -2554,6 +4030,60 @@
 "text": "Rinaldi...",
 "file": "booth/es/25ef4522a759.mp3",
 "duration_s": 0.755,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Saca el Calderholt de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "Saca el Calderholt de centro.",
+"file": "booth/es/608a50689253.mp3",
+"duration_s": 1.715,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Saca el Harbour Vale de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "Saca el Harbour Vale de centro.",
+"file": "booth/es/7614561920c6.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se espera a el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Se espera a el Calderholt.",
+"file": "booth/es/31a978e5b619.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se espera a el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Se espera a el Harbour Vale.",
+"file": "booth/es/3f736d29456a.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sin prisa el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Sin prisa el Calderholt.",
+"file": "booth/es/2ccddcdb0cde.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sin prisa el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Sin prisa el Harbour Vale.",
+"file": "booth/es/f7da740a9e1c.mp3",
+"duration_s": 1.763,
 "voice": "ef_dora"
 },
 {
@@ -2665,6 +4195,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Toca el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Toca el Calderholt.",
+"file": "booth/es/aff08efa8a52.mp3",
+"duration_s": 1.187,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Toca el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Toca el Harbour Vale.",
+"file": "booth/es/dcb54d7c99a0.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Todos en posición, saca el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Todos en posición, saca el Calderholt.",
+"file": "booth/es/dc33818d8627.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Todos en posición, saca el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Todos en posición, saca el Harbour Vale.",
+"file": "booth/es/e4a7cebd440a.mp3",
+"duration_s": 2.315,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Vasquez!",
 "lang": "es",
 "role": "pbp",
@@ -2716,6 +4282,60 @@
 "text": "Vellacott...",
 "file": "booth/es/d774b5d0f39d.mp3",
 "duration_s": 0.923,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelta al centro del campo, sacará el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelta al centro del campo, sacará el Calderholt.",
+"file": "booth/es/412e66c4a45f.mp3",
+"duration_s": 2.747,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelta al centro del campo, sacará el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelta al centro del campo, sacará el Harbour Vale.",
+"file": "booth/es/ce3e2444366a.mp3",
+"duration_s": 2.867,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a empezar el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a empezar el Calderholt.",
+"file": "booth/es/fb1ae3e85181.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a empezar el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a empezar el Harbour Vale.",
+"file": "booth/es/2e10bf6786ec.mp3",
+"duration_s": 1.955,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a ponerse en marcha el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a ponerse en marcha el Calderholt.",
+"file": "booth/es/b1555ff26d4a.mp3",
+"duration_s": 2.267,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a ponerse en marcha el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a ponerse en marcha el Harbour Vale.",
+"file": "booth/es/42dcf85a619a.mp3",
+"duration_s": 2.435,
 "voice": "ef_dora"
 },
 {
@@ -3070,6 +4690,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Abbracci in casa del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Abbracci in casa del Calderholt.",
+"file": "booth/it/a11ac5baf843.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Abbracci in casa dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Abbracci in casa dell'Harbour Vale.",
+"file": "booth/it/096324557b58.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Achterberg!",
 "lang": "it",
 "role": "pbp",
@@ -3268,6 +4906,96 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Che festa per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Che festa per il Calderholt.",
+"file": "booth/it/7760026bc667.mp3",
+"duration_s": 1.715,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Che festa per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Che festa per l'Harbour Vale.",
+"file": "booth/it/11fe524dc3fa.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Con pazienza il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Con pazienza il Calderholt.",
+"file": "booth/it/769bf34bf0d6.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Con pazienza l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Con pazienza l'Harbour Vale.",
+"file": "booth/it/31371243927a.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esplode la gioia del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Esplode la gioia del Calderholt.",
+"file": "booth/it/270d996cf0b4.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esplode la gioia dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Esplode la gioia dell'Harbour Vale.",
+"file": "booth/it/24f7c716a4f9.mp3",
+"duration_s": 2.123,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esulta il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Esulta il Calderholt.",
+"file": "booth/it/774fa633ec1b.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esulta l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Esulta l'Harbour Vale.",
+"file": "booth/it/baeebf23a99a.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Festeggia il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Festeggia il Calderholt.",
+"file": "booth/it/6806b8eb5a52.mp3",
+"duration_s": 1.619,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Festeggia l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Festeggia l'Harbour Vale.",
+"file": "booth/it/f4796b45b19f.mp3",
+"duration_s": 1.667,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Fontaine!",
 "lang": "it",
 "role": "pbp",
@@ -3295,6 +5023,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Fraseggio del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Fraseggio del Calderholt.",
+"file": "booth/it/90abf2cbd0aa.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Fraseggio dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Fraseggio dell'Harbour Vale.",
+"file": "booth/it/8283004ea0a7.mp3",
+"duration_s": 1.835,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Galvan!",
 "lang": "it",
 "role": "pbp",
@@ -3319,6 +5065,60 @@
 "text": "Galvan...",
 "file": "booth/it/d50443f94a7d.mp3",
 "duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Gestisce il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Gestisce il Calderholt.",
+"file": "booth/it/55b914f8f8a8.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Gestisce l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Gestisce l'Harbour Vale.",
+"file": "booth/it/223f633955e7.mp3",
+"duration_s": 1.715,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Giro palla del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Giro palla del Calderholt.",
+"file": "booth/it/94b71276e36f.mp3",
+"duration_s": 1.715,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Giro palla dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Giro palla dell'Harbour Vale.",
+"file": "booth/it/8fc67b95acbf.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Grande gioia per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Grande gioia per il Calderholt.",
+"file": "booth/it/de978b6038c5.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Grande gioia per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Grande gioia per l'Harbour Vale.",
+"file": "booth/it/12c6ae56cd02.mp3",
+"duration_s": 2.027,
 "voice": "if_sara"
 },
 {
@@ -3403,12 +5203,48 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|I tifosi del Calderholt esplodono.",
+"lang": "it",
+"role": "pbp",
+"text": "I tifosi del Calderholt esplodono.",
+"file": "booth/it/41702bda9b0c.mp3",
+"duration_s": 2.243,
+"voice": "if_sara"
+},
+{
+"key": "pbp|I tifosi dell'Harbour Vale esplodono.",
+"lang": "it",
+"role": "pbp",
+"text": "I tifosi dell'Harbour Vale esplodono.",
+"file": "booth/it/9872c00ec5b9.mp3",
+"duration_s": 2.411,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt aspetta di battere a centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt aspetta di battere a centrocampo.",
+"file": "booth/it/aab57c244286.mp3",
+"duration_s": 2.723,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Calderholt cerca ancora un varco.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Calderholt cerca ancora un varco.",
 "file": "booth/it/2b75b1b16b81.mp3",
 "duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt cerca il varco.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt cerca il varco.",
+"file": "booth/it/ddc069178b3a.mp3",
+"duration_s": 1.955,
 "voice": "if_sara"
 },
 {
@@ -3421,6 +5257,33 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Calderholt costruisce con calma.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt costruisce con calma.",
+"file": "booth/it/79827b5a97f1.mp3",
+"duration_s": 2.219,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt deve ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt deve ripartire.",
+"file": "booth/it/54f037119ddb.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt fa girare il pallone.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt fa girare il pallone.",
+"file": "booth/it/8f3eb5f35bd3.mp3",
+"duration_s": 2.123,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Calderholt ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -3430,12 +5293,75 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Calderholt manovra.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt manovra.",
+"file": "booth/it/961f099aef90.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt pronto a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt pronto a ripartire.",
+"file": "booth/it/82f4332b3d71.mp3",
+"duration_s": 2.075,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt prova a ricompattarsi.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt prova a ricompattarsi.",
+"file": "booth/it/0dfb048a6809.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Calderholt sembra cambiato.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Calderholt sembra cambiato.",
 "file": "booth/it/cc13aed612c8.mp3",
 "duration_s": 1.931,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt si prende il suo tempo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt si prende il suo tempo.",
+"file": "booth/it/6e41992f2ecb.mp3",
+"duration_s": 2.219,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt si prepara a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt si prepara a ripartire.",
+"file": "booth/it/531d32d8cc71.mp3",
+"duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt si riorganizza per la ripresa.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt si riorganizza per la ripresa.",
+"file": "booth/it/1e886b83b42d.mp3",
+"duration_s": 2.579,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Calderholt tiene palla.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt tiene palla.",
+"file": "booth/it/9d3097345f74.mp3",
+"duration_s": 1.739,
 "voice": "if_sara"
 },
 {
@@ -3466,12 +5392,30 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Harbour Vale aspetta di battere a centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale aspetta di battere a centrocampo.",
+"file": "booth/it/e0431e1ed6d1.mp3",
+"duration_s": 2.747,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Harbour Vale cerca ancora un varco.",
 "lang": "it",
 "role": "pbp",
 "text": "L'Harbour Vale cerca ancora un varco.",
 "file": "booth/it/5397f347bd06.mp3",
 "duration_s": 2.315,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale cerca il varco.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale cerca il varco.",
+"file": "booth/it/0a6118ffd696.mp3",
+"duration_s": 2.027,
 "voice": "if_sara"
 },
 {
@@ -3484,6 +5428,33 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Harbour Vale costruisce con calma.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale costruisce con calma.",
+"file": "booth/it/47448ce94086.mp3",
+"duration_s": 2.315,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale deve ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale deve ripartire.",
+"file": "booth/it/73eb9dc2b9a4.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale fa girare il pallone.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale fa girare il pallone.",
+"file": "booth/it/6f9195b50da7.mp3",
+"duration_s": 2.219,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Harbour Vale ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -3493,12 +5464,111 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Harbour Vale manovra.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale manovra.",
+"file": "booth/it/37c2e599c3f8.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale pronto a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale pronto a ripartire.",
+"file": "booth/it/99224bff7a9c.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale prova a ricompattarsi.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale prova a ricompattarsi.",
+"file": "booth/it/e0c719534485.mp3",
+"duration_s": 2.411,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Harbour Vale sembra cambiato.",
 "lang": "it",
 "role": "pbp",
 "text": "L'Harbour Vale sembra cambiato.",
 "file": "booth/it/72dec080933c.mp3",
 "duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale si prende il suo tempo.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale si prende il suo tempo.",
+"file": "booth/it/261af1218dad.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale si prepara a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale si prepara a ripartire.",
+"file": "booth/it/0de7471e2664.mp3",
+"duration_s": 2.387,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale si riorganizza per la ripresa.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale si riorganizza per la ripresa.",
+"file": "booth/it/584a35b56d08.mp3",
+"duration_s": 2.699,
+"voice": "if_sara"
+},
+{
+"key": "pbp|L'Harbour Vale tiene palla.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale tiene palla.",
+"file": "booth/it/e0ddfcfeaa52.mp3",
+"duration_s": 1.859,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La panchina del Calderholt è in piedi.",
+"lang": "it",
+"role": "pbp",
+"text": "La panchina del Calderholt è in piedi.",
+"file": "booth/it/0598ba0bf49f.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La panchina dell'Harbour Vale è in piedi.",
+"lang": "it",
+"role": "pbp",
+"text": "La panchina dell'Harbour Vale è in piedi.",
+"file": "booth/it/2d3f0fe36efc.mp3",
+"duration_s": 2.411,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La rimessa è del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "La rimessa è del Calderholt.",
+"file": "booth/it/efa01d92175b.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La rimessa è dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "La rimessa è dell'Harbour Vale.",
+"file": "booth/it/53d921e75de7.mp3",
+"duration_s": 1.979,
 "voice": "if_sara"
 },
 {
@@ -3574,6 +5644,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Momento importante per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Momento importante per il Calderholt.",
+"file": "booth/it/ea55629f131a.mp3",
+"duration_s": 2.243,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Momento importante per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Momento importante per l'Harbour Vale.",
+"file": "booth/it/e7304d74f4c2.mp3",
+"duration_s": 2.363,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Morales!",
 "lang": "it",
 "role": "pbp",
@@ -3625,6 +5713,24 @@
 "text": "Moreau...",
 "file": "booth/it/34546621d7d2.mp3",
 "duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nessuna fretta per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Nessuna fretta per il Calderholt.",
+"file": "booth/it/8301d7e3ac40.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nessuna fretta per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Nessuna fretta per l'Harbour Vale.",
+"file": "booth/it/f18f1c141bc5.mp3",
+"duration_s": 2.123,
 "voice": "if_sara"
 },
 {
@@ -3763,6 +5869,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Ora serve una reazione del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Ora serve una reazione del Calderholt.",
+"file": "booth/it/4e5d365170bc.mp3",
+"duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ora serve una reazione dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Ora serve una reazione dell'Harbour Vale.",
+"file": "booth/it/4040bdef23f0.mp3",
+"duration_s": 2.483,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Orvanelli!",
 "lang": "it",
 "role": "pbp",
@@ -3787,6 +5911,42 @@
 "text": "Orvanelli...",
 "file": "booth/it/a4050bfda91a.mp3",
 "duration_s": 1.067,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Palla al centro, batte il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Palla al centro, batte il Calderholt.",
+"file": "booth/it/cf15fdec5fa4.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Palla al centro, batte l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Palla al centro, batte l'Harbour Vale.",
+"file": "booth/it/f07828253b1d.mp3",
+"duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pallone del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Pallone del Calderholt.",
+"file": "booth/it/a1b2b8d7eb64.mp3",
+"duration_s": 1.619,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pallone dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Pallone dell'Harbour Vale.",
+"file": "booth/it/9871f7fc3ae1.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
@@ -3817,6 +5977,42 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Possesso del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Possesso del Calderholt.",
+"file": "booth/it/a9ac4110655c.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Possesso dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Possesso dell'Harbour Vale.",
+"file": "booth/it/451bfe980747.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Prova a manovrare il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Prova a manovrare il Calderholt.",
+"file": "booth/it/ed84d7d734b2.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Prova a manovrare l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Prova a manovrare l'Harbour Vale.",
+"file": "booth/it/b8a73fde80b6.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Quintero!",
 "lang": "it",
 "role": "pbp",
@@ -3844,6 +6040,78 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Ricicla il pallone il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricicla il pallone il Calderholt.",
+"file": "booth/it/fae5ee162e5c.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricicla il pallone l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricicla il pallone l'Harbour Vale.",
+"file": "booth/it/984ad4c27bad.mp3",
+"duration_s": 2.147,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricomincia il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricomincia il Calderholt.",
+"file": "booth/it/d864692dc868.mp3",
+"duration_s": 1.691,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricomincia l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricomincia l'Harbour Vale.",
+"file": "booth/it/ee25eb0e0889.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in gioco il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in gioco il Calderholt.",
+"file": "booth/it/80d537692de1.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in gioco l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in gioco l'Harbour Vale.",
+"file": "booth/it/cec94725b052.mp3",
+"duration_s": 2.075,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in moto il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in moto il Calderholt.",
+"file": "booth/it/487004e48f0b.mp3",
+"duration_s": 1.931,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in moto l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in moto l'Harbour Vale.",
+"file": "booth/it/e1bdc9cea4c1.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Rinaldi!",
 "lang": "it",
 "role": "pbp",
@@ -3868,6 +6136,96 @@
 "text": "Rinaldi...",
 "file": "booth/it/bb57cf6554b8.mp3",
 "duration_s": 0.875,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Calderholt da centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Calderholt da centrocampo.",
+"file": "booth/it/28a0a326fc10.mp3",
+"duration_s": 2.387,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Calderholt.",
+"file": "booth/it/ec1c2f3c2f86.mp3",
+"duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte l'Harbour Vale da centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte l'Harbour Vale da centrocampo.",
+"file": "booth/it/8ff3d3e9e252.mp3",
+"duration_s": 2.411,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte l'Harbour Vale.",
+"file": "booth/it/ba865d4286b0.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ripresa per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Ripresa per il Calderholt.",
+"file": "booth/it/c06fa5843271.mp3",
+"duration_s": 1.715,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ripresa per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Ripresa per l'Harbour Vale.",
+"file": "booth/it/9c37a89188ba.mp3",
+"duration_s": 1.835,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si aspetta il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Si aspetta il Calderholt.",
+"file": "booth/it/a5998e5ff7bb.mp3",
+"duration_s": 1.667,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si aspetta l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Si aspetta l'Harbour Vale.",
+"file": "booth/it/acc1d450ea70.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si torna a centrocampo, batterà il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Si torna a centrocampo, batterà il Calderholt.",
+"file": "booth/it/e4a826f06b55.mp3",
+"duration_s": 2.675,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si torna a centrocampo, batterà l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Si torna a centrocampo, batterà l'Harbour Vale.",
+"file": "booth/it/e1e3a0175866.mp3",
+"duration_s": 2.747,
 "voice": "if_sara"
 },
 {
@@ -3994,6 +6352,78 @@
 "text": "Tessaro...",
 "file": "booth/it/347190f9329a.mp3",
 "duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tiene il pallino del gioco il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Tiene il pallino del gioco il Calderholt.",
+"file": "booth/it/70fb149b9617.mp3",
+"duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tiene il pallino del gioco l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Tiene il pallino del gioco l'Harbour Vale.",
+"file": "booth/it/f21e297f231c.mp3",
+"duration_s": 2.459,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tocca ripartire per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Tocca ripartire per il Calderholt.",
+"file": "booth/it/265e363c4fa6.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tocca ripartire per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Tocca ripartire per l'Harbour Vale.",
+"file": "booth/it/521d5b62d83e.mp3",
+"duration_s": 2.147,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti ad abbracciarsi, festa del Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti ad abbracciarsi, festa del Calderholt.",
+"file": "booth/it/314bd1786fbc.mp3",
+"duration_s": 2.435,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti ad abbracciarsi, festa dell'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti ad abbracciarsi, festa dell'Harbour Vale.",
+"file": "booth/it/4597a54ba31c.mp3",
+"duration_s": 2.603,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti in posizione, riparte il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti in posizione, riparte il Calderholt.",
+"file": "booth/it/dd1045ddca52.mp3",
+"duration_s": 2.459,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti in posizione, riparte l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti in posizione, riparte l'Harbour Vale.",
+"file": "booth/it/e461416bd420.mp3",
+"duration_s": 2.603,
 "voice": "if_sara"
 },
 {
