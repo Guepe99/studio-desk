@@ -30,7 +30,7 @@ body { display: flex; }
 /* the head in one line, "Control desk · AI graphics on · 2 waiting", the tabs under it */
 .desk-head { padding: 6px 12px 0; background: var(--purple); color: var(--page); }
 .desk-head :focus-visible { outline-color: var(--green); }
-.desk-title { display: flex; align-items: center; gap: 6px 8px; min-height: 32px; }
+.desk-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 32px; }
 .desk-title h2 { margin: 0; font-size: 18px; font-weight: 800; white-space: nowrap; }
 .desk-title > .switch::before, .desk-sum:not(:empty)::before { content: "·"; margin-right: 8px; color: var(--lilac-100); font-weight: 800; }
 #desk-close { margin-left: auto; color: var(--page); background: var(--purple); border-color: var(--page); }

@@ -416,7 +416,8 @@ async function scenario(browser, w, h) {
   await settled(page);
   expect((await onAirAt(page, HELD)) !== null, `${tag}: AI back on but ${HELD.story_id} not on air`);
 
-  // 8. traces from a story's Details
+  // 8. traces from a story's Details (its Done row: on a phone the On air now strip has no Details)
+  await seekTo(page, ALL);
   await openDesk();
   // Details stays open from step 2: the desk keeps it open across renders
   if (!(await page.$eval(`${card(HELD)} .more`, (d) => d.open))) await page.click(`${card(HELD)} .more > summary`);
@@ -539,10 +540,11 @@ async function edges(browser) {
   const t0 = Date.now();
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
+  const t1 = Date.now(); // page load alone can pass 4 s under load: time the replay from here
   await page.evaluate(() => window.studioDesk.setPlaying(true));
   await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
   const hang = await page.evaluate(() => [window.studioDesk.state.ts, window.studioDesk.desk.online]);
-  expect(hang[0] > 0.5 && !hang[1] && Date.now() - t0 < 4000, `edges: the replay waits for a hanging API (ts ${hang[0]}, online ${hang[1]}, ${Date.now() - t0} ms)`);
+  expect(hang[0] > 0.5 && !hang[1] && Date.now() - t1 < 3000, `edges: the replay waits for a hanging API (ts ${hang[0]}, online ${hang[1]}, ${Date.now() - t1} ms)`);
   await seekTo(page, firstCue(cues, HELD.story_id) + 2);
   // until the desk knows this visitor's decisions, nothing can be pressed
   expect(await page.$eval("#ai-switch", (el) => el.disabled) && await page.$eval(`${card(HELD)} .act-approved`, (el) => el.disabled),

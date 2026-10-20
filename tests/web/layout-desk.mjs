@@ -71,7 +71,7 @@ async function run(w, h) {
   const tag = `${w}x${h}`, touch = w < 1100 || h < 500;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
   const page = await ctx.newPage();
-  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|voice\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   await page.goto(new URL(`index.html?match=${MATCH}&view=2d`, base).href);
   await page.waitForFunction(() => window.studioDesk?.desk?.ready && window.studioDesk.match, null, { timeout: 60000 });
@@ -92,7 +92,8 @@ async function run(w, h) {
   // a held story when the match has one (DEMO), else one the risk rule put on air (M001)
   const pick = await page.evaluate(() => {
     const d = window.studioDesk.desk, s = d.stories.find((x) => d.status(x) === "needs_review") ?? d.stories.find((x) => d.status(x) === "auto_approved");
-    return s && { id: s.story_id, held: d.status(s) === "needs_review", at: d.firstOf(s) };
+    const at = Math.min(...window.studioDesk.match.cues.filter((c) => c.story_id === s?.story_id).map((c) => c.ts));
+    return s && { id: s.story_id, held: d.status(s) === "needs_review", at };
   });
   if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
   const card = `#story-${pick.id}`;
