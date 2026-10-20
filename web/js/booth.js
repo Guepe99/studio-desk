@@ -25,9 +25,12 @@ export const RULES = {
   coCooldownLow: 15,    // the same while the co is under its share
   coStoppageP: 0.7,     // C2 [LF]
   coShare: [0.23, 0.27], // C1: the co's share of the booth's speech it steers to
-  midPassP: 0.5,        // a pass into the other half is called this often, when the booth is free
   stoppageS: 15,
   lullS: 8,
+  fillS: 3.5,           // silence before the booth fills it: in play it is never silent over 6 s (quietS)
+  quietS: 6,
+  kickoffWaitS: 45,     // after a goal, the talk turns to the kick-off this long after the goal
+  deadS: 8,             // no event for this long: the ball is dead
   chainMax: 3,          // A4: names in a row, then a pause
   chainPause: 2,
   join: 0.06,           // between the clips of one sentence
@@ -110,13 +113,14 @@ export class Booth {
     this.blockFrom = Infinity; this.blockUntil = -1; this.needFresh = false;
     this.holdUntil = -1;
     this.said = new Map();     // name id -> last time said
-    this.lastVariant = new Map();
+    this.recent = new Map();     // `${role}|${kind}` -> the variants used last, newest first
     this.pending = [];         // follow-ups: {at, until, run(now)}
     this.coNext = 60;
     this.stoppage = -1e9; this.lastAB = 0;
     this.last = null;          // last event
     this.chain = 0; this.chainUntil = -1;
-    this.period = 0;
+    this.period = 0; this.inBreak = false;
+    this.goalEvent = null;
     this.anticipation = null;
     this.used = new Set();     // fact ids the co already cited
     this.missing = new Set();  // clip keys a line wanted and the manifests lack
@@ -217,7 +221,10 @@ export class Booth {
       if (r && !r.names.some((n) => PEOPLE.has(this.slotOf(slots, n)) && t - (this.said.get(n) ?? -1e9) < RULES.nameS)) ok.push([i, r]);
     });
     if (!ok.length) return null;
-    const fresh = vs.length > 1 ? ok.filter(([i]) => i !== this.lastVariant.get(`${role}|${kind}`)) : ok;
+    // never the last variant; of a kind said often (the fill-in lines), not one of the last few either
+    const recent = this.recent.get(`${role}|${kind}`) ?? [];
+    const rested = ok.filter(([i]) => !recent.slice(0, Math.max(1, Math.min(4, Math.floor(vs.length / 3)))).includes(i));
+    const fresh = vs.length < 2 ? ok : rested.length ? rested : ok.filter(([i]) => i !== recent[0]);
     if (!fresh.length) return null;
     const [i, r] = fresh[Math.floor(this.rand() * fresh.length)];
     return { ...r, variant: i }; // remembered once the line is really planned (emit)
@@ -230,7 +237,7 @@ export class Booth {
   /** When `role` may start at or after t0: its own gap, a handover after the other voice. */
   earliest(role, t0, prio) {
     const other = role === "pbp" ? "co" : "pbp";
-    const own = this.end[role] + (prio === "A" ? RULES.gapMin : this.gap[role]);
+    const own = this.end[role] + (prio === "C" ? this.gap[role] : RULES.gapMin);
     const [h0, h1] = RULES.handover;
     return Math.max(t0, own, this.end[other] + (h0 + h1) / 2);
   }
@@ -248,6 +255,8 @@ export class Booth {
     const wait = prio === "A" ? RULES.waitA : prio === "B" ? RULES.waitB : 0.25;
     const start = () => Math.ceil((opts.at ?? this.earliest(role, t0, prio)) * 100 - 1e-6) / 100; // plan times are in 10 ms
     let t = start();
+    // a fill-in line gives way to anything that is not open play
+    if (t - t0 > wait && prio !== "C" && opts.at === undefined) { this.cutFill(t0); t = start(); }
     // a priority call that would come too late cuts the play-by-play's own line instead (a card during a pass call)
     if (t - t0 > wait && opts.cut && role === "pbp" && opts.at === undefined) { this.cut("pbp", t0); t = start(); }
     if (t - t0 > wait && opts.at === undefined) return null;
@@ -257,7 +266,8 @@ export class Booth {
 
   emit(item, role) {
     const { names, factIds, variant, ...rest } = item;
-    this.lastVariant.set(`${role}|${item.kind}`, variant);
+    const k = `${role}|${item.kind}`;
+    this.recent.set(k, [variant, ...(this.recent.get(k) ?? [])].slice(0, 4));
     const out = { ...rest, fact_ids: factIds, names };
     this.plan.push(out);
     this.out.push(out);
@@ -285,6 +295,15 @@ export class Booth {
   cutCo(t) {
     this.cut("co", t);
     this.pending = this.pending.filter((p) => p.role !== "co");
+  }
+
+  cutFill(t) {
+    for (const it of this.plan) {
+      if (it.fill && it.t + it.dur > t && (it.until ?? Infinity) > t) {
+        it.until = Math.max(it.t, Math.round(t * 100) / 100);
+        this.end[it.voice] = it.until;
+      }
+    }
   }
 
   cut(voice, t) {
@@ -330,6 +349,7 @@ export class Booth {
     this.crowd("whistle", t);
     if (this.anticipation) { this.anticipation.until = t; this.anticipation = null; }
     const full = period === 2;
+    this.inBreak = true;
     this.say("pbp", [full ? "full_time" : "half_time"], {}, t + RULES.react, "A");
     // the break exchange (C, exchange 11) waits for the studio recap, if one plays
     const run = (now) => {
@@ -361,6 +381,7 @@ export class Booth {
     const t = e.ts, type = e.type_name, res = e.result_name;
     if (e.period !== this.period) {
       this.period = e.period;
+      this.inBreak = false;
       this.crowd("whistle", t);
       this.say("pbp", [e.period === 1 ? "kickoff" : "kickoff2"], { team: this.home, team2: this.other[this.home] },
         Math.max(t + RULES.react, this.breakUntil ?? 0), "A", { at: Math.max(t + RULES.react, (this.breakUntil ?? 0) + 0.5) });
@@ -465,6 +486,7 @@ export class Booth {
   goal(e, slots, at, dist) {
     const t = e.ts;
     if (this.anticipation) { this.anticipation.until = t; this.anticipation = null; }
+    this.goalEvent = e;
     this.crowd("roar", t);
     const call = this.say("pbp", ["goal", "goal_noname"], slots, at, "A", { cut: true });
     this.holdUntil = (call?.t ?? t) + RULES.hold[0] + (RULES.hold[1] - RULES.hold[0]) * this.rand();
@@ -494,7 +516,7 @@ export class Booth {
       if (p) this.later(t + 1, t + RULES.stoppageS, "co", (now) => this.say("co", ["yellow_card"], {}, now, "B"));
       return;
     }
-    this.say("pbp", ["foul", "foul_noname"], slots, at, "B");
+    this.say("pbp", ["foul", "foul_noname"], { ...slots, team: this.other[e.team_id] }, at, "B"); // the free kick's team
   }
 
   open(e, slots, at) {
@@ -504,9 +526,9 @@ export class Booth {
     if (type === "pass" && res === "success" && e.related_player_id) {
       const dist = this.eventFact(e, "pass_distance");
       const long = dist && dist.value >= RULES.longPassM;
-      const counter = this.last?.type_name === "interception" && this.last.team_id === e.team_id && t - this.last.ts < 5;
-      const ahead = this.inOppHalf({ ...e, start_x: e.end_x }) && this.rand() < RULES.midPassP;
-      if (this.inFinalThird(e) || long || counter || ahead) kinds = long ? ["pass_long", "pass"] : ["pass"];
+      const back = this.attacksUp(e.team_id) ? e.end_x < e.start_x - 8 : e.end_x > e.start_x + 8;
+      // every pass names its receiver, own half included (the owner's rule over A4's final third)
+      kinds = long ? ["pass_long", "pass"] : back ? ["back_pass", "pass"] : ["pass"];
     } else if (type === "take_on") kinds = [res === "success" ? "take_on" : "take_on_fail"];
     else if (type === "interception" || type === "tackle") {
       const press = this.latest.get(`press_intensity|${e.team_id}`);
@@ -539,6 +561,11 @@ export class Booth {
       this.pending.splice(this.pending.indexOf(p), 1);
       if (p.run(t)) return;
     }
+    this.coTurn(t);
+    if (!this.out.some((it) => it.voice !== "crowd")) this.fill(t);
+  }
+
+  coTurn(t) {
     // C1: the co's share of the speech steers how often it comes in on its own
     const share = this.sec.co / Math.max(1, this.sec.pbp + this.sec.co);
     const low = share < RULES.coShare[0], high = share > RULES.coShare[1];
@@ -590,6 +617,64 @@ export class Booth {
     }
     return false;
   }
+
+  /** Who has the ball after event e, as far as the booth can tell: [team, player or null]. */
+  holder(e) {
+    if (e.result_name === "fail" || e.result_name === "offside") return [this.other[e.team_id], null];
+    return [e.team_id, e.type_name === "pass" ? e.related_player_id : e.player_id];
+  }
+
+  /** The owner's rule over A6: outside the goal hold, a studio clip and the breaks, the booth is never silent over
+   * 6 s. In play a possession or build-up line, or a co opinion; in a dead ball the restart, a pause line or the co;
+   * after a goal the celebration, then the kick-off. The co comes in while it is under its share (C3), never in the
+   * final third (C2). */
+  fill(t) {
+    const e = this.last;
+    if (!e || !this.period || this.inBreak || t < this.blockUntil || t < this.holdUntil) return;
+    if (t - Math.max(this.end.pbp, this.end.co) < RULES.fillS) return;
+    const since = t - e.ts, at = { at: t };
+    const share = this.sec.co / Math.max(1, this.sec.pbp + this.sec.co);
+    const coBarred = this.inFinalThird(e) && since < 6;
+    // the kinds in a random order, the one this voice filled with last at the end: no kind twice in a row
+    const order = (role, kinds) => {
+      const ks = kinds.map((k) => [k, this.rand()]).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+      return [...ks.filter((k) => k !== this.lastFill?.[role]), ...ks.filter((k) => k === this.lastFill?.[role])];
+    };
+    const say = (role, kinds, slots) => {
+      const r = this.say(role, order(role, kinds), slots, t, "C", at);
+      if (r) { (this.lastFill ??= {})[role] = r.kind; r.fill = true; }
+      return r;
+    };
+    let pbp, co;
+    if (e === this.goalEvent) {
+      const late = since > RULES.kickoffWaitS;
+      pbp = () => say("pbp", [late ? "kickoff_wait" : "celebrate", "stoppage"], { team: late ? this.other[e.team_id] : e.team_id });
+      co = () => say("co", ["goal_opinion", "lull"], {});
+    } else if (this.dead(e, since)) {
+      // whoever did not touch it last restarts (a throw-in, a goal kick, a free kick, a corner): said first
+      const first = this.restartFor !== e;
+      pbp = () => {
+        const r = say("pbp", first ? ["restart"] : ["stoppage", "restart"], { team: this.other[e.team_id] });
+        if (r) this.restartFor = e;
+        return r;
+      };
+      co = () => this.lull(t) || say("co", ["lull", "stoppage"], {});
+    } else {
+      const [team, player] = this.holder(e);
+      pbp = () => say("pbp", ["build_up", "possession"], { team, player });
+      co = () => this.lull(t) || say("co", ["lull"], {});
+    }
+    const coSafe = () => (coBarred ? null : co());
+    const r = share < (RULES.coShare[0] + RULES.coShare[1]) / 2 ? coSafe() || pbp() : pbp() || coSafe();
+    if (r) this.needFresh = false;
+  }
+
+  /** The ball is out of play after e: a foul, an offside, a shot or a save that ends play, a ball that ends off the
+   * pitch, or nothing has happened for deadS. */
+  dead(e, since) {
+    const off = e.end_x !== null && e.end_x !== undefined && (e.end_x <= 0.5 || e.end_x >= 104.5 || e.end_y <= 0.5 || e.end_y >= 67.5);
+    return since > RULES.deadS || off || this.stoppage === e.ts && !e.type_name.startsWith("corner");
+  }
 }
 
 /** The input stream of a replay: facts, events, studio clips, period ends and a tick every second, in time order. */
@@ -618,6 +703,33 @@ export function shares(plan) {
   const sec = { pbp: 0, co: 0 };
   for (const it of plan) if (it.voice !== "crowd") sec[it.voice] += Math.max(0, Math.min(it.t + it.dur, it.until ?? Infinity) - it.t);
   return { ...sec, coShare: sec.co / Math.max(1e-9, sec.pbp + sec.co) };
+}
+
+/** The booth's silences outside the exceptions (before kick-off, the goal hold, a studio clip and its 1.5 s,
+ * half-time, after full-time), longest first: [{from, to}] in match seconds. */
+export function silences(plan, studio, meta) {
+  const sp = plan.filter((it) => it.voice !== "crowd" && (it.until ?? Infinity) > it.t).sort((a, b) => a.t - b.t);
+  const end = (it) => Math.min(it.t + it.dur, it.until ?? Infinity);
+  const p1 = meta.period1_s, ko2 = sp.find((it) => it.t >= p1 && it.kind === "kickoff2")?.t ?? p1;
+  const ex = [[-Infinity, sp[0]?.t ?? Infinity], [p1, ko2], [p1 + meta.period2_s, Infinity],
+    ...studio.map((s) => [s.ts, s.ts + s.d + RULES.studioAfter]),
+    ...sp.filter((it) => it.voice === "pbp" && it.kind.startsWith("goal")).map((g) => [g.t, g.t + RULES.hold[1]])]
+    .sort((a, b) => a[0] - b[0]);
+  const out = [];
+  let reach = -Infinity;
+  for (let i = 0; i <= sp.length; i++) {
+    const a = reach, b = sp[i]?.t ?? Infinity;
+    if (i < sp.length) reach = Math.max(reach, end(sp[i]));
+    if (!(b > a)) continue;
+    let cur = a;
+    for (const [x0, x1] of ex) {
+      if (x1 <= cur || x0 >= b) continue;
+      if (x0 > cur) out.push({ from: cur, to: x0 });
+      cur = Math.max(cur, x1);
+    }
+    if (b > cur) out.push({ from: cur, to: b });
+  }
+  return out.filter((s) => Number.isFinite(s.to - s.from)).sort((x, y) => (y.to - y.from) - (x.to - x.from));
 }
 
 /** The studio inputs for a replay: each voiced why_card once, with its clip's length. */

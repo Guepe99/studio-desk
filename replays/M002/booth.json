@@ -406,12 +406,93 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Back to the centre circle for Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Back to the centre circle for Brightwater.",
+"file": "booth/en/348f54b7a1f0.mp3",
+"duration_s": 2.243,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Back to the centre circle for Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Back to the centre circle for Wrenmouth.",
+"file": "booth/en/6110a65c906a.mp3",
+"duration_s": 2.027,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Big celebrations from Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Big celebrations from Brightwater.",
+"file": "booth/en/b0953290f710.mp3",
+"duration_s": 2.099,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Big celebrations from Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Big celebrations from Wrenmouth.",
+"file": "booth/en/092a1f38aea3.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater are delighted.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater are delighted.",
+"file": "booth/en/35a8979c0f09.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Brightwater are pushing. Dan?",
 "lang": "en",
 "role": "pbp",
 "text": "Brightwater are pushing. Dan?",
 "file": "booth/en/f07b09ea101d.mp3",
 "duration_s": 1.691,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater celebrate.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater celebrate.",
+"file": "booth/en/1a7eff6debb4.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater enjoy that one.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater enjoy that one.",
+"file": "booth/en/4e874007cb17.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater gather themselves for the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater gather themselves for the restart.",
+"file": "booth/en/57d93718300d.mp3",
+"duration_s": 2.315,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater get it going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater get it going again.",
+"file": "booth/en/b396e2f29b01.mp3",
+"duration_s": 1.715,
 "voice": "am_michael"
 },
 {
@@ -424,12 +505,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Brightwater have plenty to cheer.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater have plenty to cheer.",
+"file": "booth/en/2b89d86d2bad.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater have the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater have the ball.",
+"file": "booth/en/b764a9412bbf.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater have the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater have the restart.",
+"file": "booth/en/f7e0b77e1b62.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Brightwater have their goal.",
 "lang": "en",
 "role": "pbp",
 "text": "Brightwater have their goal.",
 "file": "booth/en/654627127af7.mp3",
 "duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater have to reset.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater have to reset.",
+"file": "booth/en/85487fcace62.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater in no hurry.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater in no hurry.",
+"file": "booth/en/4288293be2b1.mp3",
+"duration_s": 1.427,
 "voice": "am_michael"
 },
 {
@@ -442,12 +568,75 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Brightwater keep the ball moving.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater keep the ball moving.",
+"file": "booth/en/44f27e3348c4.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater keeping it.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater keeping it.",
+"file": "booth/en/b50e14bb45ac.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater knocking it about.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater knocking it about.",
+"file": "booth/en/1e6b154c0034.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Brightwater look different now.",
 "lang": "en",
 "role": "pbp",
 "text": "Brightwater look different now.",
 "file": "booth/en/0a0f6072ebfe.mp3",
 "duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater looking for a way through.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater looking for a way through.",
+"file": "booth/en/4e8c64f784cd.mp3",
+"duration_s": 2.027,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater move it across.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater move it across.",
+"file": "booth/en/1ca8833be302.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater must regroup.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater must regroup.",
+"file": "booth/en/d3d0309f587e.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater need a response now.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater need a response now.",
+"file": "booth/en/38649f95a446.mp3",
+"duration_s": 1.739,
 "voice": "am_michael"
 },
 {
@@ -460,6 +649,42 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Brightwater probing.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater probing.",
+"file": "booth/en/1b91371cd8c8.mp3",
+"duration_s": 1.187,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater ready to go again.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater ready to go again.",
+"file": "booth/en/df09baaa49c0.mp3",
+"duration_s": 1.907,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater recycle it.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater recycle it.",
+"file": "booth/en/b9a94ed7f5c8.mp3",
+"duration_s": 1.403,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater set to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater set to restart.",
+"file": "booth/en/5122fbf20ba0.mp3",
+"duration_s": 1.523,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Brightwater still looking for a way in.",
 "lang": "en",
 "role": "pbp",
@@ -469,12 +694,93 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Brightwater take their time over it.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater take their time over it.",
+"file": "booth/en/938e104b847b.mp3",
+"duration_s": 1.907,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater to kick off again.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater to kick off again.",
+"file": "booth/en/b5d839d89512.mp3",
+"duration_s": 1.715,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater to restart.",
+"file": "booth/en/2ab94dfa4813.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater wait to kick off.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater wait to kick off.",
+"file": "booth/en/a311a628629b.mp3",
+"duration_s": 1.691,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater will get us going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater will get us going again.",
+"file": "booth/en/11948b1394e8.mp3",
+"duration_s": 2.027,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater will get us going.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater will get us going.",
+"file": "booth/en/45d1dbd32a36.mp3",
+"duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater will take it.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater will take it.",
+"file": "booth/en/15533c5a9550.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater with the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater with the restart.",
+"file": "booth/en/2163125edf99.mp3",
+"duration_s": 1.523,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Brightwater work it short.",
 "lang": "en",
 "role": "pbp",
 "text": "Brightwater work it short.",
 "file": "booth/en/cc3cd758775a.mp3",
 "duration_s": 1.427,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Brightwater working it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Brightwater working it around.",
+"file": "booth/en/78ac99f83692.mp3",
+"duration_s": 1.667,
 "voice": "am_michael"
 },
 {
@@ -502,6 +808,24 @@
 "text": "Castrovane...",
 "file": "booth/en/1d631f0fbc9b.mp3",
 "duration_s": 0.923,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Composed from Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Composed from Brightwater.",
+"file": "booth/en/d7acf9b6eb66.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Composed from Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Composed from Wrenmouth.",
+"file": "booth/en/65b894903ab6.mp3",
+"duration_s": 1.355,
 "voice": "am_michael"
 },
 {
@@ -802,6 +1126,60 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Huge moment for Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Huge moment for Brightwater.",
+"file": "booth/en/76009b8a0699.mp3",
+"duration_s": 1.595,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Huge moment for Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Huge moment for Wrenmouth.",
+"file": "booth/en/e232fede867e.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|It's Brightwater ball.",
+"lang": "en",
+"role": "pbp",
+"text": "It's Brightwater ball.",
+"file": "booth/en/aa68940d3f7f.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
+"key": "pbp|It's Wrenmouth ball.",
+"lang": "en",
+"role": "pbp",
+"text": "It's Wrenmouth ball.",
+"file": "booth/en/d2065c65ba52.mp3",
+"duration_s": 1.139,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Joy for Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Joy for Brightwater.",
+"file": "booth/en/002fe869d2ec.mp3",
+"duration_s": 1.211,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Joy for Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Joy for Wrenmouth.",
+"file": "booth/en/cb3ce4188cde.mp3",
+"duration_s": 1.115,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Lindqvist!",
 "lang": "en",
 "role": "pbp",
@@ -934,6 +1312,24 @@
 "text": "Moreau...",
 "file": "booth/en/945b52c4fa0e.mp3",
 "duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nice and calm from Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Nice and calm from Brightwater.",
+"file": "booth/en/27756f8eeaa4.mp3",
+"duration_s": 1.763,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Nice and calm from Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Nice and calm from Wrenmouth.",
+"file": "booth/en/fb5f003e41fe.mp3",
+"duration_s": 1.667,
 "voice": "am_michael"
 },
 {
@@ -1072,6 +1468,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Patient from Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Patient from Brightwater.",
+"file": "booth/en/7cc925b0b145.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Patient from Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Patient from Wrenmouth.",
+"file": "booth/en/aaf2d537d01f.mp3",
+"duration_s": 1.211,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Pavic!",
 "lang": "en",
 "role": "pbp",
@@ -1099,6 +1513,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Possession with Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Possession with Brightwater.",
+"file": "booth/en/5e73b762b4f8.mp3",
+"duration_s": 1.427,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Possession with Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Possession with Wrenmouth.",
+"file": "booth/en/4bd082b9424f.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Quintero!",
 "lang": "en",
 "role": "pbp",
@@ -1123,6 +1555,42 @@
 "text": "Quintero...",
 "file": "booth/en/e5b99d86bcbc.mp3",
 "duration_s": 0.875,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart coming, Brightwater to go.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart coming, Brightwater to go.",
+"file": "booth/en/4648e7f447a1.mp3",
+"duration_s": 2.243,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart coming, Wrenmouth to go.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart coming, Wrenmouth to go.",
+"file": "booth/en/e6357dd50755.mp3",
+"duration_s": 2.075,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart for Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart for Brightwater.",
+"file": "booth/en/b69e9c665a82.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Restart for Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Restart for Wrenmouth.",
+"file": "booth/en/b687133cfe98.mp3",
+"duration_s": 1.355,
 "voice": "am_michael"
 },
 {
@@ -1204,6 +1672,60 @@
 "text": "Tessaro...",
 "file": "booth/en/776b3b4afa29.mp3",
 "duration_s": 0.803,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Brightwater bench is up.",
+"lang": "en",
+"role": "pbp",
+"text": "The Brightwater bench is up.",
+"file": "booth/en/990c51958a03.mp3",
+"duration_s": 1.547,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Brightwater fans love that.",
+"lang": "en",
+"role": "pbp",
+"text": "The Brightwater fans love that.",
+"file": "booth/en/432b40e67f18.mp3",
+"duration_s": 1.667,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Brightwater players pile in.",
+"lang": "en",
+"role": "pbp",
+"text": "The Brightwater players pile in.",
+"file": "booth/en/44f001dd09cb.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Wrenmouth bench is up.",
+"lang": "en",
+"role": "pbp",
+"text": "The Wrenmouth bench is up.",
+"file": "booth/en/5a10932a267c.mp3",
+"duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Wrenmouth fans love that.",
+"lang": "en",
+"role": "pbp",
+"text": "The Wrenmouth fans love that.",
+"file": "booth/en/6177b98e1917.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|The Wrenmouth players pile in.",
+"lang": "en",
+"role": "pbp",
+"text": "The Wrenmouth players pile in.",
+"file": "booth/en/bcc3b6199b19.mp3",
+"duration_s": 1.619,
 "voice": "am_michael"
 },
 {
@@ -1306,6 +1828,24 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Waiting on Brightwater.",
+"lang": "en",
+"role": "pbp",
+"text": "Waiting on Brightwater.",
+"file": "booth/en/c67b45c9a339.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Waiting on Wrenmouth.",
+"lang": "en",
+"role": "pbp",
+"text": "Waiting on Wrenmouth.",
+"file": "booth/en/7a46d3caf466.mp3",
+"duration_s": 1.235,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Welcome along. Brightwater against Wrenmouth, and we're under way.",
 "lang": "en",
 "role": "pbp",
@@ -1324,12 +1864,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Wrenmouth are delighted.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth are delighted.",
+"file": "booth/en/762eddbee2fa.mp3",
+"duration_s": 1.355,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Wrenmouth are pushing. Dan?",
 "lang": "en",
 "role": "pbp",
 "text": "Wrenmouth are pushing. Dan?",
 "file": "booth/en/4ce3a6fdcf8f.mp3",
 "duration_s": 1.643,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth celebrate.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth celebrate.",
+"file": "booth/en/f0fc376e35fa.mp3",
+"duration_s": 1.091,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth enjoy that one.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth enjoy that one.",
+"file": "booth/en/05db2d748ebe.mp3",
+"duration_s": 1.595,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth gather themselves for the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth gather themselves for the restart.",
+"file": "booth/en/77440536d64b.mp3",
+"duration_s": 2.195,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth get it going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth get it going again.",
+"file": "booth/en/04761a6a9bf9.mp3",
+"duration_s": 1.595,
 "voice": "am_michael"
 },
 {
@@ -1342,12 +1927,57 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Wrenmouth have plenty to cheer.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth have plenty to cheer.",
+"file": "booth/en/82bbd6644299.mp3",
+"duration_s": 1.619,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth have the ball.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth have the ball.",
+"file": "booth/en/dc966da26295.mp3",
+"duration_s": 1.259,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth have the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth have the restart.",
+"file": "booth/en/0f0326856832.mp3",
+"duration_s": 1.403,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Wrenmouth have their goal.",
 "lang": "en",
 "role": "pbp",
 "text": "Wrenmouth have their goal.",
 "file": "booth/en/cce43506178e.mp3",
 "duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth have to reset.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth have to reset.",
+"file": "booth/en/f440de04841b.mp3",
+"duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth in no hurry.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth in no hurry.",
+"file": "booth/en/cb4325f48f46.mp3",
+"duration_s": 1.307,
 "voice": "am_michael"
 },
 {
@@ -1360,12 +1990,75 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Wrenmouth keep the ball moving.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth keep the ball moving.",
+"file": "booth/en/847dec4f21d9.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth keeping it.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth keeping it.",
+"file": "booth/en/d5640db01762.mp3",
+"duration_s": 1.091,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth knocking it about.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth knocking it about.",
+"file": "booth/en/a197b461c17d.mp3",
+"duration_s": 1.403,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Wrenmouth look different now.",
 "lang": "en",
 "role": "pbp",
 "text": "Wrenmouth look different now.",
 "file": "booth/en/7b7a5553b64c.mp3",
 "duration_s": 1.475,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth looking for a way through.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth looking for a way through.",
+"file": "booth/en/e68838c548a9.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth move it across.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth move it across.",
+"file": "booth/en/454379fbbf52.mp3",
+"duration_s": 1.451,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth must regroup.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth must regroup.",
+"file": "booth/en/a501862f4228.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth need a response now.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth need a response now.",
+"file": "booth/en/70818736e57a.mp3",
+"duration_s": 1.667,
 "voice": "am_michael"
 },
 {
@@ -1378,6 +2071,42 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Wrenmouth probing.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth probing.",
+"file": "booth/en/211fe9d7b4bc.mp3",
+"duration_s": 1.091,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth ready to go again.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth ready to go again.",
+"file": "booth/en/dbf292d77a0a.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth recycle it.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth recycle it.",
+"file": "booth/en/a127214beed8.mp3",
+"duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth set to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth set to restart.",
+"file": "booth/en/a6e152b1411d.mp3",
+"duration_s": 1.355,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Wrenmouth still looking for a way in.",
 "lang": "en",
 "role": "pbp",
@@ -1387,12 +2116,93 @@
 "voice": "am_michael"
 },
 {
+"key": "pbp|Wrenmouth take their time over it.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth take their time over it.",
+"file": "booth/en/5cf8a9447f74.mp3",
+"duration_s": 1.739,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth to kick off again.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth to kick off again.",
+"file": "booth/en/735b74742954.mp3",
+"duration_s": 1.571,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth to restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth to restart.",
+"file": "booth/en/b719a280cae3.mp3",
+"duration_s": 1.331,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth wait to kick off.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth wait to kick off.",
+"file": "booth/en/7e98f7648178.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth will get us going again.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth will get us going again.",
+"file": "booth/en/12c09977aea7.mp3",
+"duration_s": 1.835,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth will get us going.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth will get us going.",
+"file": "booth/en/912b9c1057f5.mp3",
+"duration_s": 1.499,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth will take it.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth will take it.",
+"file": "booth/en/535051fb4d40.mp3",
+"duration_s": 1.163,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth with the restart.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth with the restart.",
+"file": "booth/en/eb9e5aeddd78.mp3",
+"duration_s": 1.379,
+"voice": "am_michael"
+},
+{
 "key": "pbp|Wrenmouth work it short.",
 "lang": "en",
 "role": "pbp",
 "text": "Wrenmouth work it short.",
 "file": "booth/en/b4e675a38d03.mp3",
 "duration_s": 1.283,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Wrenmouth working it around.",
+"lang": "en",
+"role": "pbp",
+"text": "Wrenmouth working it around.",
+"file": "booth/en/98a3d9929120.mp3",
+"duration_s": 1.523,
 "voice": "am_michael"
 },
 {
@@ -1711,6 +2521,24 @@
 "voice": "em_alex"
 },
 {
+"key": "pbp|Abrazos en el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Abrazos en el Brightwater.",
+"file": "booth/es/db56ad1cdf53.mp3",
+"duration_s": 1.571,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Abrazos en el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Abrazos en el Wrenmouth.",
+"file": "booth/es/bf7569c7d7e2.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Achterberg!",
 "lang": "es",
 "role": "pbp",
@@ -1735,6 +2563,24 @@
 "text": "Achterberg...",
 "file": "booth/es/49bd5bc1a51d.mp3",
 "duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahora hace falta una reacción del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora hace falta una reacción del Brightwater.",
+"file": "booth/es/c6aa161f29da.mp3",
+"duration_s": 2.579,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahora hace falta una reacción del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Ahora hace falta una reacción del Wrenmouth.",
+"file": "booth/es/83e7506ece18.mp3",
+"duration_s": 2.843,
 "voice": "ef_dora"
 },
 {
@@ -1771,6 +2617,42 @@
 "text": "Aprieta el Wrenmouth. ¿Andrés?",
 "file": "booth/es/d3ba32cc48cd.mp3",
 "duration_s": 2.219,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón al centro, saca el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón al centro, saca el Brightwater.",
+"file": "booth/es/5388ae0ede7c.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón al centro, saca el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón al centro, saca el Wrenmouth.",
+"file": "booth/es/50d66fba1703.mp3",
+"duration_s": 2.579,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón del Brightwater.",
+"file": "booth/es/8a40a6b98d06.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Balón del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Balón del Wrenmouth.",
+"file": "booth/es/ec14ca3f9df9.mp3",
+"duration_s": 1.715,
 "voice": "ef_dora"
 },
 {
@@ -1852,6 +2734,42 @@
 "text": "Castrovane...",
 "file": "booth/es/37d3dbbe5eab.mp3",
 "duration_s": 0.851,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Celebra el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Celebra el Brightwater.",
+"file": "booth/es/394fef41af1d.mp3",
+"duration_s": 1.355,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Celebra el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Celebra el Wrenmouth.",
+"file": "booth/es/962bdefd7e58.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Con paciencia el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Con paciencia el Brightwater.",
+"file": "booth/es/720e8778ca02.mp3",
+"duration_s": 1.643,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Con paciencia el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Con paciencia el Wrenmouth.",
+"file": "booth/es/7319c86a3806.mp3",
+"duration_s": 2.123,
 "voice": "ef_dora"
 },
 {
@@ -1981,6 +2899,33 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Brightwater busca el hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater busca el hueco.",
+"file": "booth/es/bce5862e54c2.mp3",
+"duration_s": 1.763,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater construye con calma.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater construye con calma.",
+"file": "booth/es/5ec9162c12e2.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater espera para sacar de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater espera para sacar de centro.",
+"file": "booth/es/3433071d79f4.mp3",
+"duration_s": 2.435,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Brightwater ha cambiado algo.",
 "lang": "es",
 "role": "pbp",
@@ -1990,12 +2935,84 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Brightwater intenta recomponerse.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater intenta recomponerse.",
+"file": "booth/es/f6c6256d66e2.mp3",
+"duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater juega en corto.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater juega en corto.",
+"file": "booth/es/ef7c0fe73742.mp3",
+"duration_s": 1.811,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater la hace circular.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater la hace circular.",
+"file": "booth/es/b9df6028f68a.mp3",
+"duration_s": 1.907,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater listo para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater listo para reanudar.",
+"file": "booth/es/5c5e2d1c46ca.mp3",
+"duration_s": 2.003,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater mueve el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater mueve el balón.",
+"file": "booth/es/0726466142c7.mp3",
+"duration_s": 1.811,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Brightwater se ha reordenado, Andrés.",
 "lang": "es",
 "role": "pbp",
 "text": "El Brightwater se ha reordenado, Andrés.",
 "file": "booth/es/f856f548ee5a.mp3",
 "duration_s": 2.315,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater se prepara para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater se prepara para reanudar.",
+"file": "booth/es/c06c39bd9b02.mp3",
+"duration_s": 2.219,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater se reorganiza para el saque.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater se reorganiza para el saque.",
+"file": "booth/es/2498b74b6727.mp3",
+"duration_s": 2.435,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater se toma su tiempo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater se toma su tiempo.",
+"file": "booth/es/dafbe1cc86e7.mp3",
+"duration_s": 1.931,
 "voice": "ef_dora"
 },
 {
@@ -2017,6 +3034,60 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Brightwater tantea.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater tantea.",
+"file": "booth/es/09e684c539b2.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater tiene el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater tiene el balón.",
+"file": "booth/es/eb2062c65151.mp3",
+"duration_s": 1.715,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Brightwater tiene que reaccionar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Brightwater tiene que reaccionar.",
+"file": "booth/es/293222494072.mp3",
+"duration_s": 1.931,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth busca el hueco.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth busca el hueco.",
+"file": "booth/es/3735324b69d5.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth construye con calma.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth construye con calma.",
+"file": "booth/es/86f3812cf476.mp3",
+"duration_s": 2.387,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth espera para sacar de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth espera para sacar de centro.",
+"file": "booth/es/1c60a62bb470.mp3",
+"duration_s": 2.843,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Wrenmouth ha cambiado algo.",
 "lang": "es",
 "role": "pbp",
@@ -2026,12 +3097,84 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|El Wrenmouth intenta recomponerse.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth intenta recomponerse.",
+"file": "booth/es/7e751cce61d6.mp3",
+"duration_s": 2.579,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth juega en corto.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth juega en corto.",
+"file": "booth/es/308c781e5280.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth la hace circular.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth la hace circular.",
+"file": "booth/es/e57ced38c29e.mp3",
+"duration_s": 2.267,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth listo para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth listo para reanudar.",
+"file": "booth/es/eaa2997ce677.mp3",
+"duration_s": 2.363,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth mueve el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth mueve el balón.",
+"file": "booth/es/5302a8ac8099.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|El Wrenmouth se ha reordenado, Andrés.",
 "lang": "es",
 "role": "pbp",
 "text": "El Wrenmouth se ha reordenado, Andrés.",
 "file": "booth/es/033e7b717224.mp3",
 "duration_s": 2.555,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth se prepara para reanudar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth se prepara para reanudar.",
+"file": "booth/es/8bf9f289af0f.mp3",
+"duration_s": 2.603,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth se reorganiza para el saque.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth se reorganiza para el saque.",
+"file": "booth/es/eaa71aa6f3b8.mp3",
+"duration_s": 2.795,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth se toma su tiempo.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth se toma su tiempo.",
+"file": "booth/es/23395e5a5b9c.mp3",
+"duration_s": 2.291,
 "voice": "ef_dora"
 },
 {
@@ -2050,6 +3193,123 @@
 "text": "El Wrenmouth sigue moviendo el balón.",
 "file": "booth/es/d2e5d2eb37f4.mp3",
 "duration_s": 2.459,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth tantea.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth tantea.",
+"file": "booth/es/ae15b424abc4.mp3",
+"duration_s": 1.811,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth tiene el balón.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth tiene el balón.",
+"file": "booth/es/dbd63eea5bcb.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El Wrenmouth tiene que reaccionar.",
+"lang": "es",
+"role": "pbp",
+"text": "El Wrenmouth tiene que reaccionar.",
+"file": "booth/es/0e01b8452933.mp3",
+"duration_s": 2.291,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El banquillo del Brightwater se levanta.",
+"lang": "es",
+"role": "pbp",
+"text": "El banquillo del Brightwater se levanta.",
+"file": "booth/es/c57503b309d6.mp3",
+"duration_s": 2.171,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El banquillo del Wrenmouth se levanta.",
+"lang": "es",
+"role": "pbp",
+"text": "El banquillo del Wrenmouth se levanta.",
+"file": "booth/es/2204201e789c.mp3",
+"duration_s": 2.603,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El saque es del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "El saque es del Brightwater.",
+"file": "booth/es/77cc0d82c63d.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|El saque es del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "El saque es del Wrenmouth.",
+"file": "booth/es/9ef6a66d907a.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Elabora el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Elabora el Brightwater.",
+"file": "booth/es/c4211ee76716.mp3",
+"duration_s": 1.355,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Elabora el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Elabora el Wrenmouth.",
+"file": "booth/es/1d403ada9e48.mp3",
+"duration_s": 1.883,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Estalla la alegría del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Estalla la alegría del Brightwater.",
+"file": "booth/es/33ea4a350400.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Estalla la alegría del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Estalla la alegría del Wrenmouth.",
+"file": "booth/es/61bed9fc1015.mp3",
+"duration_s": 2.411,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Festeja el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Festeja el Brightwater.",
+"file": "booth/es/26ec2ff1fed3.mp3",
+"duration_s": 1.427,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Festeja el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Festeja el Wrenmouth.",
+"file": "booth/es/ed0d78b9ed86.mp3",
+"duration_s": 1.835,
 "voice": "ef_dora"
 },
 {
@@ -2104,6 +3364,24 @@
 "text": "Galvan...",
 "file": "booth/es/66b4369f23b2.mp3",
 "duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Gran alegría para el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Gran alegría para el Brightwater.",
+"file": "booth/es/cbb5eeda57bc.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Gran alegría para el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Gran alegría para el Wrenmouth.",
+"file": "booth/es/5150c6e74d0d.mp3",
+"duration_s": 2.219,
 "voice": "ef_dora"
 },
 {
@@ -2206,6 +3484,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|La afición del Brightwater estalla.",
+"lang": "es",
+"role": "pbp",
+"text": "La afición del Brightwater estalla.",
+"file": "booth/es/0bb4c78f036e.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|La afición del Wrenmouth estalla.",
+"lang": "es",
+"role": "pbp",
+"text": "La afición del Wrenmouth estalla.",
+"file": "booth/es/075487b9f830.mp3",
+"duration_s": 2.411,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Le toca reanudar a el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Le toca reanudar a el Brightwater.",
+"file": "booth/es/3f76eb6f3ac8.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Le toca reanudar a el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Le toca reanudar a el Wrenmouth.",
+"file": "booth/es/a831c692654e.mp3",
+"duration_s": 2.459,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Lindqvist!",
 "lang": "es",
 "role": "pbp",
@@ -2260,6 +3574,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Locura en el banquillo del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Locura en el banquillo del Brightwater.",
+"file": "booth/es/ab23f735b3e4.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Locura en el banquillo del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Locura en el banquillo del Wrenmouth.",
+"file": "booth/es/9f130bc62261.mp3",
+"duration_s": 2.531,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Maneja el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Maneja el Brightwater.",
+"file": "booth/es/3694cd87652e.mp3",
+"duration_s": 1.403,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Maneja el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Maneja el Wrenmouth.",
+"file": "booth/es/8406ef1883fe.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Mensah!",
 "lang": "es",
 "role": "pbp",
@@ -2284,6 +3634,24 @@
 "text": "Mensah...",
 "file": "booth/es/648d378353aa.mp3",
 "duration_s": 0.611,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Momento importante para el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Momento importante para el Brightwater.",
+"file": "booth/es/58b189c940a8.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Momento importante para el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Momento importante para el Wrenmouth.",
+"file": "booth/es/c6268a8db2fb.mp3",
+"duration_s": 2.603,
 "voice": "ef_dora"
 },
 {
@@ -2476,6 +3844,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Paciencia del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Paciencia del Brightwater.",
+"file": "booth/es/30dc27322563.mp3",
+"duration_s": 1.523,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Paciencia del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Paciencia del Wrenmouth.",
+"file": "booth/es/15568aa172ab.mp3",
+"duration_s": 1.955,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Pavic!",
 "lang": "es",
 "role": "pbp",
@@ -2503,6 +3889,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Pone el balón en juego el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Pone el balón en juego el Brightwater.",
+"file": "booth/es/2221758f5d2b.mp3",
+"duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Pone el balón en juego el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Pone el balón en juego el Wrenmouth.",
+"file": "booth/es/2863b43ac417.mp3",
+"duration_s": 2.555,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Posesión del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Posesión del Brightwater.",
+"file": "booth/es/3534af69819e.mp3",
+"duration_s": 1.547,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Posesión del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Posesión del Wrenmouth.",
+"file": "booth/es/106a7d1a0e4c.mp3",
+"duration_s": 1.883,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Quintero!",
 "lang": "es",
 "role": "pbp",
@@ -2527,6 +3949,114 @@
 "text": "Quintero...",
 "file": "booth/es/bda4b24c315c.mp3",
 "duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Qué fiesta para el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Qué fiesta para el Brightwater.",
+"file": "booth/es/d7e6c41b100a.mp3",
+"duration_s": 1.619,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Qué fiesta para el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Qué fiesta para el Wrenmouth.",
+"file": "booth/es/7a33c8313596.mp3",
+"duration_s": 2.051,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el Brightwater.",
+"file": "booth/es/1a3e441a8806.mp3",
+"duration_s": 1.451,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el Wrenmouth.",
+"file": "booth/es/099dfc80de03.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanudación para el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanudación para el Brightwater.",
+"file": "booth/es/218905603143.mp3",
+"duration_s": 1.715,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanudación para el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanudación para el Wrenmouth.",
+"file": "booth/es/97b9f6b7af1b.mp3",
+"duration_s": 2.171,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Saca el Brightwater de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "Saca el Brightwater de centro.",
+"file": "booth/es/ee30d23100ed.mp3",
+"duration_s": 1.691,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Saca el Wrenmouth de centro.",
+"lang": "es",
+"role": "pbp",
+"text": "Saca el Wrenmouth de centro.",
+"file": "booth/es/105004176bb8.mp3",
+"duration_s": 2.099,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se espera a el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Se espera a el Brightwater.",
+"file": "booth/es/2428804f69a8.mp3",
+"duration_s": 1.643,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Se espera a el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Se espera a el Wrenmouth.",
+"file": "booth/es/da3dff8f47a7.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sin prisa el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Sin prisa el Brightwater.",
+"file": "booth/es/9bd495a042d7.mp3",
+"duration_s": 1.523,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sin prisa el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Sin prisa el Wrenmouth.",
+"file": "booth/es/f83c8c0b8b33.mp3",
+"duration_s": 2.051,
 "voice": "ef_dora"
 },
 {
@@ -2611,6 +4141,42 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Toca el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Toca el Brightwater.",
+"file": "booth/es/810fe2652fd3.mp3",
+"duration_s": 1.283,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Toca el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Toca el Wrenmouth.",
+"file": "booth/es/af76b60e16a4.mp3",
+"duration_s": 1.619,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Todos en posición, saca el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Todos en posición, saca el Brightwater.",
+"file": "booth/es/3fe37860884a.mp3",
+"duration_s": 2.219,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Todos en posición, saca el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Todos en posición, saca el Wrenmouth.",
+"file": "booth/es/9bdff53e4078.mp3",
+"duration_s": 2.627,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Varga!",
 "lang": "es",
 "role": "pbp",
@@ -2689,6 +4255,60 @@
 "text": "Vellacott...",
 "file": "booth/es/d774b5d0f39d.mp3",
 "duration_s": 0.923,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelta al centro del campo, sacará el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelta al centro del campo, sacará el Brightwater.",
+"file": "booth/es/c164c6ef0d66.mp3",
+"duration_s": 2.795,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelta al centro del campo, sacará el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelta al centro del campo, sacará el Wrenmouth.",
+"file": "booth/es/f239f23a8ec1.mp3",
+"duration_s": 3.107,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a empezar el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a empezar el Brightwater.",
+"file": "booth/es/2df0d417f390.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a empezar el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a empezar el Wrenmouth.",
+"file": "booth/es/cbafd38472ea.mp3",
+"duration_s": 2.219,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a ponerse en marcha el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a ponerse en marcha el Brightwater.",
+"file": "booth/es/5d9fcff13dc8.mp3",
+"duration_s": 2.339,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Vuelve a ponerse en marcha el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Vuelve a ponerse en marcha el Wrenmouth.",
+"file": "booth/es/6a7daa30b2f4.mp3",
+"duration_s": 2.747,
 "voice": "ef_dora"
 },
 {
@@ -3043,6 +4663,24 @@
 "voice": "im_nicola"
 },
 {
+"key": "pbp|Abbracci in casa del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Abbracci in casa del Brightwater.",
+"file": "booth/it/ab3b9a4c39fe.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Abbracci in casa del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Abbracci in casa del Wrenmouth.",
+"file": "booth/it/faff1c3ae6a9.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Achterberg!",
 "lang": "it",
 "role": "pbp",
@@ -3187,6 +4825,42 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Che festa per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Che festa per il Brightwater.",
+"file": "booth/it/c83778a04ffa.mp3",
+"duration_s": 1.763,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Che festa per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Che festa per il Wrenmouth.",
+"file": "booth/it/5af4c501c0ef.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Con pazienza il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Con pazienza il Brightwater.",
+"file": "booth/it/4588428d1f87.mp3",
+"duration_s": 1.859,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Con pazienza il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Con pazienza il Wrenmouth.",
+"file": "booth/it/c5abf4608c0f.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Duarte!",
 "lang": "it",
 "role": "pbp",
@@ -3295,6 +4969,60 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Esplode la gioia del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Esplode la gioia del Brightwater.",
+"file": "booth/it/45cfb4341ee9.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esplode la gioia del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Esplode la gioia del Wrenmouth.",
+"file": "booth/it/e6b1a16c1072.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esulta il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Esulta il Brightwater.",
+"file": "booth/it/a1f2f02ae214.mp3",
+"duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Esulta il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Esulta il Wrenmouth.",
+"file": "booth/it/722a47ca41d6.mp3",
+"duration_s": 1.451,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Festeggia il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Festeggia il Brightwater.",
+"file": "booth/it/a242a67d9706.mp3",
+"duration_s": 1.667,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Festeggia il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Festeggia il Wrenmouth.",
+"file": "booth/it/eb86b2e5d6ba.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Fontaine!",
 "lang": "it",
 "role": "pbp",
@@ -3322,6 +5050,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Fraseggio del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Fraseggio del Brightwater.",
+"file": "booth/it/d5ae1c124bd4.mp3",
+"duration_s": 1.715,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Fraseggio del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Fraseggio del Wrenmouth.",
+"file": "booth/it/3326209ef37e.mp3",
+"duration_s": 1.547,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Galvan!",
 "lang": "it",
 "role": "pbp",
@@ -3346,6 +5092,60 @@
 "text": "Galvan...",
 "file": "booth/it/d50443f94a7d.mp3",
 "duration_s": 0.803,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Gestisce il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Gestisce il Brightwater.",
+"file": "booth/it/6eb68c04a765.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Gestisce il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Gestisce il Wrenmouth.",
+"file": "booth/it/451c78a6cb07.mp3",
+"duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Giro palla del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Giro palla del Brightwater.",
+"file": "booth/it/d49997322b80.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Giro palla del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Giro palla del Wrenmouth.",
+"file": "booth/it/a062438d1b30.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Grande gioia per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Grande gioia per il Brightwater.",
+"file": "booth/it/be870b989ed0.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Grande gioia per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Grande gioia per il Wrenmouth.",
+"file": "booth/it/38c3a46b1d3d.mp3",
+"duration_s": 1.883,
 "voice": "if_sara"
 },
 {
@@ -3430,12 +5230,48 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|I tifosi del Brightwater esplodono.",
+"lang": "it",
+"role": "pbp",
+"text": "I tifosi del Brightwater esplodono.",
+"file": "booth/it/ea4d47741df4.mp3",
+"duration_s": 2.243,
+"voice": "if_sara"
+},
+{
+"key": "pbp|I tifosi del Wrenmouth esplodono.",
+"lang": "it",
+"role": "pbp",
+"text": "I tifosi del Wrenmouth esplodono.",
+"file": "booth/it/e7a44af6e04c.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater aspetta di battere a centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater aspetta di battere a centrocampo.",
+"file": "booth/it/86c33ddc1b81.mp3",
+"duration_s": 2.723,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Brightwater cerca ancora un varco.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Brightwater cerca ancora un varco.",
 "file": "booth/it/6207ea1b1e8d.mp3",
 "duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater cerca il varco.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater cerca il varco.",
+"file": "booth/it/00b605dab76e.mp3",
+"duration_s": 1.955,
 "voice": "if_sara"
 },
 {
@@ -3448,12 +5284,66 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Brightwater costruisce con calma.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater costruisce con calma.",
+"file": "booth/it/fd02501586a2.mp3",
+"duration_s": 2.219,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater deve ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater deve ripartire.",
+"file": "booth/it/443fe6c6cade.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater fa girare il pallone.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater fa girare il pallone.",
+"file": "booth/it/12747f54f828.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Brightwater ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Brightwater ha cambiato qualcosa, Marco.",
 "file": "booth/it/04316a251a16.mp3",
 "duration_s": 2.531,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater manovra.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater manovra.",
+"file": "booth/it/fdd9519515b5.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater pronto a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater pronto a ripartire.",
+"file": "booth/it/8f4e21d5bcf4.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater prova a ricompattarsi.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater prova a ricompattarsi.",
+"file": "booth/it/0d42e4967ab2.mp3",
+"duration_s": 2.291,
 "voice": "if_sara"
 },
 {
@@ -3466,12 +5356,66 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Brightwater si prende il suo tempo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater si prende il suo tempo.",
+"file": "booth/it/bfc60a28edd1.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater si prepara a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater si prepara a ripartire.",
+"file": "booth/it/c00407ae3a05.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater si riorganizza per la ripresa.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater si riorganizza per la ripresa.",
+"file": "booth/it/1631fa462469.mp3",
+"duration_s": 2.579,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Brightwater tiene palla.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater tiene palla.",
+"file": "booth/it/c4e30c202a37.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth aspetta di battere a centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth aspetta di battere a centrocampo.",
+"file": "booth/it/b75fef99e246.mp3",
+"duration_s": 2.699,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Wrenmouth cerca ancora un varco.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Wrenmouth cerca ancora un varco.",
 "file": "booth/it/d1279374945f.mp3",
 "duration_s": 2.219,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth cerca il varco.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth cerca il varco.",
+"file": "booth/it/c41ceb30f350.mp3",
+"duration_s": 1.931,
 "voice": "if_sara"
 },
 {
@@ -3484,6 +5428,33 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Wrenmouth costruisce con calma.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth costruisce con calma.",
+"file": "booth/it/d19c57740bb3.mp3",
+"duration_s": 2.147,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth deve ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth deve ripartire.",
+"file": "booth/it/7ebb807c7d36.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth fa girare il pallone.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth fa girare il pallone.",
+"file": "booth/it/a079540c8804.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Wrenmouth ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -3493,12 +5464,111 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Wrenmouth manovra.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth manovra.",
+"file": "booth/it/b44edae93c55.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth pronto a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth pronto a ripartire.",
+"file": "booth/it/143661a8f0c0.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth prova a ricompattarsi.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth prova a ricompattarsi.",
+"file": "booth/it/2a69a7e6268e.mp3",
+"duration_s": 2.219,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Wrenmouth sembra cambiato.",
 "lang": "it",
 "role": "pbp",
 "text": "Il Wrenmouth sembra cambiato.",
 "file": "booth/it/dd9c44851e40.mp3",
 "duration_s": 1.859,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth si prende il suo tempo.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth si prende il suo tempo.",
+"file": "booth/it/9c45790870c9.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth si prepara a ripartire.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth si prepara a ripartire.",
+"file": "booth/it/a6fdaee2dd52.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth si riorganizza per la ripresa.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth si riorganizza per la ripresa.",
+"file": "booth/it/bb3b625aee63.mp3",
+"duration_s": 2.459,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Il Wrenmouth tiene palla.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth tiene palla.",
+"file": "booth/it/233273f9735e.mp3",
+"duration_s": 1.691,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La panchina del Brightwater è in piedi.",
+"lang": "it",
+"role": "pbp",
+"text": "La panchina del Brightwater è in piedi.",
+"file": "booth/it/6622a5b98e9e.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La panchina del Wrenmouth è in piedi.",
+"lang": "it",
+"role": "pbp",
+"text": "La panchina del Wrenmouth è in piedi.",
+"file": "booth/it/ef78f8978a73.mp3",
+"duration_s": 2.147,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La rimessa è del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "La rimessa è del Brightwater.",
+"file": "booth/it/a13e5613ea03.mp3",
+"duration_s": 1.811,
+"voice": "if_sara"
+},
+{
+"key": "pbp|La rimessa è del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "La rimessa è del Wrenmouth.",
+"file": "booth/it/69c068dcb229.mp3",
+"duration_s": 1.691,
 "voice": "if_sara"
 },
 {
@@ -3601,6 +5671,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Momento importante per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Momento importante per il Brightwater.",
+"file": "booth/it/0eb2a395654b.mp3",
+"duration_s": 2.339,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Momento importante per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Momento importante per il Wrenmouth.",
+"file": "booth/it/d846609235ba.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Morales!",
 "lang": "it",
 "role": "pbp",
@@ -3652,6 +5740,24 @@
 "text": "Moreau...",
 "file": "booth/it/34546621d7d2.mp3",
 "duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nessuna fretta per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Nessuna fretta per il Brightwater.",
+"file": "booth/it/f09eefeae270.mp3",
+"duration_s": 2.075,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Nessuna fretta per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Nessuna fretta per il Wrenmouth.",
+"file": "booth/it/2aef4427d7e6.mp3",
+"duration_s": 1.883,
 "voice": "if_sara"
 },
 {
@@ -3736,6 +5842,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Ora serve una reazione del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Ora serve una reazione del Brightwater.",
+"file": "booth/it/fdbe2931a4f0.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ora serve una reazione del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Ora serve una reazione del Wrenmouth.",
+"file": "booth/it/7ace270ee22c.mp3",
+"duration_s": 2.195,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Orvanelli!",
 "lang": "it",
 "role": "pbp",
@@ -3790,6 +5914,42 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Palla al centro, batte il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Palla al centro, batte il Brightwater.",
+"file": "booth/it/30dabece2a80.mp3",
+"duration_s": 2.291,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Palla al centro, batte il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Palla al centro, batte il Wrenmouth.",
+"file": "booth/it/ab0cab61bf8d.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pallone del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Pallone del Brightwater.",
+"file": "booth/it/5782d52a5e60.mp3",
+"duration_s": 1.643,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Pallone del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Pallone del Wrenmouth.",
+"file": "booth/it/b66238b9ddee.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Pavic!",
 "lang": "it",
 "role": "pbp",
@@ -3817,6 +5977,42 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Possesso del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Possesso del Brightwater.",
+"file": "booth/it/538734c8a32f.mp3",
+"duration_s": 1.691,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Possesso del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Possesso del Wrenmouth.",
+"file": "booth/it/03b6b25aed7c.mp3",
+"duration_s": 1.523,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Prova a manovrare il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Prova a manovrare il Brightwater.",
+"file": "booth/it/cd414a0f247e.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Prova a manovrare il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Prova a manovrare il Wrenmouth.",
+"file": "booth/it/a76bd0060521.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Quintero!",
 "lang": "it",
 "role": "pbp",
@@ -3841,6 +6037,168 @@
 "text": "Quintero...",
 "file": "booth/it/24182539dca0.mp3",
 "duration_s": 0.947,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricicla il pallone il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricicla il pallone il Brightwater.",
+"file": "booth/it/05957abc2506.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricicla il pallone il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricicla il pallone il Wrenmouth.",
+"file": "booth/it/55327ecc87b7.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricomincia il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricomincia il Brightwater.",
+"file": "booth/it/37929e8142eb.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ricomincia il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Ricomincia il Wrenmouth.",
+"file": "booth/it/9c9122cfdd64.mp3",
+"duration_s": 1.619,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in gioco il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in gioco il Brightwater.",
+"file": "booth/it/f8409e9f4163.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in gioco il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in gioco il Wrenmouth.",
+"file": "booth/it/3b65f95e50b7.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in moto il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in moto il Brightwater.",
+"file": "booth/it/e2fc4602151e.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimette in moto il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimette in moto il Wrenmouth.",
+"file": "booth/it/42dc725ee232.mp3",
+"duration_s": 1.859,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Brightwater da centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Brightwater da centrocampo.",
+"file": "booth/it/e1331813c79c.mp3",
+"duration_s": 2.387,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Brightwater.",
+"file": "booth/it/7e8d02ce9f29.mp3",
+"duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Wrenmouth da centrocampo.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Wrenmouth da centrocampo.",
+"file": "booth/it/023ffb280aad.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte il Wrenmouth.",
+"file": "booth/it/a65f7d903be1.mp3",
+"duration_s": 1.475,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ripresa per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Ripresa per il Brightwater.",
+"file": "booth/it/78d4efd3e620.mp3",
+"duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ripresa per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Ripresa per il Wrenmouth.",
+"file": "booth/it/d90306ce5e93.mp3",
+"duration_s": 1.691,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si aspetta il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Si aspetta il Brightwater.",
+"file": "booth/it/2cb25577c158.mp3",
+"duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si aspetta il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Si aspetta il Wrenmouth.",
+"file": "booth/it/cfcd3a550675.mp3",
+"duration_s": 1.619,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si torna a centrocampo, batterà il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Si torna a centrocampo, batterà il Brightwater.",
+"file": "booth/it/55ee260cbe1a.mp3",
+"duration_s": 2.747,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Si torna a centrocampo, batterà il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Si torna a centrocampo, batterà il Wrenmouth.",
+"file": "booth/it/1879b4efd184.mp3",
+"duration_s": 2.627,
 "voice": "if_sara"
 },
 {
@@ -3940,6 +6298,78 @@
 "text": "Tessaro...",
 "file": "booth/it/347190f9329a.mp3",
 "duration_s": 0.923,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tiene il pallino del gioco il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Tiene il pallino del gioco il Brightwater.",
+"file": "booth/it/5b38089fc54e.mp3",
+"duration_s": 2.363,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tiene il pallino del gioco il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Tiene il pallino del gioco il Wrenmouth.",
+"file": "booth/it/c3c0d4a031bd.mp3",
+"duration_s": 2.267,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tocca ripartire per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Tocca ripartire per il Brightwater.",
+"file": "booth/it/77ddd1dae942.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tocca ripartire per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Tocca ripartire per il Wrenmouth.",
+"file": "booth/it/659d525d539c.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti ad abbracciarsi, festa del Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti ad abbracciarsi, festa del Brightwater.",
+"file": "booth/it/c4c174249eec.mp3",
+"duration_s": 2.531,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti ad abbracciarsi, festa del Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti ad abbracciarsi, festa del Wrenmouth.",
+"file": "booth/it/7bb377d1e793.mp3",
+"duration_s": 2.387,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti in posizione, riparte il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti in posizione, riparte il Brightwater.",
+"file": "booth/it/028fce74b7a5.mp3",
+"duration_s": 2.579,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tutti in posizione, riparte il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Tutti in posizione, riparte il Wrenmouth.",
+"file": "booth/it/2b8b9b5566a7.mp3",
+"duration_s": 2.387,
 "voice": "if_sara"
 },
 {

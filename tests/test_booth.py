@@ -50,7 +50,7 @@ def test_players_sharing_a_surname_are_called_by_full_name():
 def test_shared_clips_have_no_names_and_digits_only_in_fact_numbers():
     for lang in ("en", "it", "es"):
         texts = booth.shared_texts(LINES, lang)
-        assert 450 < len(texts) < 600  # a fact is a number clip and a unit clip, not one clip per value and unit
+        assert 450 < len(texts) < 700  # a fact is a number clip and a unit clip, not one clip per value and unit
         for role, t in texts.values():
             assert not names.find_forbidden(t), t
             assert not re.search(r"[{}]", t), t

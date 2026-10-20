@@ -3,13 +3,13 @@ name: booth-render
 # per clip set, with the same command as a local build. Each job uploads its clips and its manifest as
 # an artifact; they are merged locally (docs/commentary.md, "Build on CI") and committed.
 #   gh workflow run booth-render.yml && gh run download <run id> -D <dir>
-# A manual run needs the workflow on the default branch; before the merge a push to feat/booth that
-# changes this file or the renderer starts it.
+# A manual run needs the workflow on the default branch; before the merge a push to a feat/booth branch
+# that changes this file, the renderer or the lines starts it.
 on:
   workflow_dispatch:
   push:
-    branches: [feat/booth]
-    paths: [.github/workflows/booth-render.yml, scripts/booth_kokoro.py, scripts/booth-kokoro-setup.sh]
+    branches: ["feat/booth*"]
+    paths: [.github/workflows/booth-render.yml, scripts/booth_kokoro.py, scripts/booth-kokoro-setup.sh, web/booth/lines.json]
 permissions:
   contents: read
 jobs:

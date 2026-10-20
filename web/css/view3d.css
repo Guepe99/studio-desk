@@ -2,6 +2,9 @@
    in the Radar box, the replay badge. */
 #view3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #pitch[hidden] { display: none; }
+/* while the 3D view loads (view3d.js): a still of the stadium (scripts/poster3d.mjs) instead of the 2D pitch */
+#stage.loading3d { background: var(--grass) url("../img/stadium3d.jpg") center / cover; }
+#stage.loading3d #pitch { visibility: hidden; }
 /* The minimap (the "split" view): the small picture in a box at the bottom centre of the frame, as in a
    football game; a click swaps the two. 440 x 291 stage px = the pitch and a margin (1420 x 940 from
    x 250, y 100) at RADAR = 440 / 1420 (view3d.js), magnified from its bottom left corner on a small frame

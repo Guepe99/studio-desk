@@ -5,7 +5,7 @@ import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { BoothAudio } from "./booth-audio.js";
-import { View3D, probe, defaultView, RADAR, replays } from "./view3d.js";
+import { View3D, probe, defaultView, warm3d, RADAR, replays } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
@@ -594,6 +594,11 @@ async function main() {
   applyStrings();
   layout();
   $("#status").textContent = t("loading");
+  const view = params.get("view") ?? defaultView(probe());
+  if (view !== "2d") {
+    warm3d().catch(() => {});   // View3D reports a failure when it asks again
+    stage.classList.add("loading3d");   // the stadium still from the start; View3D takes it off once the scene is up
+  }
   try {
     match = await loadMatch(`data/${matchId}`);
   } catch (err) {
@@ -657,7 +662,7 @@ async function main() {
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
     notice: $("#notice"), status: $("#view-status") }, layout, t);
-  view3d.set(params.get("view") ?? defaultView(probe()));
+  view3d.set(view);
   window.studioDesk.view3d = view3d;
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
   if (document.activeElement === document.body) frame.focus();

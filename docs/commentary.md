@@ -41,7 +41,9 @@ render.
 
 The templates sit in `web/booth/lines.json`: per voice, per language, per kind of moment. Each kind has
 several variants, and a routine one (pass, interception, tackle, cross, take-on, foul, clearance) has 10 to
-12, as [EA] asks. The same variant never plays twice in a row. The placeholders are `{player}`,
+12, as [EA] asks. The fill-in kinds (A6: possession, build-up, back pass, restart, pause, celebration,
+kick-off wait, and the co's opinions on shape and tempo and after a goal) have 10 to 16 each, with no
+numbers. The same variant never plays twice in a row. The placeholders are `{player}`,
 `{receiver}`, `{keeper}`, `{team}`, `{team2}` (with an `|of` form for Italian and Spanish articles),
 `{fact:kind}` and `{co}`. Templates hold no digits.
 
@@ -70,9 +72,9 @@ Clip counts, Kokoro, 24 kHz mono mp3 at 48 kbit/s like the studio clips:
 
 | | en | it | es |
 |---|---|---|---|
-| shared (`web/booth/<lang>/`) | 503 | 537 | 537 |
-| per match (`replays/<match>/booth/<lang>/`), M001 | 158 | 148 | 146 |
-| DEMO fixture (`tests/web/booth-demo/booth/<lang>/`) | 182 | 172 | 170 |
+| shared (`web/booth/<lang>/`) | 566 | 600 | 600 |
+| per match (`replays/<match>/booth/<lang>/`), M001 | 248 | 238 | 236 |
+| DEMO fixture (`tests/web/booth-demo/booth/<lang>/`) | 272 | 262 | 260 |
 
 Build commands. They resume: a clip whose file exists is skipped, because the file name hashes key and
 voice.
@@ -108,21 +110,30 @@ match whose names are not rendered yet still gets the name-free lines.
 
 The rules, from the research below:
 
-- A2. After a line, the same voice waits at least 1 s, and usually 1 to 4 s [LF].
+- A2. After a line, the same voice waits at least 1 s, and usually 1 to 4 s [LF]. A priority line (A or B)
+  waits only the 1 s.
 - A3. Priorities. These are always called: goals, shots, saves and cards (an A line waits up to 3 s for the
   voice). Fouls, corners, free kicks and offsides are usually called (B, up to 1 s). Passes, take-ons,
   crosses, interceptions, tackles and clearances are called when the voice is free (C). Throw-ins, goal kicks
   and short free kicks are not called.
-- A4. A pass names the receiver, when it reaches the final third, travels 30 m or more, or crosses into the
-  other half (half of those). No name twice within 6 s. At most 3 names in a row, then a 2 s pause [KI, QR,
-  FT].
+- A4. Every pass names the receiver, own half included (the owner's rule; the research names it in the final
+  third, on 30 m passes and into the other half). A pass 8 m or more backwards is called as a back pass. No
+  name twice within 6 s. At most 3 names in a row, then a 2 s pause [KI, QR, FT].
 - A5. The goal call is short, then the booth holds 9 to 12 s while the crowd roars [GT, BK, TR]. A
   follow-up comes after the hold (long-range goal, sprint before the goal, or a plain one).
-- A6. Silence during the goal hold, in quiet possession, and when the only thing to say is a name said
-  within 6 s [GT].
+- A6. The owner's rule replaces the research here: "when nobody speaks, silence is really ugly", the way EA
+  FC fills a match. The booth is never silent for more than 6 s, except in the goal hold, during a studio
+  clip and its 1.5 s, at half-time and after full-time. After 3.5 s of silence it fills: in play with a
+  possession or build-up line ("Redwick keeping it", "Name looking for an opening"), a fresh fact or a co
+  opinion on shape and tempo; in a dead ball (a foul, an offside, a shot or save that ends play, a ball off
+  the pitch, or 8 s without an event) with the restart for the team that did not touch it last, a pause line
+  or the co; after a goal with the celebration, then the wait for the kick-off. The co comes in while it is
+  under its share and never in the final third. A fill-in line gives way to any A or B line. No variant of a
+  kind twice in a row, no fill-in kind twice in a row for one voice. The research's silence in quiet
+  possession [GT] is dropped.
 - A7. The studio voice first. When a studio clip starts, the booth's lines stop (30 ms fade), the queue is
   cleared, nothing starts until 1.5 s after the clip, and the crowd ducks. The booth resumes on a fresh
-  shot, save, foul or set piece, or on any event 8 s after that. Only the goal follow-up survives
+  shot, save, foul or set piece, on any event 8 s after that, or with a fill-in line (A6). Only the goal follow-up survives
   a studio clip. The planner leaves room for each on-air studio clip, and the player enforces it again
   from `voice.current` [VG, CT].
 - B. Crowd. A bed loops all match. The anticipation sound rises when a team strings passes in the final
@@ -165,8 +176,10 @@ and crowd stems as wav, for listening and level checks:
 2. During play, feed each event and each fact to `Booth.step()` as it arrives, and a tick every second.
    Feed a studio clip when it goes on air. Play the returned items with `BoothAudio`.
 
-Time before kick-off. One match's clips are 146 to 158 per language, about 3 to 5 minutes of speech (M001:
-275 s in English, 229 s in Italian, 171 s in Spanish). Measured, one thread each:
+Time before kick-off. One match's clips are 236 to 248 per language, about 5 minutes of speech (M001:
+285 s in English, 328 s in Italian, 289 s in Spanish), the fill-in lines that name the teams included. The
+table was measured on the 146 to 158 clips before those; the 90 clips per language that the fill-in lines
+added took 3 to 6 min per runner job, setup included (run 39482620053). One thread each:
 
 | where | real-time factor | one match, three languages |
 |---|---|---|
