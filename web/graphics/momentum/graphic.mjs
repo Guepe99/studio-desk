@@ -7,9 +7,11 @@ const WORDS = { en: ["MOMENTUM", "Kick-off", "Now"], it: ["INERZIA", "Calcio d'i
 export default class Momentum extends SdGraphic {
   css() {
     return `
-.box { position: absolute; right: 96px; bottom: 84px; width: 780px; }
+/* the axis runs from kick-off to now: the card grows with the windows played (62 px each, never under
+   320 px for the two labels) up to its full width, where the bars start to narrow */
+.box { position: absolute; right: 96px; bottom: 84px; --axis: max(320px, var(--n, 13) * 62px - 6px); width: min(780px, calc(168px + var(--axis))); }
 .box.left { right: auto; left: 96px; }  /* v_side "left": the ball is on the right half */
-.compact .box { width: 720px; }  /* fits a 264 px deck with its smallest type (30 px) at 11 px */
+.compact .box { width: min(720px, calc(168px + var(--axis))); }  /* fits a 264 px deck with its smallest type (30 px) at 11 px */
 .card { padding: 22px 28px 18px; }
 .row { display: grid; grid-template-columns: 112px 1fr; align-items: end; height: ${H + 6}px; }
 .row.away { align-items: start; }
@@ -17,7 +19,7 @@ export default class Momentum extends SdGraphic {
 .chip { width: 10px; height: 30px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--lilac-100); }
 .bars { display: flex; gap: 6px; height: 100%; align-items: flex-end; }
 .away .bars { align-items: flex-start; }
-.bar { flex: 0 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; box-shadow: inset 0 0 0 2px var(--lilac-100); }
+.bar { flex: 1 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; box-shadow: inset 0 0 0 2px var(--lilac-100); }
 .away .bar { border-radius: 0 0 3px 3px; transform-origin: 50% 0; }
 .bar.now { opacity: 1; box-shadow: 0 0 0 3px var(--green); }
 .mid { height: 3px; border-radius: 2px; background: var(--page); margin-left: 112px; }
@@ -43,6 +45,7 @@ export default class Momentum extends SdGraphic {
   render() {
     const d = this.data, $ = (s) => this.stage.querySelector(s);
     $(".box").classList.toggle("left", this.side === "left");
+    $(".box").style.setProperty("--n", Math.max(...["home", "away"].map((k) => (Array.isArray(d[k]) ? d[k].length : 0)), 1));
     for (const side of ["home", "away"]) {
       const t = this.teams[side] ?? {};
       const vals = Array.isArray(d[side]) ? d[side] : [];

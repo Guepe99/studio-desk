@@ -225,6 +225,9 @@ try {
   const page = await open(browser, { viewport: { width: 1280, height: 720 } });
   page.on("requestfailed", (r) => fail(`request failed: ${r.url()}`));
   const cues = (await page.evaluate(() => window.studioDesk.match.cues)).filter(onAir);
+  // a momentum card due during a goal replay goes on air at the replay's end (app.js refreshCues)
+  const reps = await page.evaluate(async () => (await import("./js/view3d.js")).replays(window.studioDesk.match));
+  const due = (c) => (c.graphic === "momentum" && reps.find((r) => c.ts < r.to && c.ts + c.duration_s > r.from)?.to) || c.ts;
   // the broadcast has the focus once loaded, so Space and N work at once
   if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("focus: the broadcast frame does not have the focus after loading");
 
@@ -233,7 +236,7 @@ try {
     for (const audience of ["analyst", "casual"]) {
       await page.click(`[data-audience="${audience}"]`);
       for (const c of cues.filter((x) => x.audience === audience)) {
-        await seekTo(page, c.ts + Math.min(2, c.duration_s / 2));
+        await seekTo(page, due(c) + Math.min(2, c.duration_s / 2));
         const { live, nodes, ts } = await onScreen(page);
         if (nodes > 2) fail(`${c.cue_id}: ${nodes} graphics in the DOM`);
         const g = live.find((x) => x.cue === c.cue_id);
@@ -279,7 +282,7 @@ try {
         if (got !== aud || on !== "true") fail(`${aud}: state ${got}, aria-pressed ${on}`);
         const mine = cues.filter((x) => x.audience === aud), ids = new Set(mine.map((x) => x.cue_id));
         for (const c of mine) {
-          await seekTo(page, c.ts + Math.min(2, c.duration_s / 2));
+          await seekTo(page, due(c) + Math.min(2, c.duration_s / 2));
           const { live } = await onScreen(page);
           const g = live.find((x) => x.cue === c.cue_id);
           if (!g) { fail(`${aud} ${c.cue_id} ${c.graphic}: not on screen`); continue; }
