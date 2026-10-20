@@ -193,13 +193,13 @@ export class BoothAudio {
     const g = gain.gain, f = cut ? MIX.cut : MIX.fade;
     g.setValueAtTime(0, start);
     g.linearRampToValueAtTime(1, start + MIX.fade);
+    src.connect(gain).connect(bus);
+    src.start(start); // before stop(): stop() on a source not started throws
     if (Number.isFinite(end)) {
       g.setValueAtTime(1, Math.max(start + MIX.fade, end - f));
       g.linearRampToValueAtTime(0, end);
       src.stop(end + 0.01);
     }
-    src.connect(gain).connect(bus);
-    src.start(start);
     const l = { src, gain, start, end: Number.isFinite(end) ? end : Infinity, voice };
     this.live.push(l);
     return l;

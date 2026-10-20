@@ -370,7 +370,7 @@ function tick(now) {
   host.sync(state.ts, state.seeked, state.speed);
   placeRadar();
   voice?.update(state.ts, end); // null until its clips are checked
-  booth?.update(state.ts);
+  try { booth?.update(state.ts); } catch (e) { booth.stop(); queueMicrotask(() => { throw e; }); } // reported, the frame goes on
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
   desk.setLive([...host.live.values()].map((i) => i.cue.story_id).filter(Boolean).sort());
