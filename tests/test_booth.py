@@ -105,5 +105,6 @@ def test_committed_clips_match_their_manifest(root):
     rows = json.loads((root / "booth.json").read_text())["clips"]
     listed = {(root / r["file"]).resolve() for r in rows}
     assert all(p.is_file() for p in listed)
-    assert {p.resolve() for p in root.rglob("*.mp3")} <= listed  # no stale clip left behind
+    on_disk = {*root.glob("[a-z][a-z]/*.mp3"), *root.glob("booth/[a-z][a-z]/*.mp3")}  # not the studio voice/
+    assert {p.resolve() for p in on_disk} <= listed and len(on_disk) == len(rows)  # no stale clip left behind
     assert not any(names.is_forbidden(r["text"]) for r in rows)

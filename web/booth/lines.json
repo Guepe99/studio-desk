@@ -1275,17 +1275,29 @@
   "en": {
    "engine": "kokoro",
    "pbp": "am_michael",
-   "co": "am_fenrir"
+   "co": "am_fenrir",
+   "gain_db": {
+    "pbp": 4.0,
+    "co": -0.3
+   }
   },
   "it": {
    "engine": "kokoro",
    "pbp": "if_sara",
-   "co": "im_nicola"
+   "co": "im_nicola",
+   "gain_db": {
+    "pbp": -5.5,
+    "co": 0.5
+   }
   },
   "es": {
    "engine": "kokoro",
    "pbp": "ef_dora",
-   "co": "em_alex"
+   "co": "em_alex",
+   "gain_db": {
+    "pbp": 4.7,
+    "co": 4.2
+   }
   }
  }
 }

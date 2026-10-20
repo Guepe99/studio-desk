@@ -171,8 +171,9 @@ def match_texts(lines, lang, meta):
     return out
 
 
-def clip_file(lang, k, voice_name, sub):
-    return f"{sub}{lang}/{hashlib.sha1(f'{k}|{voice_name}'.encode('utf-8')).hexdigest()[:12]}.mp3"
+def clip_file(lang, k, voice_name, gain_db, sub):
+    """The name holds what makes the clip: a new voice or gain is a new file, so a resumed build never keeps a stale one."""
+    return f"{sub}{lang}/{hashlib.sha1(f'{k}|{voice_name}|{gain_db}'.encode('utf-8')).hexdigest()[:12]}.mp3"
 
 
 def row(job, lang):
@@ -206,9 +207,10 @@ def build(texts, lang, out, lines, render=None, dry_run=False, log=print, names_
         hit = names.find_forbidden(text)
         if hit:
             raise ValueError(f"forbidden name {hit!r} in booth line {text!r}")
-        file = clip_file(lang, k, cfg[role], sub)
+        gain = cfg["gain_db"][role]
+        file = clip_file(lang, k, cfg[role], gain, sub)
         job = {"key": k, "role": role, "text": text, "say": voice.spoken(text, lang), "voice": cfg[role],
-               "file": file, "path": out / file}
+               "gain_db": gain, "file": file, "path": out / file}
         if (out / file).exists():  # the file name holds key and voice: on disk means done, even after a crash
             keep[(lang, k)] = row(job, lang)
         else:

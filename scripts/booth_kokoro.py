@@ -1,7 +1,7 @@
 """Render booth clips with Kokoro-82M on the CPU (docs/commentary.md). Runs inside the Kokoro venv, not the project
 one: `.tts/kokoro/bin/python -I scripts/booth_kokoro.py JOBS.json en`, called by studiodesk/booth.py.
 
-JOBS.json: [{say, voice, path}]. Each clip is synthesised whole, then trimmed and written in the replay mp3 format
+JOBS.json: [{say, voice, gain_db, path}]. Each clip is synthesised whole, then trimmed and written in the replay mp3 format
 like the Azure clips (24 kHz mono, 48 kbit/s). Prints the real-time factor at the end.
 """
 import json
@@ -45,7 +45,9 @@ def main(jobs_path, lang):
             wav = os.path.join(tmp, "clip.wav")
             sf.write(wav, audio, SR)
             part = job["path"] + ".part.mp3"
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", wav, "-af", AF, "-ar", "24000", "-ac", "1",
+            # gain_db (web/booth/lines.json) levels each voice near the studio clips; the limiter keeps peaks under -1 dBFS
+            af = f"{AF},volume={job['gain_db']}dB,alimiter=limit=0.89:level=false"
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", wav, "-af", af, "-ar", "24000", "-ac", "1",
                             "-b:a", "48k",
                             "-map_metadata", "-1", "-fflags", "+bitexact", "-flags:a", "+bitexact", part], check=True)
             os.replace(part, job["path"])

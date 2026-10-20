@@ -187,3 +187,15 @@ test("pieces and number match studiodesk/booth.py", () => {
   assert.equal(number(433, null, "en"), "4-3-3");
   assert.equal(clipKey("co", "Dan."), "co|Dan.");
 });
+
+test("the booth never stays quiet for a minute while the ball is in play (A7: it resumes after a studio clip)", () => {
+  for (const [lang, plan] of Object.entries(plans)) {
+    const sp = speech(plan);
+    for (let i = 1; i < sp.length; i++) {
+      const [a, b] = [endOf(sp[i - 1]), sp[i].t];
+      const ev = data.events.filter((e) => e.ts > a && e.ts < b).map((e) => e.ts);
+      const busy = ev.length && [a, ...ev, b].every((t, j, all) => j === 0 || t - all[j - 1] < 10); // an event every 10 s
+      assert.ok(!busy || b - a < 60, `${lang}: quiet from ${a.toFixed(1)} to ${b.toFixed(1)} with ${ev.length} events`);
+    }
+  }
+});

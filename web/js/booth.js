@@ -246,7 +246,10 @@ export class Booth {
     for (const k of kinds) { r = this.choose(role, k, slots, t0); if (r) { kind = k; break; } }
     if (!r) return null;
     const wait = prio === "A" ? RULES.waitA : prio === "B" ? RULES.waitB : 0.25;
-    const t = Math.ceil((opts.at ?? this.earliest(role, t0, prio)) * 100 - 1e-6) / 100; // plan times are in 10 ms
+    const start = () => Math.ceil((opts.at ?? this.earliest(role, t0, prio)) * 100 - 1e-6) / 100; // plan times are in 10 ms
+    let t = start();
+    // a priority call that would come too late cuts the play-by-play's own line instead (a card during a pass call)
+    if (t - t0 > wait && opts.cut && role === "pbp" && opts.at === undefined) { this.cut("pbp", t0); t = start(); }
     if (t - t0 > wait && opts.at === undefined) return null;
     if (this.blocked(t, r.dur)) return null;
     return this.emit({ t, voice: role, kind, ...r, event_id: slots.event_id ?? null, ...(opts.cont ? { cont: true } : {}) }, role);
@@ -280,13 +283,17 @@ export class Booth {
 
   /** A priority event cuts the co mid-sentence (C5). */
   cutCo(t) {
+    this.cut("co", t);
+    this.pending = this.pending.filter((p) => p.role !== "co");
+  }
+
+  cut(voice, t) {
     for (const it of this.plan) {
-      if (it.voice === "co" && it.t + it.dur > t && (it.until ?? Infinity) > t) {
+      if (it.voice === voice && it.t + it.dur > t && (it.until ?? Infinity) > t) {
         it.until = Math.max(it.t, Math.round(t * 100) / 100);
-        this.end.co = it.until;
+        this.end[voice] = it.until;
       }
     }
-    this.pending = this.pending.filter((p) => p.role !== "co");
   }
 
   later(at, until, role, run, keep = false) { this.pending.push({ at, until, role, run, keep }); }
@@ -365,7 +372,8 @@ export class Booth {
       : (type === "foul" || type.startsWith("corner") || type === "freekick_crossed" || res === "offside") ? "B" : "C";
     if (prio !== "C") this.lastAB = t;
     if (this.needFresh) {
-      if (t < this.blockUntil || prio === "C") { this.last = e; return; }
+      // a fresh A or B event resumes the booth; open play does too once 8 s have passed, or it would stay quiet for minutes
+      if (t < this.blockUntil || prio === "C" && t < this.blockUntil + RULES.lullS) { this.last = e; return; }
       this.needFresh = false;
     }
     const at = t + RULES.react;
