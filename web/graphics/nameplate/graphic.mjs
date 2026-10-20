@@ -6,16 +6,16 @@ export default class Nameplate extends SdGraphic {
     return `
 .anchor { position: absolute; left: 0; top: 0; will-change: transform; }
 .ring { position: absolute; left: -35px; top: -35px; width: 70px; height: 70px; box-sizing: border-box; border-radius: 50%;
-  border: 5px solid #2ec4f1; box-shadow: 0 0 0 3px rgba(14,26,61,.55); }
-.leader { position: absolute; left: -2px; width: 4px; background: #2ec4f1; top: -100px; height: 70px; transform-origin: 50% 100%; }
+  border: 5px solid var(--green); box-shadow: 0 0 0 3px var(--purple); }
+.leader { position: absolute; left: -2px; width: 4px; background: var(--green); top: -100px; height: 70px; transform-origin: 50% 100%; }
 .box { position: absolute; left: -2px; bottom: 100px; display: flex; flex-direction: column; align-items: flex-start; }
-.tag { display: flex; align-items: stretch; height: 84px; }
-.num { width: 72px; display: grid; place-items: center; font-weight: 800; font-size: 46px; }
-.txt { padding: 10px 26px 0 16px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-.name { font-weight: 800; font-size: 40px; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.tag { display: flex; align-items: stretch; height: 84px; border-radius: var(--r-box); overflow: hidden; }
+.num { width: 72px; display: grid; place-items: center; font-weight: 800; font-size: 42px; }
+.txt { padding: 8px 24px 0 16px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.name { font-weight: 800; font-size: 34px; text-transform: uppercase; white-space: nowrap; }
 .sub { display: flex; gap: 14px; align-items: baseline; font-size: 26px; white-space: nowrap; }
-.team { font-weight: 700; color: #a8b6d8; letter-spacing: .06em; }
-.speed { font-weight: 800; color: #2ec4f1; font-size: 30px; }
+.team { font-weight: 700; color: var(--lilac-100); letter-spacing: .06em; }
+.speed { font-weight: 800; color: var(--green); font-size: 28px; }
 .flip-x .box { left: auto; right: -2px; align-items: flex-end; }
 .flip-y .leader { top: 30px; transform-origin: 50% 0; }
 .flip-y .box { bottom: auto; top: 100px; flex-direction: column-reverse; }
@@ -34,8 +34,8 @@ export default class Nameplate extends SdGraphic {
     const d = this.data, p = this.players[d.player_id] ?? {}, $ = (s) => this.stage.querySelector(s);
     const num = $(".num");
     num.textContent = d.shirt ?? "";
-    num.style.background = p.color ?? "#2ec4f1";
-    num.style.color = p.text ?? "#0e1a3d";
+    num.style.background = p.color ?? "#00ff87";
+    num.style.color = p.text ?? "#37003c";
     $(".name").textContent = d.name ?? d.player_id ?? "";
     $(".team").textContent = d.team_short ?? "";
     $(".speed").textContent = Number.isFinite(d.speed_kmh) ? `${d.speed_kmh.toFixed(1)} km/h` : "";
