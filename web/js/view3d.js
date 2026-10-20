@@ -75,9 +75,9 @@ const script = (src) => new Promise((ok, ko) => {
 
 export class View3D {
   // els: {canvas, pitch (the 2D canvas), stage, radar, badge, notice, status, buttons}; onChange: the page
-  // lays itself out again (the shown view or the notice changed).
-  constructor(match, els, onChange) {
-    Object.assign(this, { match, els, onChange });
+  // lays itself out again (the shown view or the notice changed); t: the page strings.
+  constructor(match, els, onChange, t) {
+    Object.assign(this, { match, els, onChange, t });
     this.mode = "2d";          // what the visitor asked for
     this.scene = null;
     this.reps = replays(match);
@@ -107,14 +107,14 @@ export class View3D {
     for (const b of this.els.buttons) b.setAttribute("aria-pressed", String(b.dataset.view === this.mode));
     if (this.notice) this._notice("");
     if (this.mode !== "2d" && !this.scene && !this.loading) {
-      this._status("Loading the 3D view");
+      this._status(this.t("load3d"));
       this.loading = this._load().then(() => this._status(""), (err) => {
         this._status("");
         console.warn(`3D view: ${err.message}`);
         this.failed = true;
         for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
         this.set("2d");
-        this._notice(`The 3D view could not start (${err.message}). Showing the 2D pitch.`);
+        this._notice(this.t("fail3d").replace("{e}", err.message));
       });
     }
     this._apply();
@@ -133,7 +133,7 @@ export class View3D {
       this.lost = true;
       for (const b of this.els.buttons) if (b.dataset.view !== "2d") b.disabled = true;
       this.set("2d");
-      this._notice("The browser stopped the 3D view. Showing the 2D pitch.");
+      this._notice(this.t("lost3d"));
     });
     await loadMotion(s).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
     new AwarenessRig(s);
@@ -155,11 +155,18 @@ export class View3D {
     pitch.hidden = v === "3d";
     radar.hidden = !small;
     radar.classList.toggle("is-3d", small === canvas);
-    radar.setAttribute("aria-label", small === canvas ? "Swap: show the 3D picture large" : "Swap: show the 2D pitch large");
+    this.relabel();
     document.body.dataset.shownView = v;
     if (v === "2d") this._badge(false);
     this.last = null;   // draw the next frame whatever the clock does
     this.onChange();
+  }
+
+  // The words it shows, in the page language (also when the language changes)
+  relabel() {
+    const { radar, badge } = this.els;
+    radar.setAttribute("aria-label", this.t(radar.classList.contains("is-3d") ? "swap3d" : "swap2d"));
+    if (badge.classList.contains("on")) badge.textContent = this.t("replay");
   }
 
   // The 3D view's own notice; the page's notice (a missing graphic) comes back when it clears.
@@ -183,7 +190,7 @@ export class View3D {
     const b = this.els.badge;
     if (b.classList.contains("on") === on) return;
     b.classList.toggle("on", on);
-    b.textContent = on ? "Replay" : "";
+    b.textContent = on ? this.t("replay") : "";
   }
 
   resize() { if (!this.lost) this.scene?.resize(); this.last = null; }   // a lost context has no textures to rebuild
@@ -252,7 +259,7 @@ export class View3D {
       this.watch = false;
       this.slow = true;
       this.set("2d");
-      this._notice(`The 3D view ran at ${this.fps.toFixed(1)} frames a second here, so the 2D pitch is back. Pick 3D to keep it anyway.`);
+      this._notice(this.t("slow3d").replace("{fps}", this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })));
     }
   }
 }

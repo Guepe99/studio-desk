@@ -9,8 +9,11 @@
 // - 18: no agent shows as an id with an underscore (audit, traces, strip)
 // - 15: Esc closes the drawer with the focus on the page body
 // - 13: every agent name in the strip is whole (no ellipsis) and the strip shows no cost per agent
-// - 11: in Italian, <html lang> is "it" and the desk, the strip and the graphics' kickers show no
-//   English word outside the agents' own output (marked lang="en")
+// - 11: in Italian, <html lang> is "it" and the desk, the strip, the radar, the replay badge, the voice
+//   button and the graphics' kickers show no English word outside the agents' own output (marked lang="en")
+// - style review 2: the first card's primary action is in view without scrolling the desk (N7, in
+//   English, Italian and Spanish); "offline" on the Desk button is not the error colour (N14); docked,
+//   the audit table fits the desk without its own sideways scroll and "What" is not one word a line
 // Screenshots: out/shots/layout-<size>-{en,audit,strip,it}.png. SIZES='[[320,180]]' runs some sizes only.
 // LAYOUT_BREAK=1 makes the audit table 640 px wide: with the scroller the run still passes.
 //
@@ -33,7 +36,7 @@ mkdirSync(shots, { recursive: true });
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 const expect = (ok, msg) => { if (!ok) fail(msg); };
-const ENGLISH = /\b(Approve|Put on air|Keep on air|Reject|Edit|Held|On air|Off air|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo)\b/;
+const ENGLISH = /\b(Approve|Put on air|Keep on air|Reject|Edit|Held|On air|Off air|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo|Details|Swap|voice-over|Loading|Picked|Wrote|Rewrote|Checked|rundown)\b|\bS-\d{6}\b/;
 
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 
@@ -85,9 +88,23 @@ async function run(w, h) {
   });
   if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
   const card = `#story-${pick.id}`;
-  const want = pick.held ? { primary: "Put on air", said: /^.+ \d+(\+\d+)?' approved, on air$/, undone: "Held", back: /^Undone: .+ is held again$/ }
-    : { primary: "Keep on air", said: /^.+ \d+(\+\d+)?' kept on air$/, undone: "On air", back: /^Undone: .+ is on air again$/ };
+  const want = pick.held ? { primary: "Put on air", said: /^.+ \d+(\+\d+)?' approved, on air$/, undone: /^Waiting for you, /, back: /^Undone: .+ is held again$/ }
+    : { primary: "Keep on air", said: /^.+ \d+(\+\d+)?' kept on air$/, undone: /^(On air, a|A)pproved by the risk rule$/, back: /^Undone: .+ is on air again$/ };
   await openDesk();
+  // N7: the first card's primary action is on screen without scrolling the desk
+  const firstAction = () => page.evaluate(() => {
+    const b = document.querySelector("#desk .story .actions button"), desk = document.querySelector("#desk").getBoundingClientRect();
+    if (!b) return { none: true };
+    const r = b.getBoundingClientRect();
+    return { text: b.textContent, top: Math.round(r.top), bottom: Math.round(r.bottom), seen: r.top >= desk.top && r.bottom <= Math.min(desk.bottom, innerHeight) };
+  });
+  const roomy = h >= 700;   // a short window (a phone on its side) has no room for a whole card under the desk head
+  if (roomy) { const a = await firstAction(); expect(a.seen, `${tag} N7: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`); }
+  // N14: offline is a state of the desk, not an error
+  if (drawer) {
+    const off = await page.$eval("#desk-open .off", (el) => ({ hidden: el.hidden, color: getComputedStyle(el).color }));
+    expect(!off.hidden && off.color !== "rgb(230, 0, 35)", `${tag} N14: the Desk button's offline word ${JSON.stringify(off)}`);
+  }
 
   // 5. what the desk is for, one filled action, risk in words
   const head = await page.evaluate((c) => {
@@ -103,15 +120,22 @@ async function run(w, h) {
   expect(head.filled.length === 1 && head.filled[0] === want.primary, `${tag} 5: the story's filled actions ${JSON.stringify(head.filled)}`);
   expect(/^(Low|Medium|High) risk$/.test(head.risk) && head.tip.length > 10, `${tag} 5: risk reads ${JSON.stringify(head.risk)}, instruction ${JSON.stringify(head.tip)}`);
 
-  // 9. a touch target that is still a disclosure
+  // 9. a touch target that is still a disclosure: Details, and the evidence inside it
   if (touch) {
-    const sum = await page.evaluate((c) => {
-      const s = document.querySelector(`${c} .evidence summary`);
-      if (!s) return { none: true };
-      return { coarse: matchMedia("(pointer: coarse)").matches, display: getComputedStyle(s).display, height: s.getBoundingClientRect().height };
+    const sums = await page.evaluate((c) => {
+      const more = document.querySelector(`${c} details.more`);
+      if (more) more.open = true;
+      return [`${c} .more > summary`, `${c} .evidence summary`].map((q) => {
+        const s = document.querySelector(q);
+        if (!s) return { none: q };
+        return { coarse: matchMedia("(pointer: coarse)").matches, display: getComputedStyle(s).display, height: s.getBoundingClientRect().height };
+      });
     }, card);
-    expect(sum.coarse, `${tag} 9: the touch context does not match (pointer: coarse), the check measures nothing`);
-    expect(sum.display === "list-item" && sum.height >= 44, `${tag} 9: evidence summary ${JSON.stringify(sum)}`);
+    for (const sum of sums) {
+      expect(sum.coarse, `${tag} 9: the touch context does not match (pointer: coarse), the check measures nothing`);
+      expect(sum.display === "list-item" && sum.height >= 44, `${tag} 9: disclosure summary ${JSON.stringify(sum)}`);
+    }
+    await page.evaluate((c) => { const more = document.querySelector(`${c} details.more`); if (more) more.open = false; }, card);
   }
 
   // 17. the status line and Undo
@@ -119,16 +143,16 @@ async function run(w, h) {
   await page.click(`${card} .act-approved`);
   const said = await page.$eval("#desk .done-msg", (el) => el.textContent).catch(() => "");
   expect(want.said.test(said), `${tag} 17: after ${want.primary} the status line says ${JSON.stringify(said)}`);
-  expect(await page.$eval(`${card} .tally`, (el) => el.textContent) === "On air", `${tag} 17: approved story not On air`);
-  await shot(page, `${PFX}-${tag}-en.png`);
-  const undo = await page.$("#desk .undo");
+  expect(/^(On air, a|A)pproved by you$/.test(await page.$eval(`${card} .tally`, (el) => el.textContent)), `${tag} 17: approved story not approved by you`);
+  const undo = await page.$("#desk .undo"); // before the shot: under load a screenshot can outlast the Undo's 10 s
   expect(undo && await undo.isVisible(), `${tag} 17: no Undo after a decision`);
   if (undo && await undo.isVisible()) {
     await undo.click();
-    expect(await page.$eval(`${card} .tally`, (el) => el.textContent) === want.undone, `${tag} 17: after Undo the story is not ${want.undone}`);
+    expect(want.undone.test(await page.$eval(`${card} .tally`, (el) => el.textContent)), `${tag} 17: after Undo the story is not ${want.undone}`);
     const back = await page.$eval("#desk .done-msg", (el) => el.textContent);
     expect(want.back.test(back), `${tag} 17: after Undo the status line says ${JSON.stringify(back)}`);
   }
+  await shot(page, `${PFX}-${tag}-en.png`);
 
   // 14 and 18. the audit log: the last column in reach, people's names not ids
   // LAYOUT_BREAK=1 widens the table past any phone (as the reviewer's run had it): the check must still find the last column
@@ -154,8 +178,11 @@ async function run(w, h) {
       .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}#${e.id}.${String(e.className).split(" ")[0]}`);
     for (const a of clips) if (a !== own && a.scrollWidth > a.clientWidth + 1) cut.push(`${a.id || a.className} scrolls sideways (${wide(a)})`);
     const who = [...t.querySelectorAll("tbody tr")].map((row) => row.cells[1]?.textContent ?? "");
-    return { cut, who, cells: t.querySelectorAll("tbody tr").length };
+    const wrap = t.closest(".log-wrap"), whatTh = [...t.querySelectorAll("th")].find((x) => x.textContent === "What");
+    return { cut, who, cells: t.querySelectorAll("tbody tr").length, side: wrap ? wrap.scrollWidth - wrap.clientWidth : 0, what: Math.round(whatTh?.getBoundingClientRect().width ?? 0) };
   });
+  // old 14: docked, the table fits the desk as it is, and "What" has room for a few words a line
+  if (!drawer && process.env.LAYOUT_BREAK !== "1") expect(audit.side <= 1 && audit.what >= 110, `${tag} 14: docked audit table scrolls ${audit.side} px sideways, "What" is ${audit.what} px wide`);
   expect(!audit.none && audit.cells > 0, `${tag} 14: no audit rows after a decision`);
   expect(!audit.none && !audit.cut?.length, `${tag} 14: the audit log's last column is cut by ${JSON.stringify(audit.cut)}`);
   expect(!audit.who?.some((x) => x.includes("_")), `${tag} 18: audit Who shows ids ${JSON.stringify(audit.who)}`);
@@ -199,7 +226,15 @@ async function run(w, h) {
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
   await openDesk();
-  const leftovers = await englishIn(page, "#desk, #activity, #desk-open");
+  // N7 again in Italian and Spanish, from the top of the desk
+  const setLang = (l) => page.evaluate((x) => { const el = document.querySelector("#lang"); el.value = x; el.dispatchEvent(new Event("change")); }, l);
+  if (roomy) for (const lang of ["it", "es", "it"]) {
+    await setLang(lang);
+    await page.evaluate(() => { for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = 0; });
+    const a = await firstAction();
+    expect(a.seen, `${tag} N7 ${lang}: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`);
+  }
+  const leftovers = await englishIn(page, "#desk, #activity, #desk-open, #radar, #replay-badge, #voice");
   expect(!leftovers.length, `${tag} 11: English in the Italian page ${JSON.stringify(leftovers.slice(0, 6))}`);
   const kick = await page.evaluate(() => {
     const sd = window.studioDesk, c = sd.desk.sheet(sd.match.cues, sd.state.audience, sd.state.lang).find((x) => x.graphic === "why_card");

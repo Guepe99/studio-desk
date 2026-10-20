@@ -242,7 +242,7 @@ try {
         const g = live.find((x) => x.cue === c.cue_id);
         if (!g) { fail(`${audience} ${c.cue_id} ${c.graphic}: not on screen`); continue; }
         if (g.step !== 0 || g.opacity < 0.9) fail(`${audience} ${c.cue_id} ${c.graphic}: hidden (step ${g.step}, opacity ${g.opacity}, ${g.texts} texts)`);
-        if ((audience === "analyst") !== (g.facts > 0)) fail(`${audience} ${c.cue_id}: ${g.facts} fact ids shown`);
+        if (g.facts > 0) fail(`${audience} ${c.cue_id}: ${g.facts} fact ids on air (they belong in the desk evidence)`);
         if (g.ring) {
           const [x, y] = stageAt(g.player, ts), off = Math.hypot(g.ring[0] - x, g.ring[1] - y);
           if (off > 3) fail(`${c.cue_id}: nameplate ${off.toFixed(1)} px off its player`);
@@ -671,6 +671,14 @@ try {
         await seekTo(page, ts);
         const got = await strip();
         if (got.title !== title || got.lang !== lang || !got.sum.startsWith(start)) fail(`activity in ${lang} at ${ts} s: ${JSON.stringify(got)}`);
+        // one plain sentence per agent in the page language: no story or fact ids, no step names, nothing cut
+        const said = await page.$$eval("#activity .act-out", (n) => n.map((el) => ({ text: el.textContent, lang: el.closest("[lang]")?.lang,
+          cut: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1, title: el.closest("li").title })));
+        const english = /\b(Picked|Explained|Wrote|Rewrote|Asked|Checked|Put it|Used|Passed|story|stories|line|lines|cues?|rewritten|analysis|pass|fail|fallback)\b/;
+        for (const x of said) {
+          if (/\b[SF]-[A-Z_]*\d{6}\b|[a-z]_[a-z]/.test(x.text + x.title) || x.cut || x.lang !== lang || (lang !== "en" && english.test(x.text)))
+            fail(`activity in ${lang} at ${ts} s: strip says ${JSON.stringify(x)}`);
+        }
       }
     }
     const failed = rows.find((r) => r.step === "fallback" || /(^| )fallback: /.test(r.output_summary));
@@ -779,7 +787,8 @@ try {
     }
     await seekTo(hostile, await hostile.evaluate(() => window.studioDesk.end));
     if (await hostile.evaluate(() => window.__xss)) fail("team colour or trace summary markup ran as HTML");
-    if (await hostile.evaluate(() => window.studioDesk.desk.traces.length && !document.querySelector("#activity").textContent.includes("<img"))) fail("activity: a summary with markup not shown as text");
+    // the strip says what each agent did in page strings: a summary's markup never reaches it, as text or as HTML
+    if (await hostile.evaluate(() => { const a = document.querySelector("#activity"); return a.querySelector("img") || a.textContent.includes("<img"); })) fail("activity: a trace summary's markup reached the strip");
     await hostile.context().close();
   });
 
