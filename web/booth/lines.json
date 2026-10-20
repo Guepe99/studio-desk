@@ -437,7 +437,7 @@
    "pass": [
     "{receiver}.",
     "{player} per {receiver}.",
-    "Lo gioca a favore di {receiver}.",
+    "L'appoggia per {receiver}.",
     "Ora {receiver}.",
     "Ecco {receiver}.",
     "{receiver} in possesso.",
@@ -455,8 +455,8 @@
     "{player} cerca la profondità.",
     "Palla lunga di {player}.",
     "Cambio di gioco di {player}.",
-    "Palla scavalcata per {receiver}.",
-    "Lungo linea di {player}.",
+    "Palla alle spalle della difesa per {receiver}.",
+    "Lungolinea di {player}.",
     "Verticale di {player}.",
     "Apertura di {player}."
    ],
@@ -479,7 +479,7 @@
     "{player} se ne va."
    ],
    "take_on_fail": [
-    "Ci prova {player}, ma la perde.",
+    "Tenta il dribbling {player}, ma la perde.",
     "{player} non passa.",
     "Fermato {player}."
    ],
@@ -514,7 +514,7 @@
     "Libera {player}.",
     "Via il pallone.",
     "Spazzata di {player}.",
-    "Fuori dalla zona calda, {player}.",
+    "La toglie dalla zona calda {player}.",
     "Ci pensa {player}.",
     "Pericolo sventato da {player}.",
     "Via, lontano."
@@ -522,14 +522,14 @@
    "cross": [
     "Cross di {player}.",
     "Mette in mezzo {player}.",
-    "Palla in mezzo di {player}.",
+    "Palla in mezzo, {player}.",
     "Traversone di {player}.",
     "Crossa {player}.",
     "{player} cerca un compagno in area.",
     "{player} mette in area.",
     "Pallone teso di {player}.",
     "Spiovente di {player}.",
-    "Rasoterra in mezzo di {player}."
+    "Rasoterra di {player} in mezzo."
    ],
    "shot_wide": [
     "Ci prova {player}... fuori.",
@@ -557,7 +557,7 @@
    "shot_blocked": [
     "Tiro di {player}, respinto.",
     "Respinto! Murato {player}.",
-    "Ci prova {player}, ribattuto.",
+    "Calcia {player}, ribattuto.",
     "Contro un difensore, {player}."
    ],
    "shot_saved": [
@@ -626,7 +626,7 @@
    ],
    "foul": [
     "Fallo di {player}.",
-    "Su {receiver} c'è irregolarità.",
+    "Fallo su {receiver}.",
     "Calcio di punizione per {team}.",
     "Fischia l'arbitro, fallo di {player}.",
     "Atterrato {receiver}.",
@@ -667,8 +667,8 @@
     "Corner corto, {player}."
    ],
    "kickoff": [
-    "Benvenuti. {team} contro {team2}, si parte.",
-    "Buonasera. {team} e {team2}, comincia la partita."
+    "Benvenuti. Si parte, {team} contro {team2}.",
+    "Buonasera. Comincia la partita tra {team} e {team2}."
    ],
    "kickoff2": [
     "Si riparte.",
@@ -685,11 +685,11 @@
     "Finisce qui la partita."
    ],
    "close_miss": [
-    "{player} da vicino... fuori! Come ha fatto, {co}?",
+    "{player} da vicino... fuori! Come ha fatto a sbagliarlo, {co}?",
     "{player}... doveva segnare! {co}?"
    ],
    "close_miss_noname": [
-    "Da vicino... fuori! Come ha fatto, {co}?",
+    "Da vicino... fuori! Com'è possibile, {co}?",
     "Che occasione! {co}?"
    ],
    "after_goal": [
@@ -707,7 +707,7 @@
    ],
    "momentum": [
     "Momento {team|of}. {co}?",
-    "Adesso è tutto {team}.",
+    "Adesso c'è solo {team}.",
     "Spinge {team}. {co}?"
    ],
    "press": [
@@ -719,7 +719,7 @@
     "{team} cerca ancora un varco."
    ],
    "formation": [
-    "{team} sembra cambiato.",
+    "{team} ha cambiato assetto.",
     "{team} ha cambiato qualcosa, {co}."
    ],
    "half_time_q": [
@@ -737,7 +737,7 @@
     "{team} fa girare il pallone.",
     "Fraseggio {team|of}.",
     "{team} cerca il varco.",
-    "Ricicla il pallone {team}.",
+    "Riparte da dietro {team}.",
     "Nessuna fretta per {team}.",
     "Possesso {team|of}.",
     "{team} manovra.",
@@ -767,7 +767,7 @@
     "Appoggio arretrato per {receiver}.",
     "Dietro, su {receiver}.",
     "Palla indietro a {receiver}.",
-    "Riciclo, di nuovo {receiver}.",
+    "Si torna indietro, di nuovo {receiver}.",
     "Indietro fino a {receiver}.",
     "Ricomincia da {receiver}.",
     "Torna indietro, {receiver}."
@@ -777,7 +777,7 @@
     "Breve pausa.",
     "Si attende la ripresa del gioco.",
     "Un momento di sosta.",
-    "Pallone fermo.",
+    "Partita ferma.",
     "Pochi secondi e si riparte.",
     "Gioco interrotto.",
     "Una piccola pausa qui.",
@@ -789,14 +789,14 @@
    "restart": [
     "Riparte {team}.",
     "Rimette in gioco {team}.",
-    "Tocca ripartire per {team}.",
-    "Si aspetta {team}.",
+    "Deve ripartire {team}.",
+    "Si aspetta che riparta {team}.",
     "Ricomincia {team}.",
     "{team} pronto a ripartire.",
     "Pallone {team|of}.",
-    "{team} si prende il suo tempo.",
+    "{team} se la prende comoda.",
     "{team} si prepara a ripartire.",
-    "Ripresa per {team}.",
+    "Rimessa in gioco per {team}.",
     "Rimette in moto {team}.",
     "La rimessa è {team|of}."
    ],
@@ -830,8 +830,8 @@
     "{receiver}.",
     "{player} para {receiver}.",
     "La pide {receiver}.",
-    "Atrás para {receiver}.",
-    "A un costado para {receiver}.",
+    "La toca para {receiver}.",
+    "Combina con {receiver}.",
     "Ahora {receiver}.",
     "Ahí está {receiver}.",
     "Para {receiver}.",
@@ -844,7 +844,7 @@
     "Balón largo para {receiver}.",
     "{player} busca en largo a {receiver}.",
     "Pase largo de {player}.",
-    "{player} la manda arriba.",
+    "{player} la pone arriba.",
     "En largo, {player}.",
     "Cambio de juego de {player}.",
     "Por encima para {receiver}.",
@@ -859,7 +859,7 @@
     "Posición adelantada de {receiver}."
    ],
    "take_on": [
-    "{player} se va de su par.",
+    "{player} se va de su hombre.",
     "Regate de {player}.",
     "Se va {player}.",
     "Qué bien {player}, se marcha.",
@@ -880,7 +880,7 @@
     "La corta {player}.",
     "Recupera {player}.",
     "Anticipa {player}.",
-    "Bien leído por {player}.",
+    "Lo lee bien {player}.",
     "La roba {player}.",
     "Corta {player} el pase.",
     "Llega antes {player}.",
@@ -897,7 +897,7 @@
     "Limpio, {player}.",
     "No pasa, {player} la gana.",
     "Duelo ganado por {player}.",
-    "Lo para todo {player}."
+    "Ahí lo corta {player}."
    ],
    "clearance": [
     "Despeja {player}.",
@@ -916,12 +916,12 @@
     "Centra {player}.",
     "La pone {player} al área.",
     "Busca el centro {player}.",
-    "Balón al área de {player}.",
+    "Balón al área, {player}.",
     "{player} busca a un compañero.",
     "La mete {player} al área.",
     "Balón tenso de {player}.",
     "Bombea {player}.",
-    "Raso al área de {player}."
+    "Centro raso de {player}."
    ],
    "shot_wide": [
     "Le pega {player}... fuera.",
@@ -949,7 +949,7 @@
    "shot_blocked": [
     "Chut de {player}, rechazado.",
     "¡Bloqueado! Le tapan el disparo a {player}.",
-    "Lo intenta {player}, rebota en un defensa.",
+    "Remata {player}, rebota en un defensa.",
     "Contra un defensa, {player}."
    ],
    "shot_saved": [
@@ -989,13 +989,13 @@
     "¡Gol! ¡Gol de {player}!",
     "¡{player}!",
     "¡Gol {team|of}!",
-    "¡Adentro! ¡{player}!",
+    "¡Dentro! ¡{player}!",
     "¡Marca {player}!",
     "¡{player}, gol!"
    ],
    "goal_noname": [
     "¡Gol!",
-    "¡Adentro!",
+    "¡Dentro!",
     "¡Han marcado!"
    ],
    "keeper_save": [
@@ -1012,14 +1012,14 @@
     "¡Qué intervención!"
    ],
    "keeper_claim": [
-    "La salida de {keeper}.",
+    "Sale y atrapa {keeper}.",
     "Atrapa {keeper}.",
     "Fácil para {keeper}."
    ],
    "foul": [
     "Falta de {player}.",
     "Falta sobre {receiver}.",
-    "Habrá tiro libre, para {team}.",
+    "Falta a favor {team|of}.",
     "Pita el árbitro, falta de {player}.",
     "Derriban a {receiver}.",
     "Tiro libre, falta de {player}.",
@@ -1059,8 +1059,8 @@
     "Córner en corto, {player}."
    ],
    "kickoff": [
-    "Bienvenidos. {team} contra {team2}, y arranca el partido.",
-    "Buenas noches. {team} y {team2}, echa a rodar el balón."
+    "Bienvenidos. Arranca el partido entre {team} y {team2}.",
+    "Buenas noches. Echa a rodar el balón entre {team} y {team2}."
    ],
    "kickoff2": [
     "Arranca la segunda parte.",
@@ -1095,7 +1095,7 @@
    ],
    "sprint_goal": [
     "Fíjense en la carrera de {player}.",
-    "{player} llegó antes que nadie."
+    "{player} ha llegado antes que nadie."
    ],
    "momentum": [
     "Buen momento {team|of}. ¿{co}?",
@@ -1159,7 +1159,7 @@
     "Pase atrás a {receiver}.",
     "Otra vez {receiver}.",
     "Atrás hasta {receiver}.",
-    "Recicla con {receiver}.",
+    "Asegura con {receiver}.",
     "Vuelta a empezar, {receiver}.",
     "Descarga atrás en {receiver}.",
     "Juega atrás para {receiver}."
@@ -1169,7 +1169,7 @@
     "Breve pausa.",
     "Se espera la reanudación.",
     "Un momento de pausa.",
-    "Balón parado.",
+    "Partido parado.",
     "Unos segundos y seguimos.",
     "Juego interrumpido.",
     "Una pequeña pausa aquí.",
@@ -1181,8 +1181,8 @@
    "restart": [
     "Reanuda {team}.",
     "Pone el balón en juego {team}.",
-    "Le toca reanudar a {team}.",
-    "Se espera a {team}.",
+    "Reanuda el juego {team}.",
+    "Esperamos a que saque {team}.",
     "Vuelve a empezar {team}.",
     "{team} listo para reanudar.",
     "Balón {team|of}.",
@@ -1414,17 +1414,17 @@
     "Da {fact:shot_distance}. Imparabile."
    ],
    "sprint_goal": [
-    "Guardate lo scatto prima del tiro: {fact:sprint_speed}.",
+    "Lo scatto prima del tiro: {fact:sprint_speed}.",
     "È arrivato a {fact:sprint_speed}. Nessuno poteva prenderlo."
    ],
    "goal": [
     "Da {fact:shot_distance}.",
-    "Calciata a {fact:shot_speed}.",
+    "L'ha calciata a {fact:shot_speed}.",
     "Da {fact:shot_distance}, e non ha sbagliato."
    ],
    "momentum": [
-    "La spinta è tutta loro in questa fase: momentum {fact:momentum}.",
-    "I numeri lo confermano: momentum {fact:momentum}.",
+    "La spinta è tutta loro in questa fase: inerzia {fact:momentum}.",
+    "I numeri lo confermano: inerzia {fact:momentum}.",
     "Hanno l'inerzia, {fact:momentum} in questa fase."
    ],
    "press": [
@@ -1441,15 +1441,15 @@
    ],
    "formation": [
     "Sì, è passato al {fact:formation}.",
-    "Adesso è {fact:formation}."
+    "Adesso gioca con il {fact:formation}."
    ],
    "sprint": [
     "{player} sta volando. {fact:sprint_speed} nell'ultimo scatto.",
     "Avete visto la velocità di {player}? {fact:sprint_speed}."
    ],
    "half_time": [
-    "Il palleggio {team|of}: {fact:pass_accuracy} di passaggi riusciti.",
-    "{team} ha gestito bene il pallone, {fact:pass_accuracy} di passaggi riusciti."
+    "Il palleggio {team|of}: passaggi riusciti, {fact:pass_accuracy}.",
+    "{team} ha gestito bene il pallone, passaggi riusciti: {fact:pass_accuracy}."
    ],
    "half_time_runner": [
     "E {player} ha già percorso {fact:distance_covered}. Nessuno ha corso di più.",
@@ -1457,7 +1457,7 @@
    ],
    "full_time": [
     "{player} ha percorso {fact:distance_covered} oggi. Nessuno ha corso di più.",
-    "E {team} ha chiuso con {fact:pass_accuracy} di passaggi riusciti."
+    "E {team} ha chiuso così, passaggi riusciti: {fact:pass_accuracy}."
    ],
    "yellow_card": [
     "Cartellino. Da qui in avanti dovrà stare attento.",
@@ -1471,7 +1471,7 @@
    ],
    "near_miss": [
     "Poteva fare meglio, lo sa.",
-    "Non è andato lontano.",
+    "C'è mancato poco.",
     "Occasioni così vanno sfruttate."
    ],
    "stoppage": [
@@ -1539,18 +1539,18 @@
     "Desde {fact:shot_distance}. Imparable."
    ],
    "sprint_goal": [
-    "Fíjense en el sprint antes del remate: {fact:sprint_speed}.",
+    "El sprint antes del remate: {fact:sprint_speed}.",
     "Llegó a {fact:sprint_speed}. Nadie lo alcanzaba."
    ],
    "goal": [
     "Desde {fact:shot_distance}.",
-    "Golpeado a {fact:shot_speed}.",
+    "Le ha pegado a {fact:shot_speed}.",
     "Desde {fact:shot_distance}, y no perdonó."
    ],
    "momentum": [
-    "Ahora mismo es todo suyo: momentum de {fact:momentum}.",
-    "Los números lo confirman: momentum de {fact:momentum}.",
-    "Tienen el impulso, {fact:momentum} en este tramo."
+    "Ahora mismo es todo suyo: dominio de {fact:momentum}.",
+    "Los números lo confirman: dominio de {fact:momentum}.",
+    "Mandan ellos: dominio de {fact:momentum} en este tramo."
    ],
    "press": [
     "Es la presión: {team} está en {fact:press_intensity} de intensidad y roba arriba.",
@@ -1573,20 +1573,20 @@
     "¿Han visto la velocidad de {player}? {fact:sprint_speed}."
    ],
    "half_time": [
-    "Cómo ha cuidado el balón {team}: {fact:pass_accuracy} de pases acertados.",
-    "{team} ha manejado bien el balón, {fact:pass_accuracy} de pases acertados."
+    "Cómo ha cuidado el balón {team}: un {fact:pass_accuracy} de pases acertados.",
+    "{team} ha manejado bien el balón, un {fact:pass_accuracy} de pases acertados."
    ],
    "half_time_runner": [
     "Y {player} ya lleva {fact:distance_covered}. Nadie ha corrido más.",
     "¿El que más ha corrido? {player}."
    ],
    "full_time": [
-    "{player} recorrió {fact:distance_covered} hoy. Nadie corrió más.",
-    "Y {team} terminó con {fact:pass_accuracy} de pases acertados."
+    "{player} ha recorrido {fact:distance_covered} hoy. Nadie ha corrido más.",
+    "Y {team} ha terminado con un {fact:pass_accuracy} de pases acertados."
    ],
    "yellow_card": [
     "Amonestado. A partir de ahora tendrá que medir mucho.",
-    "Ahora tendrá que tener cuidado.",
+    "Ahora tendrá que ir con cuidado.",
     "No puede quejarse mucho, creo."
    ],
    "save": [
@@ -1596,7 +1596,7 @@
    ],
    "near_miss": [
     "Pudo hacerlo mejor, y lo sabe.",
-    "No se fue lejos.",
+    "No se ha ido por mucho.",
     "Esas hay que meterlas."
    ],
    "stoppage": [
