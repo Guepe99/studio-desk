@@ -163,6 +163,9 @@ async function run(w, h) {
 
   // 9. a touch target that is still a disclosure: Details, and the evidence inside it
   if (touch) {
+    // an auto story on air sits in the compact strip, which hides Details on a phone: measure it one second earlier, as Next
+    const aired = !!(await page.$(`#desk .sec-air ${card}`));
+    if (aired) await seek(Math.max(0, pick.at - 1));
     const sums = await page.evaluate((c) => {
       const more = document.querySelector(`${c} details.more`);
       if (more) more.open = true;
@@ -177,6 +180,7 @@ async function run(w, h) {
       expect(sum.display === "list-item" && sum.height >= 44, `${tag} 9: disclosure summary ${JSON.stringify(sum)}`);
     }
     await page.evaluate((c) => { const more = document.querySelector(`${c} details.more`); if (more) more.open = false; }, card);
+    if (aired) await seek(pick.at + 1);
   }
 
   // 17. the status line and Undo
