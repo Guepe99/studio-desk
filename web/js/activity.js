@@ -3,7 +3,7 @@
 // graphic is on air it shows how that graphic was made instead: the chain of its story. Reads only the
 // replay's traces (loaded by the desk). The DOM changes only when what is shown changes.
 // No live region: at 16x or 64x it would talk over everything, the strip is read on demand.
-import { summaryText, traceFailed, agentName } from "./desk.js";
+import { traceFailed, agentName, kindName } from "./desk.js";
 
 const SHOWN = 7; // one hand-off chain: finder, analyst, three commentators, verifier, director
 const usd = (v, lang) => {
@@ -100,17 +100,28 @@ export class Activity {
     this.listEl.replaceChildren(...latestPerAgent(this.rows, k).map((i) => this.item(this.rows[i], i >= from ? nth++ : -1, lang)));
   }
 
+  // What an agent did, as one plain sentence in the page language; its own words, ids and step
+  // names stay in the desk's Traces tab.
+  said(r, lang) {
+    const agent = String(r.agent).replace(/_[a-z]{2}$/, ""), out = String(r.output_summary ?? "");
+    if (r.step === "fallback") return this.t("didTemplate");
+    if (traceFailed(r)) return this.t("didFail");
+    if (agent === "story_finder") {
+      const s = this.desk.byId.get(this.desk.traceStories(r)[0]);
+      return s ? fill(this.t("didPick"), { what: `${kindName(s.kind, lang).toLocaleLowerCase(lang)}, ${this.desk.minuteText(s)}'` }) : this.t("didPickAny");
+    }
+    if (agent === "analyst") return this.t("didExplain");
+    if (agent === "commentator") return this.t(r.step === "rewrite" ? "didRewrite" : "didWrite");
+    if (agent === "verifier") return this.t(/^pass/.test(out) ? "didPass" : /^template/.test(out) ? "didTemplate" : /rewritten|^fail/.test(out) ? "didRewritten" : "didCheck");
+    return this.t(agent === "director" ? "didCue" : "didHand");
+  }
+
   item(r, nth, lang) {
-    const failed = traceFailed(r), out = summaryText(r.output_summary);
-    const li = el("li", failed ? "fallback" : "");
+    const li = el("li", traceFailed(r) ? "fallback" : "");
     li.dataset.agent = String(r.agent).replace(/_[a-z]{2}$/, "");
     li.dataset.seq = r.seq;
-    li.title = out;
     if (nth >= 0) { li.classList.add("new"); li.style.setProperty("--i", nth); }
-    const p = el("p", "act-out");
-    // the step name and the summary are agent output, in English like the desk's Traces tab
-    p.append(el("span", "act-step", failed ? "fallback" : String(r.step ?? "")), ` ${out}`);
-    p.lang = "en";
+    const p = el("p", "act-out", this.said(r, lang));
     // the model only: tokens and cost are in the summary line and in the desk
     const meta = el("p", "act-meta");
     if (r.model) { const m = el("span", "act-model", r.model); m.lang = "en"; meta.append(m); }

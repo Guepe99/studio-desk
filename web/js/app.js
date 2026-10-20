@@ -31,6 +31,13 @@ const STRINGS = {
     actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
     actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
+    didPick: "Picked: {what}", didPickAny: "Picked a moment", didExplain: "Explained why it matters", didWrite: "Wrote the line",
+    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didTemplate: "Used the fact-only line",
+    didCheck: "Checked the numbers", didCue: "Put it in the rundown", didFail: "Model call failed", didHand: "Passed its work on",
+    replay: "Replay", swap3d: "Swap: show the 3D picture large", swap2d: "Swap: show the 2D pitch large", load3d: "Loading the 3D view",
+    fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
+    slow3d: "The 3D view ran at {fps} frames a second here, so the 2D pitch is back. Pick 3D to keep it anyway.",
+    voiceOn: "AI voice-over on: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over off",
     aioff: "AI off", view: "View", broadcast: "Match broadcast", activity: "Agent activity",
   },
   // every key in every language: a missing one would fall back to English
@@ -56,6 +63,13 @@ const STRINGS = {
     actNone: "Nessuna traccia degli agenti in questo replay", actSum: "Passaggi di consegne finora: {n}, {tokens} token, {usd}",
     actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
     actRules: "solo regole", actCode: "solo codice",
+    didPick: "Ha scelto: {what}", didPickAny: "Ha scelto un momento", didExplain: "Ha spiegato perché conta", didWrite: "Ha scritto la frase",
+    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didTemplate: "Ha usato la frase con i soli fatti",
+    didCheck: "Ha controllato i numeri", didCue: "L'ha messa in scaletta", didFail: "Errore del modello", didHand: "Ha passato le consegne",
+    replay: "Replay", swap3d: "Scambia: l'immagine 3D in grande", swap2d: "Scambia: il campo 2D in grande", load3d: "Caricamento della vista 3D",
+    fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
+    slow3d: "Qui la vista 3D andava a {fps} fotogrammi al secondo, così è tornato il campo 2D. Scegli 3D per tenerla comunque.",
+    voiceOn: "Voce AI accesa: parla nella lingua scelta, solo a velocità 1x", voiceOff: "Voce AI spenta",
   },
   es: {
     play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "2.ª parte",
@@ -79,6 +93,13 @@ const STRINGS = {
     actNone: "No hay trazas de los agentes en esta repetición", actSum: "Relevos hasta ahora: {n}, {tokens} tokens, {usd}",
     actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
     actRules: "reglas, sin modelo", actCode: "código, sin modelo",
+    didPick: "Eligió: {what}", didPickAny: "Eligió un momento", didExplain: "Explicó por qué importa", didWrite: "Escribió la frase",
+    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didTemplate: "Usó la frase solo con datos",
+    didCheck: "Comprobó los números", didCue: "La puso en la escaleta", didFail: "Error del modelo", didHand: "Pasó el relevo",
+    replay: "Repetición", swap3d: "Cambiar: la imagen 3D en grande", swap2d: "Cambiar: el campo 2D en grande", load3d: "Cargando la vista 3D",
+    fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
+    slow3d: "Aquí la vista 3D iba a {fps} fotogramas por segundo, así que vuelve el campo 2D. Elige 3D para mantenerla de todos modos.",
+    voiceOn: "Voz IA activada: habla en el idioma elegido, solo a 1x", voiceOff: "Voz IA desactivada",
   },
 };
 
@@ -181,6 +202,8 @@ function applyStrings() {
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));
   if (match) goalLabels();
+  view3d?.relabel();
+  voice?.render();
 }
 
 function setPlaying(on) {
@@ -321,6 +344,7 @@ function tick(now) {
   voice?.update(state.ts, end); // null until its clips are checked
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
+  desk.setLive([...host.live.values()].map((i) => i.cue.story_id).filter(Boolean).sort());
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -447,7 +471,8 @@ async function main() {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: 60,
     locate,
-    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
+    // raw fact ids never go on air: they are debug codes to a viewer, and the desk evidence lists them
+    vendorParams: () => ({ v_showFactIds: false, v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
     // in the deck or not, the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
     compact: () => ({ deck: deckMode ? deck : null, magnify: Math.max(1, 11.5 / (26 * scale)) }),
   });
@@ -474,14 +499,14 @@ async function main() {
   window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
   // 2D, 3D or Radar (?view=split): ?view= or what the device can draw; any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
-    notice: $("#notice"), status: $("#view-status"), buttons: document.querySelectorAll("[data-view]") }, layout);
+    notice: $("#notice"), status: $("#view-status"), buttons: document.querySelectorAll("[data-view]") }, layout, t);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
   if (document.activeElement === document.body) frame.focus();
   requestAnimationFrame(tick);
   await desk.load();
-  const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
+  const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
   await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
 }
 

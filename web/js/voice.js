@@ -26,7 +26,7 @@ async function sha1(text) {
 }
 
 export class Voice {
-  /** @param {{base: string, host, desk, state, button: HTMLButtonElement}} opts */
+  /** @param {{base: string, host, desk, state, button: HTMLButtonElement, t: (key: string) => string}} opts */
   constructor(opts) {
     Object.assign(this, opts);
     this.clips = new Map(); // `${story_id}|${lang}` -> url
@@ -90,7 +90,7 @@ export class Voice {
   render() {
     this.button.setAttribute("aria-pressed", String(this.on));
     // the label says AI: listeners should know the voice is synthetic (docs/voice.md)
-    this.button.title = this.on ? "AI voice-over on: speaks the chosen language, plays at 1x" : "AI voice-over off";
+    this.button.title = this.t(this.on ? "voiceOn" : "voiceOff");
   }
 
   /** Seek: the clip stops and every story can speak again. */
