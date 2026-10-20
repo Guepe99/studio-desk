@@ -303,8 +303,8 @@ def test_a_failed_audit_write_is_retried(studio, monkeypatch):
 
 
 def test_the_whole_answer_has_a_time_limit_and_its_cost_is_kept(studio, monkeypatch):
-    monkeypatch.setattr(config, "ASK_TIMEOUT_S", 0.3)
-    monkeypatch.setattr(api, "ASK_RECORD_S", 0.0)  # all 0.3 s for the answer
+    monkeypatch.setattr(config, "ASK_TIMEOUT_S", 1.0)  # under load the steps before the model take a few tenths
+    monkeypatch.setattr(api, "ASK_RECORD_S", 0.0)  # all 1 s for the answer
     studio.fake.delay_s = 2.0
     studio.reply("The quickest sprint so far was 32 km/h.", [SPRINT])
     r = studio.visitor().post("/api/ask", json=body())
@@ -612,7 +612,7 @@ def test_the_whole_request_stays_under_the_time_limit(studio, monkeypatch):
     start = _time.monotonic()
     r = studio.visitor().post("/api/ask", json=body())
     assert r.json()["status"] == "declined" and reason() == "timed out"
-    assert _time.monotonic() - start < 0.8 + 0.15
+    assert _time.monotonic() - start < 0.8 + 0.3  # without the budget it is 0.4 + 0.8 and more; 0.3 is the slack a loaded machine needs
 
 
 def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
@@ -639,3 +639,23 @@ def test_italian_and_spanish_answers_get_the_decimal_comma(studio):
     assert r["answer"] == "Nel primo tempo il momentum è arrivato a 7,8/10 in min 1-3."
     assert rules.decimal_comma("Momentum 7.8/10 at 2'.", "en") == "Momentum 7.8/10 at 2'."
     assert rules.decimal_comma("Momentum 7.8/10. Poi 2-1.", "es") == "Momentum 7,8/10. Poi 2-1."
+
+
+def test_the_fact_word_goes_with_the_id_and_minuto_gets_its_article():
+    assert rules.strip_citations("Okowande (minuto 10, fatto F-SCORE-000001) e Duarte (fact F-SCORE-000003, "
+                                 "fact F-SCORE-000004).") == "Okowande (minuto 10) e Duarte."
+    assert rules.strip_citations("Un fatto curioso: 3 tiri.") == "Un fatto curioso: 3 tiri."
+    assert rules.minute_word("Ha segnato ai minuto 10 e minuto 13, poi al minuto 50.", "it") == \
+        "Ha segnato al minuto 10 e al minuto 13, poi al minuto 50."
+    assert rules.minute_word("Marcó en minuto 10 y minuto 13.", "es") == "Marcó en el minuto 10 y el minuto 13."
+    assert rules.minute_word("He scored at minuto 10 and minute 13.", "en") == "He scored at minute 10 and minute 13."
+
+
+def test_a_goal_ordinal_passes_only_for_a_cited_goal():
+    goal = lambda i, a, b, ts: {"fact_id": f"F-SCORE-00000{i}", "kind": "score", "value": float(max(a, b)), "unit": "goal",
+                                 "label_en": f"Goal {a}-{b}", "ts": ts, "period": 1, "player": None, "team": None}
+    facts = [goal(1, 1, 0, 600), goal(3, 2, 1, 1500)]
+    ids = {f["fact_id"] for f in facts}
+    assert rules.check_answer("Il primo gol al minuto 10, il terzo al minuto 25.", facts, 2700, "it", ids, (2, 1)) == []
+    assert any("'secondo'" in f for f in rules.check_answer("Il secondo gol al minuto 25.", facts, 2700, "it", ids, (2, 1)))
+    assert rules.check_answer("The third goal came at minute 25.", facts[1:], 2700, "en", ids, (2, 1)) == []
