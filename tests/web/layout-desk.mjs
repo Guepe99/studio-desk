@@ -1,10 +1,15 @@
 // The desk and the agent strip as a first-time visitor meets them (layout review, findings 5, 9, 11,
-// 13, 14, 15, 17, 18), on the real page at 1280x720, 1920x1080, 844x390, 390x844, 320x568 and
-// 320x180, static hosting (the desk works offline, in the tab), on the DEMO fixture by default:
-// - 5: the desk says what it is for; a held story has exactly one filled action, "Put on air";
-//   the risk reads Low, Medium or High with an instruction under it
-// - 9: on a touch screen the evidence summary keeps its disclosure triangle (a list item) at 44 px
+// 13, 14, 15, 17, 18, and the desk redesign in docs/desk.md), on the real page at 1280x720, 1920x1080,
+// 844x390, 390x844, 320x568 and 320x180, static hosting (the desk works offline, in the tab), on the
+// DEMO fixture by default:
+// - the header is one line: at 1280x720 the desk's head with its tabs is at most 80 px tall, in
+//   English, Italian and Spanish; on a phone the sheet leaves at least 40% of the height to the page
+// - 5: before any story, the empty Needs you says what the desk is for; a held story has exactly one
+//   filled action, "Put on air", and one on air has none; Details says Low, Medium or High risk with
+//   an instruction, the score only in its tooltip
+// - 9: on a touch screen the Details summary keeps its disclosure triangle (a list item) at 44 px
 // - 17: a decision says what it did on air in a status line, and Undo takes it back
+// - no fact id (F-...-n) in the desk's text, with every Details open
 // - 14: the audit log's last column can be brought into view inside the desk
 // - 18: no agent shows as an id with an underscore (audit, traces, strip)
 // - 15: Esc closes the drawer with the focus on the page body
@@ -36,7 +41,10 @@ mkdirSync(shots, { recursive: true });
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
 const expect = (ok, msg) => { if (!ok) fail(msg); };
-const ENGLISH = /\b(Approve|Put on air|Keep on air|Reject|Edit|Held|On air|Off air|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo|Details|Swap|voice-over|Loading|Picked|Wrote|Rewrote|Checked|rundown)\b|\bS-\d{6}\b/;
+const ENGLISH = /\b(Approve|Put on air|Keep on air|Take out|Reject|Edit|Held|On air|Off air|Needs you|Done|Next|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo|Details|Swap|voice-over|Loading|Picked|Wrote|Rewrote|Checked|rundown|Your actions)\b|\bS-\d{6}\b/;
+const FACT_ID = /F-[A-Z0-9_]+-\d+/;
+// the language: a button in the settings menu
+const setLang = (page, l) => page.evaluate((x) => document.querySelector(`[data-lang="${x}"]`).click(), l);
 
 const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
 
@@ -63,7 +71,7 @@ async function run(w, h) {
   const tag = `${w}x${h}`, touch = w < 1100 || h < 500;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
   const page = await ctx.newPage();
-  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|voice\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   await page.goto(new URL(`index.html?match=${MATCH}&view=2d`, base).href);
   await page.waitForFunction(() => window.studioDesk?.desk?.ready && window.studioDesk.match, null, { timeout: 60000 });
@@ -84,13 +92,33 @@ async function run(w, h) {
   // a held story when the match has one (DEMO), else one the risk rule put on air (M001)
   const pick = await page.evaluate(() => {
     const d = window.studioDesk.desk, s = d.stories.find((x) => d.status(x) === "needs_review") ?? d.stories.find((x) => d.status(x) === "auto_approved");
-    return s && { id: s.story_id, held: d.status(s) === "needs_review" };
+    const at = Math.min(...window.studioDesk.match.cues.filter((c) => c.story_id === s?.story_id).map((c) => c.ts));
+    return s && { id: s.story_id, held: d.status(s) === "needs_review", at };
   });
   if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
   const card = `#story-${pick.id}`;
-  const want = pick.held ? { primary: "Put on air", said: /^.+ \d+(\+\d+)?' approved, on air$/, undone: /^Waiting for you, /, back: /^Undone: .+ is held again$/ }
-    : { primary: "Keep on air", said: /^.+ \d+(\+\d+)?' kept on air$/, undone: /^(On air, a|A)pproved by the risk rule$/, back: /^Undone: .+ is on air again$/ };
+  const want = pick.held ? { act: "act-approved", filled: ["Put on air"], said: /^.+ \d+(\+\d+)?' approved, on air$/, line: /^On air, approved by you$/, undone: /^Waiting for you, /, back: /^Undone: .+ is held again$/ }
+    : { act: "act-rejected", filled: [], said: /^.+ \d+(\+\d+)?' rejected, off air$/, line: /^Off air, rejected by you$|^rejected by you$/, undone: /^On air, approved by the risk rule$/, back: /^Undone: .+ is on air again$/ };
   await openDesk();
+  // 5: at kick-off nothing is listed, and the empty Needs you says what the desk is for
+  await seek(0);
+  const purpose = await page.$eval("#desk .sec-needs .empty", (el) => el.textContent).catch(() => "");
+  expect(purpose.length > 40 && !(await page.$("#desk [data-item]")), `${tag} 5: at kick-off the desk lists stories or does not say what it is for ${JSON.stringify(purpose)}`);
+  // the header: one line and the tabs, at most 80 px at 1280x720 in the three languages
+  if (w === 1280 && h === 720) for (const lang of ["en", "it", "es", "en"]) {
+    await setLang(page, lang);
+    const head = await page.evaluate(() => {
+      const d = document.querySelector("#desk").getBoundingClientRect(), t = document.querySelector("#desk .desk-tabs").getBoundingClientRect();
+      return { h: Math.round(t.bottom - d.top), title: Math.round(document.querySelector("#desk .desk-title").getBoundingClientRect().height) };
+    });
+    expect(head.h <= 80, `${tag} ${lang}: the desk header is ${head.h} px tall ${JSON.stringify(head)}`);
+  }
+  // the phone sheet leaves at least 40% of the height to the broadcast
+  if (drawer) {
+    const top = await page.$eval("#desk", (el) => el.getBoundingClientRect().top);
+    expect(top >= 0.4 * h - 1, `${tag}: the open sheet starts at ${Math.round(top)} px of ${h}`);
+  }
+  await seek(pick.at + 1);
   // N7: the first card's primary action is on screen without scrolling the desk
   const firstAction = () => page.evaluate(() => {
     const b = document.querySelector("#desk .story .actions button"), desk = document.querySelector("#desk").getBoundingClientRect();
@@ -106,26 +134,42 @@ async function run(w, h) {
     expect(!off.hidden && off.color !== "rgb(230, 0, 35)", `${tag} N14: the Desk button's offline word ${JSON.stringify(off)}`);
   }
 
-  // 5. what the desk is for, one filled action, risk in words
+  // 5. one filled action where a decision waits, risk in words inside Details
   const head = await page.evaluate((c) => {
-    const p = document.querySelector("#desk .desk-purpose"), el = document.querySelector(c);
+    const el = document.querySelector(c), more = el.querySelector("details.more");
     const filled = [...el.querySelectorAll(".actions button")].filter((b) => {
       const bg = getComputedStyle(b).backgroundColor;
       return bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" && bg !== getComputedStyle(document.body).backgroundColor;
     });
-    return { purpose: p?.checkVisibility() ? p.textContent : "", filled: filled.map((b) => b.textContent),
-      risk: el.querySelector(".risk b")?.textContent ?? el.querySelector(".risk")?.textContent, tip: el.querySelector(".risk-tip")?.textContent ?? "" };
+    more.open = true;
+    more.dispatchEvent(new Event("toggle"));
+    const why = el.querySelector(".why"), risk = why?.querySelector(".risk");
+    const out = { filled: filled.map((b) => b.firstChild.textContent), risk: risk?.querySelector("b")?.textContent, title: risk?.title ?? "",
+      tip: why ? why.textContent.slice(risk.textContent.length).trim() : "" };
+    more.open = false;
+    return out;
   }, card);
-  expect(head.purpose.length > 20, `${tag} 5: no line says what the desk is for`);
-  expect(head.filled.length === 1 && head.filled[0] === want.primary, `${tag} 5: the story's filled actions ${JSON.stringify(head.filled)}`);
-  expect(/^(Low|Medium|High) risk$/.test(head.risk) && head.tip.length > 10, `${tag} 5: risk reads ${JSON.stringify(head.risk)}, instruction ${JSON.stringify(head.tip)}`);
+  expect(JSON.stringify(head.filled) === JSON.stringify(want.filled), `${tag} 5: the story's filled actions ${JSON.stringify(head.filled)}`);
+  expect(/^(Low|Medium|High) risk$/.test(head.risk) && /^Risk score \d/.test(head.title) && head.tip.length > 10,
+    `${tag} 5: risk reads ${JSON.stringify(head.risk)}, tooltip ${JSON.stringify(head.title)}, instruction ${JSON.stringify(head.tip)}`);
+  // no fact id in what the desk shows, every Details open
+  const fid = await page.evaluate((re) => {
+    for (const d of document.querySelectorAll("#desk details.more")) { d.open = true; d.dispatchEvent(new Event("toggle")); }
+    const m = document.querySelector("#desk").innerText.match(new RegExp(re));
+    for (const d of document.querySelectorAll("#desk details.more")) d.open = false;
+    return m?.[0] ?? null;
+  }, FACT_ID.source);
+  expect(!fid, `${tag}: fact id ${fid} in the desk text`);
 
   // 9. a touch target that is still a disclosure: Details, and the evidence inside it
   if (touch) {
+    // an auto story on air sits in the compact strip, which hides Details on a phone: measure it one second earlier, as Next
+    const aired = !!(await page.$(`#desk .sec-air ${card}`));
+    if (aired) await seek(Math.max(0, pick.at - 1));
     const sums = await page.evaluate((c) => {
       const more = document.querySelector(`${c} details.more`);
       if (more) more.open = true;
-      return [`${c} .more > summary`, `${c} .evidence summary`].map((q) => {
+      return [`${c} .more > summary`].map((q) => {
         const s = document.querySelector(q);
         if (!s) return { none: q };
         return { coarse: matchMedia("(pointer: coarse)").matches, display: getComputedStyle(s).display, height: s.getBoundingClientRect().height };
@@ -136,19 +180,21 @@ async function run(w, h) {
       expect(sum.display === "list-item" && sum.height >= 44, `${tag} 9: disclosure summary ${JSON.stringify(sum)}`);
     }
     await page.evaluate((c) => { const more = document.querySelector(`${c} details.more`); if (more) more.open = false; }, card);
+    if (aired) await seek(pick.at + 1);
   }
 
   // 17. the status line and Undo
-  await page.$eval(`${card} .act-approved`, (b) => b.scrollIntoView({ block: "center" }));
-  await page.click(`${card} .act-approved`);
+  await page.$eval(`${card} .${want.act}`, (b) => b.scrollIntoView({ block: "center" }));
+  await page.click(`${card} .${want.act}`);
   const said = await page.$eval("#desk .done-msg", (el) => el.textContent).catch(() => "");
-  expect(want.said.test(said), `${tag} 17: after ${want.primary} the status line says ${JSON.stringify(said)}`);
-  expect(/^(On air, a|A)pproved by you$/.test(await page.$eval(`${card} .tally`, (el) => el.textContent)), `${tag} 17: approved story not approved by you`);
-  const undo = await page.$("#desk .undo"); // before the shot: under load a screenshot can outlast the Undo's 10 s
+  expect(want.said.test(said), `${tag} 17: after ${want.act} the status line says ${JSON.stringify(said)}`);
+  const line = () => page.$eval(card, (el) => (el.querySelector(".tally > span") ?? el.querySelector(".tally") ?? el.querySelector(".outcome"))?.textContent ?? "");
+  expect(want.line.test(await line()), `${tag} 17: after ${want.act} the story reads ${JSON.stringify(await line())}`);
+  const undo = await page.$("#desk .undo");
   expect(undo && await undo.isVisible(), `${tag} 17: no Undo after a decision`);
   if (undo && await undo.isVisible()) {
     await undo.click();
-    expect(want.undone.test(await page.$eval(`${card} .tally`, (el) => el.textContent)), `${tag} 17: after Undo the story is not ${want.undone}`);
+    expect(want.undone.test(await line()), `${tag} 17: after Undo the story reads ${JSON.stringify(await line())}, not ${want.undone}`);
     const back = await page.$eval("#desk .done-msg", (el) => el.textContent);
     expect(want.back.test(back), `${tag} 17: after Undo the status line says ${JSON.stringify(back)}`);
   }
@@ -221,14 +267,13 @@ async function run(w, h) {
   await shot(page, `${PFX}-${tag}-strip.png`);
 
   // 11. Italian everywhere outside the agents' own output
-  await page.evaluate((l) => document.querySelector(`[data-lang="${l}"]`).click(), "it");
+  await setLang(page, "it");
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
   await openDesk();
   // N7 again in Italian and Spanish, from the top of the desk
-  const setLang = (l) => page.evaluate((x) => document.querySelector(`[data-lang="${x}"]`).click(), l);
   if (roomy) for (const lang of ["it", "es", "it"]) {
-    await setLang(lang);
+    await setLang(page, lang);
     await page.evaluate(() => { for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = 0; });
     const a = await firstAction();
     expect(a.seen, `${tag} N7 ${lang}: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`);

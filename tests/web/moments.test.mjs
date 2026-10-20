@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
 import { reached, latestPerAgent, Activity } from "../../web/js/activity.js";
-import { agentName, TEXT, tr, riskBand } from "../../web/js/desk.js";
+import { agentName, TEXT, tr, riskBand, deskKey } from "../../web/js/desk.js";
 import { shortcut } from "../../web/js/keys.js";
 import { Match } from "../../web/js/match.js";
 
@@ -51,6 +51,20 @@ test("N works only with focus in the broadcast or its controls, outside text fie
   assert.equal(key(select), false);
   for (const mod of ["shiftKey", "ctrlKey", "altKey", "metaKey", "repeat"]) assert.equal(key(frame, { [mod]: true }), false, mod);
   assert.equal(isMomentKey({ key: "m", target: frame }), false);
+});
+
+test("the desk keys work only with focus in the desk, never while typing, and only J and K repeat", () => {
+  const at = (...inside) => ({ closest: (sel) => (sel.split(/,\s*/).some((s) => inside.includes(s)) ? {} : null) });
+  const desk = at("#desk"), key = (k, target = desk, extra = {}) => deskKey({ key: k, target, ...extra });
+  assert.deepEqual(["a", "e", "r", "j", "k", "u", "?"].map((k) => key(k)), ["air", "edit", "reject", "next", "prev", "undo", "keys"]);
+  assert.equal(key("A"), "air"); // Caps Lock
+  assert.equal(key("a", at("#frame")), null); // outside the desk: the broadcast's own keys
+  for (const field of ["input", "textarea", "select", "[contenteditable]"]) assert.equal(key("a", at("#desk", field)), null, field);
+  for (const mod of ["ctrlKey", "altKey", "metaKey", "shiftKey"]) assert.equal(key("r", desk, { [mod]: true }), null, mod);
+  assert.equal(key("?", desk, { shiftKey: true }), "keys"); // ? is Shift+/ on most layouts
+  assert.equal(key("a", desk, { repeat: true }), null);
+  assert.equal(key("j", desk, { repeat: true }), "next");
+  assert.equal(key("x"), null);
 });
 
 test("the video player keys, scoped as N is", () => {

@@ -461,7 +461,7 @@ function tick(now) {
   try { booth?.update(state.ts); } catch (e) { booth.stop(); queueMicrotask(() => { throw e; }); } // reported, the frame goes on
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
-  desk.setLive([...host.live.values()].map((i) => i.cue.story_id).filter(Boolean).sort());
+  desk.setLive([...host.live.values()].map((i) => i.cue));
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);

@@ -118,6 +118,17 @@ def test_decisions_are_per_visitor(desk):
     assert d2["decision"] == "approved" and d2["edited_text"] is None
 
 
+def test_an_edit_can_change_the_headline(desk):
+    c = desk()
+    r = c.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000001", "decision": "edited",
+                                       "edited_text": {"title_es": " Titular nuevo ", "es": "Texto"}})
+    assert r.status_code == 200 and r.json()["edited_text"] == {"title_es": "Titular nuevo", "es": "Texto"}
+    row = [x for x in c.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] if x["actor"] == "human"][0]
+    assert row["detail"]["langs"] == ["es"] and set(row["detail"]["sha1"]) == {"title_es", "es"}
+    title_only = {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"title_en": "x" * 80}}
+    assert c.post("/api/decisions", json=title_only).status_code == 200
+
+
 def test_undo_drops_only_this_visitors_decision(desk):
     a, b = desk(), desk()
     for c in (a, b):
@@ -151,6 +162,9 @@ def test_undo_drops_only_this_visitors_decision(desk):
     *({"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": f"a{c}b"}}
       for c in "  ﻿⁠؜­᠎"),  # separators, BOM, word joiner, Arabic mark, soft hyphen
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "edited_text": {"en": "x"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"title_en": "x" * 81}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"title_it": "due\nrighe"}},
+    {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"title_fr": "Titre"}},
     {"match_id": "DEMO", "story_id": "S-000001", "decision": "approved", "session_id": "someone"},
 ])
 def test_decision_validation(desk, body):

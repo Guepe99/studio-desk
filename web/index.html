@@ -8,6 +8,7 @@
   <link rel="preload" href="vendor/fonts/urbanist/Urbanist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/broadcast.css">
+  <link rel="stylesheet" href="css/desk.css">
   <link rel="stylesheet" href="css/view3d.css">
   <link rel="stylesheet" href="css/ask.css">
   <script type="module" src="js/app.js"></script>
@@ -127,6 +128,9 @@
       <dt><kbd>F</kbd></dt><dd data-i18n="keyFull">Full screen on or off</dd>
       <dt><kbd>?</kbd></dt><dd data-i18n="keyList">This list</dd>
     </dl>
+    <!-- filled by desk.js (renderKeys) in the page language: the desk's own keys, with the focus in the desk -->
+    <h3 id="keys-desk-title">In the control desk</h3>
+    <dl id="keys-desk"></dl>
     <form method="dialog"><button class="ctl" data-i18n="close">Close</button></form>
   </dialog>
 </body>
