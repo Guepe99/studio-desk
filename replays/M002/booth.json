@@ -2656,21 +2656,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Brightwater contra el Wrenmouth, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Brightwater y el Wrenmouth.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Brightwater contra el Wrenmouth, y arranca el partido.",
-"file": "booth/es/6ea19b1e37cc.mp3",
-"duration_s": 4.187,
+"text": "Bienvenidos. Arranca el partido entre el Brightwater y el Wrenmouth.",
+"file": "booth/es/84b2fa23a438.mp3",
+"duration_s": 4.163,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Wrenmouth contra el Brightwater, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Wrenmouth y el Brightwater.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Wrenmouth contra el Brightwater, y arranca el partido.",
-"file": "booth/es/4069d32a2f46.mp3",
-"duration_s": 4.187,
+"text": "Bienvenidos. Arranca el partido entre el Wrenmouth y el Brightwater.",
+"file": "booth/es/b0cf3a6d2f93.mp3",
+"duration_s": 3.923,
 "voice": "ef_dora"
 },
 {
@@ -2692,21 +2692,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Brightwater y el Wrenmouth, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Brightwater y el Wrenmouth.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Brightwater y el Wrenmouth, echa a rodar el balón.",
-"file": "booth/es/97af05284639.mp3",
-"duration_s": 4.091,
+"text": "Buenas noches. Echa a rodar el balón entre el Brightwater y el Wrenmouth.",
+"file": "booth/es/ffbc97d184af.mp3",
+"duration_s": 4.379,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Wrenmouth y el Brightwater, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Wrenmouth y el Brightwater.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Wrenmouth y el Brightwater, echa a rodar el balón.",
-"file": "booth/es/a9eb7fe4d6a8.mp3",
-"duration_s": 4.115,
+"text": "Buenas noches. Echa a rodar el balón entre el Wrenmouth y el Brightwater.",
+"file": "booth/es/b7f4b598ee96.mp3",
+"duration_s": 4.235,
 "voice": "ef_dora"
 },
 {
@@ -3277,6 +3277,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Esperamos a que saque el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Brightwater.",
+"file": "booth/es/a659ad9318e9.mp3",
+"duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos a que saque el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Wrenmouth.",
+"file": "booth/es/cd8714380a40.mp3",
+"duration_s": 2.459,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Estalla la alegría del Brightwater.",
 "lang": "es",
 "role": "pbp",
@@ -3292,6 +3310,24 @@
 "text": "Estalla la alegría del Wrenmouth.",
 "file": "booth/es/61bed9fc1015.mp3",
 "duration_s": 2.411,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Brightwater.",
+"file": "booth/es/5dc03df1bde0.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Wrenmouth.",
+"file": "booth/es/b28ec18791dd.mp3",
+"duration_s": 2.171,
 "voice": "ef_dora"
 },
 {
@@ -3382,24 +3418,6 @@
 "text": "Gran alegría para el Wrenmouth.",
 "file": "booth/es/5150c6e74d0d.mp3",
 "duration_s": 2.219,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Brightwater.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Brightwater.",
-"file": "booth/es/f66e252a21ab.mp3",
-"duration_s": 1.979,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Wrenmouth.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Wrenmouth.",
-"file": "booth/es/15febe892ff9.mp3",
-"duration_s": 2.387,
 "voice": "ef_dora"
 },
 {
@@ -3499,24 +3517,6 @@
 "text": "La afición del Wrenmouth estalla.",
 "file": "booth/es/075487b9f830.mp3",
 "duration_s": 2.411,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Brightwater.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Brightwater.",
-"file": "booth/es/3f76eb6f3ac8.mp3",
-"duration_s": 1.979,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Wrenmouth.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Wrenmouth.",
-"file": "booth/es/a831c692654e.mp3",
-"duration_s": 2.459,
 "voice": "ef_dora"
 },
 {
@@ -3988,6 +3988,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Reanuda el juego el Brightwater.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Brightwater.",
+"file": "booth/es/d164178a5445.mp3",
+"duration_s": 1.907,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el juego el Wrenmouth.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Wrenmouth.",
+"file": "booth/es/df7bd5527588.mp3",
+"duration_s": 2.315,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Reanudación para el Brightwater.",
 "lang": "es",
 "role": "pbp",
@@ -4021,24 +4039,6 @@
 "text": "Saca el Wrenmouth de centro.",
 "file": "booth/es/105004176bb8.mp3",
 "duration_s": 2.099,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Brightwater.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Brightwater.",
-"file": "booth/es/2428804f69a8.mp3",
-"duration_s": 1.643,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Wrenmouth.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Wrenmouth.",
-"file": "booth/es/da3dff8f47a7.mp3",
-"duration_s": 2.027,
 "voice": "ef_dora"
 },
 {
@@ -4708,57 +4708,57 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Brightwater.",
+"key": "pbp|Adesso c'è solo il Brightwater.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Brightwater.",
-"file": "booth/it/4b27b8619575.mp3",
-"duration_s": 1.835,
+"text": "Adesso c'è solo il Brightwater.",
+"file": "booth/it/a7a73adf91d9.mp3",
+"duration_s": 1.883,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Wrenmouth.",
+"key": "pbp|Adesso c'è solo il Wrenmouth.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Wrenmouth.",
-"file": "booth/it/3f7b45ae9f70.mp3",
-"duration_s": 1.739,
+"text": "Adesso c'è solo il Wrenmouth.",
+"file": "booth/it/71ca204ad4ba.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Brightwater contro il Wrenmouth, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Brightwater contro il Wrenmouth.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Brightwater contro il Wrenmouth, si parte.",
-"file": "booth/it/e41ddc35a338.mp3",
-"duration_s": 3.131,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Benvenuti. il Wrenmouth contro il Brightwater, si parte.",
-"lang": "it",
-"role": "pbp",
-"text": "Benvenuti. il Wrenmouth contro il Brightwater, si parte.",
-"file": "booth/it/505d01ed0a78.mp3",
+"text": "Benvenuti. Si parte, il Brightwater contro il Wrenmouth.",
+"file": "booth/it/50cd650e84fb.mp3",
 "duration_s": 3.011,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Brightwater e il Wrenmouth, comincia la partita.",
+"key": "pbp|Benvenuti. Si parte, il Wrenmouth contro il Brightwater.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Brightwater e il Wrenmouth, comincia la partita.",
-"file": "booth/it/dcfb1848c6dd.mp3",
-"duration_s": 3.323,
+"text": "Benvenuti. Si parte, il Wrenmouth contro il Brightwater.",
+"file": "booth/it/7c0754ce3dd7.mp3",
+"duration_s": 2.987,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Wrenmouth e il Brightwater, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Brightwater e il Wrenmouth.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Wrenmouth e il Brightwater, comincia la partita.",
-"file": "booth/it/65fa3c3aec7f.mp3",
-"duration_s": 3.371,
+"text": "Buonasera. Comincia la partita tra il Brightwater e il Wrenmouth.",
+"file": "booth/it/2422fd0b0b2d.mp3",
+"duration_s": 3.539,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Buonasera. Comincia la partita tra il Wrenmouth e il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Buonasera. Comincia la partita tra il Wrenmouth e il Brightwater.",
+"file": "booth/it/d40a5d9639b0.mp3",
+"duration_s": 3.587,
 "voice": "if_sara"
 },
 {
@@ -4858,6 +4858,24 @@
 "text": "Con pazienza il Wrenmouth.",
 "file": "booth/it/c5abf4608c0f.mp3",
 "duration_s": 1.739,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Brightwater.",
+"file": "booth/it/c3118ee4eb93.mp3",
+"duration_s": 1.931,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Wrenmouth.",
+"file": "booth/it/6b149f3f50c6.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
@@ -5311,6 +5329,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Brightwater ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Brightwater ha cambiato assetto.",
+"file": "booth/it/1523d5cd7b48.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Brightwater ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5347,21 +5374,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Brightwater sembra cambiato.",
+"key": "pbp|Il Brightwater se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Brightwater sembra cambiato.",
-"file": "booth/it/03ac4f140246.mp3",
-"duration_s": 1.955,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Brightwater si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Brightwater si prende il suo tempo.",
-"file": "booth/it/bfc60a28edd1.mp3",
-"duration_s": 2.195,
+"text": "Il Brightwater se la prende comoda.",
+"file": "booth/it/20bac8be1f4b.mp3",
+"duration_s": 2.147,
 "voice": "if_sara"
 },
 {
@@ -5455,6 +5473,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Wrenmouth ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Wrenmouth ha cambiato assetto.",
+"file": "booth/it/89d986206ca5.mp3",
+"duration_s": 1.979,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Wrenmouth ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5491,21 +5518,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Wrenmouth sembra cambiato.",
+"key": "pbp|Il Wrenmouth se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Wrenmouth sembra cambiato.",
-"file": "booth/it/dd9c44851e40.mp3",
-"duration_s": 1.859,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Wrenmouth si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Wrenmouth si prende il suo tempo.",
-"file": "booth/it/9c45790870c9.mp3",
-"duration_s": 2.195,
+"text": "Il Wrenmouth se la prende comoda.",
+"file": "booth/it/ec327f2dd6ef.mp3",
+"duration_s": 2.075,
 "voice": "if_sara"
 },
 {
@@ -6040,24 +6058,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ricicla il pallone il Brightwater.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Brightwater.",
-"file": "booth/it/05957abc2506.mp3",
-"duration_s": 2.171,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ricicla il pallone il Wrenmouth.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Wrenmouth.",
-"file": "booth/it/55327ecc87b7.mp3",
-"duration_s": 2.027,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Ricomincia il Brightwater.",
 "lang": "it",
 "role": "pbp",
@@ -6073,6 +6073,24 @@
 "text": "Ricomincia il Wrenmouth.",
 "file": "booth/it/9c9122cfdd64.mp3",
 "duration_s": 1.619,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Brightwater.",
+"file": "booth/it/9d1d5dc32c19.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Wrenmouth.",
+"file": "booth/it/c35de8966bc7.mp3",
+"duration_s": 2.027,
 "voice": "if_sara"
 },
 {
@@ -6112,6 +6130,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riparte da dietro il Brightwater.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Brightwater.",
+"file": "booth/it/3b9a8ca97165.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte da dietro il Wrenmouth.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Wrenmouth.",
+"file": "booth/it/d096cdbcc28c.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Riparte il Brightwater da centrocampo.",
 "lang": "it",
 "role": "pbp",
@@ -6148,39 +6184,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ripresa per il Brightwater.",
+"key": "pbp|Si aspetta che riparta il Brightwater.",
 "lang": "it",
 "role": "pbp",
-"text": "Ripresa per il Brightwater.",
-"file": "booth/it/78d4efd3e620.mp3",
-"duration_s": 1.787,
+"text": "Si aspetta che riparta il Brightwater.",
+"file": "booth/it/ab6ec67e5a44.mp3",
+"duration_s": 2.243,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ripresa per il Wrenmouth.",
+"key": "pbp|Si aspetta che riparta il Wrenmouth.",
 "lang": "it",
 "role": "pbp",
-"text": "Ripresa per il Wrenmouth.",
-"file": "booth/it/d90306ce5e93.mp3",
-"duration_s": 1.691,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Si aspetta il Brightwater.",
-"lang": "it",
-"role": "pbp",
-"text": "Si aspetta il Brightwater.",
-"file": "booth/it/2cb25577c158.mp3",
-"duration_s": 1.739,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Si aspetta il Wrenmouth.",
-"lang": "it",
-"role": "pbp",
-"text": "Si aspetta il Wrenmouth.",
-"file": "booth/it/cfcd3a550675.mp3",
-"duration_s": 1.619,
+"text": "Si aspetta che riparta il Wrenmouth.",
+"file": "booth/it/5dd60830709b.mp3",
+"duration_s": 2.099,
 "voice": "if_sara"
 },
 {
@@ -6316,24 +6334,6 @@
 "text": "Tiene il pallino del gioco il Wrenmouth.",
 "file": "booth/it/c3c0d4a031bd.mp3",
 "duration_s": 2.267,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Brightwater.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Brightwater.",
-"file": "booth/it/77ddd1dae942.mp3",
-"duration_s": 2.099,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Wrenmouth.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Wrenmouth.",
-"file": "booth/it/659d525d539c.mp3",
-"duration_s": 2.003,
 "voice": "if_sara"
 },
 {

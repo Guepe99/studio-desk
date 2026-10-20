@@ -2629,21 +2629,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Ostwick contra el Redwick, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Ostwick y el Redwick.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Ostwick contra el Redwick, y arranca el partido.",
-"file": "booth/es/6420d28dcaab.mp3",
-"duration_s": 3.371,
+"text": "Bienvenidos. Arranca el partido entre el Ostwick y el Redwick.",
+"file": "booth/es/2e6e81676ad8.mp3",
+"duration_s": 3.155,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Redwick contra el Ostwick, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Redwick y el Ostwick.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Redwick contra el Ostwick, y arranca el partido.",
-"file": "booth/es/e4598a6af472.mp3",
-"duration_s": 3.395,
+"text": "Bienvenidos. Arranca el partido entre el Redwick y el Ostwick.",
+"file": "booth/es/2da9dac26c05.mp3",
+"duration_s": 3.155,
 "voice": "ef_dora"
 },
 {
@@ -2665,21 +2665,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Ostwick y el Redwick, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Ostwick y el Redwick.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Ostwick y el Redwick, echa a rodar el balón.",
-"file": "booth/es/eff5ee6f41a9.mp3",
+"text": "Buenas noches. Echa a rodar el balón entre el Ostwick y el Redwick.",
+"file": "booth/es/f5da78e2b7ff.mp3",
 "duration_s": 3.419,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Redwick y el Ostwick, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Redwick y el Ostwick.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Redwick y el Ostwick, echa a rodar el balón.",
-"file": "booth/es/961a22050c4a.mp3",
-"duration_s": 3.467,
+"text": "Buenas noches. Echa a rodar el balón entre el Redwick y el Ostwick.",
+"file": "booth/es/cbddb8af41fd.mp3",
+"duration_s": 3.419,
 "voice": "ef_dora"
 },
 {
@@ -3223,6 +3223,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Esperamos a que saque el Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Ostwick.",
+"file": "booth/es/1f852670a508.mp3",
+"duration_s": 1.979,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos a que saque el Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Redwick.",
+"file": "booth/es/5a65431c9dbf.mp3",
+"duration_s": 2.003,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Estalla la alegría del Ostwick.",
 "lang": "es",
 "role": "pbp",
@@ -3238,6 +3256,24 @@
 "text": "Estalla la alegría del Redwick.",
 "file": "booth/es/471a75db7ec7.mp3",
 "duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Ostwick.",
+"file": "booth/es/9583bdc34650.mp3",
+"duration_s": 1.595,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Redwick.",
+"file": "booth/es/ea4937aa8429.mp3",
+"duration_s": 1.619,
 "voice": "ef_dora"
 },
 {
@@ -3301,24 +3337,6 @@
 "text": "Gran alegría para el Redwick.",
 "file": "booth/es/d0137f45af73.mp3",
 "duration_s": 1.691,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Ostwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Ostwick.",
-"file": "booth/es/311188ba923d.mp3",
-"duration_s": 1.835,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Redwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Redwick.",
-"file": "booth/es/8193e369970e.mp3",
-"duration_s": 1.859,
 "voice": "ef_dora"
 },
 {
@@ -3418,24 +3436,6 @@
 "text": "La afición del Redwick estalla.",
 "file": "booth/es/a1976b05ce14.mp3",
 "duration_s": 1.907,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Ostwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Ostwick.",
-"file": "booth/es/82e5740b0424.mp3",
-"duration_s": 1.811,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Redwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Redwick.",
-"file": "booth/es/7eafce06b28d.mp3",
-"duration_s": 1.835,
 "voice": "ef_dora"
 },
 {
@@ -3961,6 +3961,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Reanuda el juego el Ostwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Ostwick.",
+"file": "booth/es/4670ac57def7.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el juego el Redwick.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Redwick.",
+"file": "booth/es/1472040d9d57.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Reanudación para el Ostwick.",
 "lang": "es",
 "role": "pbp",
@@ -4021,24 +4039,6 @@
 "text": "Sakamoto...",
 "file": "booth/es/79d405c32f8e.mp3",
 "duration_s": 0.899,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Ostwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Ostwick.",
-"file": "booth/es/39ca5df3d0d2.mp3",
-"duration_s": 1.427,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Redwick.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Redwick.",
-"file": "booth/es/71e1fca30af5.mp3",
-"duration_s": 1.355,
 "voice": "ef_dora"
 },
 {
@@ -4681,57 +4681,57 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Redwick.",
+"key": "pbp|Adesso c'è solo il Redwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Redwick.",
-"file": "booth/it/2990c723a3a6.mp3",
-"duration_s": 1.667,
+"text": "Adesso c'è solo il Redwick.",
+"file": "booth/it/30661db869b7.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto l'Ostwick.",
+"key": "pbp|Adesso c'è solo l'Ostwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto l'Ostwick.",
-"file": "booth/it/b287323071aa.mp3",
-"duration_s": 1.643,
+"text": "Adesso c'è solo l'Ostwick.",
+"file": "booth/it/53e617a86a83.mp3",
+"duration_s": 1.715,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Redwick contro l'Ostwick, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Redwick contro l'Ostwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Redwick contro l'Ostwick, si parte.",
-"file": "booth/it/e8ff2d45c07d.mp3",
-"duration_s": 2.843,
+"text": "Benvenuti. Si parte, il Redwick contro l'Ostwick.",
+"file": "booth/it/1bf859181745.mp3",
+"duration_s": 2.723,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. l'Ostwick contro il Redwick, si parte.",
+"key": "pbp|Benvenuti. Si parte, l'Ostwick contro il Redwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. l'Ostwick contro il Redwick, si parte.",
-"file": "booth/it/5edd37f8a883.mp3",
-"duration_s": 2.771,
+"text": "Benvenuti. Si parte, l'Ostwick contro il Redwick.",
+"file": "booth/it/50dd1063d156.mp3",
+"duration_s": 2.699,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Redwick e l'Ostwick, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Redwick e l'Ostwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Redwick e l'Ostwick, comincia la partita.",
-"file": "booth/it/ae75429ca781.mp3",
-"duration_s": 3.131,
+"text": "Buonasera. Comincia la partita tra il Redwick e l'Ostwick.",
+"file": "booth/it/a04eb6326735.mp3",
+"duration_s": 3.227,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. l'Ostwick e il Redwick, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra l'Ostwick e il Redwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. l'Ostwick e il Redwick, comincia la partita.",
-"file": "booth/it/b84051977357.mp3",
-"duration_s": 3.131,
+"text": "Buonasera. Comincia la partita tra l'Ostwick e il Redwick.",
+"file": "booth/it/92e2a2ad8e2d.mp3",
+"duration_s": 3.203,
 "voice": "if_sara"
 },
 {
@@ -4831,6 +4831,24 @@
 "text": "Con pazienza l'Ostwick.",
 "file": "booth/it/9d5894bc2b54.mp3",
 "duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Redwick.",
+"file": "booth/it/c657617ed31b.mp3",
+"duration_s": 1.763,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire l'Ostwick.",
+"file": "booth/it/bb16e40b767d.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
@@ -5203,6 +5221,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Redwick ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Redwick ha cambiato assetto.",
+"file": "booth/it/dd2c4298dd46.mp3",
+"duration_s": 1.931,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Redwick ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5239,21 +5266,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Redwick sembra cambiato.",
+"key": "pbp|Il Redwick se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Redwick sembra cambiato.",
-"file": "booth/it/245be08d8c1e.mp3",
-"duration_s": 1.883,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Redwick si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Redwick si prende il suo tempo.",
-"file": "booth/it/7989c8b0f9e7.mp3",
-"duration_s": 2.123,
+"text": "Il Redwick se la prende comoda.",
+"file": "booth/it/ad9ad3aa22e2.mp3",
+"duration_s": 2.075,
 "voice": "if_sara"
 },
 {
@@ -5374,6 +5392,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Ostwick ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Ostwick ha cambiato assetto.",
+"file": "booth/it/5c57a80ed035.mp3",
+"duration_s": 1.835,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Ostwick ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5410,21 +5437,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|L'Ostwick sembra cambiato.",
+"key": "pbp|L'Ostwick se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "L'Ostwick sembra cambiato.",
-"file": "booth/it/b4061b22c243.mp3",
-"duration_s": 1.787,
-"voice": "if_sara"
-},
-{
-"key": "pbp|L'Ostwick si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "L'Ostwick si prende il suo tempo.",
-"file": "booth/it/90e2cff6b5a7.mp3",
-"duration_s": 2.027,
+"text": "L'Ostwick se la prende comoda.",
+"file": "booth/it/a8b6208b5f02.mp3",
+"duration_s": 2.003,
 "voice": "if_sara"
 },
 {
@@ -6013,24 +6031,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ricicla il pallone il Redwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Redwick.",
-"file": "booth/it/2809461d1331.mp3",
-"duration_s": 2.003,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ricicla il pallone l'Ostwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone l'Ostwick.",
-"file": "booth/it/f56dd8f88fd3.mp3",
-"duration_s": 2.003,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Ricomincia il Redwick.",
 "lang": "it",
 "role": "pbp",
@@ -6046,6 +6046,24 @@
 "text": "Ricomincia l'Ostwick.",
 "file": "booth/it/ea325e32b7ae.mp3",
 "duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Redwick.",
+"file": "booth/it/bc6728140202.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per l'Ostwick.",
+"file": "booth/it/b99b6f8df902.mp3",
+"duration_s": 1.955,
 "voice": "if_sara"
 },
 {
@@ -6085,6 +6103,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riparte da dietro il Redwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Redwick.",
+"file": "booth/it/86d1e3e8c6c3.mp3",
+"duration_s": 1.931,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte da dietro l'Ostwick.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro l'Ostwick.",
+"file": "booth/it/f9d9f26dd0de.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Riparte il Redwick da centrocampo.",
 "lang": "it",
 "role": "pbp",
@@ -6121,24 +6157,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ripresa per il Redwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per il Redwick.",
-"file": "booth/it/7392d405f966.mp3",
-"duration_s": 1.643,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ripresa per l'Ostwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per l'Ostwick.",
-"file": "booth/it/e7780f0eaa69.mp3",
-"duration_s": 1.595,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Sakamoto!",
 "lang": "it",
 "role": "pbp",
@@ -6166,21 +6184,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta il Redwick.",
+"key": "pbp|Si aspetta che riparta il Redwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta il Redwick.",
-"file": "booth/it/440466b5d10d.mp3",
-"duration_s": 1.571,
+"text": "Si aspetta che riparta il Redwick.",
+"file": "booth/it/7a0787c5f00e.mp3",
+"duration_s": 2.051,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta l'Ostwick.",
+"key": "pbp|Si aspetta che riparta l'Ostwick.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta l'Ostwick.",
-"file": "booth/it/d9b393166cc7.mp3",
-"duration_s": 1.547,
+"text": "Si aspetta che riparta l'Ostwick.",
+"file": "booth/it/b0e5063e7a99.mp3",
+"duration_s": 2.075,
 "voice": "if_sara"
 },
 {
@@ -6343,24 +6361,6 @@
 "text": "Tiene il pallino del gioco l'Ostwick.",
 "file": "booth/it/8f988f91e44c.mp3",
 "duration_s": 2.171,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Redwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Redwick.",
-"file": "booth/it/3693a82eb9aa.mp3",
-"duration_s": 1.979,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per l'Ostwick.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per l'Ostwick.",
-"file": "booth/it/f78ca8da261c.mp3",
-"duration_s": 1.979,
 "voice": "if_sara"
 },
 {

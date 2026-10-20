@@ -2656,21 +2656,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Kestrel Bay contra el Tarnby, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Kestrel Bay y el Tarnby.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Kestrel Bay contra el Tarnby, y arranca el partido.",
-"file": "booth/es/e16e3d6eeeee.mp3",
-"duration_s": 3.611,
+"text": "Bienvenidos. Arranca el partido entre el Kestrel Bay y el Tarnby.",
+"file": "booth/es/6a358a057a16.mp3",
+"duration_s": 3.515,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Tarnby contra el Kestrel Bay, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Tarnby y el Kestrel Bay.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Tarnby contra el Kestrel Bay, y arranca el partido.",
-"file": "booth/es/7e597d290edf.mp3",
-"duration_s": 3.611,
+"text": "Bienvenidos. Arranca el partido entre el Tarnby y el Kestrel Bay.",
+"file": "booth/es/06e34c037d50.mp3",
+"duration_s": 3.419,
 "voice": "ef_dora"
 },
 {
@@ -2719,21 +2719,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Kestrel Bay y el Tarnby, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Kestrel Bay y el Tarnby.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Kestrel Bay y el Tarnby, echa a rodar el balón.",
-"file": "booth/es/021cb299c048.mp3",
-"duration_s": 3.611,
+"text": "Buenas noches. Echa a rodar el balón entre el Kestrel Bay y el Tarnby.",
+"file": "booth/es/0da68a6f68f9.mp3",
+"duration_s": 3.803,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Tarnby y el Kestrel Bay, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Tarnby y el Kestrel Bay.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Tarnby y el Kestrel Bay, echa a rodar el balón.",
-"file": "booth/es/652d1df8ea63.mp3",
-"duration_s": 3.563,
+"text": "Buenas noches. Echa a rodar el balón entre el Tarnby y el Kestrel Bay.",
+"file": "booth/es/6ad0f0fd3d5c.mp3",
+"duration_s": 3.731,
 "voice": "ef_dora"
 },
 {
@@ -3223,6 +3223,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Esperamos a que saque el Kestrel Bay.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Kestrel Bay.",
+"file": "booth/es/ef0d62aee689.mp3",
+"duration_s": 2.243,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos a que saque el Tarnby.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Tarnby.",
+"file": "booth/es/87172e59ee31.mp3",
+"duration_s": 1.955,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Estalla la alegría del Kestrel Bay.",
 "lang": "es",
 "role": "pbp",
@@ -3238,6 +3256,24 @@
 "text": "Estalla la alegría del Tarnby.",
 "file": "booth/es/63e37b2fe4d2.mp3",
 "duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Kestrel Bay.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Kestrel Bay.",
+"file": "booth/es/db1e98ad67da.mp3",
+"duration_s": 1.955,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Tarnby.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Tarnby.",
+"file": "booth/es/95a6c2c43d89.mp3",
+"duration_s": 1.595,
 "voice": "ef_dora"
 },
 {
@@ -3328,24 +3364,6 @@
 "text": "Gran alegría para el Tarnby.",
 "file": "booth/es/71db988df10a.mp3",
 "duration_s": 1.643,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Kestrel Bay.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Kestrel Bay.",
-"file": "booth/es/cb91d928915b.mp3",
-"duration_s": 2.123,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Tarnby.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Tarnby.",
-"file": "booth/es/93afef255a32.mp3",
-"duration_s": 1.835,
 "voice": "ef_dora"
 },
 {
@@ -3499,24 +3517,6 @@
 "text": "La afición del Tarnby estalla.",
 "file": "booth/es/0514d45dd002.mp3",
 "duration_s": 1.883,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Kestrel Bay.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Kestrel Bay.",
-"file": "booth/es/8d055c759879.mp3",
-"duration_s": 2.075,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Tarnby.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Tarnby.",
-"file": "booth/es/8f8f58f2e64e.mp3",
-"duration_s": 1.763,
 "voice": "ef_dora"
 },
 {
@@ -3988,6 +3988,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Reanuda el juego el Kestrel Bay.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Kestrel Bay.",
+"file": "booth/es/e4c61ef6523e.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el juego el Tarnby.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Tarnby.",
+"file": "booth/es/87d06dc6fb97.mp3",
+"duration_s": 1.691,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Reanudación para el Kestrel Bay.",
 "lang": "es",
 "role": "pbp",
@@ -4048,24 +4066,6 @@
 "text": "Sakamoto...",
 "file": "booth/es/79d405c32f8e.mp3",
 "duration_s": 0.899,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Kestrel Bay.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Kestrel Bay.",
-"file": "booth/es/756be0a7d3ef.mp3",
-"duration_s": 1.739,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Tarnby.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Tarnby.",
-"file": "booth/es/827614a629a7.mp3",
-"duration_s": 1.403,
 "voice": "ef_dora"
 },
 {
@@ -4681,39 +4681,39 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Kestrel Bay.",
+"key": "pbp|Adesso c'è solo il Kestrel Bay.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Kestrel Bay.",
-"file": "booth/it/e6a578b90b32.mp3",
-"duration_s": 1.835,
+"text": "Adesso c'è solo il Kestrel Bay.",
+"file": "booth/it/fa152fc46547.mp3",
+"duration_s": 1.883,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Tarnby.",
+"key": "pbp|Adesso c'è solo il Tarnby.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Tarnby.",
-"file": "booth/it/713488cc39a0.mp3",
-"duration_s": 1.667,
+"text": "Adesso c'è solo il Tarnby.",
+"file": "booth/it/0f99e1fc44c9.mp3",
+"duration_s": 1.715,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Kestrel Bay contro il Tarnby, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Kestrel Bay contro il Tarnby.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Kestrel Bay contro il Tarnby, si parte.",
-"file": "booth/it/dfe7380e58f5.mp3",
-"duration_s": 3.107,
+"text": "Benvenuti. Si parte, il Kestrel Bay contro il Tarnby.",
+"file": "booth/it/57349d98f38c.mp3",
+"duration_s": 3.059,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Tarnby contro il Kestrel Bay, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Tarnby contro il Kestrel Bay.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Tarnby contro il Kestrel Bay, si parte.",
-"file": "booth/it/f952fef47ccc.mp3",
-"duration_s": 3.035,
+"text": "Benvenuti. Si parte, il Tarnby contro il Kestrel Bay.",
+"file": "booth/it/2a3c6e4c2c00.mp3",
+"duration_s": 2.963,
 "voice": "if_sara"
 },
 {
@@ -4771,21 +4771,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Kestrel Bay e il Tarnby, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Kestrel Bay e il Tarnby.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Kestrel Bay e il Tarnby, comincia la partita.",
-"file": "booth/it/814ca3f944b1.mp3",
-"duration_s": 3.395,
+"text": "Buonasera. Comincia la partita tra il Kestrel Bay e il Tarnby.",
+"file": "booth/it/d9f2133195df.mp3",
+"duration_s": 3.539,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Tarnby e il Kestrel Bay, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Tarnby e il Kestrel Bay.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Tarnby e il Kestrel Bay, comincia la partita.",
-"file": "booth/it/353ba40cad14.mp3",
-"duration_s": 3.323,
+"text": "Buonasera. Comincia la partita tra il Tarnby e il Kestrel Bay.",
+"file": "booth/it/48f95ed04ece.mp3",
+"duration_s": 3.539,
 "voice": "if_sara"
 },
 {
@@ -4885,6 +4885,24 @@
 "text": "Con pazienza il Tarnby.",
 "file": "booth/it/3b1951ea7405.mp3",
 "duration_s": 1.667,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Kestrel Bay.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Kestrel Bay.",
+"file": "booth/it/17c25b7362ae.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Tarnby.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Tarnby.",
+"file": "booth/it/36492a23f46b.mp3",
+"duration_s": 1.763,
 "voice": "if_sara"
 },
 {
@@ -5230,6 +5248,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Kestrel Bay ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Kestrel Bay ha cambiato assetto.",
+"file": "booth/it/3f5022eb0fa1.mp3",
+"duration_s": 2.147,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Kestrel Bay ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5266,21 +5293,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Kestrel Bay sembra cambiato.",
+"key": "pbp|Il Kestrel Bay se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Kestrel Bay sembra cambiato.",
-"file": "booth/it/a13069b54c02.mp3",
-"duration_s": 2.075,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Kestrel Bay si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Kestrel Bay si prende il suo tempo.",
-"file": "booth/it/607d5a95b038.mp3",
-"duration_s": 2.315,
+"text": "Il Kestrel Bay se la prende comoda.",
+"file": "booth/it/9e3c28b76dc1.mp3",
+"duration_s": 2.243,
 "voice": "if_sara"
 },
 {
@@ -5374,6 +5392,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Tarnby ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Tarnby ha cambiato assetto.",
+"file": "booth/it/00628227fcb1.mp3",
+"duration_s": 1.859,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Tarnby ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5410,21 +5437,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Tarnby sembra cambiato.",
+"key": "pbp|Il Tarnby se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Tarnby sembra cambiato.",
-"file": "booth/it/24a719f78c9d.mp3",
-"duration_s": 1.835,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Tarnby si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Tarnby si prende il suo tempo.",
-"file": "booth/it/3d91072da55b.mp3",
-"duration_s": 2.099,
+"text": "Il Tarnby se la prende comoda.",
+"file": "booth/it/32348c651c1e.mp3",
+"duration_s": 2.051,
 "voice": "if_sara"
 },
 {
@@ -6040,24 +6058,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ricicla il pallone il Kestrel Bay.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Kestrel Bay.",
-"file": "booth/it/129f10fda15e.mp3",
-"duration_s": 2.147,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ricicla il pallone il Tarnby.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Tarnby.",
-"file": "booth/it/30b8086f648e.mp3",
-"duration_s": 1.979,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Ricomincia il Kestrel Bay.",
 "lang": "it",
 "role": "pbp",
@@ -6073,6 +6073,24 @@
 "text": "Ricomincia il Tarnby.",
 "file": "booth/it/c3499b1ca97d.mp3",
 "duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Kestrel Bay.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Kestrel Bay.",
+"file": "booth/it/94dc44686f46.mp3",
+"duration_s": 2.171,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Tarnby.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Tarnby.",
+"file": "booth/it/4f50e01089d9.mp3",
+"duration_s": 2.027,
 "voice": "if_sara"
 },
 {
@@ -6112,6 +6130,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riparte da dietro il Kestrel Bay.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Kestrel Bay.",
+"file": "booth/it/9e975dc07105.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte da dietro il Tarnby.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Tarnby.",
+"file": "booth/it/be0889918f9c.mp3",
+"duration_s": 1.883,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Riparte il Kestrel Bay da centrocampo.",
 "lang": "it",
 "role": "pbp",
@@ -6145,24 +6181,6 @@
 "text": "Riparte il Tarnby.",
 "file": "booth/it/adac75c55d4e.mp3",
 "duration_s": 1.403,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ripresa per il Kestrel Bay.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per il Kestrel Bay.",
-"file": "booth/it/af90743a31aa.mp3",
-"duration_s": 1.811,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ripresa per il Tarnby.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per il Tarnby.",
-"file": "booth/it/28c2dababaf0.mp3",
-"duration_s": 1.595,
 "voice": "if_sara"
 },
 {
@@ -6220,21 +6238,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta il Kestrel Bay.",
+"key": "pbp|Si aspetta che riparta il Kestrel Bay.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta il Kestrel Bay.",
-"file": "booth/it/3503b3536457.mp3",
-"duration_s": 1.787,
+"text": "Si aspetta che riparta il Kestrel Bay.",
+"file": "booth/it/0f9d215fe818.mp3",
+"duration_s": 2.267,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta il Tarnby.",
+"key": "pbp|Si aspetta che riparta il Tarnby.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta il Tarnby.",
-"file": "booth/it/c3ce8bb93db0.mp3",
-"duration_s": 1.547,
+"text": "Si aspetta che riparta il Tarnby.",
+"file": "booth/it/649daa542b29.mp3",
+"duration_s": 2.075,
 "voice": "if_sara"
 },
 {
@@ -6343,24 +6361,6 @@
 "text": "Tiene il pallino del gioco il Tarnby.",
 "file": "booth/it/86c2b519ffbd.mp3",
 "duration_s": 2.195,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Kestrel Bay.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Kestrel Bay.",
-"file": "booth/it/d03202ce3c68.mp3",
-"duration_s": 2.123,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Tarnby.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Tarnby.",
-"file": "booth/it/d1482af5b21e.mp3",
-"duration_s": 1.979,
 "voice": "if_sara"
 },
 {
