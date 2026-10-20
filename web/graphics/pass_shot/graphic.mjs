@@ -13,24 +13,23 @@ export default class PassShot extends SdGraphic {
   css() {
     return `
 .l3 { position: absolute; left: 96px; bottom: 84px; width: 860px; }
-.card { display: grid; grid-template-columns: 96px 1fr auto; align-items: stretch; height: 126px; margin-top: -2px; }
+.card { display: grid; grid-template-columns: 96px 1fr auto; align-items: stretch; height: 126px; overflow: hidden; }
 .num { display: grid; place-items: center; font-weight: 800; font-size: 60px; }
 .who { padding: 0 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
-.name { font-weight: 800; font-size: 52px; letter-spacing: .01em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.team { font-weight: 500; font-size: 28px; color: #a8b6d8; white-space: nowrap; }
-.val { background: #1f3473; padding: 0 30px 0 40px; display: flex; align-items: baseline; gap: 10px; align-self: stretch;
-  clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%); padding-top: 26px; }
-.big { font-weight: 800; font-size: 84px; font-variant-numeric: tabular-nums; }
-.unit { font-weight: 700; font-size: 30px; color: #2ec4f1; }
-.q { display: flex; align-items: center; gap: 18px; height: 50px; padding: 0 24px; background: rgba(8,15,38,.92); }
+.name { font-weight: 800; font-size: 46px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.team { font-weight: 600; font-size: 28px; color: var(--lilac-100); white-space: nowrap; }
+.val { background: var(--purple-700); padding: 0 30px 0 32px; display: flex; align-items: baseline; gap: 10px; align-self: stretch; padding-top: 24px; }
+.big { font-weight: 800; font-size: 80px; font-variant-numeric: tabular-nums; }
+.unit { font-weight: 700; font-size: 28px; color: var(--green); }
+.q { display: flex; align-items: center; gap: 18px; height: 50px; padding: 0 24px; margin-top: 6px; border-radius: var(--r-box); background: var(--purple-900); }
 .q.none, .q.text .track, .q.text .qval { display: none; }
-.qlabel { font-weight: 700; font-size: 24px; letter-spacing: .08em; color: #a8b6d8; }
+.qlabel { font-weight: 700; font-size: 24px; letter-spacing: .08em; color: var(--lilac-100); }
 .compact .qlabel { font-size: 28px; }
-.q.text .qlabel { font-size: 32px; font-weight: 800; letter-spacing: .03em; color: #fff; }
-.q.goal { background: #2ec4f1; }
-.q.goal .qlabel { color: #0e1a3d; letter-spacing: .12em; text-transform: uppercase; }
-.track { flex: 1; height: 12px; background: #2a3c74; border-radius: 6px; overflow: hidden; }
-.bar { height: 100%; background: linear-gradient(90deg, #2ec4f1, #9ff0ff); transform-origin: 0 50%; border-radius: 6px; }
+.q.text .qlabel { font-size: 30px; font-weight: 800; letter-spacing: .02em; color: var(--page); }
+.q.goal { background: var(--green); }
+.q.goal .qlabel { color: var(--purple); letter-spacing: .12em; text-transform: uppercase; }
+.track { flex: 1; height: 12px; background: var(--purple-400); border-radius: 6px; overflow: hidden; }
+.bar { height: 100%; background: var(--green); transform-origin: 0 50%; border-radius: 6px; }
 .qval { font-weight: 800; font-size: 32px; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }`;
   }
 
@@ -47,8 +46,8 @@ export default class PassShot extends SdGraphic {
     $(".kicker").textContent = KICKER[d.mode] ?? String(d.mode ?? "").toUpperCase();
     const num = $(".num");
     num.textContent = p.shirt ?? "";
-    num.style.background = p.color ?? "#2ec4f1";
-    num.style.color = p.text ?? "#0e1a3d";
+    num.style.background = p.color ?? "#00ff87";
+    num.style.color = p.text ?? "#37003c";
     $(".name").textContent = p.name ?? d.player_id ?? "";
     $(".team").textContent = p.team_name ?? p.team_short ?? "";
     $(".big").textContent = Number.isFinite(d.value) ? (d.value >= 100 ? d.value.toFixed(0) : d.value.toFixed(1)) : "";

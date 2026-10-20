@@ -14,17 +14,25 @@
 export const EASE = "cubic-bezier(.2,.8,.2,1)";
 const REDUCED = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
 
+// The page's palette, again on :host: a graphic is a standalone OGraf component and may be hosted
+// without broadcast.css. Purple panels, white text, green or pink accents; green is only a fill or an
+// accent on purple, never text on a light surface.
 const BASE_CSS = `
-:host { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+:host { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  --purple: #37003c; --purple-700: #28002b; --purple-900: #1e0021; --purple-400: #541e5d; --lilac-100: #ebe5eb;
+  --page: #ffffff; --green: #00ff87; --pink: #ff2882; --cyan: #05f0ff;
+  --r-card: 16px; --r-box: 12px; --r-chip: 8px; --shadow: 0 4px 16px 0 rgba(55, 0, 60, .08); }
 .stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
-  font-family: "Barlow Condensed", "Arial Narrow", sans-serif; color: #fff; line-height: 1; }
-.panel { background: linear-gradient(180deg, #16244f 0%, #0e1a3d 100%); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
-.kicker { background: #2ec4f1; color: #0e1a3d; font-weight: 800; font-size: 26px; letter-spacing: .08em;
-  padding: 8px 30px 6px 20px; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); display: inline-block; }
+  font-family: "Urbanist", "Helvetica Neue", Arial, sans-serif; color: var(--page); line-height: 1; }
+.panel { background: var(--purple); border-radius: 0 var(--r-card) var(--r-card) var(--r-card); box-shadow: var(--shadow); }
+.kicker { background: var(--green); color: var(--purple); font-weight: 800; font-size: 22px; letter-spacing: .1em;
+  padding: 9px 18px 8px; border-radius: var(--r-chip) var(--r-chip) 0 0; display: inline-block; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.facts span { font-weight: 500; font-size: 18px; letter-spacing: .03em; color: #d6e2ff;
-  background: rgba(14,26,61,.88); border: 1px solid #3d5296; border-radius: 3px; padding: 4px 7px 3px; }
+/* fact id chips: the provenance, small and quiet, one line each (the floor size on a phone, never bigger) */
+.facts span { font-weight: 400; font-size: 17px; color: var(--lilac-100); white-space: nowrap;
+  background: var(--purple-900); border-radius: var(--r-chip); padding: 3px 8px; }
 .compact .kicker, .compact .facts span { font-size: 28px; }
+.compact .facts span { padding: 2px 8px; }
 `;
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

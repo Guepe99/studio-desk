@@ -31,7 +31,7 @@ export const textOn = (hex) => {
 };
 
 const TRAIL = [0, 1, 2, 3, 4, 5].map((j) => `rgba(255,255,255,${(0.6 * (1 - (j - 1) / 5)).toFixed(2)})`);
-const SIGNAL = "#2ec4f1";   // the house accent (--signal in broadcast.css)
+const SIGNAL = "#00ff87";   // the house accent on the picture (--green in broadcast.css)
 const AIR = "#ffd23f";      // the ball's ring when it is above head height
 // Keepers wear a colour of their own: the first of these far enough from both kits of both teams.
 const KEEPER = ["#f2c14e", "#e05fd0", "#22d3b5", "#f2f2f2", "#111111"];
@@ -187,7 +187,7 @@ export class Pitch {
     };
     g.textAlign = "center";
     g.textBaseline = "middle";
-    g.font = `800 ${Math.round(R * 1.08)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+    g.font = `800 ${Math.round(R * 1.08)}px 'Urbanist', Arial, sans-serif`;
     const ring = R * 0.2, edge = Math.max(1.2, 0.9 / this.css);
     // shadow and dark edge in one path: the team shape, a little larger, nudged down and right like
     // the 3D view's light, so it rims every disc against the grass and falls as a shadow below
@@ -218,8 +218,8 @@ export class Pitch {
       const fill = pl.position === "GK" ? this._keeper[pl.team_id] : team.color_primary;
       if (focus) {
         const h = g.createRadialGradient(x, y, R, x, y, R * 2.6);
-        h.addColorStop(0, "rgba(46,196,241,0.55)");
-        h.addColorStop(1, "rgba(46,196,241,0)");
+        h.addColorStop(0, "rgba(0,255,135,0.55)");
+        h.addColorStop(1, "rgba(0,255,135,0)");
         g.fillStyle = h;
         g.beginPath(); g.arc(x, y, R * 2.6, 0, TAU); g.fill();
       }

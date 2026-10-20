@@ -7,18 +7,18 @@ export default class Momentum extends SdGraphic {
   css() {
     return `
 .box { position: absolute; right: 96px; bottom: 84px; width: 780px; }
-.card { padding: 22px 28px 18px; margin-top: -2px; }
+.card { padding: 22px 28px 18px; }
 .row { display: grid; grid-template-columns: 112px 1fr; align-items: end; height: ${H + 6}px; }
 .row.away { align-items: start; }
-.team { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 32px; letter-spacing: .04em; align-self: center; }
-.chip { width: 10px; height: 30px; border-radius: 2px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
+.team { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 28px; align-self: center; }
+.chip { width: 10px; height: 30px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--lilac-100); }
 .bars { display: flex; gap: 6px; height: 100%; align-items: flex-end; }
 .away .bars { align-items: flex-start; }
-.bar { flex: 0 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.6); }
+.bar { flex: 0 1 56px; min-width: 6px; border-radius: 3px 3px 0 0; opacity: .55; transform-origin: 50% 100%; box-shadow: inset 0 0 0 2px var(--lilac-100); }
 .away .bar { border-radius: 0 0 3px 3px; transform-origin: 50% 0; }
-.bar.now { opacity: 1; box-shadow: 0 0 0 2px #fff; }
-.mid { height: 3px; background: #fff; margin-left: 112px; opacity: .85; }
-.foot { display: flex; justify-content: space-between; margin: 12px 0 0 112px; font-weight: 500; font-size: 22px; color: #a8b6d8; }
+.bar.now { opacity: 1; box-shadow: 0 0 0 3px var(--green); }
+.mid { height: 3px; border-radius: 2px; background: var(--page); margin-left: 112px; }
+.foot { display: flex; justify-content: space-between; margin: 12px 0 0 112px; font-weight: 600; font-size: 22px; color: var(--lilac-100); }
 .compact .foot { font-size: 28px; }`;
   }
 
@@ -36,7 +36,7 @@ export default class Momentum extends SdGraphic {
     for (const side of ["home", "away"]) {
       const t = this.teams[side] ?? {};
       const vals = Array.isArray(d[side]) ? d[side] : [];
-      const color = t.color ?? (side === "home" ? "#ffffff" : "#2ec4f1");
+      const color = t.color ?? (side === "home" ? "#ffffff" : "#05f0ff");
       $(`.${side} .team`).innerHTML = `<span class="chip" style="background:${esc(color)}"></span>${esc(t.short ?? side.toUpperCase())}`;
       $(`.${side} .bars`).innerHTML = vals.map((v, i) => {
         const h = Math.max(3, Math.min(10, Number(v) || 0) / 10 * H);

@@ -10,9 +10,9 @@ export default class WhyCard extends SdGraphic {
   css() {
     return `
 .box { position: absolute; right: 72px; top: 56px; width: 720px; }
-.card { padding: 22px 30px 26px; margin-top: -2px; border-left: 8px solid #2ec4f1; }
-.title { font-weight: 800; font-size: 50px; line-height: 1.02; letter-spacing: .005em; }
-.body { margin-top: 14px; font-weight: 500; font-size: ${BODY_PX}px; line-height: ${LINE}; color: #dfe7fb; }`;
+.card { padding: 22px 30px 26px 34px; box-shadow: inset 8px 0 0 var(--pink), var(--shadow); }
+.title { font-weight: 800; font-size: 44px; line-height: 1.08; }
+.body { margin-top: 14px; font-weight: 400; font-size: ${BODY_PX}px; line-height: ${LINE}; color: var(--lilac-100); }`;
   }
 
   html() {

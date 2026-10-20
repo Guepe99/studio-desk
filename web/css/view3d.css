@@ -7,22 +7,22 @@
    x 250, y 100) at RADAR = 440 / 1420 (view3d.js). Under the graphics, and out of the way while a
    graphic that is not pinned to a player is on air (app.js sets .radar-yield). */
 #radar { position: absolute; left: 740px; bottom: 20px; width: 440px; height: 291px; padding: 0; overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, .9); border-radius: 14px; background: #1f5e2b; cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45); transition: opacity .25s ease, transform .25s ease; }
+  border: 3px solid var(--purple); border-radius: var(--r-card); background: var(--grass); cursor: pointer;
+  box-shadow: var(--shadow); transition: opacity .25s ease, transform .25s ease, border-color .12s; }
 #radar[hidden] { display: none; }
 #radar #pitch { inset: auto; left: -77.46px; top: -30.99px; width: 594.93px; height: 334.65px; }
 #radar #view3d { position: absolute; inset: 0; }
-#radar .swap { position: absolute; right: 10px; top: 10px; z-index: 1; width: 52px; height: 52px; display: grid; place-items: center;
-  border-radius: 50%; background: rgba(14, 26, 61, .85); color: #fff; }
-#radar .swap svg { width: 30px; height: 30px; fill: currentColor; }
-#radar:hover { border-color: var(--signal); }
-#radar:focus-visible { outline: 6px solid var(--signal); outline-offset: 4px; }
+/* the swap chip: a green fill with a purple icon, the one control drawn inside the picture */
+#radar .swap { position: absolute; right: 10px; top: 10px; z-index: 1; width: 56px; height: 56px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--green); color: var(--purple); box-shadow: 0 0 0 3px var(--purple); }
+#radar .swap svg { width: 32px; height: 32px; fill: currentColor; }
+#radar:hover { border-color: var(--pink); }
+#radar:focus-visible { outline: 6px solid var(--green); outline-offset: 4px; }
 .radar-yield #radar:not(:focus-visible) { opacity: 0; transform: translateY(60px); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #radar { transition: none; } }
 
 /* top centre: the graphics take the corners. Always in the page (empty when off) so the word is read out */
 #replay-badge { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); height: 66px; display: flex; align-items: center;
-  padding: 0 34px 0 30px; background: var(--signal); color: var(--ink); font: 800 42px/1 var(--font);
-  letter-spacing: .1em; text-transform: uppercase; clip-path: polygon(16px 0, 100% 0, 100% 100%, 0 100%); }
+  padding: 0 30px; background: var(--pink); color: var(--purple); font: 800 38px/1 var(--font);
+  letter-spacing: .08em; text-transform: uppercase; border-radius: var(--r-box); }
 #replay-badge:not(.on) { padding: 0; }
-.ctl:disabled { opacity: .45; cursor: not-allowed; }

@@ -345,11 +345,10 @@ export function buildStadium(scene, match, profile, rnd) {
 
   // LED boards round the pitch
   const boardTex = canvasTexture(scene, "boards", 1024, 64, (g, w, h) => {
-    const grd = g.createLinearGradient(0, 0, w, 0);
-    grd.addColorStop(0, "#0e1a3d"); grd.addColorStop(0.5, "#16306e"); grd.addColorStop(1, "#0e1a3d");
-    g.fillStyle = grd; g.fillRect(0, 0, w, h);
-    g.fillStyle = "#2ec4f1"; g.fillRect(0, h - 8, w, 8);
-    g.font = "800 40px 'Barlow Condensed', 'Arial Narrow', sans-serif"; g.textBaseline = "middle";
+    // the page's palette (broadcast.css): purple boards, a green edge
+    g.fillStyle = "#37003c"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#00ff87"; g.fillRect(0, h - 8, w, 8);
+    g.font = "800 36px 'Urbanist', Arial, sans-serif"; g.textBaseline = "middle";
     g.fillStyle = "#ffffff";
     for (let x = 30; x < w; x += 340) g.fillText("STUDIO DESK", x, h / 2 - 2);
   });
