@@ -153,12 +153,16 @@ def live_section(live):
     if live is None:
         return f"""Not measured: no real-speed run was found (`out/{LIVE['runtime']}`)."""
     goals = [w for k, w in live["delays"] if k == "goal"]
-    rest = [w for k, w in live["delays"] if k != "goal"]
+    chances = [w for k, w in live["delays"] if k == "big_chance"]
+    rest = [w for k, w in live["delays"] if k not in ("goal", "big_chance")]
     def secs(ws):
         ws = [f"{w:.1f}" for w in ws]
         return " and ".join([", ".join(ws[:-1]), ws[-1]] if len(ws) > 1 else ws)
     said = [f"The {'goal' if len(goals) == 1 else f'{len(goals)} goals'} reached the director's cue {secs(goals)} "
             "seconds after the shot" if goals else "No goal was scored"]
+    if chances:
+        said.append(f"the {'big chance' if len(chances) == 1 else f'{len(chances)} big chances'} after {secs(chances)} seconds, "
+                    "judged once the play had settled for a few seconds")
     if rest:
         said.append(f"the other {'story' if len(rest) == 1 else f'{len(rest)} stories'} after {secs(rest)} seconds, because a story that is not urgent waits on "
                     "purpose for the end of its window to be told with the others")
@@ -244,7 +248,7 @@ a round (story finder, analyst, three commentators, verifier, rewrites, director
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of {statistics.median(w for _, w in waits):.1f} seconds of match time before its round (goals at most
-{goal_max:.1f} seconds, other stories batched for up to {max(w for _, w in waits) / 60:.1f} minutes).
+{goal_max:.1f} seconds, other stories at most {max(w for _, w in waits):.1f} seconds).
 """
 
 
