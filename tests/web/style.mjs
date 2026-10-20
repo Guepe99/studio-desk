@@ -7,6 +7,7 @@
 //   against what is around it
 // - no horizontal scroll, nothing in the page chrome past the right edge
 // - the text is set in Urbanist, the vendored font, and the browser loaded it (document.fonts)
+// - the page header is there and its text is among the texts measured
 // Then screenshots for a viewer's eye: out/shots/style-*.png (2D, 3D, Radar and the desk at 1280x720,
 // the page at 844x390 and 390x844, the drawer open at 390x844).
 //
@@ -99,7 +100,7 @@ const textContrast = (page) => page.evaluate(() => {
   };
   const roots = [document, ...[...document.querySelectorAll("*")].filter((n) => n.shadowRoot).map((n) => n.shadowRoot)];
   const out = [], skipped = [];
-  let n = 0;
+  let n = 0, head = 0;
   for (const root of roots) {
     const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let t = walk.nextNode(); t; t = walk.nextNode()) {
@@ -115,10 +116,11 @@ const textContrast = (page) => page.evaluate(() => {
       const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
       const c = ratio(over(fg, b.bg), b.bg);
       n++;
+      if (el.closest("#masthead")) head++;
       if (c < (large ? 3 : 4.5)) out.push(`"${t.textContent.trim().slice(0, 30)}" (${el.tagName.toLowerCase()}.${el.className}) ${c.toFixed(2)}:1 at ${px.toFixed(1)} px`);
     }
   }
-  return { bad: out, n, skipped: skipped.length };
+  return { bad: out, n, head, skipped: skipped.length };
 });
 
 // Size of every visible control.
@@ -202,6 +204,7 @@ async function rules(page, label) {
   for (const fam of f.families) if (fam !== "Urbanist") fail(`${label}: text set in ${fam}, not Urbanist`);
   const c = await textContrast(page);
   for (const b of c.bad) fail(`${label} contrast ${b}`);
+  if (!c.head) fail(`${label}: no page header text measured`);   // the header names the page and the match
   const t = await targets(page);
   for (const b of t.bad) fail(`${label} target ${b}`);
   for (const b of await noSideScroll(page)) fail(`${label} side scroll: ${b}`);

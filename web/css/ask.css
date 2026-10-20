@@ -1,9 +1,14 @@
-/* Ask the studio (web/js/ask.js): a panel in the page, never over the picture: under the controls, or
-   beside the frame when the graphics are there too (broadcast.css .deck-side; app.js sizes the frame). */
+/* Ask the studio (web/js/ask.js): a panel in the page, never over the picture: under the controls,
+   beside the frame when the graphics are there too (broadcast.css .deck-side; app.js sizes the frame),
+   or over the foot of the docked desk. */
 #ask { flex: none; width: min(560px, 100%); max-height: min(40vh, 360px);
   overflow: auto; padding: 14px 16px; background: var(--page); color: var(--purple); border: 1px solid var(--lilac-100); border-radius: var(--r-card);
   box-shadow: var(--shadow); font-size: 16px; line-height: 1.35; }
 #ask[hidden] { display: none; }
+/* with the desk docked, the panel opens over the foot of the desk column: the picture and the controls stay put */
+@media (min-width: 1100px) {
+  #app > #ask { position: fixed; right: 0; bottom: 0; z-index: 5; width: clamp(360px, 30vw, 460px); max-height: min(60vh, 420px); border-radius: var(--r-card) 0 0 0; }
+}
 .ask-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #ask h2 { margin: 0; font-size: 20px; font-weight: 800; }
 #ask form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

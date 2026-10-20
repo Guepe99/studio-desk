@@ -65,7 +65,7 @@ def test_live_delay_counts_from_the_event_as_the_clock_released_it():
     def tr(seq, ts, agent, at, sids=()):
         return {"seq": seq, "ts": ts, "agent": agent, "at": f"2026-10-19T20:{at}+00:00", "story_ids": json.dumps(list(sids))}
     start = measures.at("2026-10-19T20:00:00.000+00:00")
-    traces = [tr(1, 310.0, "story_finder", "00:12.000", ["S-000001"]), tr(2, 310.0, "director", "00:14.500"),
+    traces = [tr(1, 310.0, "story_finder", "00:12.000", ["S-000001"]), tr(2, 310.0, "director", "00:14.500", ["S-000001"]),
               tr(3, 900.0, "story_finder", "10:05.000", ["S-000002"]), tr(4, 900.0, "verifier", "10:06.000")]  # no cues
     stories = [story("S-000001", 309.5), story("S-000002", 899.0, kind="big_chance")]
     assert measures.live_delay(traces, stories, start, 300.0, 1.0) == [("goal", 5.0)]  # 14.5 s wall, event at 9.5 s
@@ -104,4 +104,4 @@ def test_measure_reads_only_its_match_and_the_page_adds_up(tmp_path):
     assert "Not measured: no real-speed run" in page and "do not match the audit" in " ".join(page.split())
     live = " ".join(measures.markdown([r], {"delays": [("goal", 4.0), ("big_chance", 9.0), ("goal", 6.0)], "setup_s": 3.0}).split())
     assert "The 2 goals reached the director's cue 4.0 and 6.0 seconds after the shot" in live
-    assert "the big chance after 9.0 seconds, judged once the play had settled" in live and "at least 3.0 seconds" in live and "—" not in page + live
+    assert "the big chance after 9.0 seconds, judged once the play had settled" in live and "3.0 seconds, is left out" in live and "—" not in page + live

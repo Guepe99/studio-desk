@@ -15,10 +15,12 @@
 // - At most MAX_ON_SCREEN graphics at once (docs/CONTRACT.md), counting those animating out.
 // - Small frames (opts.compact() returns {deck, magnify}): with a deck element (a frame too small for
 //   the graphics), graphics without "position" leave the pitch for it, one under the other, each scaled
-//   so its box (the first element in its .stage, a Studio Desk graphic convention) fills the deck width.
+//   so its box (the first element in its .stage, a Studio Desk graphic convention) fills the deck width
+//   (a box narrower than DECK_BOX is scaled as if it were that wide).
 //   Positioned graphics stay on the pitch, drawn `magnify` times larger around the same point.
 
 const MAX_ON_SCREEN = 2;
+const DECK_BOX = 720; // the compact box width (the graphics' .compact rules)
 
 export class OGrafHost {
   /**
@@ -146,7 +148,8 @@ export class OGrafHost {
       inst.ready = true;
       if (inner) {
         const box = el.shadowRoot.querySelector(".stage")?.firstElementChild;
-        const k = box?.offsetWidth ? node.clientWidth / box.offsetWidth : node.clientWidth / this.opts.resolution.width;
+        // never past the scale a compact-width box would get: a narrow box (an early momentum card) would grow tall
+        const k = node.clientWidth / Math.max(box?.offsetWidth || this.opts.resolution.width, DECK_BOX);
         inner.style.transform = `scale(${k}) translate(${-(box?.offsetLeft ?? 0)}px, ${-(box?.offsetTop ?? 0)}px)`;
         node.style.height = `${Math.ceil((box?.offsetHeight ?? this.opts.resolution.height) * k)}px`;
         node.style.visibility = "";

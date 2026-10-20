@@ -66,6 +66,17 @@ const seekTo = (page, ts) => page.evaluate(async (x) => {
 
 // What is on screen at the clock: graphics, and in 3D the players and the ball against the tracking.
 const measure = (page) => page.evaluate(() => {
+  // the Radar box against the graphics on the pitch: where it is, what it covers, and which of its
+  // three spots along the foot of the frame (centre, right, left; view3d.css, app.js) are free
+  const radarRoom = () => {
+    const el = document.querySelector("#radar"), f = document.querySelector("#frame").getBoundingClientRect(), k = f.width / 1920;
+    const boxes = [...window.studioDesk.host.live.values()].filter((i) => !i.positioned && i.node === i.el)
+      .map((i) => i.el.shadowRoot.querySelector(".stage")?.firstElementChild?.getBoundingClientRect()).filter(Boolean);
+    const hit = (a) => boxes.some((b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
+    const spots = [740, 1440, 40].map((x) => ({ left: f.left + x * k, right: f.left + (x + 440) * k, top: f.top + 769 * k, bottom: f.top + 1060 * k }));
+    const r = el.getBoundingClientRect();
+    return { yields: document.body.classList.contains("radar-yield"), hidden: el.hidden, covered: !el.hidden && hit(r), free: spots.filter((p) => !hit(p)).length, boxes: boxes.length };
+  };
   const sd = window.studioDesk, v = sd.view3d, m = sd.match, frame = document.querySelector("#frame").getBoundingClientRect();
   const graphics = [...sd.host.live.values()].map((inst) => {
     const r = inst.el.getBoundingClientRect();
@@ -81,8 +92,7 @@ const measure = (page) => page.evaluate(() => {
   });
   const res = { ts: sd.state.ts, shown: v.shown, graphics, pitchHidden: document.querySelector("#pitch").hidden,
     pitchIn: document.querySelector("#pitch").parentElement.id, babylon: !!window.BABYLON,
-    radar: { yields: document.body.classList.contains("radar-yield"), hidden: document.querySelector("#radar").hidden,
-      lower: graphics.some((g) => !g.nameplate) } };
+    radar: radarRoom() };
   if (!v.scene || v.shown === "2d") return res;
   const s = v.scene, vts = v.last.ts;
   res.view = { ts: vts, replay: v.last.replay, badge: ((b) => b.classList.contains("on") && b.textContent === "Replay")(document.querySelector("#replay-badge")) };
@@ -135,6 +145,7 @@ try {
     const t0 = Date.now();
     for (const [name, ts] of moments) {
       if (!(await seekTo(page, ts))) fail(`${view} at ${name}: the paused 3D picture never finished drawing`);
+      if (view === "split") await page.waitForTimeout(500);   // the radar box slides to its spot
       const r = await measure(page);
       seen[`${view} ${name}`] = r;
       const tag = `${view} at ${name} (${ts.toFixed(1)} s)`;
@@ -142,7 +153,10 @@ try {
       if (view === "2d" && r.babylon) fail("the 2D view loaded Babylon");
       if (view === "3d" && !r.pitchHidden) fail(`${tag}: 2D pitch still drawn over the 3D frame`);
       if (view === "split" && (r.pitchIn !== "radar" || r.pitchHidden || r.radar.hidden)) fail(`${tag}: 2D pitch not in the radar box`);
-      if (view === "split" && r.radar.yields !== r.radar.lower) fail(`${tag}: the radar ${r.radar.yields ? "steps aside" : "stays"} with ${r.radar.lower ? "a" : "no"} lower graphic on air`);
+      // N10: the radar stays in view under a graphic's free spot; it steps aside only when all three are covered
+      if (view === "split" && r.radar.yields && r.radar.free) fail(`${tag}: the radar steps aside with ${r.radar.free} free spot(s) for it`);
+      if (view === "split" && !r.radar.yields && r.radar.covered) fail(`${tag}: the radar sits under a graphic`);
+      if (view === "split") console.log(`${tag}: radar ${r.radar.yields ? "aside" : "shown"}, ${r.radar.boxes} graphic(s) on the pitch, ${r.radar.free} free spot(s)`);
       if (!r.graphics.length && name !== "replay") fail(`${tag}: no graphic on air`);
       if (r.graphics.some((g) => !g.inFrame)) fail(`${tag}: a graphic outside the frame: ${JSON.stringify(r.graphics)}`);
       for (const g of r.graphics) if (g.nameplate && g.nameplate.visible && !(g.nameplate.offset < 2)) fail(`${tag}: nameplate ${g.nameplate.offset.toFixed(1)} px off its player`);

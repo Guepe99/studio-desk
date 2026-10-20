@@ -78,15 +78,20 @@ def azure_client(endpoint=None):
     DefaultAzureCredential: the az CLI login locally, the managed identity in Container Apps.
     """
     from agent_framework.openai import OpenAIChatClient
-    from azure.identity import DefaultAzureCredential
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
     endpoint = endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
     if not endpoint:
         raise SystemExit("set AZURE_OPENAI_ENDPOINT=https://<account>.openai.azure.com (or use --fake)")
+    token = get_bearer_token_provider(DefaultAzureCredential(exclude_interactive_browser_credential=True),
+                                      "https://cognitiveservices.azure.com/.default")
+    try:  # the provider caches the token: fetched now, the first story waits for the model only (16 s live on 20/10)
+        token()
+    except Exception:  # noqa: BLE001 - the first model call tries again and its failure is handled there
+        pass
     return OpenAIChatClient(model=os.environ.get("AZURE_OPENAI_DEPLOYMENT", config.MODEL_DEPLOYMENT),
                             azure_endpoint=endpoint.removesuffix("/").removesuffix("/openai/v1"),
-                            credential=DefaultAzureCredential(exclude_interactive_browser_credential=True),
-                            function_invocation_configuration=TOOL_LOOP)
+                            credential=token, function_invocation_configuration=TOOL_LOOP)
 
 
 class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClient):

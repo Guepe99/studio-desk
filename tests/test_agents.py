@@ -15,7 +15,7 @@ from studiodesk.agents.llm import FakeChatClient, cost_usd
 from studiodesk.export import export
 
 ROOT = Path(__file__).resolve().parent.parent
-AGENTS = ["story_finder", "analyst", "commentator_en", "commentator_it", "commentator_es", "verifier", "director"]
+AGENTS = ["story_finder", "director", "analyst", "commentator_en", "commentator_it", "commentator_es", "verifier"]
 
 
 @pytest.fixture
@@ -910,3 +910,24 @@ def test_english_words_in_italian_and_spanish_lines_go_back():
     assert rules.english_words("Pressing alto del Redwick, inerzia della partita.", "it") == []
     assert rules.english_words("Pressing alto del Redwick.", "es")
     assert rules.english_words("Redwick win it.", "en") == []
+
+
+@pytest.mark.parametrize("speed", [0.0, 2000.0])
+def test_a_round_is_on_air_before_its_ai_tail_and_live_the_tail_runs_on_its_own(desk_db, monkeypatch, speed):
+    _, _, rt = desk_db
+    seen, main = [], set()
+    tail = workflow.run_tail
+
+    async def watched(desk, wf, rnd):
+        ids = [s["story_id"] for s in rnd.stories]
+        saved = [json.loads(r[0])["status"] for r in rt.execute(
+            f"SELECT verifier FROM stories WHERE story_id IN ({', '.join('?' * len(ids))})", ids)]
+        seen.append((saved, asyncio.current_task()))
+        await tail(desk, wf, rnd)
+    monkeypatch.setattr(workflow, "run_tail", watched)
+    summary = asyncio.run(workflow.run_match("M001", FakeChatClient(delay_s=0.002), rt, speed=speed,
+                                             log=lambda *_: main.add(asyncio.current_task())))
+    assert seen and all(saved and set(saved) == {"pending"} for saved, _ in seen)  # saved and cued first
+    assert all((t in main) == (not speed) for _, t in seen)  # live, the tail is its own task
+    assert "pending" not in summary["verifier"] and {s["verifier"]["status"] for s in stories(rt)} == {"pass"}
+    assert all(s["analysis_en"] for s in stories(rt))

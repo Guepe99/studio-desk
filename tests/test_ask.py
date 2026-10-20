@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from studiodesk import api, config, db
 from studiodesk import mcp_server as srv
-from studiodesk.agents import ask, safety
+from studiodesk.agents import ask, rules, safety
 from studiodesk.agents.llm import FakeChatClient
 
 REAL_SAFETY_CHECK = ask.safety_check  # the fixture replaces it; the fail-closed tests need the real one
@@ -399,6 +399,16 @@ def test_get_facts_and_get_events_hide_what_comes_after_ts(studio):
     assert not held["get_facts"](match_id="M001", from_ts=101)
 
 
+def test_facts_reach_the_model_with_the_minute_on_screen_and_names(studio):
+    """The model guessed the minute from ts (595.7 s as minute 9, on screen 10) and wrote player ids."""
+    held = {t.name: t.func for t in ask.tools("M001", 1e9)}
+    p1 = ask.match_times("M001")[0]
+    for f in held["get_facts"](match_id="M001"):
+        assert f["minute"] == rules.stoppage(rules.minute(f["ts"], f["period"], p1), f["period"])
+        assert f.get("player_id") is None or f["player"] and not f["player"].startswith("T0")
+    assert held["get_fact"](match_id="M001", fact_id=held["get_facts"](match_id="M001")[0]["fact_id"])["team"]
+
+
 def test_the_storylines_table_is_never_read(studio, monkeypatch):
     seen, real = [], db.connect
 
@@ -610,3 +620,13 @@ def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
     with TestClient(api.app):
         with closing(db.connect(config.RUNTIME_DB, readonly=True)) as conn:
             assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+
+
+def test_goals_quoted_by_their_minutes_are_answered_with_the_minute_word_of_the_language(studio, m001):
+    # live on 20/10 the model gave goals and minutes only, and wrote "minuto 10" in English
+    studio.reply("Okowande scored in minuto 10 and Minuto 13.", [S1, "F-SCORE-000002"])
+    r = studio.visitor().post("/api/ask", json=body(ts=3100.0)).json()
+    assert r["status"] == "answered", reason()
+    assert r["answer"] == "Okowande scored in minute 10 and Minute 13."
+    assert m001("Okowande scored in minute 11.", [S1]) == "declined"
+    assert rules.minute_word("Gol al minute 10.", "it") == "Gol al minuto 10."
