@@ -12,7 +12,12 @@
 // with room for it. Then: Next key moment with AI graphics off, goal to goal; disabled pills with a
 // solid edge; the empty agent strip one row high; the voice button saying Voice in each language; the
 // momentum card on the half away from the ball; the 3D canvas never focused and its loading line a
-// status, not an alert. Screenshots: out/shots/layout-*.png.
+// status, not an alert. The page header (name, what the page does, the match from meta.json) in one
+// band; the first screen holding the picture, the scorebug, play, the seek bar and every graphic on
+// air at the busiest moment, the frame not moving from 0' to then, nor when Ask opens (also at
+// 1280x650, 1366x640, and in Italian); the momentum axis from kick-off to now; no momentum card in a
+// goal replay; on M001, no player name cut in any graphic of M001 to M004 at 1280x720, 1920x1080 and 390x844.
+// Screenshots: out/shots/layout-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -24,7 +29,6 @@ const { chromium } = require("playwright");
 
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
 const MATCH = process.env.MATCH ?? "M001";
-const url = new URL(`?match=${MATCH}`, base).href;
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 const SIZES = [[1280, 720], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
@@ -37,7 +41,7 @@ const check = async (name, fn) => {
   try { await fn(); } catch (e) { const l = e.message.split("\n"); fail(`${name}: ${[l[0], ...l.slice(-3)].join(" | ")}`); }
 };
 
-const open = async (browser, [width, height], phone) => {
+const open = async (browser, [width, height], phone, query = `?match=${MATCH}`) => {
   const ctx = await browser.newContext({ viewport: { width, height }, ...(phone ? { deviceScaleFactor: 2, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   // as in smoke.mjs: no API on the static site, and a match without clips has no voice.json
@@ -46,7 +50,7 @@ const open = async (browser, [width, height], phone) => {
   page.on("pageerror", (e) => fail(`${width}x${height} page error: ${e.message}`));
   // the static site has no API: an empty question answered 422 is the probe that shows the Ask button
   await page.route("**/api/ask", (r) => r.fulfill({ status: 422, json: { detail: [] } }));
-  await page.goto(url);
+  await page.goto(new URL(query, base).href);
   await page.waitForFunction(() => window.studioDesk?.match && window.studioDesk.desk.ready, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(300);   // the voice and Ask buttons have appeared and the layout followed
@@ -76,6 +80,46 @@ const unreachable = (page) => page.evaluate(async () => {
   return lost;
 });
 const sideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+
+// The first screen holds the show: with the page at its top, the frame, the scorebug, play, the seek
+// bar and every graphic on air (on the pitch or in the deck) inside the window.
+const firstScreen = (page) => page.evaluate(() => {
+  const out = [], fmt = (r) => `[${[r.left, r.top, r.width, r.height].map((v) => Math.round(v)).join(",")}]`;
+  const inside = (r) => r.width > 0 && r.left >= -1 && r.top >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1;
+  if (scrollY > 0) out.push(`the page is scrolled ${scrollY} px`);
+  for (const s of ["#frame", "#scorebug", "#play", "#seek-range"]) {
+    const r = document.querySelector(s).getBoundingClientRect();
+    if (!inside(r)) out.push(`${s} at ${fmt(r)}`);
+  }
+  const live = [...window.studioDesk.host.live.values()].filter((i) => !i.positioned);
+  for (const i of live) {
+    const r = (i.node !== i.el ? i.node : i.el.shadowRoot.querySelector(".stage")?.firstElementChild)?.getBoundingClientRect();
+    if (!r || !inside(r)) out.push(`${i.cue.graphic} at ${r ? fmt(r) : "nowhere"}`);
+  }
+  return { out, graphics: live.map((i) => i.cue.graphic), frame: fmt(document.querySelector("#frame").getBoundingClientRect()) };
+});
+// The moment with the most graphics on air for the analyst in English, a pass or shot among them if it can.
+const busiest = (cues) => {
+  let best = null;
+  for (const c of cues.filter((x) => x.graphic !== "nameplate")) {
+    const t = c.ts + Math.min(2.5, c.d / 2), n = cues.filter((x) => x.graphic !== "nameplate" && t >= x.ts && t < x.ts + x.d).length + (c.graphic === "pass_shot" ? 0.5 : 0);
+    if (!best || n > best.n) best = { t, n };
+  }
+  return best?.t ?? 60;
+};
+const showFirst = async (page, tag, cues) => {
+  await seekTo(page, 0);
+  const quiet = await page.evaluate(() => document.querySelector("#frame").getBoundingClientRect().toJSON());
+  await seekTo(page, busiest(cues));
+  await page.waitForTimeout(1200);   // the graphics have finished coming in
+  const r = await firstScreen(page);
+  const busy = await page.evaluate(() => document.querySelector("#frame").getBoundingClientRect().toJSON());
+  if (!r.graphics.length) fail(`${tag}: no graphic on air at the busy moment`);
+  for (const o of r.out) fail(`${tag} first screen: ${o}`);
+  // the picture keeps its place and size when the strip fills and the graphics come on
+  if (["x", "y", "width", "height"].some((k) => Math.abs(quiet[k] - busy[k]) > 1)) fail(`${tag}: the frame moves from [${[quiet.x, quiet.y, quiet.width, quiet.height].map(Math.round)}] at 0' to ${r.frame} with graphics on air`);
+  console.log(`${tag}: frame ${r.frame} with ${r.graphics.join(", ")} on air`);
+};
 
 // Smallest rendered text (CSS px) inside the graphics on screen, as in smoke.mjs.
 const smallestText = (page) => page.evaluate(() => {
@@ -132,10 +176,38 @@ try {
       if ((await sideScroll(page)) > 0) fail(`${tag} with the Viewing menu open: horizontal scroll`);
       if (await shown(page, "#viewing-open")) await page.click("#viewing-open");
       if (!phone) {
-        const tall = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
-        if (tall > 1) fail(`${tag}: the page is ${tall} px taller than the window`);
+        // a desktop window needs no scroll for the show; a short one may leave the agent strip, whole, under
+        // the fold (app.js keeps the graphics on the pitch first)
+        const r = await page.evaluate(() => {
+          const kids = [...document.querySelectorAll("#app > *")].filter((el) => el.id !== "activity" && el.getClientRects().length);
+          const strip = document.querySelector("#activity").getBoundingClientRect();
+          return { tall: document.documentElement.scrollHeight - innerHeight, show: Math.max(...kids.map((el) => el.getBoundingClientRect().bottom)) - innerHeight,
+            stripUnder: strip.top >= innerHeight - 1 };
+        });
+        if (r.show > 1) fail(`${tag}: the show ends ${r.show.toFixed(0)} px under the window`);
+        else if (r.tall > 1 && !r.stripUnder) fail(`${tag}: the page is ${r.tall} px taller than the window, with the agent strip cut by the fold`);
+        else if (r.tall > 1) console.log(`${tag}: the agent strip under the fold, ${r.tall} px of scroll`);
       }
     });
+
+    // the page header: the name, what the page does and the match from meta.json, in one band
+    await check(`${tag} header`, async () => {
+      const r = await page.evaluate(() => {
+        const h = document.querySelector("#masthead"), m = window.studioDesk.match, b = h?.getBoundingClientRect();
+        return h && { top: b.top + scrollY, h: b.height, title: h.querySelector("h1")?.textContent, text: h.innerText,
+          names: [m.home.name, m.away.name, m.meta.venue_name], frameTop: document.querySelector("#frame").getBoundingClientRect().top + scrollY };
+      });
+      if (!r) { fail(`${tag}: no page header`); return; }
+      const short = h <= 500, narrow = w <= 700, most = short ? 30 : narrow ? 72 : 56;
+      if (r.title !== "Studio Desk") fail(`${tag}: the header title is "${r.title}"`);
+      if (r.top < 0 || r.h < 16 || r.h > most) fail(`${tag}: the header is ${r.h.toFixed(0)} px high at ${r.top.toFixed(0)}, wanted at most ${most}`);
+      if (r.frameTop < r.top + r.h) fail(`${tag}: the picture starts at ${r.frameTop.toFixed(0)}, inside the header`);
+      if (!short && !/football replay/.test(r.text)) fail(`${tag}: the header does not say what the page is: "${r.text}"`);
+      if (!short && !narrow) for (const n of r.names) if (!r.text.includes(n)) fail(`${tag}: "${n}" missing from the header match line`);
+    });
+
+    // C9: the first screen holds the picture, the graphics and the controls, at a quiet and a busy moment
+    if (w >= 390 && h >= 390) await check(`${tag} first screen`, () => showFirst(page, tag, cues));
 
     // 3: the Viewing disclosure on narrow or short screens, everything in the row on wide ones
     await check(`${tag} viewing menu`, async () => {
@@ -204,8 +276,17 @@ try {
     await check(`${tag} ask`, async () => {
       if (!(await shown(page, "#ask-open"))) { fail(`${tag}: no Ask button`); return; }
       await seekTo(page, goals[0]?.ts ?? 60);
+      const before = await page.evaluate(() => document.querySelector("#frame").getBoundingClientRect().toJSON());
       await page.click("#ask-open");
       await frames(page);
+      await page.waitForTimeout(300);   // ask.js scrolls the panel into view after a frame
+      // the open panel leaves the picture where it was; on a landscape window the show stays on screen
+      const moved = await page.evaluate((b) => {
+        const f = document.querySelector("#frame").getBoundingClientRect();
+        return ["x", "y", "width", "height"].some((k) => Math.abs(f[k] - b[k]) > 1) ? `[${[f.x, f.y, f.width, f.height].map(Math.round)}]` : "";
+      }, before);
+      if (moved && w > h && w >= 600) fail(`${tag}: opening Ask moves the picture to ${moved}`);
+      if (w > h && w >= 600) for (const o of (await firstScreen(page)).out) fail(`${tag} with Ask open: ${o}`);
       const r = await page.evaluate(() => {
         const a = document.querySelector("#ask").getBoundingClientRect(), f = document.querySelector("#frame").getBoundingClientRect();
         return Math.max(0, Math.min(a.right, f.right) - Math.max(a.left, f.left)) * Math.max(0, Math.min(a.bottom, f.bottom) - Math.max(a.top, f.top));
@@ -240,11 +321,27 @@ try {
     await page.context().close();
   }
 
+  // C9 on short laptop windows, and in Italian (longer labels, more rows of controls)
+  for (const [size, lang] of [[[1280, 650], "en"], [[1366, 640], "en"], [[1280, 720], "it"], [[844, 390], "it"]]) {
+    const tag = `${size.join("x")} ${lang}`, p = await open(browser, size, size[1] < 600);
+    await check(`${tag} first screen`, async () => {
+      // a script change: on a short screen the language is behind the Viewing menu
+      await p.evaluate((l) => { const el = document.querySelector("#lang"); el.value = l; el.dispatchEvent(new Event("change")); }, lang);
+      await frames(p);
+      const cues = await p.evaluate(() => window.studioDesk.match.cues.filter((c) => c.lang === "en" && c.audience === "analyst").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })));
+      await showFirst(p, tag, cues);
+      await p.screenshot({ path: `${shots}/layout-first-${size.join("x")}-${lang}.png` });
+    });
+    await p.context().close();
+  }
+
   const page = await open(browser, [1280, 720]);
-  const { goals, moms, hasVoice } = await page.evaluate(() => {
-    const m = window.studioDesk.match;
+  const { goals, moms, hasVoice } = await page.evaluate(async () => {
+    const m = window.studioDesk.match, reps = (await import("./js/view3d.js")).replays(m);
+    // a card due during a goal replay goes on air at its end (app.js refreshCues)
+    const due = (c) => reps.find((r) => c.ts < r.to && c.ts + c.duration_s > r.from)?.to ?? c.ts;
     return { goals: m.goals.map((f) => f.ts).sort((a, b) => a - b), hasVoice: !document.querySelector("#voice").hidden,
-      moms: m.cues.filter((c) => c.lang === "en" && c.graphic === "momentum").map((c) => ({ ts: c.ts, audience: c.audience })) };
+      moms: m.cues.filter((c) => c.lang === "en" && c.graphic === "momentum").map((c) => ({ ts: due(c), audience: c.audience })) };
   });
 
   // 22: the strip one row high before anything happened
@@ -318,6 +415,38 @@ try {
   });
   await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
 
+  // N16: early in the match the momentum axis runs from kick-off to now: the bars fill it, the labels apart
+  await check("momentum axis", async () => {
+    await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
+    const first = moms.filter((c) => c.audience === "analyst")[0];
+    if (!first) { fail("momentum axis: no momentum cue"); return; }
+    await seekTo(page, first.ts - 20);
+    await seekTo(page, first.ts + 3);
+    await page.waitForTimeout(1200);
+    const r = await page.evaluate(() => {
+      const inst = [...window.studioDesk.host.live.values()].find((i) => i.cue.graphic === "momentum");
+      if (!inst) return null;
+      const q = (s) => [...inst.el.shadowRoot.querySelectorAll(s)].map((e) => e.getBoundingClientRect());
+      const bars = q(".home .bar"), mid = q(".mid")[0], foot = q(".foot span");
+      return { n: bars.length, span: (bars.at(-1).right - bars[0].left) / mid.width, apart: foot[1].left - foot[0].right };
+    });
+    if (!r) { fail(`momentum axis: no momentum card at ${first.ts + 3}`); return; }
+    console.log(`momentum axis: ${r.n} windows fill ${(r.span * 100).toFixed(0)}% of the axis`);
+    if (r.span < 0.9) fail(`momentum axis: ${r.n} windows fill ${(r.span * 100).toFixed(0)}% of the line from kick-off to now`);
+    if (r.apart < 8) fail(`momentum axis: the kick-off and now labels are ${r.apart.toFixed(0)} px apart`);
+  });
+
+  // N11: no momentum card during a goal replay (in 3D its card sat over the net), at any speed the replay plays at
+  await check("momentum in replays", async () => {
+    const reps = await page.evaluate(async () => (await import("./js/view3d.js")).replays(window.studioDesk.match));
+    for (const rep of reps) for (const t of [rep.from + 0.3, (rep.from + rep.to) / 2, rep.to - 0.3]) {
+      await seekTo(page, t);
+      const on = await page.evaluate(() => [...window.studioDesk.host.live.values()].some((i) => i.cue.graphic === "momentum"));
+      if (on) fail(`momentum in replays: a momentum card on air at ${t.toFixed(1)}, in the replay ${rep.from.toFixed(1)} to ${rep.to.toFixed(1)}`);
+    }
+    console.log(`momentum in replays: ${reps.length} replays checked`);
+  });
+
   // 7 and 16: the 3D canvas never takes the focus, in 3D and back in 2D; loading is a status, failures stay alerts
   await check("3d canvas and loading", async () => {
     await page.evaluate(() => {
@@ -350,6 +479,41 @@ try {
     if (!c.inert || c.tab !== -1) fail(`3D canvas: inert ${c.inert}, tabIndex ${c.tab}`);
   });
   await page.context().close();
+
+  // N17: a player's name is never cut, in any story graphic of the four matches, on a laptop and a
+  // phone (the compact variant) and on a large screen (the full one), in every language and audience
+  if (MATCH === "M001") for (const id of ["M001", "M002", "M003", "M004"]) for (const size of [[1280, 720], [1920, 1080], [390, 844]]) {
+    const p = await open(browser, size, size[0] < 600, `?match=${id}`);
+    await check(`${id} ${size.join("x")} names`, async () => {
+      const r = await p.evaluate(async () => {
+        const sd = window.studioDesk, host = sd.host, bad = [];
+        // each distinct graphic once per language: the same payload draws the same name
+        const keys = new Set(), list = [];
+        for (const c of sd.match.cues) { const k = `${c.graphic}|${c.lang}|${JSON.stringify(c.payload)}`; if (host.graphics[c.graphic] && !keys.has(k)) { keys.add(k); list.push(c); } }
+        const layer = document.querySelector("#overlay");
+        for (let i = 0; i < list.length; i += 16) {
+          await Promise.all(list.slice(i, i + 16).map(async (c) => {
+            const box = layer.appendChild(document.createElement("div"));
+            box.style.cssText = "position:absolute;inset:0;visibility:hidden";
+            box.lang = c.lang;
+            const el = box.appendChild(document.createElement(host.graphics[c.graphic].tag));
+            await el.load({ data: structuredClone(c.payload), renderType: "realtime", renderCharacteristics: { resolution: { width: 1920, height: 1080 } }, ...host.opts.vendorParams() });
+            for (const n of el.shadowRoot.querySelectorAll(".name, .team")) {
+              const text = n.textContent;
+              if (n.scrollWidth > n.clientWidth + 1 || text.trim().endsWith("…")) bad.push(`${c.graphic} ${c.lang} "${text}" ${n.scrollWidth}/${n.clientWidth} px (${c.cue_id})`);
+            }
+            await el.dispose();
+            box.remove();
+          }));
+        }
+        return { n: list.length, bad, compact: host.opts.vendorParams().v_compact };
+      });
+      console.log(`${id} ${size.join("x")} names: ${r.n} graphics${r.compact ? " (compact)" : ""}, ${r.bad.length} cut`);
+      for (const b of r.bad.slice(0, 10)) fail(`${id} ${size.join("x")} name cut: ${b}`);
+      if (r.bad.length > 10) fail(`${id} ${size.join("x")}: ${r.bad.length - 10} more names cut`);
+    });
+    await p.context().close();
+  }
 } finally {
   await browser.close();
 }

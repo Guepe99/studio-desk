@@ -10,17 +10,22 @@ const GOAL = ["Goal", "Gol"]; // the export's quality text for a goal: "Goal" in
 // it is shown as text, never guessed into a bar.
 const scaled = (q) => q && typeof q === "object" && Number.isFinite(q.value) && Number.isFinite(q.max) && q.max > 0;
 const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+// the name on one line from 46 px down to 36 px, else on two lines at 40 px
+const NAME_PX = 46, NAME_MIN = 36, TWO_PX = 40;
 
 export default class PassShot extends SdGraphic {
   css() {
     return `
 .l3 { position: absolute; left: 96px; bottom: 84px; width: 860px; }
 .compact .l3 { width: 720px; }  /* fits a 264 px deck with its smallest type (30 px) at 11 px */
-.card { display: grid; grid-template-columns: 96px 1fr auto; align-items: stretch; height: 126px; overflow: hidden; }
+.card { display: grid; grid-template-columns: 96px 1fr auto; align-items: stretch; min-height: 126px; overflow: hidden; }
 .num { display: grid; place-items: center; font-weight: 800; font-size: 60px; }
-.who { padding: 0 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
-.name { font-weight: 800; font-size: 46px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who { padding: 8px 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
+/* a name is never cut (fit()): a long one steps down in size, then takes two lines and the card grows */
+.name { font-weight: 800; font-size: ${NAME_PX}px; line-height: 1.05; text-transform: uppercase; white-space: nowrap; }
+.name.two { white-space: normal; font-size: ${TWO_PX}px; }
 .team { font-weight: 600; font-size: 28px; color: var(--lilac-100); white-space: nowrap; }
+.team.two { white-space: normal; line-height: 1.1; }
 .val { background: var(--purple-700); padding: 0 30px 0 32px; display: flex; align-items: baseline; gap: 10px; align-self: stretch; padding-top: 24px; }
 .big { font-weight: 800; font-size: 80px; font-variant-numeric: tabular-nums; }
 .unit { font-weight: 700; font-size: 28px; color: var(--green); }
@@ -63,6 +68,25 @@ export default class PassShot extends SdGraphic {
     $(".bar").style.width = `${bar ? Math.round(Math.min(100, Math.max(0, (q.value / q.max) * 100))) : 0}%`;
     $(".qval").textContent = bar ? `${fmt(q.value)}/${fmt(q.max)}` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
+    this.fit();
+  }
+
+  async load(params) {
+    const r = await super.load(params);
+    this.fit(); // again with the web font loaded
+    return r;
+  }
+
+  fit() {
+    const name = this.stage.querySelector(".name"), team = this.stage.querySelector(".team");
+    name.classList.remove("two");
+    team.classList.remove("two");
+    for (let px = NAME_PX; px >= NAME_MIN; px--) {
+      name.style.fontSize = `${px}px`;
+      if (name.scrollWidth <= name.clientWidth + 1) break;
+    }
+    if (name.scrollWidth > name.clientWidth + 1) { name.style.fontSize = ""; name.classList.add("two"); }
+    team.classList.toggle("two", team.scrollWidth > team.clientWidth + 1);
   }
 
   inAnims() {

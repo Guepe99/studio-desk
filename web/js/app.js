@@ -4,7 +4,7 @@ import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
-import { View3D, probe, defaultView, RADAR } from "./view3d.js";
+import { View3D, probe, defaultView, RADAR, replays } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
@@ -105,6 +105,13 @@ const CONTROL_STRINGS = {
     goalsHint: "Gráficos IA apagados: el botón salta a los goles" },
 };
 for (const [lang, more] of Object.entries(CONTROL_STRINGS)) STRINGS[lang] = { ...more, ...STRINGS[lang] };
+// The page header: what the page is for a first-time visitor; the match line comes from meta.json
+const HEAD_STRINGS = {
+  en: { tagline: "AI agents write the TV graphics for a football replay, and you decide what goes on air", replay: "Replay" },
+  it: { tagline: "Gli agenti AI scrivono le grafiche TV per il replay di una partita, e tu decidi cosa va in onda", replay: "Replay" },
+  es: { tagline: "Agentes de IA escriben los gráficos de TV de la repetición de un partido, y tú decides qué sale al aire", replay: "Repetición" },
+};
+for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[lang], more);
 
 // Graphic text is never drawn under MIN_PX. A frame where the 17 px fact chips would be smaller gets the
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
@@ -117,6 +124,7 @@ function layout() {
   const W = app.clientWidth || window.innerWidth, H = window.innerHeight;
   const room = Math.max(160, W - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
   const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), gap = parseFloat(cs.rowGap) || 0;
+  const head = $("#masthead").offsetHeight, top = head ? head + gap : 0;
   // from the window alone, so hiding the button cannot change the answer
   body.toggle("no-radar", Math.min(room, ((H - 120) * STAGE_W) / STAGE_H) < 600);
   body.remove("deck", "deck-side");
@@ -124,23 +132,33 @@ function layout() {
   const menu = $("#viewing"), menuOpen = menu.classList.contains("open");
   menu.classList.remove("open");
   for (const el of [deck, ask]) el.style.width = el.style.maxHeight = "";
-  // the controls and the strip wrap: size them first, then give the frame the height that is left
-  const rows = (cw) => {
+  // the header, the controls and the strip wrap: size them first, then give the frame the height that
+  // is left. The strip counts at its height with cards (.reserve), so the picture does not move when
+  // the first hand-off comes in; a short window lets the strip go under the fold before the graphics
+  // leave the pitch.
+  const rows = (cw, withStrip = true) => {
     for (const el of [controls, strip]) el.style.width = `${cw}px`;
-    return controls.offsetHeight + strip.offsetHeight + 2 * gap;
+    strip.classList.add("reserve");
+    const sh = strip.offsetHeight;
+    strip.classList.remove("reserve");
+    return top + controls.offsetHeight + gap + (withStrip ? sh + gap : 0);
   };
   const fit = (h) => Math.max(Math.min(room / STAGE_W, h / STAGE_H), 90 / STAGE_H);
-  // the open Ask panel never shrinks the picture: it sits beside it (side deck) or under the controls, and the page scrolls
-  let below = rows(room), s = fit(H - pad - below), side = 0;
-  if (COMPACT_PX * s < MIN_PX) {
+  const onPitch = (x) => COMPACT_PX * x >= MIN_PX;
+  // the open Ask panel never shrinks the picture: it sits beside it (side deck), over the docked desk or under the controls
+  let keep = true, below = rows(room), s = fit(H - pad - below), side = 0;
+  if (!onPitch(s) && onPitch(fit(H - pad - rows(room, false)))) { keep = false; below = rows(room, false); s = fit(H - pad - below); }
+  if (!onPitch(s)) {
     // beside the frame, the Ask panel with it
-    const hs = fit(H - pad - below), colGap = 10;
-    if (STAGE_W * hs + colGap + DECK_MIN <= room) { s = hs; side = room - Math.round(STAGE_W * hs) - colGap; }
+    const colGap = 10;
+    if (STAGE_W * s + colGap + DECK_MIN <= room) side = room - Math.round(STAGE_W * s) - colGap;
   }
   if (!side) {
-    // under the picture the controls take its width, and never less than room for a few buttons a row
-    below = rows(Math.max(Math.round(STAGE_W * s), Math.min(room, 560)));
-    s = fit(H - pad - below);
+    // under the picture the controls take its width (never less than room for a few buttons a row),
+    // unless that wraps them onto another row
+    const narrow = rows(Math.max(Math.round(STAGE_W * s), Math.min(room, 560)), keep);
+    if (narrow <= below) s = fit(H - pad - narrow);
+    else rows(room, keep);
   }
   const fw = Math.round(STAGE_W * s), fh = Math.round(STAGE_H * s);
   frame.style.width = `${fw}px`;
@@ -151,8 +169,9 @@ function layout() {
   body.toggle("deck", !!deckMode);
   body.toggle("deck-side", !!side);
   if (side) {
-    for (const el of [deck, ask]) el.style.width = `${Math.min(side, 560)}px`;
-    ask.style.maxHeight = `${fh}px`;
+    deck.style.width = `${Math.min(side, 560)}px`;
+    deck.style.maxHeight = `${fh}px`;
+    if (!DOCKED.matches) { ask.style.width = deck.style.width; ask.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
   // in the radar the 2D pitch is drawn at RADAR of the stage
   pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR : 1) * Math.min(window.devicePixelRatio || 1, 2));
@@ -167,9 +186,11 @@ function layout() {
 }
 // a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
 let laidOut = "";
-const heights = () => [controls, strip].map((el) => el.offsetHeight).join("|");
+const heights = () => [controls, strip, $("#masthead")].map((el) => el.offsetHeight).join("|");
 const relayout = new ResizeObserver(() => { if (heights() !== laidOut) layout(); });
-for (const el of [controls, strip]) relayout.observe(el);
+for (const el of [controls, strip, $("#masthead")]) relayout.observe(el);
+// the desk is docked from 1100 px (broadcast.css), and the open Ask panel then sits over its foot (ask.css)
+const DOCKED = matchMedia("(min-width: 1100px)");
 
 function applyStrings() {
   // the whole page follows the language; agent output inside it is marked lang="en" where it is shown
@@ -211,7 +232,13 @@ function cueSheet() {
 
 function refreshCues() {
   const sheet = cueSheet();
-  host.setCues(sheet, state.ts);
+  // a momentum card due during a goal replay waits for its end: the 3D replay's goal camera has the
+  // net across the foot of the picture, where the card sits
+  const reps = replays(match), held = sheet.map((c) => {
+    const r = c.graphic === "momentum" && reps.find((x) => c.ts < x.to && c.ts + c.duration_s > x.from);
+    return r ? { ...c, ts: r.to } : c;
+  });
+  host.setCues(held, state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
   moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => f.ts) : null);
   ask?.render();
@@ -316,8 +343,7 @@ function tick(now) {
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
-  // the radar steps aside while a graphic that is not pinned to a player is on the frame
-  document.body.classList.toggle("radar-yield", !deckMode && [...host.live.values()].some((i) => !i.positioned));
+  placeRadar();
   voice?.update(state.ts, end); // null until its clips are checked
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
@@ -326,6 +352,18 @@ function tick(now) {
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
   $("#seek-marks .fill").style.width = `${(state.ts / end) * 100}%`;
   requestAnimationFrame(tick);
+}
+
+// The Radar box takes the first spot along the foot of the frame (centre, right, left) that no graphic
+// on the pitch covers; it steps aside only when they cover all three. Stage px, as view3d.css #radar.
+const RADAR_SPOTS = [740, 1440, 40], RADAR_BOX = { w: 440, h: 291, bottom: 20 };
+function placeRadar() {
+  const boxes = [...host.live.values(), ...host.leaving].filter((i) => !i.positioned && i.node === i.el)
+    .map((i) => i.el.shadowRoot?.querySelector(".stage")?.firstElementChild).filter((b) => b?.offsetWidth);
+  const top = STAGE_H - RADAR_BOX.bottom - RADAR_BOX.h;
+  const x = RADAR_SPOTS.find((l) => boxes.every((b) => b.offsetLeft >= l + RADAR_BOX.w || b.offsetLeft + b.offsetWidth <= l || b.offsetTop + b.offsetHeight <= top));
+  document.body.classList.toggle("radar-yield", x === undefined);
+  if (x !== undefined) $("#radar").style.left = `${x}px`;
 }
 
 function wireControls() {
@@ -423,6 +461,8 @@ async function main() {
     return;
   }
   end = Math.max(match.duration, ...match.cues.map((c) => c.ts + c.duration_s));
+  $("#mh-teams").textContent = `${match.home.name} vs ${match.away.name}`;
+  $("#mh-venue").textContent = match.meta.venue_name ?? "";
   const players = Object.fromEntries(match.meta.players.map((p) => {
     const team = match.teams[p.team_id];
     return [p.player_id, { name: p.name, shirt: p.shirt, team_short: team.short_name, team_name: team.name,
