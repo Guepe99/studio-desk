@@ -41,7 +41,7 @@ INSTRUCTIONS = (
     "nothing from outside the tools (the clubs and players are invented).\n"
     "Answer in the `language` of the message, in at most two short sentences of plain text: no lists, no "
     "markdown, no em or en dashes. Every number must be the value of a fact you cite, or appear in its label, "
-    "written with digits as there, in the words of the answer's language (\"uno sprint a 32.8 km/h\"): never quote "
+    "written with digits as there, in the words of the answer's language with a decimal comma in Italian and Spanish (\"uno sprint a 32,8 km/h\"): never quote "
     "a label or write the word label. Never compute a total, count, difference or average, never write a number "
     "in words. Quote the value of at least one fact you cite. Write a minute only as 'minute N' in English, 'minuto N' in Italian or Spanish, "
     "or N', with N the `minute` of a fact you cite, never worked out from ts. Give a score only when the question asks for it, "
@@ -218,7 +218,7 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
         usage.pop("pending_chars", None)
         return declined(lang, rules.brief_error(e), usage)
 
-    text = rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang))
+    text = rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang)
     ids = list(dict.fromkeys(i.strip().upper() for i in out.fact_ids))
     reason = check(match_id, ts, text, ids, lang, p1)
     if reason:
