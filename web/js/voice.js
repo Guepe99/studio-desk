@@ -5,8 +5,8 @@
 // screen during playback at 1x, in a language it has a clip for. Its other graphics, and a card this
 // audience gets in other words, stay silent. What is on screen is the OGraf host's business and what may go on air is the
 // desk's: this module only reads host.live (on screen now), host.cues (this visitor's sheet) and
-// desk.onAir / desk.status, so held, rejected and AI-off stories never speak. An edited story stays
-// silent (the clip says the old text), and so does a clip whose text_sha1 no longer matches the
+// desk.onAir / desk.status, so held, rejected and AI-off stories never speak. A story whose body was edited
+// in this language stays silent (the clip says the old text; a new headline alone keeps it), and so does a clip whose text_sha1 no longer matches the
 // story text. One clip at a time: a story that comes up while another speaks waits, and is dropped
 // if it would start more than QUEUE_MAX_S of match time after its cue. Seek, speed change, mute
 // and anything that takes the story off air stop the clip; a pause pauses it. A story that
@@ -115,7 +115,7 @@ export class Voice {
   allowed(sid) {
     const s = this.desk.byId.get(sid);
     return this.on && this.state.speed === 1 && Boolean(s) && s.safety !== "flagged" && this.desk.onAir(s)
-      && this.desk.status(s) !== "edited" && this.clips.has(`${sid}|${this.state.lang}`) && this.host.cues.some((c) => c.story_id === sid && this.card(c));
+      && !this.desk.decisions.get(sid)?.edited_text?.[this.state.lang] && this.clips.has(`${sid}|${this.state.lang}`) && this.host.cues.some((c) => c.story_id === sid && this.card(c));
   }
 
   start(sid) {

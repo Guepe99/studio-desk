@@ -369,7 +369,7 @@ export class Desk {
     this.more = new Set(); // stories whose Details are open
     this.live = new Set(); // stories with a graphic on screen now (app.js)
     this.liveCues = [];    // the cues on screen now, templates included
-    this.hidden = new Set(); // template cues this visitor took off air, in this tab only (the API has no field for them)
+    this.hidden = new Set(); // template slots this visitor took off air, in this tab only (the API has no field for them)
     this.reasons = new Map(); // story_id -> Set of REASONS; the API has no field for them, so they stay in this tab
     this.note = "";
     this.info = false;   // the note about where decisions are kept, opened from the info button
@@ -492,7 +492,7 @@ export class Desk {
     // template cues are written in English only until the agents translate them
     if (lang !== "en" && !own.some((c) => c.story_id === null)) own = own.concat(mine.filter((c) => c.lang === "en" && c.story_id === null));
     return own.flatMap((c) => {
-      if (c.story_id === null) return this.hidden.has(c.cue_id) ? [] : [c];
+      if (c.story_id === null) return this.hidden.has(slot(c)) ? [] : [c];
       const s = this.byId.get(c.story_id); // a cue of a story nobody can review is held
       if (!s || !this.onAir(s)) return [];
       const ed = this.decisions.get(s.story_id)?.edited_text, body = ed?.[c.lang], title = ed?.[`title_${c.lang}`];
@@ -599,7 +599,7 @@ export class Desk {
   takeOut(cue) {
     if (this.locked()) return;
     this.aimFocus(this.nextWaiting(null));
-    this.hidden.add(cue.cue_id);
+    this.hidden.add(slot(cue));
     this.note = "";
     this.setDone({ cue, key: "done_takenOut" }, { cue });
     this.changed();
@@ -630,7 +630,7 @@ export class Desk {
     const u = this.lastAct;
     if (!u || this.locked()) return;
     if (u.cue) {
-      this.hidden.delete(u.cue.cue_id);
+      this.hidden.delete(slot(u.cue));
       this.setDone({ cue: u.cue, key: "undone_template" }, null);
       this.aimFocus("sec:air");
       this.changed();
@@ -766,6 +766,7 @@ export class Desk {
     setText(this.infoEl, !this.ready ? tx("footConnecting") : this.online ? tx("footOnline") : this.offline ? tx("footOffline", { why }) : tx("footNoServer"));
     // opened from the info button, or by itself when the server refused or did not answer
     this.infoEl.hidden = !(this.info || (this.ready && !this.online && this.offline));
+    this.root.querySelector("#desk-info")?.setAttribute("aria-expanded", String(!this.infoEl.hidden));
     setText(this.killEl, this.kill ? tx("kill") : "");
     setText(this.noteEl, this.note);
     this.renderDone();
@@ -1202,7 +1203,8 @@ export class Desk {
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
     const humans = this.online ? this.auditRows.filter((r) => r.actor === "human") : this.localAudit;
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
-    return { rows: [...auto, ...agents].sort(byAt), agents, humans: [...humans].sort(byAt) };
+    const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
+    return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt) };
   }
 
   renderAudit() {
@@ -1292,7 +1294,8 @@ export class Desk {
       AGENTS.map(([id, how]) => h("li", { "data-agent": id }, h("b", {}, agentName(id, lang)), h("span", { className: "how" }, tx(`how_${how}`)), h("span", { className: "role" }, tx(`role_${id}`)))));
     if (!this.traces.length) return [legend, h("p", { className: "empty" }, tx("noTraces"))];
     const label = (f) => this.factIndex.get(f)?.label_en ?? "a fact";
-    return [legend, [...this.traceGroups()].map(([sid, { rows, sum }]) => {
+    // a story the match has not reached stays hidden here too: its heading would spoil the replay
+    return [legend, [...this.traceGroups()].filter(([sid]) => !this.byId.has(sid) || this.visible(this.byId.get(sid))).map(([sid, { rows, sum }]) => {
       const s = this.byId.get(sid);
       const shared = rows.filter((x) => x.shared > 1).length;
       return h("section", { className: "trace", "data-trace": sid, "data-focus": `trace:${sid}`, tabindex: -1, "aria-labelledby": `t-${sid || "run"}` },
@@ -1340,6 +1343,8 @@ export class Desk {
 }
 
 // A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
+// a template graphic has one cue per language: taking it out takes it out in every language
+const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

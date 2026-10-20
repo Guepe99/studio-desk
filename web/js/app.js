@@ -557,9 +557,10 @@ function wireControls() {
   });
   // widening the window docks the desk: a drawer left open would keep the page inert
   matchMedia("(max-width: 1099px)").addEventListener("change", (e) => { if (!e.matches) desk.setDrawer(false); });
-  // the open drawer is modal: Esc closes it wherever focus is (the page behind is inert, focus may sit on body)
+  // the open drawer is modal: Esc closes it wherever focus is (the page behind is inert, focus may sit on body),
+  // unless an Esc of its own came first: the editor cancelling, or the key list dialog closing
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest?.("textarea")) desk.closeDrawer();
+    if (e.key === "Escape" && !e.defaultPrevented && document.body.classList.contains("desk-open") && !e.target.closest?.("textarea, input, dialog")) desk.closeDrawer();
   });
   // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
   // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well. On the gear Space opens

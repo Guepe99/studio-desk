@@ -191,6 +191,12 @@ async function scenario(browser, w, h) {
   await seekTo(page, MOMENTUM.ts + 1.6);
   expect(!(await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Take out left the momentum card on air`);
   expect(/^Momentum \d+' taken out$/.test(await page.$eval("#desk .done-msg", (el) => el.textContent)), `${tag}: Take out status line`);
+  // taken out in every language: the Italian cue of the same graphic stays off too
+  const sameSlot = new Set(cues.filter((c) => c.graphic === MOMENTUM.graphic && c.ts === MOMENTUM.ts && c.audience === MOMENTUM.audience).map((c) => c.cue_id));
+  await setLang(page, "it");
+  await seekTo(page, MOMENTUM.ts + 1.6);
+  expect(!(await live(page)).some((x) => sameSlot.has(x.cue)), `${tag}: switching to Italian brought the momentum card back`);
+  await setLang(page, "en");
   await page.click("#desk .undo");
   await seekTo(page, MOMENTUM.ts + 1.7);
   expect((await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Undo did not bring the momentum card back`);
@@ -207,10 +213,10 @@ async function scenario(browser, w, h) {
     const sheet = await page.evaluate(() => ({ top: document.querySelector("#desk").getBoundingClientRect().top, frame: document.querySelector("#frame").getBoundingClientRect().bottom, h: innerHeight }));
     expect(sheet.top >= 0.4 * sheet.h - 1 && sheet.frame <= sheet.top + 1, `${tag}: the sheet leaves the broadcast ${JSON.stringify(sheet)}`);
   }
-  // one line: "Control desk · AI graphics on · 3 waiting" (the dots are CSS)
-  const head = await page.$eval("#desk .desk-title", (el) => [el.querySelector("h2"), el.querySelector("#ai-switch .switch-label"), el.querySelector(".desk-sum")]
-    .map((x) => x && [x.textContent.replace(/\s+/g, " ").trim(), Math.round(x.getBoundingClientRect().top)]));
-  expect(JSON.stringify(head.map((x) => x?.[0])) === '["Control desk","AI graphics on","3 waiting"]' && head.every((x) => Math.abs(x[1] - head[0][1]) < 12),
+  // one line: "Control desk · AI graphics on · 3 waiting" (the dots are CSS); on a phone the count gives way to Close
+  const head = await page.$eval("#desk .desk-title", (el, last) => [el.querySelector("h2"), el.querySelector("#ai-switch .switch-label"), el.querySelector(last)]
+    .map((x) => x && [x.textContent.replace(/\s+/g, " ").trim(), Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2)]), phone ? "#desk-close" : ".desk-sum");
+  expect(JSON.stringify(head.map((x) => x?.[0])) === `["Control desk","AI graphics on","${phone ? "Close" : "3 waiting"}"]` && head.every((x) => Math.abs(x[1] - head[0][1]) < 12),
     `${tag}: header ${JSON.stringify(head)}`);
   expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
     `${tag}: Put on air does not name its story`);
@@ -368,8 +374,13 @@ async function scenario(browser, w, h) {
   expect(j !== `story-${BACK.story_id}` && /^story-/.test(j) && await active(page) === `story-${BACK.story_id}`, `${tag}: J then K moved the focus to ${j}, then ${await active(page)}`);
   await page.keyboard.press("e");
   expect(await page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.lang].join()) === "TEXTAREA,en", `${tag}: E did not open the editor`);
+  // Esc in the headline field cancels the edit and nothing more: on a phone the sheet stays open
+  const headline = await page.$(`${card(BACK)} .editor input`);
+  await headline?.focus();
   await page.keyboard.press("Escape");
   expect(!(await page.$(`${card(BACK)} .editor`)), `${tag}: Esc did not close the editor`);
+  const sheetOpen = () => page.evaluate(() => document.body.classList.contains("desk-open"));
+  if (phone) expect(headline && await sheetOpen(), `${tag}: Esc in the headline field closed the sheet too (field ${!!headline})`);
   await page.focus(card(BACK));
   await Promise.all([posted(page), page.keyboard.press("r")]);
   await settled(page);
@@ -386,6 +397,7 @@ async function scenario(browser, w, h) {
   const keys = await page.evaluate(() => { const d = document.querySelector("#keys"); return { open: !!d?.open, desk: d?.querySelector("#keys-desk")?.textContent ?? "" }; });
   expect(keys.open && /Put the story on air/.test(keys.desk) && /Next or previous story/.test(keys.desk), `${tag}: ? did not open the key list with the desk keys ${JSON.stringify(keys)}`);
   if (keys.open) await page.keyboard.press("Escape");
+  if (phone) expect(await sheetOpen(), `${tag}: Esc on the key list closed the sheet too`);
   // outside the desk the letters are not the desk's
   await page.evaluate(() => document.activeElement?.blur());
   await page.evaluate(() => document.querySelector("#frame").focus?.());
@@ -449,6 +461,18 @@ async function scenario(browser, w, h) {
   expect(sids.length && sids.every((x) => !/S-\d{6}/.test(x)) && sids.some((x) => /^Goal \d+'$/.test(x)), `${tag}: audit names stories ${JSON.stringify(sids.slice(0, 4))}`);
   expect(await page.$$eval(".log tr.a-agent", (n) => n.length) > 0, `${tag}: audit has no agent rows`);
   await shoot("audit", null);
+  // early in the match neither the audit nor the traces name a story the match has not reached
+  await seekTo(page, 30);
+  const early = await page.evaluate(async () => {
+    const d = window.studioDesk.desk, ahead = (id) => d.byId.has(id) && !d.visible(d.byId.get(id));
+    const audit = d.auditData().rows.filter((r) => ahead(r.story_id)).length;
+    document.querySelector("#tab-traces").click();
+    await new Promise((r) => setTimeout(r, 50));
+    const traces = [...document.querySelectorAll("#desk [data-trace]")].filter((x) => ahead(x.dataset.trace)).length;
+    return { audit, traces, ahead: d.stories.filter((s) => !d.visible(s)).length };
+  });
+  expect(early.ahead > 0 && early.audit === 0 && early.traces === 0, `${tag}: spoilers at 0:30 ${JSON.stringify(early)}`);
+  await seekTo(page, ALL);
 
   // 10. languages: desk text, headline and graphic
   await page.click("#tab-stories");
@@ -519,6 +543,16 @@ async function realReplay(browser, match) {
   const firsts = ss.map((s) => firstCue(all, s.story_id)).filter(Number.isFinite).sort((a, b) => a - b);
   for (const ts of [0, firsts[0] + 2, firsts[Math.floor(firsts.length / 2)] + 2, firsts.at(-1) + 2]) await structure(page, all, ss.map((s) => s.story_id), ts, match);
   await noFactIds(page, match);
+  // a template taken out in English stays out in Italian: the real replays have one cue per language
+  const tpl = all.find((c) => c.story_id === null && c.lang === "en");
+  const back = await page.evaluate((c) => {
+    const { desk, match: m } = window.studioDesk;
+    desk.takeOut(c);
+    const left = desk.sheet(m.cues, c.audience, "it").filter((x) => x.graphic === c.graphic && x.ts === c.ts).length;
+    desk.undo();
+    return [left, desk.sheet(m.cues, c.audience, "it").filter((x) => x.graphic === c.graphic && x.ts === c.ts).length];
+  }, tpl);
+  expect(back[0] === 0 && back[1] > 0, `${match}: a template taken out in English, cues left in Italian then after Undo ${back}`);
   await page.context().close();
 }
 
