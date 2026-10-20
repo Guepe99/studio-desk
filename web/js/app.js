@@ -32,6 +32,13 @@ const STRINGS = {
     actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
     actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
+    didPick: "Picked: {what}", didPickAny: "Picked a moment", didExplain: "Explained why it matters", didWrite: "Wrote the line",
+    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didTemplate: "Used the fact-only line",
+    didCheck: "Checked the numbers", didCue: "Put it in the rundown", didFail: "Model call failed", didHand: "Passed its work on",
+    replay: "Replay", swap3d: "Show the 3D view large", swap2d: "Show the 2D pitch large", load3d: "Loading the 3D view",
+    fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
+    slow3d: "The 3D view ran at {fps} frames a second here, so the 2D pitch is back. Turn the minimap on in the settings to keep the 3D view anyway.",
+    voiceOn: "AI voice-over on: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over off",
     aioff: "AI off", broadcast: "Match broadcast", activity: "Agent activity",
   },
   // every key in every language: a missing one would fall back to English
@@ -56,6 +63,13 @@ const STRINGS = {
     actNone: "Nessuna traccia degli agenti in questo replay", actSum: "Passaggi di consegne finora: {n}, {tokens} token, {usd}",
     actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
     actRules: "solo regole", actCode: "solo codice",
+    didPick: "Ha scelto: {what}", didPickAny: "Ha scelto un momento", didExplain: "Ha spiegato perché conta", didWrite: "Ha scritto la frase",
+    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didTemplate: "Ha usato la frase con i soli fatti",
+    didCheck: "Ha controllato i numeri", didCue: "L'ha messa in scaletta", didFail: "Errore del modello", didHand: "Ha passato le consegne",
+    replay: "Replay", swap3d: "Mostra in grande la vista 3D", swap2d: "Mostra in grande il campo 2D", load3d: "Caricamento della vista 3D",
+    fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
+    slow3d: "Qui la vista 3D andava a {fps} fotogrammi al secondo, così è tornato il campo 2D. Accendi la minimappa nelle impostazioni per tenerla comunque.",
+    voiceOn: "Voce AI accesa: parla nella lingua scelta, solo a velocità 1x", voiceOff: "Voce AI spenta",
   },
   es: {
     play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "Ir a la 2.ª parte",
@@ -78,6 +92,13 @@ const STRINGS = {
     actNone: "No hay trazas de los agentes en esta repetición", actSum: "Relevos hasta ahora: {n}, {tokens} tokens, {usd}",
     actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
     actRules: "reglas, sin modelo", actCode: "código, sin modelo",
+    didPick: "Eligió: {what}", didPickAny: "Eligió un momento", didExplain: "Explicó por qué importa", didWrite: "Escribió la frase",
+    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didTemplate: "Usó la frase solo con datos",
+    didCheck: "Comprobó los números", didCue: "La puso en la escaleta", didFail: "Error del modelo", didHand: "Pasó el relevo",
+    replay: "Repetición", swap3d: "Mostrar en grande la vista 3D", swap2d: "Mostrar en grande el campo 2D", load3d: "Cargando la vista 3D",
+    fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
+    slow3d: "Aquí la vista 3D iba a {fps} fotogramas por segundo, así que vuelve el campo 2D. Activa el minimapa en los ajustes para mantenerla de todos modos.",
+    voiceOn: "Voz IA activada: habla en el idioma elegido, solo a 1x", voiceOff: "Voz IA desactivada",
   },
 };
 
@@ -93,21 +114,21 @@ let match = null, host = null, desk = null, voice = null, ask = null, end = 0, m
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
-  en: { settings: "Settings", more: "More", minimap: "Minimap", show2d: "Show the 2D pitch large", show3d: "Show the 3D view large",
+  en: { settings: "Settings", more: "More", minimap: "Minimap",
     voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
     nextGoal: "Next goal", nonextGoal: "No more goals", nokeyGoal: "No goals",
     goalsHint: "AI graphics are off: this jumps to the goals",
     keysTitle: "Keyboard shortcuts", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
     keyFive: "Back or forward 5 seconds", keyJump: "Jump to 0%, 10% … 90% of the match", keyVoice: "AI voice-over on or off",
     keyFull: "Full screen on or off", keyList: "This list" },
-  it: { settings: "Impostazioni", more: "Altro", minimap: "Minimappa", show2d: "Mostra in grande il campo 2D", show3d: "Mostra in grande la vista 3D",
+  it: { settings: "Impostazioni", more: "Altro", minimap: "Minimappa",
     voice: "Voce", voiceName: "Voce AI", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
     goalsHint: "Grafiche AI spente: il pulsante salta ai gol",
     keysTitle: "Scorciatoie da tastiera", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
     keyFive: "Indietro o avanti di 5 secondi", keyJump: "Salta allo 0%, 10% … 90% della partita", keyVoice: "Voce AI accesa o spenta",
     keyFull: "Schermo intero sì o no", keyList: "Questo elenco" },
-  es: { settings: "Ajustes", more: "Más", minimap: "Minimapa", show2d: "Mostrar en grande el campo 2D", show3d: "Mostrar en grande la vista 3D",
+  es: { settings: "Ajustes", more: "Más", minimap: "Minimapa",
     voice: "Voz", voiceName: "Voz IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
     goalsHint: "Gráficos IA apagados: el botón salta a los goles",
@@ -204,7 +225,6 @@ function minimapState() {
   const item = $("#minimap"), off = !!(view3d?.failed || view3d?.lost);
   item.setAttribute("aria-checked", String(view3d?.mode === "split"));
   item.setAttribute("aria-disabled", String(off));
-  $("#radar").setAttribute("aria-label", t(view3d?.main === "3d" ? "show2d" : "show3d"));
 }
 // a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
 let laidOut = "";
@@ -226,6 +246,8 @@ function applyStrings() {
   if (match) goalLabels();
   settingsState();
   minimapState();
+  view3d?.relabel();
+  voice?.render();
 }
 
 function setPlaying(on) {
@@ -434,6 +456,7 @@ function tick(now) {
   voice?.update(state.ts, end); // null until its clips are checked
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
+  desk.setLive([...host.live.values()].map((i) => i.cue.story_id).filter(Boolean).sort());
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -599,7 +622,8 @@ async function main() {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: 60,
     locate,
-    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
+    // raw fact ids never go on air: they are debug codes to a viewer, and the desk evidence lists them
+    vendorParams: () => ({ v_showFactIds: false, v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
     // in the deck or not, the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
     compact: () => ({ deck: deckMode ? deck : null, magnify: Math.max(1, 11.5 / (26 * scale)) }),
   });
@@ -627,14 +651,14 @@ async function main() {
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
-    notice: $("#notice"), status: $("#view-status") }, layout);
+    notice: $("#notice"), status: $("#view-status") }, layout, t);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
   if (document.activeElement === document.body) frame.focus();
   requestAnimationFrame(tick);
   await desk.load();
-  const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });
+  const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
   await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
 }
 

@@ -9,7 +9,10 @@
 // play; Italian and Spanish texts on the desk and the graphic; decisions survive a reload and do
 // not reach another visitor; the audit log lists them; the editor shows all three languages and an
 // unchanged save is an approval; Undo of a first decision holds the story again; controls are disabled while a save is in flight; the Approve, Edit
-// and Reject buttons name their story. Screenshots: out/shots/desk-*.png.
+// and Reject buttons name their story. A closed card shows only the moment, one status line, the text
+// and the actions, with everything else in Details before the actions; the status line says "On air"
+// only for the story on screen; a rejected story offers reason chips that reach the audit log, which
+// names stories by kind and minute. Screenshots: out/shots/desk-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -107,6 +110,23 @@ async function scenario(browser, w, h) {
   expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
     `${tag}: Put on air does not name its story`);
 
+  // 0. a closed card: the moment, one status line, the text, Details, the actions; nothing is lost, only moved
+  await openDesk();
+  for (const s of [HELD, AUTO, SWING]) {
+    const c = await page.$eval(card(s), (el) => {
+      const more = el.querySelector(":scope > details.more"), primary = el.querySelector(".actions .primary");
+      return { parts: [...el.children].map((x) => x.className.split(" ")[0] || x.tagName), open: more?.open ?? null, h: Math.round(el.getBoundingClientRect().height),
+        outside: [...el.querySelectorAll(".story-meta, .risk, .risk-tip, .proposal, .checks, .flagged, .evidence, .link")].filter((x) => !more?.contains(x)).map((x) => x.className),
+        inside: [".risk b", ".risk-tip", ".checks", ".evidence summary", ".link"].filter((q) => more?.querySelector(q)).length,
+        // D9: the Details (and the evidence in it) come before the primary in the tab order
+        first: !primary || !!(more && more.compareDocumentPosition(primary) & Node.DOCUMENT_POSITION_FOLLOWING) };
+    });
+    expect(c.parts.join() === "story-head,tally,story-text,more,actions" && c.open === false && !c.outside.length && c.inside === 5 && c.first,
+      `${tag}: closed card ${s.story_id} ${JSON.stringify(c)}`);
+    if (phone) expect(c.h <= 330, `${tag}: closed card ${s.story_id} is ${c.h} px tall at 390x844`);
+  }
+  if (await page.$(`${card(SWING)} .proposal`)) expect(await page.$eval(`${card(SWING)} .proposal`, (el) => !!el.closest("details.more")), `${tag}: the AI proposal is not in Details`);
+
   // 1. held until approved
   expect(!(await onAirAt(page, HELD)), `${tag}: ${HELD.story_id} needs review but its graphic is on air`);
   expect((await onAirAt(page, AUTO)) !== null, `${tag}: auto-approved ${AUTO.story_id} not on air`);
@@ -120,21 +140,22 @@ async function scenario(browser, w, h) {
   }
   await openDesk();
   expect(await page.$$eval(`${card(HELD)} .mini`, (n) => n.length) === 0, `${tag}: pitch map built with the evidence closed`);
+  await page.click(`${card(HELD)} .more > summary`);
   await page.click(`${card(HELD)} .evidence summary`); // evidence open in the shot
   await seekTo(page, whyCue(HELD).ts + 2);
   await shoot("needs-review");
-  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "Held", `${tag}: held story not marked Held`);
+  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent).then((x) => x.startsWith("Waiting for you, ")), `${tag}: held story not marked Waiting for you`);
   expect(await page.$$eval(`${card(HELD)} .mini line.ev`, (n) => n.length) > 0, `${tag}: evidence pitch has no event arrow`);
   await decide(page, HELD, "act-approved");
   expect((await onAirAt(page, HELD)) !== null, `${tag}: ${HELD.story_id} approved but its graphic is not on air`);
-  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "On air", `${tag}: approved story not marked On air`);
+  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "On air, approved by you", `${tag}: approved story on screen not marked On air`);
   await shoot("approved");
   await shootAir("approved");
   // Undo of a first decision: the server drops it and the story is held again
   await openDesk();
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "DELETE"), page.click("#desk .undo")]);
   await settled(page);
-  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "Held", `${tag}: undone story not Held again`);
+  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent).then((x) => x.startsWith("Waiting for you, ")), `${tag}: undone story not held again`);
   expect(!(await page.evaluate(async () => (await (await fetch("api/decisions?match_id=DEMO")).json()).decisions.length)), `${tag}: the server kept the undone decision`);
   expect(!(await onAirAt(page, HELD)), `${tag}: undone ${HELD.story_id} still on air`);
   await openDesk();
@@ -163,6 +184,12 @@ async function scenario(browser, w, h) {
   await decide(page, AUTO, "act-rejected");
   expect(!(await onAirAt(page, AUTO)), `${tag}: rejected ${AUTO.story_id} still on air`);
   expect(!(await onAirAt(page, AUTO, "casual")), `${tag}: rejected ${AUTO.story_id} on air for the casual audience`);
+  // D7: what was wrong, one tap; kept in the tab and named in the audit log (step 7)
+  await openDesk();
+  const chips = await page.$$eval(`${card(AUTO)} .reasons button`, (n) => n.map((b) => [b.textContent, b.getAttribute("aria-pressed")]));
+  expect(chips.length === 4 && chips.every((c) => c[1] === "false"), `${tag}: reason chips after Reject ${JSON.stringify(chips)}`);
+  await page.click(`${card(AUTO)} .reasons button`);
+  expect(await page.$eval(`${card(AUTO)} .reasons button`, (b) => b.getAttribute("aria-pressed")) === "true", `${tag}: a reason chip does not stay pressed`);
   await shoot("rejected", card(AUTO));
 
   // 4. Space on a desk button presses it and never toggles play
@@ -172,9 +199,15 @@ async function scenario(browser, w, h) {
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions")), page.keyboard.press("Space")]);
   expect(await page.evaluate(() => window.studioDesk.state.playing) === playing, `${tag}: Space in the desk toggled play`);
   await settled(page);
-  expect(await page.$eval(`${card(SWING)} .tally`, (el) => el.textContent) === "On air", `${tag}: Space did not approve`);
+  // N6: approved but not on screen now is "Approved", never the red "On air"
+  expect(await page.$eval(`${card(SWING)} .tally`, (el) => [el.textContent, el.closest(".story").dataset.tally]).then(([x, d]) => x === "Approved by you" && d === "approved"),
+    `${tag}: Space did not approve, or a story off screen reads On air (${await page.$eval(`${card(SWING)} .tally`, (el) => el.textContent)})`);
+  await seekTo(page, whyCue(SWING).ts + 2);
+  const lines = await page.evaluate(([a, b]) => [a, b].map((id) => document.querySelector(`#story-${id} .tally`).textContent), [SWING.story_id, HELD.story_id]);
+  expect(lines[0] === "On air, approved by you" && lines[1] === "Approved by you", `${tag}: on screen, the status lines read ${JSON.stringify(lines)}`);
 
-  // 4b. the AI proposal sits under the line on air; "Use proposal" puts it on air
+  // 4b. the AI proposal sits in Details; "Use proposal" puts it on air
+  await page.click(`${card(SWING)} .more > summary`);
   const proposal = await page.$eval(`${card(SWING)} .proposal-text`, (el) => el.textContent);
   expect(proposal.includes(SWING.verifier.proposals.en) && proposal.includes("not on air"), `${tag}: proposal block ${JSON.stringify(proposal)}`);
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions")), page.click(`${card(SWING)} .proposal button`)]);
@@ -217,9 +250,12 @@ async function scenario(browser, w, h) {
   // 7. audit log
   await page.click("#tab-audit");
   const actions = await page.$$eval(".log tr.a-human td:nth-child(3)", (n) => n.map((x) => x.textContent));
-  for (const a of ["approved", "edited", "rejected", "switched AI graphics off", "switched AI graphics on"]) {
+  for (const a of ["approved", "edited", "rejected: a number", "switched AI graphics off", "switched AI graphics on"]) {
     expect(actions.some((x) => x.startsWith(a)), `${tag}: audit has no "${a}" row`);
   }
+  // N20: a story by its name and minute, as the desk names it; the id only in the tooltip
+  const sids = await page.$$eval(".log .sid", (n) => n.map((x) => x.textContent));
+  expect(sids.length && sids.every((x) => !/S-\d{6}/.test(x)) && sids.some((x) => /^Goal \d+'$/.test(x)), `${tag}: audit names stories ${JSON.stringify(sids.slice(0, 4))}`);
   expect(await page.$$eval(".log tr.a-agent", (n) => n.length) > 0, `${tag}: audit has no agent rows`);
   await shoot("audit", null);
 
@@ -335,7 +371,7 @@ async function edges(browser) {
   await rule(page, "s.default_status = 'auto_approved'; s.safety = 'flagged'; d.changed()", AUTO.story_id);
   await rule(page, "d.decisions.delete(s.story_id); d.changed()", AUTO.story_id);
   expect(JSON.stringify(await rule(page, "return [d.status(s), d.onAir(s)]", AUTO.story_id)) === '["needs_review",false]', "edges: flagged auto-approved story on air by itself");
-  expect(await page.$eval(`${card(AUTO)} .tally`, (el) => el.textContent) === "En espera", "edges: flagged story not marked Held (En espera)");
+  expect(await page.$eval(`${card(AUTO)} .tally`, (el) => el.textContent) === "Espera tu decisión, marcada por Content Safety", "edges: flagged story not held, in Spanish");
   await page.context().close();
 
   // 4. malformed replay files: the desk and the traces still render

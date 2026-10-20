@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
-import { reached, latestPerAgent } from "../../web/js/activity.js";
+import { reached, latestPerAgent, Activity } from "../../web/js/activity.js";
 import { agentName, TEXT, tr, riskBand } from "../../web/js/desk.js";
 import { shortcut } from "../../web/js/keys.js";
 import { Match } from "../../web/js/match.js";
@@ -103,6 +103,26 @@ test("the strip reaches only ts <= now and shows each agent's latest step, oldes
   assert.deepEqual(latestPerAgent(rows, 0), []);
   const many = Array.from({ length: 9 }, (_, i) => ({ agent: `a${i}`, ts: 1, seq: i }));
   assert.equal(latestPerAgent(many, 9).length, 7);
+});
+
+test("the strip says what each agent did in a sentence of the page strings, never its ids or step names", () => {
+  const story = { story_id: "S-000001", kind: "big_chance", ts: 470 };
+  const desk = { byId: new Map([[story.story_id, story]]), traceStories: (r) => r.story_ids ?? [null], minuteText: () => "8" };
+  const said = (r) => Activity.prototype.said.call({ desk, t: (k) => (k === "didPick" ? "Picked: {what}" : k) }, r, "en");
+  const row = (agent, step, out, ids = [story.story_id]) => said({ agent, step, output_summary: out, story_ids: ids });
+  assert.equal(row("story_finder", "pick", "1 story: S-000001 big_chance"), "Picked: big chance, 8'");
+  assert.equal(row("story_finder", "pick", "0 stories", []), "didPickAny");
+  assert.equal(row("analyst", "analyse", "1 analysis, 1 replaced by the facts"), "didExplain");
+  assert.equal(row("commentator_it", "draft", "1 line"), "didWrite");
+  assert.equal(row("commentator_es", "rewrite", "1 line"), "didRewrite");
+  assert.equal(row("verifier", "check", "pass"), "didPass");
+  assert.equal(row("verifier", "check", "rewritten 1"), "didRewritten");
+  assert.equal(row("verifier", "check", 'fail: "a 52 m ball", the ledger value differs'), "didRewritten");
+  assert.equal(row("verifier", "check", "template 1"), "didTemplate");
+  assert.equal(row("verifier", "fallback", "template line from the facts"), "didTemplate");
+  assert.equal(row("analyst", "analyse", "analyst fallback: model call failed (429)"), "didFail");
+  assert.equal(row("director", "cue", "24 cues for 5 audiences"), "didCue");
+  assert.equal(row("someone_new", "x", "y"), "didHand");
 });
 
 test("agent names", () => {
