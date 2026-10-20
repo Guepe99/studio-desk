@@ -197,7 +197,8 @@ const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
 });
 // The Ask panel inside the viewport (the page scrolls to it, give or take a pixel of rounding), its question
 // box the topmost element at its centre: "" when it is, else what is wrong.
-const askFits = (page) => page.evaluate(() => {
+const askFits = (page) => page.evaluate(async () => {
+  for (let k = 0; k < 2; k++) await new Promise((res) => requestAnimationFrame(res)); // ask.js scrolls the panel in on the next frame
   const r = document.querySelector("#ask").getBoundingClientRect(), q = document.querySelector("#ask-q").getBoundingClientRect();
   const hit = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
   const ok = r.left >= 0 && r.top > -2 && r.right <= innerWidth && r.bottom < innerHeight + 2 && hit?.id === "ask-q";

@@ -403,6 +403,10 @@ li[data-agent="verifier"] { --agent: var(--green); }
 @container (max-width: 1100px) {
   .act-steps { min-height: 104px; } /* a name on two lines */
 }
+@container (max-width: 760px) { /* seven cards of under 100 px: "Commentator" fits whole */
+  .act-steps li { padding: 6px 5px; }
+  .act-name { padding: 1px 4px; font-size: 12px; }
+}
 .act-steps li.act-empty { grid-column: 1 / -1; background: none; padding: 4px 0; color: var(--purple-400); }
 .act-steps li.new { animation: act-in .35s ease-out both; animation-delay: calc(var(--i) * 120ms); }
 @keyframes act-in { from { opacity: 0; transform: translateY(6px); } }
