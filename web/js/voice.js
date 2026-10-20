@@ -43,6 +43,7 @@ export class Voice {
       const r = await fetch(`${this.base}/voice.json`);
       if (r.ok) rows = await r.json();
     } catch { /* no voice for this replay */ }
+    this.rows = rows; // the booth (booth-audio.js) keeps quiet for these clips
     for (const row of rows) {
       const s = this.desk.byId.get(row.story_id), text = s?.texts?.[row.lang];
       // crypto.subtle needs a secure context (https or localhost); without it the page stays silent

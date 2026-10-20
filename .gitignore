@@ -11,3 +11,4 @@ out/
 *.egg-info/
 web/data
 .claude/worktrees/
+.tts/

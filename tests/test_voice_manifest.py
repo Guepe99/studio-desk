@@ -27,7 +27,7 @@ def test_voice_manifest_matches_the_pack(pack):
         assert r["file"] == f"voice/{r['story_id']}.{r['lang']}.mp3", f"{r['file']}: not the {r['lang']} clip"
         assert r["voice"].startswith(f"{r['lang']}-"), f"{r['story_id']} {r['lang']}: voice {r['voice']}"
     listed = {(pack / r["file"]).resolve() for r in rows}
-    on_disk = {p.resolve() for p in pack.rglob("*.mp3")}
+    on_disk = {p.resolve() for p in (pack / "voice").rglob("*.mp3")}  # booth/ clips: tests/test_booth.py
     assert on_disk <= listed, sorted(str(p.relative_to(pack.resolve())) for p in on_disk - listed)
 
 

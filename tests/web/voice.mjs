@@ -12,10 +12,12 @@
 // a manifest row whose text is another language's is not loaded; a casual-fan card in other words stays silent; a flagged
 // story never speaks; a refused play() turns the
 // button off; the speaker icon is painted, off and on (convex paths, pixels in the icon colour).
+// The booth (docs/commentary.md, clips from tests/web/booth-demo): its lines and the crowd start after the button,
+// a studio clip stops its line and ducks the crowd, and a seek stops it all.
 // The fake clips are removed at the end. Screenshots of the controls bar at 1440 and 390 px:
 // out/shots/voice-*.png.
 import { createRequire } from "node:module";
-import { copyFileSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -51,10 +53,15 @@ const manifest = ["en", "it", "es"].flatMap((lang) => {
   });
 });
 writeFileSync(path.join(demo, "voice.json"), JSON.stringify(manifest));
+// the booth's DEMO clips (a test fixture, kept out of replays/ so the image does not ship them)
+const boothSrc = path.join(ROOT, "tests/web/booth-demo");
+if (existsSync(boothSrc)) cpSync(boothSrc, demo, { recursive: true });
 // the fake clips go at the end, also on a crash, so later DEMO runs are silent again
 const cleanup = () => {
   rmSync(path.join(demo, "voice.json"), { force: true });
   rmSync(path.join(demo, "voice"), { recursive: true, force: true });
+  rmSync(path.join(demo, "booth.json"), { force: true });
+  rmSync(path.join(demo, "booth"), { recursive: true, force: true });
 };
 process.on("exit", cleanup);
 // a story speaks on its card: the why_card that shows the text its clip says
@@ -160,6 +167,29 @@ await page.mouse.move(0, 0); // no hover colour in the screenshot
 paths = await icon();
 lit = await bright();
 expect(iconOk(paths) && paths.some((p) => p.cls === "i-on") && lit > 30, `voice icon drawn when on (${lit} icon pixels, ${JSON.stringify(paths)})`);
+
+// the booth: a play-by-play line well away from any studio clip
+const booth = () => page.evaluate(() => window.studioDesk.booth?.status ?? null);
+const lineAt = await page.evaluate(() => {
+  const b = window.studioDesk.booth, cues = window.studioDesk.host.cues;
+  return b?.plan().find((it) => it.voice === "pbp" && it.until === undefined && it.dur >= 0.8 && it.t > 20
+    && cues.every((c) => Math.abs(c.ts - it.t) > 20)) ?? null;
+});
+expect(lineAt !== null, `the booth has a play-by-play line to play (${lineAt?.text} at ${lineAt?.t})`);
+if (lineAt) {
+  await page.evaluate((x) => { const d = window.studioDesk; d.setPlaying(false); document.querySelector('[data-speed="1"]').click(); d.seek(x); d.setPlaying(true); }, lineAt.t - 1.5);
+  const heard = await page.waitForFunction(() => { const s = window.studioDesk.booth.status; return s.lines > 0 && s.duck < 0.9; }, null, { timeout: 8000 }).then(() => true, () => false);
+  let b = await booth();
+  expect(heard && b.state === "running" && b.crowd >= 1 && b.duck < 0.9, `booth: after the button a line plays over the ducked crowd (${JSON.stringify(b)})`);
+  await page.evaluate((sid) => window.studioDesk.voice.start(sid), AUTO.story_id); // a studio clip starts mid-line
+  await page.waitForTimeout(200);
+  await frames();
+  b = await booth();
+  expect(b.lines === 0 && b.crowd >= 1 && b.duck < 0.9 && (await voice()).sid === AUTO.story_id, `booth: a studio clip stops the line, the crowd stays ducked (${JSON.stringify(b)})`);
+  b = await page.evaluate(() => { window.studioDesk.seek(window.studioDesk.state.ts + 30); return window.studioDesk.booth.status; });
+  expect(b.lines === 0 && b.crowd === 0, `booth: a seek stops lines and crowd (${JSON.stringify(b)})`);
+  await page.evaluate(() => window.studioDesk.setPlaying(false));
+}
 
 await playFrom(firstCue(AUTO), 1);
 let v = await voice();

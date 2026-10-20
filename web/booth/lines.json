@@ -1,0 +1,1303 @@
+{
+ "about": "Booth commentary lines (docs/commentary.md). Placeholders: {player}, {receiver}, {keeper}, {team}, {team2}, {team|of}, {team2|of} come from the match data; {fact:kind} says one fact ledger value with its unit; {co} is the co-commentator's first name. No digits in templates: every number comes from a fact. A variant may be a list of sentences said back to back. Punctuation right after a name picks its intonation: '!' excited, '...' rising, '.' or ',' neutral, none: rising for play-by-play. Kokoro renders each clip whole: at most one name or fact per sentence, so a sentence is at most a name and the phrase around it; a fact is its number then its unit.",
+ "personas": {
+  "en": {
+   "pbp": "Neil Haverford",
+   "co": "Dan Kettering",
+   "call": "Dan"
+  },
+  "it": {
+   "pbp": "Paola Serrani",
+   "co": "Marco Bellardi",
+   "call": "Marco"
+  },
+  "es": {
+   "pbp": "Lucía Olmedo",
+   "co": "Andrés Calvete",
+   "call": "Andrés"
+  }
+ },
+ "units": {
+  "en": {
+   "km/h": "kilometres an hour",
+   "m": "metres",
+   "/10": "out of ten",
+   "%": "per cent",
+   "km": "kilometres"
+  },
+  "it": {
+   "km/h": "chilometri orari",
+   "m": "metri",
+   "/10": "su dieci",
+   "%": "per cento",
+   "km": "chilometri"
+  },
+  "es": {
+   "km/h": "kilómetros por hora",
+   "m": "metros",
+   "/10": "sobre diez",
+   "%": "por ciento",
+   "km": "kilómetros"
+  }
+ },
+ "pbp": {
+  "en": {
+   "pass": [
+    "{receiver}.",
+    "Now {receiver}.",
+    "{receiver} has it.",
+    "On to {receiver}.",
+    "Here's {receiver}.",
+    "{receiver} now.",
+    "And {receiver}.",
+    "Good ball from {player}.",
+    "{player} moves it on.",
+    "{player} plays it forward.",
+    "{player} keeps it simple.",
+    "{receiver}, in a bit of space."
+   ],
+   "pass_long": [
+    "Long ball for {receiver}.",
+    "{player} goes long.",
+    "Searching pass from {player}.",
+    "{player} launches it forward.",
+    "Long one from {player}.",
+    "Over the top for {receiver}.",
+    "{player} switches the play.",
+    "Hit long, looking for {receiver}.",
+    "A raking ball from {player}.",
+    "Diagonal from {player}."
+   ],
+   "pass_offside": [
+    "{receiver} is caught offside.",
+    "Flag's up. Offside, {receiver}.",
+    "The flag goes up against {receiver}.",
+    "{receiver} has gone too early, offside."
+   ],
+   "take_on": [
+    "{player} goes past his man.",
+    "{player}, lovely, he's away.",
+    "{player} skips past.",
+    "Nice feet from {player}.",
+    "{player} beats his man.",
+    "Away goes {player}.",
+    "Too quick for him, {player}.",
+    "{player} leaves his marker behind.",
+    "Brilliant from {player}.",
+    "{player} glides past."
+   ],
+   "take_on_fail": [
+    "{player} tries, but loses it.",
+    "{player} can't get past.",
+    "{player} is stopped."
+   ],
+   "interception": [
+    "Cut out by {player}.",
+    "{player} reads it.",
+    "Intercepted by {player}.",
+    "{player} steps in.",
+    "Well read by {player}.",
+    "{player} nips in.",
+    "Picked off by {player}.",
+    "{player} gets a foot in.",
+    "Read well by {player}.",
+    "{player} anticipates it."
+   ],
+   "tackle": [
+    "Good tackle by {player}.",
+    "{player} wins it back.",
+    "Strong challenge from {player}.",
+    "{player} with the tackle.",
+    "{player} times it well.",
+    "Big tackle from {player}.",
+    "Won cleanly by {player}.",
+    "{player} stands his ground.",
+    "Firm but fair from {player}.",
+    "{player} puts a stop to that."
+   ],
+   "clearance": [
+    "Cleared by {player}.",
+    "{player} gets it away.",
+    "Hacked clear.",
+    "{player} clears.",
+    "Headed away by {player}.",
+    "Away it goes.",
+    "Big clearance from {player}.",
+    "{player} deals with it.",
+    "Put out of danger by {player}.",
+    "Booted clear."
+   ],
+   "cross": [
+    "{player} crosses.",
+    "In comes the cross from {player}.",
+    "{player}, looking for someone in the middle.",
+    "Ball in from {player}.",
+    "{player} whips it in.",
+    "Cross from {player}.",
+    "Delivery from {player}.",
+    "{player} puts it in the box.",
+    "Hung up by {player}.",
+    "Low ball across from {player}."
+   ],
+   "shot_wide": [
+    "{player} has a go... wide.",
+    "{player}... just wide!",
+    "{player} shoots, and it's wide.",
+    "Off target from {player}.",
+    "{player} pulls it wide.",
+    "Wide, from {player}."
+   ],
+   "shot_wide_head": [
+    "Header from {player}... wide.",
+    "{player} gets his head to it... wide.",
+    "{player} heads wide."
+   ],
+   "shot_over": [
+    "{player}, over the bar.",
+    "{player} blazes it over.",
+    "Over from {player}.",
+    "{player} lifts it over."
+   ],
+   "shot_over_head": [
+    "{player} heads over.",
+    "Header from {player}... over."
+   ],
+   "shot_blocked": [
+    "{player} shoots, blocked.",
+    "Blocked! {player} denied.",
+    "{player} has a go, charged down.",
+    "Straight into a defender, {player}."
+   ],
+   "shot_saved": [
+    "{player} shoots...",
+    "{player} lets fly...",
+    "{player} tries his luck...",
+    "{player} goes for goal..."
+   ],
+   "shot_saved_head": [
+    "Header from {player}...",
+    "{player} rises..."
+   ],
+   "shot_freekick": [
+    "{player} goes for goal from the free kick...",
+    "{player}, the free kick, has a go..."
+   ],
+   "shot_noname": [
+    "He shoots...",
+    "Here's the shot...",
+    "Shot..."
+   ],
+   "wide_noname": [
+    "Wide!",
+    "Just wide.",
+    "Off target."
+   ],
+   "over_noname": [
+    "Over the bar.",
+    "Over!",
+    "Too high."
+   ],
+   "blocked_noname": [
+    "Blocked!",
+    "Charged down."
+   ],
+   "goal": [
+    "{player}!",
+    "Goal! {player}!",
+    "{player} scores!",
+    "It's in! {player}!",
+    "{player} puts it away!",
+    "{player}! What a moment!"
+   ],
+   "goal_noname": [
+    "Goal!",
+    "It's in!",
+    "They've scored!"
+   ],
+   "keeper_save": [
+    "Saved by {keeper}!",
+    "Great stop from {keeper}!",
+    "{keeper} gets down to it.",
+    "And {keeper} saves!",
+    "Kept out by {keeper}!",
+    "{keeper} says no!"
+   ],
+   "save_noname": [
+    "Saved!",
+    "Kept out!",
+    "Good save!"
+   ],
+   "keeper_claim": [
+    "{keeper} claims it.",
+    "Comfortable for {keeper}.",
+    "{keeper} gathers."
+   ],
+   "foul": [
+    "Foul by {player}.",
+    "Free kick to {team}.",
+    "{player} gives away the free kick.",
+    "Free kick, {player} penalised.",
+    "{receiver} goes down, free kick.",
+    "The whistle goes, foul by {player}.",
+    "{player} clips him.",
+    "Late from {player}.",
+    "Pulled back by {player}.",
+    "The referee spots it, {player}."
+   ],
+   "foul_noname": [
+    "Free kick.",
+    "The whistle goes.",
+    "That's a foul."
+   ],
+   "yellow_card": [
+    "Yellow card for {player}.",
+    "{player} goes into the book.",
+    "The referee shows a yellow to {player}.",
+    "{player} is booked."
+   ],
+   "red_card": [
+    "{player} is sent off!",
+    "Red card! Off goes {player}!"
+   ],
+   "freekick_crossed": [
+    "{player} swings it in.",
+    "Free kick into the box from {player}.",
+    "{player} delivers."
+   ],
+   "corner_crossed": [
+    "Corner to {team}.",
+    "In comes the corner from {player}.",
+    "{player} takes the corner.",
+    "{player} swings in the corner."
+   ],
+   "corner_short": [
+    "Short corner, {player}.",
+    "{team} work it short."
+   ],
+   "kickoff": [
+    "Welcome along. {team} against {team2}, and we're under way.",
+    "Good evening. {team} and {team2}, and we're off."
+   ],
+   "kickoff2": [
+    "We're back under way.",
+    "The second half is under way.",
+    "Here we go again, second half."
+   ],
+   "half_time": [
+    "That's half-time.",
+    "The referee blows for half-time."
+   ],
+   "full_time": [
+    "And that's full time.",
+    "The referee blows for full time.",
+    "It's all over."
+   ],
+   "close_miss": [
+    "{player}, from close in... wide! How has that not gone in, {co}?",
+    "{player}... he has to score! {co}?"
+   ],
+   "close_miss_noname": [
+    "From close in... wide! How has that not gone in, {co}?",
+    "Oh, so close! {co}, what happened there?"
+   ],
+   "after_goal": [
+    "{player} with the goal.",
+    "{team} have their goal.",
+    "That one belongs to {player}."
+   ],
+   "long_goal": [
+    "What a strike from {player}.",
+    "Take a bow, {player}."
+   ],
+   "sprint_goal": [
+    "Look at the run from {player}.",
+    "{player} got there first."
+   ],
+   "momentum": [
+    "{team} on top at the moment. {co}?",
+    "This is all {team} now.",
+    "{team} are pushing. {co}?"
+   ],
+   "press": [
+    "Won back by {player}, high up the pitch.",
+    "{player} wins it high up."
+   ],
+   "deep_block": [
+    "{team} keep moving it around.",
+    "{team} still looking for a way in."
+   ],
+   "formation": [
+    "{team} look different now.",
+    "{team} have changed something, {co}."
+   ],
+   "half_time_q": [
+    "Half-time. {co}, what's stood out?",
+    "That's the break. What have you made of it, {co}?"
+   ],
+   "full_time_q": [
+    "Full time. {co}, your thoughts?",
+    "That's the end. {co}?"
+   ]
+  },
+  "it": {
+   "pass": [
+    "{receiver}.",
+    "{player} per {receiver}.",
+    "Lo gioca a favore di {receiver}.",
+    "Ora {receiver}.",
+    "Ecco {receiver}.",
+    "{receiver} in possesso.",
+    "Per {receiver}.",
+    "Ancora {receiver}.",
+    "Scarico su {receiver}.",
+    "Appoggio per {receiver}.",
+    "Palla a {receiver}.",
+    "Bel pallone di {player}."
+   ],
+   "pass_long": [
+    "Lancio lungo per {receiver}.",
+    "Parte il lancio di {player} a cercare {receiver}.",
+    "Lancio di {player}.",
+    "{player} cerca la profondità.",
+    "Palla lunga di {player}.",
+    "Cambio di gioco di {player}.",
+    "Palla scavalcata per {receiver}.",
+    "Lungo linea di {player}.",
+    "Verticale di {player}.",
+    "Apertura di {player}."
+   ],
+   "pass_offside": [
+    "Fuorigioco di {receiver}.",
+    "Bandierina alzata, {receiver} in fuorigioco.",
+    "{receiver} in posizione irregolare.",
+    "Si alza la bandierina, fuorigioco di {receiver}."
+   ],
+   "take_on": [
+    "{player} salta l'uomo.",
+    "Se ne libera {player}.",
+    "Bella giocata di {player}.",
+    "{player} supera l'avversario.",
+    "Va via {player}.",
+    "Dribbling di {player}.",
+    "Troppo veloce, {player}.",
+    "Si libera del marcatore, {player}.",
+    "Che giocata, {player}.",
+    "{player} se ne va."
+   ],
+   "take_on_fail": [
+    "Ci prova {player}, ma la perde.",
+    "{player} non passa.",
+    "Fermato {player}."
+   ],
+   "interception": [
+    "Intercetta {player}.",
+    "Anticipo di {player}.",
+    "Legge bene {player}.",
+    "Recupera {player}.",
+    "La ruba {player}.",
+    "Chiude {player}.",
+    "Pallone intercettato da {player}.",
+    "Ci arriva prima {player}.",
+    "Intuisce {player}.",
+    "Mette il piede {player}."
+   ],
+   "tackle": [
+    "Bell'intervento di {player}.",
+    "Contrasto vinto da {player}.",
+    "Entrata pulita di {player}.",
+    "La riconquista {player}.",
+    "Tempismo perfetto di {player}.",
+    "Chiusura di {player}.",
+    "Pulito, {player}.",
+    "Non passa, {player} la prende.",
+    "Duello vinto da {player}.",
+    "Ferma tutto {player}."
+   ],
+   "clearance": [
+    "Allontana {player}.",
+    "Spazza {player}.",
+    "Pallone ribattuto da {player}.",
+    "Libera {player}.",
+    "Via il pallone.",
+    "Spazzata di {player}.",
+    "Fuori dalla zona calda, {player}.",
+    "Ci pensa {player}.",
+    "Pericolo sventato da {player}.",
+    "Via, lontano."
+   ],
+   "cross": [
+    "Cross di {player}.",
+    "Mette in mezzo {player}.",
+    "Palla in mezzo di {player}.",
+    "Traversone di {player}.",
+    "Crossa {player}.",
+    "{player} cerca un compagno in area.",
+    "{player} mette in area.",
+    "Pallone teso di {player}.",
+    "Spiovente di {player}.",
+    "Rasoterra in mezzo di {player}."
+   ],
+   "shot_wide": [
+    "Ci prova {player}... fuori.",
+    "{player}... di poco a lato!",
+    "Tira {player}... fuori.",
+    "Sul fondo la conclusione di {player}.",
+    "{player} non inquadra la porta.",
+    "A lato, {player}."
+   ],
+   "shot_wide_head": [
+    "Colpo di testa di {player}... fuori.",
+    "Di testa {player}... a lato.",
+    "{player} di testa, fuori."
+   ],
+   "shot_over": [
+    "Conclusione di {player}, alta.",
+    "{player} spara alto.",
+    "Alto, {player}.",
+    "Sopra la traversa, {player}."
+   ],
+   "shot_over_head": [
+    "{player} di testa, alto.",
+    "Colpo di testa di {player}... alto."
+   ],
+   "shot_blocked": [
+    "Tiro di {player}, respinto.",
+    "Respinto! Murato {player}.",
+    "Ci prova {player}, ribattuto.",
+    "Contro un difensore, {player}."
+   ],
+   "shot_saved": [
+    "Tira {player}...",
+    "Ci prova {player}...",
+    "Conclusione di {player}...",
+    "{player} cerca la porta..."
+   ],
+   "shot_saved_head": [
+    "Colpo di testa di {player}...",
+    "Stacca {player}..."
+   ],
+   "shot_freekick": [
+    "Punizione di {player}, direttamente in porta...",
+    "Calcia {player} la punizione..."
+   ],
+   "shot_noname": [
+    "Tira...",
+    "Ecco il tiro...",
+    "Conclusione..."
+   ],
+   "wide_noname": [
+    "Fuori!",
+    "Di poco a lato.",
+    "Sul fondo."
+   ],
+   "over_noname": [
+    "Alto!",
+    "Sopra la traversa.",
+    "Troppo alto."
+   ],
+   "blocked_noname": [
+    "Respinto!",
+    "Murato."
+   ],
+   "goal": [
+    "Gol! {player}!",
+    "Rete di {player}!",
+    "{player}! Gol {team|of}!",
+    "È dentro! {player}!",
+    "Segna {player}!",
+    "{player}! Ha segnato!"
+   ],
+   "goal_noname": [
+    "Gol!",
+    "È dentro!",
+    "Hanno segnato!"
+   ],
+   "keeper_save": [
+    "Para {keeper}!",
+    "Grande parata di {keeper}!",
+    "Risponde {keeper}!",
+    "C'è {keeper}!",
+    "Respinge {keeper}!",
+    "Dice di no {keeper}!"
+   ],
+   "save_noname": [
+    "Parata!",
+    "Respinta!",
+    "Che intervento!"
+   ],
+   "keeper_claim": [
+    "Esce e blocca {keeper}.",
+    "Facile per {keeper}.",
+    "Raccoglie {keeper}."
+   ],
+   "foul": [
+    "Fallo di {player}.",
+    "Su {receiver} c'è irregolarità.",
+    "Calcio di punizione per {team}.",
+    "Fischia l'arbitro, fallo di {player}.",
+    "Atterrato {receiver}.",
+    "Punizione, fallo di {player}.",
+    "In ritardo, {player}.",
+    "Trattenuta di {player}.",
+    "L'arbitro vede tutto, fallo di {player}.",
+    "Intervento falloso di {player}."
+   ],
+   "foul_noname": [
+    "Calcio di punizione.",
+    "Fischia l'arbitro.",
+    "È fallo."
+   ],
+   "yellow_card": [
+    "Ammonito {player}.",
+    "Cartellino giallo per {player}.",
+    "Giallo per {player}.",
+    "L'arbitro ammonisce {player}."
+   ],
+   "red_card": [
+    "Espulso {player}!",
+    "Cartellino rosso! Fuori {player}!"
+   ],
+   "freekick_crossed": [
+    "Punizione di {player}, palla in area.",
+    "Calcia {player}, pallone in mezzo.",
+    "Mette in mezzo {player}."
+   ],
+   "corner_crossed": [
+    "Calcio d'angolo per {team}.",
+    "Angolo di {player}, palla in mezzo.",
+    "Batte {player} dalla bandierina.",
+    "Corner, calcia {player}."
+   ],
+   "corner_short": [
+    "Angolo battuto corto, {player} per {receiver}.",
+    "Corner corto, {player}."
+   ],
+   "kickoff": [
+    "Benvenuti. {team} contro {team2}, si parte.",
+    "Buonasera. {team} e {team2}, comincia la partita."
+   ],
+   "kickoff2": [
+    "Si riparte.",
+    "Comincia il secondo tempo.",
+    "Ricomincia la partita, secondo tempo."
+   ],
+   "half_time": [
+    "Finisce il primo tempo.",
+    "L'arbitro fischia la fine del primo tempo."
+   ],
+   "full_time": [
+    "È finita.",
+    "L'arbitro fischia la fine.",
+    "Finisce qui la partita."
+   ],
+   "close_miss": [
+    "{player} da vicino... fuori! Come ha fatto, {co}?",
+    "{player}... doveva segnare! {co}?"
+   ],
+   "close_miss_noname": [
+    "Da vicino... fuori! Come ha fatto, {co}?",
+    "Che occasione! {co}?"
+   ],
+   "after_goal": [
+    "Gol di {player}.",
+    "Ha segnato {player}.",
+    "La firma è di {player}."
+   ],
+   "long_goal": [
+    "Che conclusione di {player}.",
+    "Applausi per {player}."
+   ],
+   "sprint_goal": [
+    "Guardate lo scatto di {player}.",
+    "{player} è arrivato per primo."
+   ],
+   "momentum": [
+    "Momento {team|of}. {co}?",
+    "Adesso è tutto {team}.",
+    "Spinge {team}. {co}?"
+   ],
+   "press": [
+    "Recupera {player}, altissimo.",
+    "{player} la riconquista in alto."
+   ],
+   "deep_block": [
+    "{team} continua a far girare palla.",
+    "{team} cerca ancora un varco."
+   ],
+   "formation": [
+    "{team} sembra cambiato.",
+    "{team} ha cambiato qualcosa, {co}."
+   ],
+   "half_time_q": [
+    "Finisce il primo tempo. {co}, cosa ti ha colpito?",
+    "Intervallo. Che idea ti sei fatto, {co}?"
+   ],
+   "full_time_q": [
+    "È finita. {co}, cosa ne pensi?",
+    "Finisce qui. {co}?"
+   ]
+  },
+  "es": {
+   "pass": [
+    "{receiver}.",
+    "{player} para {receiver}.",
+    "La pide {receiver}.",
+    "Atrás para {receiver}.",
+    "A un costado para {receiver}.",
+    "Ahora {receiver}.",
+    "Ahí está {receiver}.",
+    "Para {receiver}.",
+    "Toca {receiver}.",
+    "Busca a {receiver}.",
+    "{receiver} la tiene.",
+    "Buen pase de {player}."
+   ],
+   "pass_long": [
+    "Balón largo para {receiver}.",
+    "{player} busca en largo a {receiver}.",
+    "Pase largo de {player}.",
+    "{player} la manda arriba.",
+    "En largo, {player}.",
+    "Cambio de juego de {player}.",
+    "Por encima para {receiver}.",
+    "La abre {player}.",
+    "Envío en profundidad de {player}.",
+    "Diagonal de {player}."
+   ],
+   "pass_offside": [
+    "Fuera de juego de {receiver}.",
+    "{receiver} está en fuera de juego.",
+    "Levanta la bandera, fuera de juego de {receiver}.",
+    "Posición adelantada de {receiver}."
+   ],
+   "take_on": [
+    "{player} se va de su par.",
+    "Regate de {player}.",
+    "Se va {player}.",
+    "Qué bien {player}, se marcha.",
+    "{player} supera a su marcador.",
+    "Gran jugada de {player}.",
+    "Demasiado rápido, {player}.",
+    "Deja atrás a su marcador, {player}.",
+    "Qué jugada, {player}.",
+    "{player} se escapa."
+   ],
+   "take_on_fail": [
+    "Lo intenta {player}, pero la pierde.",
+    "{player} no pasa.",
+    "Frenan a {player}."
+   ],
+   "interception": [
+    "Intercepta {player}.",
+    "La corta {player}.",
+    "Recupera {player}.",
+    "Anticipa {player}.",
+    "Bien leído por {player}.",
+    "La roba {player}.",
+    "Corta {player} el pase.",
+    "Llega antes {player}.",
+    "Lo intuye {player}.",
+    "Mete el pie {player}."
+   ],
+   "tackle": [
+    "Gran entrada de {player}.",
+    "{player} la recupera.",
+    "Buen quite de {player}.",
+    "Entrada limpia de {player}.",
+    "Qué bien al corte, {player}.",
+    "Cierra {player}.",
+    "Limpio, {player}.",
+    "No pasa, {player} la gana.",
+    "Duelo ganado por {player}.",
+    "Lo para todo {player}."
+   ],
+   "clearance": [
+    "Despeja {player}.",
+    "La saca {player}.",
+    "Rechaza {player}.",
+    "Fuera de ahí, {player}.",
+    "Despejan.",
+    "Despeje de {player}.",
+    "Fuera del peligro, {player}.",
+    "Resuelve {player}.",
+    "Peligro conjurado por {player}.",
+    "Fuera, lejos."
+   ],
+   "cross": [
+    "Centro de {player}.",
+    "Centra {player}.",
+    "La pone {player} al área.",
+    "Busca el centro {player}.",
+    "Balón al área de {player}.",
+    "{player} busca a un compañero.",
+    "La mete {player} al área.",
+    "Balón tenso de {player}.",
+    "Bombea {player}.",
+    "Raso al área de {player}."
+   ],
+   "shot_wide": [
+    "Le pega {player}... fuera.",
+    "{player}... ¡se va por poco!",
+    "Disparo de {player}, fuera.",
+    "Desviado, {player}.",
+    "{player} no encuentra la portería.",
+    "Fuera, {player}."
+   ],
+   "shot_wide_head": [
+    "Cabezazo de {player}... fuera.",
+    "Remata de cabeza {player}... desviado.",
+    "{player} de cabeza, fuera."
+   ],
+   "shot_over": [
+    "Remata {player}, por encima.",
+    "{player} la manda arriba.",
+    "Alto, {player}.",
+    "Por encima del larguero, {player}."
+   ],
+   "shot_over_head": [
+    "{player} de cabeza, por encima.",
+    "Cabezazo de {player}... alto."
+   ],
+   "shot_blocked": [
+    "Chut de {player}, rechazado.",
+    "¡Bloqueado! Le tapan el disparo a {player}.",
+    "Lo intenta {player}, rebota en un defensa.",
+    "Contra un defensa, {player}."
+   ],
+   "shot_saved": [
+    "Le pega {player}...",
+    "Dispara {player}...",
+    "Lo intenta {player}...",
+    "Busca la portería {player}..."
+   ],
+   "shot_saved_head": [
+    "Cabezazo de {player}...",
+    "Remata de cabeza {player}..."
+   ],
+   "shot_freekick": [
+    "{player} busca la portería de falta directa...",
+    "Falta, la lanza {player}..."
+   ],
+   "shot_noname": [
+    "Dispara...",
+    "Ahí va el disparo...",
+    "Remate..."
+   ],
+   "wide_noname": [
+    "¡Fuera!",
+    "Se va por poco.",
+    "Desviado."
+   ],
+   "over_noname": [
+    "¡Por encima!",
+    "Alto.",
+    "Se va arriba."
+   ],
+   "blocked_noname": [
+    "¡Bloqueado!",
+    "Rebota en un defensa."
+   ],
+   "goal": [
+    "¡Gol! ¡Gol de {player}!",
+    "¡{player}!",
+    "¡Gol {team|of}!",
+    "¡Adentro! ¡{player}!",
+    "¡Marca {player}!",
+    "¡{player}, gol!"
+   ],
+   "goal_noname": [
+    "¡Gol!",
+    "¡Adentro!",
+    "¡Han marcado!"
+   ],
+   "keeper_save": [
+    "¡Para {keeper}!",
+    "¡Paradón de {keeper}!",
+    "¡Responde {keeper}!",
+    "¡Ahí está {keeper}!",
+    "¡Lo saca {keeper}!",
+    "¡{keeper} dice que no!"
+   ],
+   "save_noname": [
+    "¡Parada!",
+    "¡La saca!",
+    "¡Qué intervención!"
+   ],
+   "keeper_claim": [
+    "La salida de {keeper}.",
+    "Atrapa {keeper}.",
+    "Fácil para {keeper}."
+   ],
+   "foul": [
+    "Falta de {player}.",
+    "Falta sobre {receiver}.",
+    "Habrá tiro libre, para {team}.",
+    "Pita el árbitro, falta de {player}.",
+    "Derriban a {receiver}.",
+    "Tiro libre, falta de {player}.",
+    "Llega tarde, {player}.",
+    "Agarrón de {player}.",
+    "Lo ve el árbitro, falta de {player}.",
+    "Entrada a destiempo de {player}."
+   ],
+   "foul_noname": [
+    "Tiro libre.",
+    "Pita el árbitro.",
+    "Es falta."
+   ],
+   "yellow_card": [
+    "Tarjeta amarilla para {player}.",
+    "Amonestado {player}.",
+    "Amarilla para {player}.",
+    "El árbitro amonesta a {player}."
+   ],
+   "red_card": [
+    "¡Roja para {player}!",
+    "¡Expulsado {player}!"
+   ],
+   "freekick_crossed": [
+    "Lanza {player} la falta al área.",
+    "La pone {player}.",
+    "Centra {player} el tiro libre."
+   ],
+   "corner_crossed": [
+    "Córner para {team}.",
+    "Córner, lo saca {player}.",
+    "Lanza {player} el córner.",
+    "Saque de esquina de {player}."
+   ],
+   "corner_short": [
+    "Lo juegan en corto, {player} para {receiver}.",
+    "Córner en corto, {player}."
+   ],
+   "kickoff": [
+    "Bienvenidos. {team} contra {team2}, y arranca el partido.",
+    "Buenas noches. {team} y {team2}, echa a rodar el balón."
+   ],
+   "kickoff2": [
+    "Arranca la segunda parte.",
+    "Se reanuda el partido.",
+    "Vuelve a rodar el balón, segunda parte."
+   ],
+   "half_time": [
+    "Final de la primera parte.",
+    "El árbitro manda al descanso."
+   ],
+   "full_time": [
+    "Final del partido.",
+    "El árbitro pita el final.",
+    "Se acabó."
+   ],
+   "close_miss": [
+    "{player}, desde cerca... ¡fuera! ¿Cómo no ha entrado, {co}?",
+    "{player}... ¡tenía que ser gol! ¿{co}?"
+   ],
+   "close_miss_noname": [
+    "Desde cerca... ¡fuera! ¿Cómo no ha entrado, {co}?",
+    "¡Qué ocasión! ¿{co}?"
+   ],
+   "after_goal": [
+    "Gol de {player}.",
+    "Ha marcado {player}.",
+    "La firma {player}."
+   ],
+   "long_goal": [
+    "Qué golpeo de {player}.",
+    "Qué golazo de {player}."
+   ],
+   "sprint_goal": [
+    "Fíjense en la carrera de {player}.",
+    "{player} llegó antes que nadie."
+   ],
+   "momentum": [
+    "Buen momento {team|of}. ¿{co}?",
+    "Ahora todo es {team|of}.",
+    "Aprieta {team}. ¿{co}?"
+   ],
+   "press": [
+    "La recupera {player}, muy arriba.",
+    "{player} roba arriba."
+   ],
+   "deep_block": [
+    "{team} sigue moviendo el balón.",
+    "{team} sigue buscando un hueco."
+   ],
+   "formation": [
+    "{team} ha cambiado algo.",
+    "{team} se ha reordenado, {co}."
+   ],
+   "half_time_q": [
+    "Descanso. {co}, ¿qué te ha llamado la atención?",
+    "Final de la primera parte. ¿Qué te ha parecido, {co}?"
+   ],
+   "full_time_q": [
+    "Final del partido. {co}, ¿qué te ha parecido?",
+    "Se acabó. ¿{co}?"
+   ]
+  }
+ },
+ "co": {
+  "en": {
+   "hard_shot": [
+    "He caught that beautifully, {fact:shot_speed}.",
+    "That was struck at {fact:shot_speed}.",
+    "Real power in that one, {fact:shot_speed}."
+   ],
+   "close_miss": [
+    [
+     "He has to hit the target from there.",
+     "That was {fact:shot_distance} out."
+    ],
+    [
+     "{fact:shot_distance} out.",
+     "That's one he'll be thinking about."
+    ],
+    [
+     "From {fact:shot_distance}.",
+     "He'll know he should have done better."
+    ]
+   ],
+   "long_goal": [
+    [
+     "The keeper had no chance with that.",
+     "That's from {fact:shot_distance}."
+    ],
+    [
+     "From {fact:shot_distance}.",
+     "Nothing the keeper could do."
+    ]
+   ],
+   "sprint_goal": [
+    "Watch the run before the finish, {fact:sprint_speed}.",
+    [
+     "He got there at {fact:sprint_speed}.",
+     "Nobody was catching him."
+    ]
+   ],
+   "goal": [
+    "Taken from {fact:shot_distance}.",
+    "He struck it at {fact:shot_speed}.",
+    [
+     "From {fact:shot_distance}.",
+     "And he made it count."
+    ]
+   ],
+   "momentum": [
+    [
+     "It's all one way in this spell.",
+     "Momentum, {fact:momentum}."
+    ],
+    "The numbers back that up, momentum at {fact:momentum}.",
+    "They have the momentum, {fact:momentum} in this spell."
+   ],
+   "press": [
+    [
+     "That's the press.",
+     "Intensity, {fact:press_intensity}."
+    ],
+    [
+     "That's the reward for the press.",
+     "They're at {fact:press_intensity}."
+    ]
+   ],
+   "high_line": [
+    [
+     "Brave from {team}.",
+     "Their line is {fact:line_height} from goal."
+    ],
+    [
+     "That's the high line.",
+     "It's {fact:line_height} from goal, and it's paying off."
+    ]
+   ],
+   "deep_block": [
+    [
+     "But there's no way through.",
+     "{team2} have dropped deep, line at {fact:line_height}."
+    ],
+    [
+     "{team2} are sitting deep.",
+     "Their line is just {fact:line_height} from goal."
+    ]
+   ],
+   "formation": [
+    "They've switched to {fact:formation}.",
+    "That's {fact:formation} now."
+   ],
+   "sprint": [
+    "{player} has been flying.",
+    [
+     "Did you see the pace there?",
+     "{fact:sprint_speed}."
+    ]
+   ],
+   "half_time": [
+    [
+     "{team} have kept the ball so well.",
+     "Passing accuracy, {fact:pass_accuracy}."
+    ],
+    [
+     "{team} have looked after the ball.",
+     "{fact:pass_accuracy} of their passes found a teammate."
+    ]
+   ],
+   "half_time_runner": [
+    "Nobody has run more than {player}.",
+    "And the hardest worker so far, {player}."
+   ],
+   "full_time": [
+    "Nobody ran more today than {player}.",
+    [
+     "{team} finished with good numbers on the ball.",
+     "Passing accuracy, {fact:pass_accuracy}."
+    ]
+   ],
+   "yellow_card": [
+    "That's a booking. From here on he has to be careful.",
+    "He'll have to be careful now.",
+    "He can't have many complaints about that, I think."
+   ],
+   "save": [
+    "Good goalkeeping, that.",
+    "The keeper was well placed there.",
+    "Solid from the keeper."
+   ],
+   "near_miss": [
+    "He'll feel he could have done better.",
+    "Not far away, that.",
+    "That's the sort of chance they need to take."
+   ],
+   "stoppage": [
+    "A chance for both sides to catch their breath.",
+    "Plenty of energy in the challenges so far.",
+    "The referee is letting it flow when he can.",
+    "Both sides are trying to find a rhythm.",
+    "It's been a tight, physical contest.",
+    "You can feel the tension building.",
+    "Neither side wants to give an inch.",
+    "The midfield battle is where this is being decided.",
+    "They need to be patient here.",
+    "A lot of the game is being played in the middle.",
+    "Concentration matters now.",
+    "There's no shortage of effort.",
+    "Both managers will be watching this closely.",
+    "The pace has hardly dropped."
+   ]
+  },
+  "it": {
+   "hard_shot": [
+    "L'ha colpita benissimo, {fact:shot_speed}.",
+    "Calciata a {fact:shot_speed}.",
+    "Che potenza, {fact:shot_speed}."
+   ],
+   "close_miss": [
+    "Da {fact:shot_distance} deve almeno centrare la porta. Lo sa anche lui.",
+    "Da {fact:shot_distance}, secondo me deve almeno inquadrarla.",
+    "{fact:shot_distance} dalla porta. Ci penserà a lungo."
+   ],
+   "long_goal": [
+    "Da {fact:shot_distance}. Lì il portiere non può farci niente.",
+    "Da {fact:shot_distance}. Imparabile."
+   ],
+   "sprint_goal": [
+    "Guardate lo scatto prima del tiro: {fact:sprint_speed}.",
+    "È arrivato a {fact:sprint_speed}. Nessuno poteva prenderlo."
+   ],
+   "goal": [
+    "Da {fact:shot_distance}.",
+    "Calciata a {fact:shot_speed}.",
+    "Da {fact:shot_distance}, e non ha sbagliato."
+   ],
+   "momentum": [
+    "La spinta è tutta loro in questa fase: momentum {fact:momentum}.",
+    "I numeri lo confermano: momentum {fact:momentum}.",
+    "Hanno l'inerzia, {fact:momentum} in questa fase."
+   ],
+   "press": [
+    "È il pressing: intensità {fact:press_intensity}, e il pallone lo riconquistano lì.",
+    "{team} pressa a {fact:press_intensity}. Ecco il risultato."
+   ],
+   "high_line": [
+    "{team} tiene la linea a {fact:line_height} dalla porta. È coraggioso, e per ora funziona.",
+    "Linea alta, a {fact:line_height} dalla porta. È un rischio, ma paga."
+   ],
+   "deep_block": [
+    "Ma non trova spazi: {team2} si è abbassato, linea a {fact:line_height} dalla porta.",
+    "{team2} si difende basso, la linea a {fact:line_height} dalla porta."
+   ],
+   "formation": [
+    "Sì, è passato al {fact:formation}.",
+    "Adesso è {fact:formation}."
+   ],
+   "sprint": [
+    "{player} sta volando. {fact:sprint_speed} nell'ultimo scatto.",
+    "Avete visto la velocità di {player}? {fact:sprint_speed}."
+   ],
+   "half_time": [
+    "Il palleggio {team|of}: {fact:pass_accuracy} di passaggi riusciti.",
+    "{team} ha gestito bene il pallone, {fact:pass_accuracy} di passaggi riusciti."
+   ],
+   "half_time_runner": [
+    "E {player} ha già percorso {fact:distance_covered}. Nessuno ha corso di più.",
+    "Il più instancabile finora? {player}."
+   ],
+   "full_time": [
+    "{player} ha percorso {fact:distance_covered} oggi. Nessuno ha corso di più.",
+    "E {team} ha chiuso con {fact:pass_accuracy} di passaggi riusciti."
+   ],
+   "yellow_card": [
+    "Cartellino. Da qui in avanti dovrà stare attento.",
+    "Adesso dovrà stare attento.",
+    "Non può lamentarsi più di tanto, credo."
+   ],
+   "save": [
+    "Bravo il portiere.",
+    "Il portiere era ben piazzato.",
+    "Sicuro il portiere."
+   ],
+   "near_miss": [
+    "Poteva fare meglio, lo sa.",
+    "Non è andato lontano.",
+    "Occasioni così vanno sfruttate."
+   ],
+   "stoppage": [
+    "Un attimo di respiro per tutte e due.",
+    "Tanta energia nei contrasti finora.",
+    "L'arbitro lascia correre quando può.",
+    "Le due squadre cercano ancora il ritmo.",
+    "Partita tirata, molto fisica.",
+    "Si sente la tensione.",
+    "Nessuno vuole concedere un centimetro.",
+    "La partita si decide a centrocampo.",
+    "Serve pazienza qui.",
+    "Si gioca molto in mezzo al campo.",
+    "Adesso conta la concentrazione.",
+    "L'impegno non manca.",
+    "I due allenatori guardano con attenzione.",
+    "Il ritmo non cala quasi mai."
+   ]
+  },
+  "es": {
+   "hard_shot": [
+    "Le ha pegado con todo, a {fact:shot_speed}.",
+    "Golpeado a {fact:shot_speed}.",
+    "Qué potencia, {fact:shot_speed}."
+   ],
+   "close_miss": [
+    "Desde {fact:shot_distance} tiene que ir a puerta. Él lo sabe.",
+    "Desde {fact:shot_distance}, creo que tiene que acertar al menos la portería.",
+    "A {fact:shot_distance} de la portería. Esa le va a doler."
+   ],
+   "long_goal": [
+    "Desde {fact:shot_distance}. Esas no se paran.",
+    "Desde {fact:shot_distance}. Imparable."
+   ],
+   "sprint_goal": [
+    "Fíjense en el sprint antes del remate: {fact:sprint_speed}.",
+    "Llegó a {fact:sprint_speed}. Nadie lo alcanzaba."
+   ],
+   "goal": [
+    "Desde {fact:shot_distance}.",
+    "Golpeado a {fact:shot_speed}.",
+    "Desde {fact:shot_distance}, y no perdonó."
+   ],
+   "momentum": [
+    "Ahora mismo es todo suyo: momentum de {fact:momentum}.",
+    "Los números lo confirman: momentum de {fact:momentum}.",
+    "Tienen el impulso, {fact:momentum} en este tramo."
+   ],
+   "press": [
+    "Es la presión: {team} está en {fact:press_intensity} de intensidad y roba arriba.",
+    "{team} presiona a {fact:press_intensity}. Ahí está el premio."
+   ],
+   "high_line": [
+    "{team} tiene la línea a {fact:line_height} de su portería. Es arriesgado, pero le sale bien.",
+    "Línea alta, a {fact:line_height} de la portería. Es un riesgo, pero funciona."
+   ],
+   "deep_block": [
+    "Pero no encuentra huecos: {team2} se ha replegado, línea a {fact:line_height} de su portería.",
+    "{team2} defiende muy atrás, la línea a {fact:line_height} de su portería."
+   ],
+   "formation": [
+    "Sí, ahora juega con un {fact:formation}.",
+    "Ahora es un {fact:formation}."
+   ],
+   "sprint": [
+    "{player} va como un tiro. {fact:sprint_speed} en la última carrera.",
+    "¿Han visto la velocidad de {player}? {fact:sprint_speed}."
+   ],
+   "half_time": [
+    "Cómo ha cuidado el balón {team}: {fact:pass_accuracy} de pases acertados.",
+    "{team} ha manejado bien el balón, {fact:pass_accuracy} de pases acertados."
+   ],
+   "half_time_runner": [
+    "Y {player} ya lleva {fact:distance_covered}. Nadie ha corrido más.",
+    "¿El que más ha corrido? {player}."
+   ],
+   "full_time": [
+    "{player} recorrió {fact:distance_covered} hoy. Nadie corrió más.",
+    "Y {team} terminó con {fact:pass_accuracy} de pases acertados."
+   ],
+   "yellow_card": [
+    "Amonestado. A partir de ahora tendrá que medir mucho.",
+    "Ahora tendrá que tener cuidado.",
+    "No puede quejarse mucho, creo."
+   ],
+   "save": [
+    "Bien el portero.",
+    "El portero estaba bien colocado.",
+    "Seguro el portero."
+   ],
+   "near_miss": [
+    "Pudo hacerlo mejor, y lo sabe.",
+    "No se fue lejos.",
+    "Esas hay que meterlas."
+   ],
+   "stoppage": [
+    "Un respiro para los dos equipos.",
+    "Mucha energía en los duelos hasta ahora.",
+    "El árbitro deja jugar cuando puede.",
+    "Los dos equipos buscan todavía el ritmo.",
+    "Partido muy disputado, muy físico.",
+    "Se nota la tensión.",
+    "Nadie quiere ceder un centímetro.",
+    "El partido se decide en el centro del campo.",
+    "Hace falta paciencia aquí.",
+    "Se juega mucho en la zona ancha.",
+    "Ahora cuenta la concentración.",
+    "Esfuerzo no falta.",
+    "Los dos entrenadores lo miran con atención.",
+    "El ritmo apenas baja."
+   ]
+  }
+ },
+ "voices": {
+  "en": {
+   "engine": "kokoro",
+   "pbp": "am_michael",
+   "co": "am_fenrir",
+   "gain_db": {
+    "pbp": 4.0,
+    "co": -0.3
+   }
+  },
+  "it": {
+   "engine": "kokoro",
+   "pbp": "if_sara",
+   "co": "im_nicola",
+   "gain_db": {
+    "pbp": -5.5,
+    "co": 0.5
+   }
+  },
+  "es": {
+   "engine": "kokoro",
+   "pbp": "ef_dora",
+   "co": "em_alex",
+   "gain_db": {
+    "pbp": 4.7,
+    "co": 4.2
+   }
+  }
+ }
+}
