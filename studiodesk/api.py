@@ -365,6 +365,23 @@ def post_decision(d: Decision, request: Request, response: Response):
     return {"story_id": d.story_id, "decision": d.decision, "edited_text": d.edited_text, "at": at}
 
 
+@app.delete("/api/decisions")
+def delete_decision(request: Request, response: Response, match_id: str = Query(pattern=MATCH_PATTERN),
+                    story_id: str = Query(pattern=r"^S-\d{6}$")):
+    """Undo: the visitor's decision on a story goes, so the story is back to its default status."""
+    with _runtime(write=True) as conn:
+        sid = _session(conn, request, response)
+        if not _story_known(conn, match_id, story_id):
+            raise HTTPException(404, "unknown story for this match")
+        _spend(conn, sid)
+        at = _now()
+        conn.execute("DELETE FROM session_decisions WHERE session_id = ? AND match_id = ? AND story_id = ?",
+                     (sid, match_id, story_id))
+        conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
+                     "VALUES (?, ?, 'human', 'undo', ?, ?, ?)", (sid, at, match_id, story_id, json.dumps(_detail(None))))
+    return {"story_id": story_id, "decision": None, "at": at}
+
+
 @app.post("/api/kill")
 def post_kill(k: Kill, request: Request, response: Response):
     with _runtime(write=True) as conn:

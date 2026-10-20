@@ -442,6 +442,25 @@ export class Desk {
     this.changed();
   }
 
+  // Online undo of a story's first decision: the server drops it and writes an "undo" audit row.
+  async clear(s) {
+    const id = s.story_id, prev = this.decisions.get(id);
+    this.decisions.delete(id);
+    this.note = "";
+    this.busy = true;
+    this.changed();
+    try {
+      await this.api("DELETE", `api/decisions?match_id=${encodeURIComponent(this.matchId)}&story_id=${encodeURIComponent(id)}`);
+      await this.refreshAudit();
+      this.announce(s, null, null, true);
+    } catch (e) {
+      if (prev) this.decisions.set(id, prev);
+      this.note = this.tx("notSaved", { why: e.message });
+    }
+    this.busy = false;
+    this.changed();
+  }
+
   // The status line: what the decision did on air, and an Undo for a few seconds.
   announce(s, prev, wasStatus, undoing) {
     const st = this.status(s), id = s.story_id;
@@ -463,8 +482,7 @@ export class Desk {
     this.doneTimer = setTimeout(expire, UNDO_MS);
   }
 
-  /** Takes back the last decision. Offline the tab restores it exactly; the API cannot clear a
-   *  decision, so a story's first decision is undone with the one that has its default outcome. */
+  /** Takes back the last decision: the one before it again, or none (the story's default status). */
   async undo() {
     const u = this.lastAct, s = u && this.byId.get(u.id);
     if (!s || this.locked()) return;
@@ -473,10 +491,10 @@ export class Desk {
       this.localAudit.unshift({ at: new Date().toISOString(), actor: "human", action: "undo", story_id: u.id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
       this.announce(s, null, null, true);
       this.changed();
+    } else if (u.prev) {
+      await this.decide(s, u.prev.decision, u.prev.edited_text ?? null, true);
     } else {
-      // shortcut: a first decision undone online becomes "approved" (on air) or "rejected" (off air), not its default status; needs a DELETE in the API
-      const back = u.prev ?? { decision: this.defaultStatus(s) === "auto_approved" ? "approved" : "rejected", edited_text: null };
-      await this.decide(s, back.decision, back.edited_text ?? null, true);
+      await this.clear(s);
     }
     // the Undo is gone: focus goes back to the story it changed
     if (!this.doneEl.contains(document.activeElement) && document.activeElement !== document.body) return;

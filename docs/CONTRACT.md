@@ -186,6 +186,7 @@ button.
 | GET | `/api/session` | creates or returns the visitor's session (cookie `sd_session`) |
 | POST | `/api/decisions` | `{match_id, story_id, decision, edited_text?}` |
 | GET | `/api/decisions?match_id=` | this visitor's overlay |
+| DELETE | `/api/decisions?match_id=&story_id=` | undo: drops this visitor's decision on the story (audit action `undo`) |
 | POST | `/api/kill` | `{on: bool}`: per-session AI kill switch |
 | POST | `/api/live` | starts a live run if the caps allow; otherwise 429 with the reason |
 | GET | `/api/live/{run_id}/stream` | server-sent events: stories, cues, traces as they happen |

@@ -112,6 +112,21 @@ def test_decisions_are_per_visitor(desk):
     assert d2["decision"] == "approved" and d2["edited_text"] is None
 
 
+def test_undo_drops_only_this_visitors_decision(desk):
+    a, b = desk(), desk()
+    for c in (a, b):
+        c.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000001", "decision": "rejected"})
+    left = a.get("/api/session").json()["actions_left"]
+    r = a.delete("/api/decisions", params={"match_id": "DEMO", "story_id": "S-000001"})
+    assert r.status_code == 200 and r.json()["decision"] is None
+    assert a.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"] == []
+    assert [d["decision"] for d in b.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"]] == ["rejected"]
+    assert a.get("/api/session").json()["actions_left"] == left - 1
+    assert [x["action"] for x in a.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] if x["actor"] == "human"][:2] == ["undo", "rejected"]
+    assert a.delete("/api/decisions", params={"match_id": "DEMO", "story_id": "S-999999"}).status_code == 404
+    assert a.delete("/api/decisions", params={"match_id": "DEMO", "story_id": "S-1"}).status_code == 422
+
+
 @pytest.mark.parametrize("body", [
     {"match_id": "M1", "story_id": "S-000001", "decision": "approved"},
     {"match_id": "DEMO", "story_id": "S-1", "decision": "approved"},

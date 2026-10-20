@@ -8,7 +8,7 @@
 // why-card body; the AI switch leaves only template graphics; Space inside the desk never toggles
 // play; Italian and Spanish texts on the desk and the graphic; decisions survive a reload and do
 // not reach another visitor; the audit log lists them; the editor shows all three languages and an
-// unchanged save is an approval; controls are disabled while a save is in flight; the Approve, Edit
+// unchanged save is an approval; Undo of a first decision holds the story again; controls are disabled while a save is in flight; the Approve, Edit
 // and Reject buttons name their story. Screenshots: out/shots/desk-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -130,6 +130,15 @@ async function scenario(browser, w, h) {
   expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "On air", `${tag}: approved story not marked On air`);
   await shoot("approved");
   await shootAir("approved");
+  // Undo of a first decision: the server drops it and the story is held again
+  await openDesk();
+  await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "DELETE"), page.click("#desk .undo")]);
+  await settled(page);
+  expect(await page.$eval(`${card(HELD)} .tally`, (el) => el.textContent) === "Held", `${tag}: undone story not Held again`);
+  expect(!(await page.evaluate(async () => (await (await fetch("api/decisions?match_id=DEMO")).json()).decisions.length)), `${tag}: the server kept the undone decision`);
+  expect(!(await onAirAt(page, HELD)), `${tag}: undone ${HELD.story_id} still on air`);
+  await openDesk();
+  await decide(page, HELD, "act-approved");
 
   // 2. edit replaces the why-card body for this visitor
   await openDesk();
