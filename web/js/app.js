@@ -24,6 +24,7 @@ const STRINGS = {
     askLimit: "No more questions for now: the limit is reached. Try again tomorrow.",
     askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
     askBad: "The studio could not take that question. Try a shorter one about this match.",
+    askErr: "The studio had a problem. Try again in a minute.",
     next: "Next key moment", nonext: "No more key moments",
   },
   // only the audience control is translated so far; every other key falls back to English
@@ -35,7 +36,8 @@ const STRINGS = {
     askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
     askLimit: "Per ora non si possono fare altre domande: il limite è raggiunto. Riprova domani.",
     askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
-    askBad: "Lo studio non può prendere questa domanda. Provane una più breve su questa partita.",
+    askBad: "Lo studio non può accettare questa domanda. Provane una più breve su questa partita.",
+    askErr: "Lo studio ha avuto un problema. Riprova tra un minuto.",
     next: "Prossimo momento chiave", nonext: "Nessun altro momento chiave",
   },
   es: {
@@ -47,6 +49,7 @@ const STRINGS = {
     askLimit: "Por ahora no se pueden hacer más preguntas: se alcanzó el límite. Inténtalo mañana.",
     askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se pudo contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
     askBad: "El estudio no puede aceptar esa pregunta. Prueba con una más corta sobre este partido.",
+    askErr: "El estudio tuvo un problema. Inténtalo de nuevo en un minuto.",
     next: "Siguiente momento clave", nonext: "No hay más momentos clave",
   },
 };
@@ -101,7 +104,7 @@ function applyStrings() {
   // the page chrome is English; the graphics and story texts carry the chosen language
   for (const el of [$("#overlay"), deck]) el.lang = state.lang;
   // the audience control is translated, so a screen reader reads it in the chosen language
-  for (const el of [$('[data-i18n-aria="audience"]'), $("#audience-pick")]) el.lang = state.lang;
+  for (const el of [$('[data-i18n-aria="audience"]'), $("#audience-pick"), $("#ask"), $("#ask-open")]) el.lang = state.lang;
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));

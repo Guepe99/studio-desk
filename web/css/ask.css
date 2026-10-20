@@ -10,9 +10,9 @@
 #ask form[hidden] { display: none; }
 #ask label { flex: 1 0 100%; color: var(--muted); }
 #ask-q { flex: 1; min-width: 0; height: 36px; padding: 0 10px; font: 500 18px/1 var(--font); color: var(--paper);
-  background: var(--ink); border: 1px solid var(--line, #2a3c74); border-radius: 4px; }
+  background: var(--ink); border: 1px solid var(--muted); border-radius: 4px; }  /* 3:1 against the panel */
 #ask-q:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-#ask .ctl[disabled] { opacity: .6; cursor: progress; }
+#ask .ctl[aria-disabled="true"] { opacity: .6; cursor: progress; }
 #ask-hint { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 #ask-status { margin: 8px 0 0; font-weight: 700; color: var(--signal); }
 #ask-status:empty { display: none; }

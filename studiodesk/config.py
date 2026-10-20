@@ -14,6 +14,9 @@ LIVE_RUNS_PER_DAY = 20
 DAILY_COST_STOP_USD = 25.0
 ASK_PER_SESSION_PER_DAY = 10
 ASK_PER_DAY = 500
+ASK_PER_CLIENT_PER_DAY = 30   # per client address: dropping the cookie does not reset it
+ASK_TIMEOUT_S = 55.0          # the whole answer, under the page's 60 s
+ASK_SAFETY_TIMEOUT_S = 5.0    # each Content Safety call made for a question
 
 # Agents (studiodesk/agents): gpt-5-mini on Azure AI Foundry, reasoning effort minimal.
 MODEL_DEPLOYMENT = "gpt-5-mini"

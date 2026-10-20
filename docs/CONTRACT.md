@@ -331,10 +331,13 @@ Agents only learn about an event when the clock releases it, in replay generatio
   at most two sentences, and cites the fact ids it used.
 - Checks before an answer is shown: every number in it is the value of a cited fact with
   `fact.ts <= ts` (the verifier's rules in `studiodesk/agents/rules.py`), no forbidden name, and
-  Azure AI Content Safety on the question and on the answer. The question is data, never instructions.
-- Caps (`studiodesk/config.py`): `ASK_PER_SESSION_PER_DAY = 10`, `ASK_PER_DAY = 500` for the site,
-  and the existing stop once the day's cost passes $25. Counted in `questions_daily`
-  (`day, session_id` with `'*'` for the site, `questions`). Every question writes one `audit` row,
+  Azure AI Content Safety on the question (with Prompt Shields) and on the answer. The question is data,
+  never instructions.
+- Caps (`studiodesk/config.py`): `ASK_PER_SESSION_PER_DAY = 10`, `ASK_PER_CLIENT_PER_DAY = 30` per
+  client address (the last `X-Forwarded-For` entry, else the client host), `ASK_PER_DAY = 500` for the
+  site, and the existing stop once the day's cost passes $25. Counted in `questions_daily`
+  (`day, session_id` with `'*'` for the site and `'ip:'` plus the salted SHA-256 of the address for a
+  client, never the address itself; `questions`). Every question writes one `audit` row,
   `action: "ask"`, with its tokens, cost and status; the question text is kept in `detail`.
 
 ## Page additions (feat/moments, additive)

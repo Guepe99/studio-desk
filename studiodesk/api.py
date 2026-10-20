@@ -1,4 +1,5 @@
 """HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
+import asyncio
 import hashlib
 import json
 import logging
@@ -404,55 +405,91 @@ def _ask_ready():
     if not ENDPOINT:
         raise HTTPException(503, "no model on this site")
     try:
-        from .agents import ask  # noqa: F401 - needs the agents extra (Agent Framework, MCP)
-    except ImportError:
+        from .agents import ask  # needs the agents extra (Agent Framework, MCP)
+        ask.client(ENDPOINT)  # built here, before anything is counted
+    except Exception:  # noqa: BLE001 - no extra, no credential: no model on this site
         raise HTTPException(503, "no model on this site") from None
+
+
+# Only a salted hash of the client address is stored. shortcut: a random salt per process resets the
+# per-address count on a restart; set ASK_ADDRESS_SALT to keep it across restarts.
+ADDRESS_SALT = os.environ.get("ASK_ADDRESS_SALT") or secrets.token_hex(16)
+
+
+def _address(request: Request) -> str:
+    return "ip:" + hashlib.sha256((ADDRESS_SALT + _client(request)).encode()).hexdigest()
 
 
 def _limit(reason: str) -> JSONResponse:
     return JSONResponse({"status": "limit", "reason": reason}, status_code=429)
 
 
+def _count_question(request: Request, response: Response, day: str):
+    """Checks the caps and counts the question in one transaction: (session_id, questions left) or a 429."""
+    addr = _address(request)
+    with _runtime(write=True) as conn:
+        def asked(who):
+            row = conn.execute("SELECT questions FROM questions_daily WHERE day = ? AND session_id = ?", (day, who)).fetchone()
+            return row[0] if row else 0
+        spent = conn.execute("SELECT cost_usd FROM usage_daily WHERE day = ? AND session_id = '*'", (day,)).fetchone()
+        if spent and spent[0] >= config.DAILY_COST_STOP_USD:
+            return _limit("the studio has reached today's spending limit")
+        if asked("*") >= config.ASK_PER_DAY:
+            return _limit("the studio has answered all the questions it can today")
+        by_addr = asked(addr)
+        if by_addr >= config.ASK_PER_CLIENT_PER_DAY:
+            return _limit(f"this address has asked its {config.ASK_PER_CLIENT_PER_DAY} questions today")
+        try:
+            sid = _session(conn, request, response)
+        except HTTPException as e:
+            return _limit(e.detail)
+        mine = asked(sid)
+        if mine >= config.ASK_PER_SESSION_PER_DAY:
+            return _limit(f"this session has asked its {config.ASK_PER_SESSION_PER_DAY} questions today")
+        for who in (sid, addr, "*"):
+            conn.execute("INSERT INTO questions_daily (day, session_id, questions) VALUES (?, ?, 1) "
+                         "ON CONFLICT (day, session_id) DO UPDATE SET questions = questions + 1", (day, who))
+    return sid, min(config.ASK_PER_SESSION_PER_DAY - mine, config.ASK_PER_CLIENT_PER_DAY - by_addr) - 1
+
+
+def _record_answer(sid: str, q: Question, out: dict, day: str) -> None:
+    u = out["usage"]
+    with _runtime(write=True) as conn:
+        db.insert(conn, "audit", {
+            "session_id": sid, "at": _now(), "actor": "studio_host", "action": "ask", "match_id": q.match_id,
+            "model": DEPLOYMENT if u["calls"] or u["cost_usd"] > 0 else None, "tokens_in": u["tokens_in"],
+            "tokens_out": u["tokens_out"], "cost_usd": round(u["cost_usd"], 6),
+            "detail": {"question": q.question, "lang": q.lang, "ts": q.ts, "status": out["status"],
+                       "reason": out["reason"], "fact_ids": out["fact_ids"]}})
+        conn.execute("INSERT INTO usage_daily (day, session_id, cost_usd) VALUES (?, '*', ?) ON CONFLICT (day, session_id) "
+                     "DO UPDATE SET cost_usd = cost_usd + excluded.cost_usd", (day, u["cost_usd"]))
+
+
 @app.post("/api/ask", dependencies=[Depends(_ask_ready)])
 async def post_ask(q: Question, request: Request, response: Response):
     from .agents import ask
-    times = ask.match_times(q.match_id)
+    # SQLite waits up to 5 s for the write lock: the database work runs off the event loop
+    times = await asyncio.to_thread(ask.match_times, q.match_id)
     if times is None:
         raise HTTPException(404, "unknown match")
     if q.ts > times[1]:
         raise HTTPException(422, "ts is after the end of the match")
     day = _now()[:10]
-    with _runtime(write=True) as conn:  # no await inside: the caps are counted in one transaction
-        spent = conn.execute("SELECT cost_usd FROM usage_daily WHERE day = ? AND session_id = '*'", (day,)).fetchone()
-        site = conn.execute("SELECT questions FROM questions_daily WHERE day = ? AND session_id = '*'", (day,)).fetchone()
-        if spent and spent[0] >= config.DAILY_COST_STOP_USD:
-            return _limit("the studio has reached today's spending limit")
-        if site and site[0] >= config.ASK_PER_DAY:
-            return _limit("the studio has answered all the questions it can today")
+    counted = await asyncio.to_thread(_count_question, request, response, day)
+    if isinstance(counted, JSONResponse):
+        return counted
+    sid, left = counted
+    out = await ask.answer_within(ENDPOINT, q.match_id, q.ts, q.question, q.lang, times[0])
+    for attempt in range(3):  # the question is counted and maybe paid for: its audit row and cost must be written
         try:
-            sid = _session(conn, request, response)
-        except HTTPException as e:
-            return _limit(e.detail)
-        mine = conn.execute("SELECT questions FROM questions_daily WHERE day = ? AND session_id = ?", (day, sid)).fetchone()
-        mine = mine[0] if mine else 0
-        if mine >= config.ASK_PER_SESSION_PER_DAY:
-            return _limit(f"this session has asked its {config.ASK_PER_SESSION_PER_DAY} questions today")
-        for who in (sid, "*"):
-            conn.execute("INSERT INTO questions_daily (day, session_id, questions) VALUES (?, ?, 1) "
-                         "ON CONFLICT (day, session_id) DO UPDATE SET questions = questions + 1", (day, who))
-    out = await ask.answer(ask.client(ENDPOINT), q.match_id, q.ts, q.question, q.lang, times[0])
-    u = out["usage"]
-    with _runtime(write=True) as conn:
-        db.insert(conn, "audit", {
-            "session_id": sid, "at": _now(), "actor": "studio_host", "action": "ask", "match_id": q.match_id,
-            "model": DEPLOYMENT if u["calls"] else None, "tokens_in": u["tokens_in"], "tokens_out": u["tokens_out"],
-            "cost_usd": round(u["cost_usd"], 6), "detail": {"question": q.question, "lang": q.lang, "ts": q.ts,
-                                                            "status": out["status"], "reason": out["reason"],
-                                                            "fact_ids": out["fact_ids"]}})
-        conn.execute("INSERT INTO usage_daily (day, session_id, cost_usd) VALUES (?, '*', ?) ON CONFLICT (day, session_id) "
-                     "DO UPDATE SET cost_usd = cost_usd + excluded.cost_usd", (day, u["cost_usd"]))
-    return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"],
-            "questions_left": config.ASK_PER_SESSION_PER_DAY - mine - 1}
+            await asyncio.to_thread(_record_answer, sid, q, out, day)
+            break
+        except Exception:
+            if attempt == 2:
+                logging.getLogger("uvicorn.error").exception("ask audit lost: cost_usd %.6f", out["usage"]["cost_usd"])
+                raise
+            await asyncio.sleep(1)
+    return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"], "questions_left": left}
 
 
 @app.post("/api/live")

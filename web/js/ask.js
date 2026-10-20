@@ -1,7 +1,7 @@
 // Ask the studio: a visitor's question about the match up to the replay time (POST api/ask, docs/CONTRACT.md).
 // The server checks every answer against the facts; the page only shows it. The question echo and the
 // answer are untrusted text: they are set with textContent, never as markup.
-const ASK_TIMEOUT_MS = 60000; // the agent may take up to 45 s, plus Content Safety on both sides
+const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (config.ASK_TIMEOUT_S)
 
 export class Ask {
   constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout }) {
@@ -40,6 +40,14 @@ export class Ask {
     if (open) { this.place(); this.render(); this.input.focus(); } else this.button.focus();
   }
 
+  // the model went away (503): no box and no button, and focus on the control just before the hidden button
+  turnOff() {
+    this.form.hidden = this.button.hidden = this.panel.hidden = true;
+    this.button.setAttribute("aria-expanded", "false");
+    this.controls.querySelector("#lang")?.focus(); // the Desk button is hidden on wide screens
+    this.onLayout();
+  }
+
   // over the broadcast, on the side of the controls with more room: above on a wide screen, below on a phone in portrait
   place() {
     const app = this.panel.parentElement.getBoundingClientRect(), c = this.controls.getBoundingClientRect();
@@ -64,23 +72,29 @@ export class Ask {
     this.busy = false;
     if (!r) this.status = "askNet";
     else if (r.status === 429) this.status = "askLimit";
-    else if (r.status === 503) { this.status = "askOff"; this.form.hidden = true; }
+    else if (r.status === 503) { this.status = "askOff"; this.turnOff(); }
+    else if (r.status >= 500) this.status = "askErr";
     else if (!r.ok || typeof data?.answer !== "string") this.status = "askBad";
     else {
       this.log.unshift({ question, lang, answer: data.answer, declined: data.status !== "answered", facts: data.fact_ids ?? [] });
       this.left = data.questions_left;
       this.status = "";
       this.input.value = "";
-      this.live.textContent = data.answer;
+      // emptied first, so the same sentence twice (two declines) is still announced
+      this.live.textContent = "";
+      this.live.lang = lang;
+      requestAnimationFrame(() => { this.live.textContent = data.answer; });
     }
     this.render();
   }
 
   // also called when the language or the audience changes: fact ids show only in Analyst mode
   render() {
-    this.send.disabled = this.busy;
+    // aria-disabled, not disabled: a disabled button would drop the focus of whoever pressed it (busy stops a second send)
+    this.send.setAttribute("aria-disabled", String(this.busy));
     const left = this.status || this.left === null ? "" : this.t("askLeft").replace("{n}", this.left);
-    this.statusEl.textContent = this.status ? this.t(this.status) : left;
+    const status = this.status ? this.t(this.status) : left;
+    if (this.statusEl.textContent !== status) this.statusEl.textContent = status; // a rewrite would be announced again
     const analyst = this.state.audience === "analyst";
     this.logEl.replaceChildren(...this.log.map((q) => {
       const li = document.createElement("li");
