@@ -448,7 +448,7 @@ _GLUED = re.compile(_LB + r"\d+(?:[.,]\d+)?([^\W\d_]+)")
 _LEAD_GLUED = re.compile(r"[^\W\d_]+\.?\d")
 # a unit the ledger never uses: the number is a claim the code cannot check
 _ALIEN = re.compile(_LB + r"\d+(?:[.,]\d+)?\s*(mph|miles?|yards?|yds?|feet|foot|ft|m/s|kmh|km/hr|goals?|goles|"
-                    r"seconds?|secs?|segundos?|secondi)\b", re.IGNORECASE)
+                    r"seconds?|secs?|segundos?|secondi|shots?|passes|corners?|tiri|tiros|-goal|-man)\b", re.IGNORECASE)
 # numbers written in words: the code cannot check them, so the writers use digits only
 _TENS = {"it": "venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta",
          "es": "veint|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa", "en": ""}
@@ -572,6 +572,45 @@ def check_text(text, allowed, lang="en", ids=()):
     (`ids`), then forbidden real names. The flag never repeats the name, because flags are shown to people."""
     return check_numbers(text, allowed, lang, ids) + ["forbidden name (real person or club)"] * bool(
         names.find_forbidden(text))
+
+
+# --- Ask the studio: one visitor's answer, held to stricter rules than a story -------------------
+# A minute is a minute only when it is written as one; as a bare number "2" or "10" it would pass for a count.
+_MINUTE = re.compile(r"\b(?:min|minutes?|minut[oi]s?)\.?\s+(\d+(?:\+\d+)?)(?:\s*-\s*(\d+(?:\+\d+)?))?"
+                     r"|" + _LB + r"(\d+(?:\+\d+)?)\s*['’′]", re.IGNORECASE)
+_LABEL_MINUTES = re.compile(r",?\s*\bmin (\d+(?:\+\d+)?)-(\d+(?:\+\d+)?)")
+# words that are numbers too; "uno" and "una" are left out, they are the Italian and Spanish articles
+_ASK_WORDS = {"en": r"zero|one|half|single", "it": r"zero|mezzo|metà", "es": r"cero"}
+_ASK_SPELLED = {lang: re.compile(rf"(?<!\w)(?:{w})(?!\w)", re.IGNORECASE) for lang, w in _ASK_WORDS.items()}
+_ASK_NOT_A_NUMBER = re.compile(r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bin mezzo\b|"
+                               r"\bmetà (?:del )?campo\b", re.IGNORECASE)
+MAX_ASK_FACTS = 8
+
+
+def check_answer(text, facts, p1, lang, ids):
+    """All checks on an Ask answer about `facts` (the cited ones, all at or before the question's ts).
+    On top of check_text: minutes only as minutes ("2'", "min 2", "45+2'") and only the cited facts' own;
+    no bare number from a minute or from "/10"; number words in English and in `lang`; no letter-number
+    characters ("Ⅲ"); and the answer must quote at least one cited fact, its value or its label."""
+    flags = ["number in words: letter-number character"] * any(unicodedata.category(c) == "Nl" for c in text)
+    minutes = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts}
+    for f in facts:
+        for mt in _LABEL_MINUTES.finditer(display_label(f)):
+            minutes |= set(mt.groups())
+
+    def said(mt):
+        flags.extend(f"minute not in the facts: '{g}'" for g in mt.groups() if g and g not in minutes)
+        return " "
+    rest = _MINUTE.sub(said, normalise(text))
+    bare = [{**f, "label_en": _LABEL_MINUTES.sub("", f["label_en"])} for f in facts]
+    values = {(f["value"], None) for f in facts}
+    allowed = [a for a in allowed_numbers(bare) if a != (10.0, None) or a in values]  # "/10" is no licence for "10 shots"
+    flags += check_text(rest, allowed, lang, ids)
+    words = _NOT_A_NUMBER.sub("", _ASK_NOT_A_NUMBER.sub("", _FACT_ID.sub("", rest)))
+    for pattern in {_SPELLED["en"], _ASK_SPELLED["en"], _ASK_SPELLED[lang]}:  # check_text ran `lang`'s own list
+        flags += [f"number in words: '{w}' (write digits from the facts)" for w in pattern.findall(words)]
+    quoted = _NUM.search(_FACT_ID.sub("", rest)) or any(display_label(f).lower() in text.lower() for f in facts)
+    return flags + ["answer quotes no cited fact"] * (not quoted)
 
 
 def story_facts(story, cited=True):

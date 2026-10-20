@@ -164,13 +164,17 @@ const unreachable = (page) => page.evaluate(() => [...document.querySelectorAll(
     return !(hit && (hit === el || el.contains(hit) || hit.contains(el)));
   }).map((el) => el.id || el.dataset.speed || el.dataset.audience || el.tagName));
 
-// POST api/ask stubbed (the static site has no API): {} is the page's probe, "limit" and "offline" the error paths.
-const askStub = (sent = []) => (p) => p.route("**/api/ask", (r) => {
+// POST api/ask stubbed (the static site has no API): {} is the page's probe; "limit", "offline", "broken" (500)
+// and "gone" (503) the error paths; "slow" answers after a second.
+const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   const b = JSON.parse(r.request().postData() || "{}");
   if (!b.question) return r.fulfill({ status: 422, json: { detail: [] } });
   sent.push(b);
   if (b.question === "limit") return r.fulfill({ status: 429, json: { status: "limit", reason: "questions per visitor" } });
   if (b.question === "offline") return r.abort();
+  if (b.question === "broken") return r.fulfill({ status: 500, json: { detail: "internal error" } });
+  if (b.question === "gone") return r.fulfill({ status: 503, json: { detail: "no model on this site" } });
+  if (b.question === "slow") await new Promise((done) => setTimeout(done, 1000));
   return r.fulfill({ json: { status: "answered", answer: '<img src=x onerror="window.__xss=2">The quickest sprint was 32 km/h.',
     fact_ids: ["F-SPRINT_SPEED-000001"], questions_left: 9 } });
 });
@@ -554,6 +558,7 @@ try {
     if (await p.evaluate(() => window.studioDesk.state.playing)) fail("ask: a typed space toggled play");
     await p.keyboard.press("Enter");
     await p.waitForSelector("#ask-log li", { timeout: 5000 });
+    await p.waitForFunction(() => document.querySelector("#ask-live").textContent, null, { timeout: 2000 }).catch(() => {});
     const b = sent.at(-1);
     if (b.match_id !== MATCH || b.ts !== 125.3 || b.lang !== "en" || b.question !== "Who is the fastest so far?") fail(`ask: sent ${JSON.stringify(b)}`);
     const seen = () => p.evaluate(() => ({ img: !!document.querySelector("#ask img"), xss: window.__xss,
@@ -571,8 +576,26 @@ try {
     await p.click('[data-audience="analyst"]');
     await p.selectOption("#lang", "it");
     if ((await seen()).title !== "Chiedi allo studio") fail(`ask: Italian title "${(await seen()).title}"`);
+    const langs = () => p.evaluate(() => ["#ask", "#ask-open", "#ask-live"].map((s) => document.querySelector(s).lang).join(" "));
+    if (await langs() !== "it it en") fail(`ask: lang attributes in Italian "${await langs()}"`);
+    await p.fill("#ask-q", "Chi è il più veloce?");
+    await p.press("#ask-q", "Enter");
+    await p.waitForFunction(() => document.querySelector("#ask-live").lang === "it" && document.querySelector("#ask-live").textContent, null, { timeout: 5000 })
+      .catch(() => fail("ask: the Italian answer is not announced in Italian"));
+    await p.selectOption("#lang", "es");
+    if (await langs() !== "es es it") fail(`ask: lang attributes in Spanish "${await langs()}"`);
     await p.selectOption("#lang", "en");
-    for (const [q, msg] of [["limit", /limit is reached/], ["offline", /could not be reached/]]) {
+    // Send pressed with the mouse: focus stays on it while the studio works, and a second press sends nothing
+    await p.fill("#ask-q", "slow");
+    const before = sent.length;
+    await p.click('#ask [type="submit"]');
+    await p.waitForFunction(() => /checking/.test(document.querySelector("#ask-status").textContent), null, { timeout: 2000 }).catch(() => {});
+    const busy = await p.evaluate(() => ({ focus: document.activeElement?.type, aria: document.querySelector('#ask [type="submit"]').getAttribute("aria-disabled") }));
+    if (busy.focus !== "submit" || busy.aria !== "true") fail(`ask: while busy focus on "${busy.focus}", aria-disabled "${busy.aria}"`);
+    await p.click('#ask [type="submit"]');
+    await p.waitForFunction(() => document.querySelector("#ask-log li:nth-child(3)"), null, { timeout: 5000 }).catch(() => fail("ask: the slow answer never came"));
+    if (sent.length !== before + 1) fail(`ask: ${sent.length - before} questions sent by a double press`);
+    for (const [q, msg] of [["limit", /limit is reached/], ["offline", /could not be reached/], ["broken", /had a problem/]]) {
       await p.fill("#ask-q", q);
       await p.press("#ask-q", "Enter");
       await p.waitForFunction((src) => new RegExp(src).test(document.querySelector("#ask-status").textContent), msg.source, { timeout: 5000 })
@@ -581,6 +604,14 @@ try {
     await p.screenshot({ path: `${shots}/web-ask-1280x720.png` });
     await p.press("#ask-q", "Escape");
     if (!(await p.evaluate(() => document.querySelector("#ask").hidden && document.activeElement?.id === "ask-open"))) fail("ask: Escape did not close the panel back to its button");
+    // the model goes away while the panel is open: no box, no button, and the focus on the language control
+    await p.click("#ask-open");
+    await p.fill("#ask-q", "gone");
+    await p.press("#ask-q", "Enter");
+    await p.waitForFunction(() => document.querySelector("#ask-open").hidden, null, { timeout: 5000 }).catch(() => {});
+    const off = await p.evaluate(() => ({ panel: document.querySelector("#ask").hidden, button: document.querySelector("#ask-open").hidden,
+      focus: document.activeElement?.id || document.activeElement?.tagName }));
+    if (!off.panel || !off.button || off.focus !== "lang") fail(`ask 503: panel hidden ${off.panel}, button hidden ${off.button}, focus on ${off.focus}`);
     await p.context().close();
   });
 

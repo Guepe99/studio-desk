@@ -34,13 +34,15 @@ def _az(*args):
 
 
 class AzureSafety:
-    """text:analyze on the Content Safety resource; call it with a text, get {category: severity}."""
+    """text:analyze on the Content Safety resource; call it with a text, get {category: severity}.
+    `shield(text)` runs Prompt Shields (text:shieldPrompt) on a user prompt: True when it detects an attack."""
 
-    def __init__(self, endpoint=None):
+    def __init__(self, endpoint=None, timeout=30):
         self.endpoint = (endpoint or os.environ.get("AZURE_CONTENT_SAFETY_ENDPOINT") or _az(
             "cognitiveservices", "account", "show", "-n", RESOURCE[0], "-g", RESOURCE[1],
             "--query", "properties.endpoint")).rstrip("/")
         self.key, self.token, self.credential, self.last, self.requests = None, None, None, 0.0, 0
+        self.timeout = timeout
 
     def _headers(self):
         if self.key:
@@ -57,10 +59,18 @@ class AzureSafety:
                        "--query", "key1")
 
     def __call__(self, text):
+        out = self._post("analyze", {"text": text[:10000], "outputType": "FourSeverityLevels"})
+        return {c["category"]: c.get("severity") or 0 for c in out["categoriesAnalysis"]}
+
+    def shield(self, text):
+        out = self._post("shieldPrompt", {"userPrompt": text[:10000], "documents": []})
+        return out["userPromptAnalysis"]["attackDetected"]
+
+    def _post(self, op, payload):
         time.sleep(max(0.0, self.last + MIN_INTERVAL_S - time.monotonic()))
         self.last = time.monotonic()
-        body = json.dumps({"text": text[:10000], "outputType": "FourSeverityLevels"}).encode()
-        url = f"{self.endpoint}/contentsafety/text:analyze?api-version={API_VERSION}"
+        body = json.dumps(payload).encode()
+        url = f"{self.endpoint}/contentsafety/text:{op}?api-version={API_VERSION}"
         for attempt in (1, 2):
             try:
                 headers = self._headers()
@@ -72,9 +82,8 @@ class AzureSafety:
             req = urllib.request.Request(url, body, {**headers, "Content-Type": "application/json"}, method="POST")
             self.requests += 1
             try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    out = json.load(resp)
-                return {c["category"]: c.get("severity") or 0 for c in out["categoriesAnalysis"]}
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.load(resp)
             except urllib.error.HTTPError as e:
                 if e.code in (401, 403) and not self.key and attempt == 1:
                     self._use_key()
