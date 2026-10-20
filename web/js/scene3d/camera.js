@@ -58,6 +58,8 @@ export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the
 // aimed `front` m out from where the ball crosses into the net
 const PUNCH = { lead: 1.6, ramp: 1.4, width: 16, front: 4 };
 const STOP_EVENTS = new Set(["foul", "keeper_save"]);
+// prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no cut to camera 2, no replay camera
+const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 
 // Zoom factor for the size of the frame on screen: 1 from 1000 CSS px wide, down to 0.65 on a phone.
 export const lensScale = (cssW) => Math.min(1, Math.max(0.65, (cssW || 1000) / 1000));
@@ -154,6 +156,11 @@ export class Cameras {
   // view: {ts, replay, angle?}; dt: match seconds since the last frame (0 after a jump).
   update(view, ts, dt) {
     this.focus = null;
+    if (REDUCE.matches) {
+      this._broadcast(ts, dt, false);
+      this.mode = "broadcast";
+      return;
+    }
     if (view.replay) {
       const angle = view.angle ?? this.replayAngle;
       this._replay(ts, angle);
@@ -231,14 +238,14 @@ export class Cameras {
     }
   }
 
-  _broadcast(ts, dt) {
+  _broadcast(ts, dt, punch = true) {
     if (!this.state || dt === 0 || dt > 1) {
       // after a jump, warm up the operator over the previous three seconds
       const g = broadcastGoal(this.match, Math.max(0, ts - 3));
       this.state = { x: [g.x, 0], z: [g.z, 0], w: [g.width, 0] };
       for (let t = Math.max(0, ts - 3) + 0.1; t <= ts + 1e-6; t += 0.1) this._step(t, 0.1);
     } else this._step(ts, dt);
-    const s = this.state, cam = this.tv, [px, pz, pw] = this._punch(ts, s);
+    const s = this.state, cam = this.tv, [px, pz, pw] = punch ? this._punch(ts, s) : [s.x[0], s.z[0], s.w[0]];
     const target = new B.Vector3(px, 0, pz);
     cam.position.set(BROADCAST_POS.x + railAt(this.rail, ts), BROADCAST_POS.y, BROADCAST_POS.z);
     const dist = B.Vector3.Distance(cam.position, target);

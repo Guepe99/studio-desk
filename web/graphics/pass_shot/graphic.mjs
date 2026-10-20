@@ -1,7 +1,9 @@
 // Pass / shot lower third: the player, the measured value (shot speed, pass length) and a quality bar.
 import { SdGraphic } from "../shared/sd-graphic.mjs";
 
-const KICKER = { shot: "SHOT SPEED", pass: "PASS" };
+const KICKER = { en: { shot: "SHOT SPEED", pass: "PASS" }, it: { shot: "VELOCITÀ DEL TIRO", pass: "PASSAGGIO" }, es: { shot: "VELOCIDAD DEL TIRO", pass: "PASE" } };
+const QUALITY = { en: "QUALITY", it: "QUALITÀ", es: "CALIDAD" };
+const GOAL = ["Goal", "Gol"]; // the export's quality text for a goal: "Goal" in English, "Gol" in Italian and Spanish
 
 // quality is display text from the export ("Difficulty 8.1/10", "Goal", "No goal"), or
 // {value, max} drawn as a bar of value / max; null hides the row. A bare number has no scale, so
@@ -43,7 +45,7 @@ export default class PassShot extends SdGraphic {
 
   render() {
     const d = this.data, p = this.players[d.player_id] ?? {}, $ = (s) => this.stage.querySelector(s);
-    $(".kicker").textContent = KICKER[d.mode] ?? String(d.mode ?? "").toUpperCase();
+    $(".kicker").textContent = (KICKER[this.lang] ?? KICKER.en)[d.mode] ?? String(d.mode ?? "").toUpperCase();
     const num = $(".num");
     num.textContent = p.shirt ?? "";
     num.style.background = p.color ?? "#00ff87";
@@ -55,8 +57,8 @@ export default class PassShot extends SdGraphic {
     const q = d.quality, row = $(".q"), bar = scaled(q);
     row.classList.toggle("none", q == null || q === "");
     row.classList.toggle("text", !bar);
-    row.classList.toggle("goal", q === "Goal");
-    $(".qlabel").textContent = bar ? "QUALITY" : typeof q === "object" ? "" : String(q ?? "");
+    row.classList.toggle("goal", GOAL.includes(q));
+    $(".qlabel").textContent = bar ? QUALITY[this.lang] ?? QUALITY.en : typeof q === "object" ? "" : String(q ?? "");
     $(".bar").style.width = `${bar ? Math.round(Math.min(100, Math.max(0, (q.value / q.max) * 100))) : 0}%`;
     $(".qval").textContent = bar ? `${fmt(q.value)}/${fmt(q.max)}` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);

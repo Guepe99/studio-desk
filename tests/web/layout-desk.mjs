@@ -1,0 +1,228 @@
+// The desk and the agent strip as a first-time visitor meets them (layout review, findings 5, 9, 11,
+// 13, 14, 15, 17, 18), on the real page at 1280x720, 1920x1080, 844x390, 390x844, 320x568 and
+// 320x180, static hosting (the desk works offline, in the tab), on the DEMO fixture by default:
+// - 5: the desk says what it is for; a held story has exactly one filled action, "Put on air";
+//   the risk reads Low, Medium or High with an instruction under it
+// - 9: on a touch screen the evidence summary keeps its disclosure triangle (a list item) at 44 px
+// - 17: a decision says what it did on air in a status line, and Undo takes it back
+// - 14: the audit log's last column can be brought into view inside the desk
+// - 18: no agent shows as an id with an underscore (audit, traces, strip)
+// - 15: Esc closes the drawer with the focus on the page body
+// - 13: every agent name in the strip is whole (no ellipsis) and the strip shows no cost per agent
+// - 11: in Italian, <html lang> is "it" and the desk, the strip and the graphics' kickers show no
+//   English word outside the agents' own output (marked lang="en")
+// Screenshots: out/shots/layout-<size>-{en,audit,strip,it}.png. SIZES='[[320,180]]' runs some sizes only.
+// LAYOUT_BREAK=1 makes the audit table 640 px wide: with the scroller the run still passes.
+//
+//   WEBGL=0 [MATCH=M001] scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-desk.mjs
+import { createRequire } from "node:module";
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
+const { chromium } = require("playwright");
+
+const base = process.argv[2] ?? "http://127.0.0.1:8765/";
+const MATCH = process.env.MATCH ?? "DEMO";
+const PFX = MATCH === "DEMO" ? "layout" : `layout-${MATCH}`;
+const SIZES = process.env.SIZES ? JSON.parse(process.env.SIZES) : [[1280, 720], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
+const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
+mkdirSync(shots, { recursive: true });
+const failures = [];
+const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
+const expect = (ok, msg) => { if (!ok) fail(msg); };
+const ENGLISH = /\b(Approve|Put on air|Keep on air|Reject|Edit|Held|On air|Off air|Risk|Evidence|Stories|Audit log|Traces|Show trace|Low|Medium|High|waiting|Close|Desk|Undo)\b/;
+
+const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.CDP_URL) : await chromium.launch();
+
+// English words in the visible text and the accessible names under `sel`, outside lang="en"
+const englishIn = (page, sel) => page.evaluate(([s, re]) => {
+  const rx = new RegExp(re), out = [];
+  const en = (el) => el.closest("[lang]")?.lang === "en";
+  for (const root of document.querySelectorAll(s)) {
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walk.nextNode());) {
+      const p = n.parentElement;
+      if (!p || en(p) || !p.checkVisibility({ visibilityProperty: true }) || !rx.test(n.nodeValue)) continue;
+      out.push(n.nodeValue.trim().slice(0, 60));
+    }
+    for (const el of [root, ...root.querySelectorAll("[aria-label],[title]")]) for (const a of ["aria-label", "title"]) {
+      const v = el.getAttribute(a);
+      if (v && !en(el) && rx.test(v)) out.push(`${a}=${v.slice(0, 60)}`);
+    }
+  }
+  return out;
+}, [sel, ENGLISH.source]);
+
+async function run(w, h) {
+  const tag = `${w}x${h}`, touch = w < 1100 || h < 500;
+  const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
+  const page = await ctx.newPage();
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|voice\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
+  page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
+  await page.goto(new URL(`index.html?match=${MATCH}&view=2d`, base).href);
+  await page.waitForFunction(() => window.studioDesk?.desk?.ready && window.studioDesk.match, null, { timeout: 60000 });
+  await page.evaluate(() => document.fonts.ready);
+  const drawer = await page.$eval("#desk-open", (el) => getComputedStyle(el).display !== "none");
+  const openDesk = async () => {
+    if (drawer && !(await page.evaluate(() => document.body.classList.contains("desk-open")))) {
+      await page.evaluate(() => document.querySelector("#desk-open").click());
+      await page.waitForTimeout(300);
+    }
+  };
+  const seek = (ts) => page.evaluate(async (x) => {
+    const sd = window.studioDesk, raf = () => new Promise((r) => requestAnimationFrame(r));
+    sd.setPlaying(false); sd.seek(x); await raf(); await raf();
+    await Promise.all([...sd.host.live.values()].map((i) => i.chain));
+    await new Promise((r) => setTimeout(r, 800));
+  }, ts);
+  // a held story when the match has one (DEMO), else one the risk rule put on air (M001)
+  const pick = await page.evaluate(() => {
+    const d = window.studioDesk.desk, s = d.stories.find((x) => d.status(x) === "needs_review") ?? d.stories.find((x) => d.status(x) === "auto_approved");
+    return s && { id: s.story_id, held: d.status(s) === "needs_review" };
+  });
+  if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
+  const card = `#story-${pick.id}`;
+  const want = pick.held ? { primary: "Put on air", said: /^.+ \d+(\+\d+)?' approved, on air$/, undone: "Held", back: /^Undone: .+ is held again$/ }
+    : { primary: "Keep on air", said: /^.+ \d+(\+\d+)?' kept on air$/, undone: "On air", back: /^Undone: .+ is on air again$/ };
+  await openDesk();
+
+  // 5. what the desk is for, one filled action, risk in words
+  const head = await page.evaluate((c) => {
+    const p = document.querySelector("#desk .desk-purpose"), el = document.querySelector(c);
+    const filled = [...el.querySelectorAll(".actions button")].filter((b) => {
+      const bg = getComputedStyle(b).backgroundColor;
+      return bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" && bg !== getComputedStyle(document.body).backgroundColor;
+    });
+    return { purpose: p?.checkVisibility() ? p.textContent : "", filled: filled.map((b) => b.textContent),
+      risk: el.querySelector(".risk b")?.textContent ?? el.querySelector(".risk")?.textContent, tip: el.querySelector(".risk-tip")?.textContent ?? "" };
+  }, card);
+  expect(head.purpose.length > 20, `${tag} 5: no line says what the desk is for`);
+  expect(head.filled.length === 1 && head.filled[0] === want.primary, `${tag} 5: the story's filled actions ${JSON.stringify(head.filled)}`);
+  expect(/^(Low|Medium|High) risk$/.test(head.risk) && head.tip.length > 10, `${tag} 5: risk reads ${JSON.stringify(head.risk)}, instruction ${JSON.stringify(head.tip)}`);
+
+  // 9. a touch target that is still a disclosure
+  if (touch) {
+    const sum = await page.evaluate((c) => {
+      const s = document.querySelector(`${c} .evidence summary`);
+      if (!s) return { none: true };
+      return { coarse: matchMedia("(pointer: coarse)").matches, display: getComputedStyle(s).display, height: s.getBoundingClientRect().height };
+    }, card);
+    expect(sum.coarse, `${tag} 9: the touch context does not match (pointer: coarse), the check measures nothing`);
+    expect(sum.display === "list-item" && sum.height >= 44, `${tag} 9: evidence summary ${JSON.stringify(sum)}`);
+  }
+
+  // 17. the status line and Undo
+  await page.$eval(`${card} .act-approved`, (b) => b.scrollIntoView({ block: "center" }));
+  await page.click(`${card} .act-approved`);
+  const said = await page.$eval("#desk .done-msg", (el) => el.textContent).catch(() => "");
+  expect(want.said.test(said), `${tag} 17: after ${want.primary} the status line says ${JSON.stringify(said)}`);
+  expect(await page.$eval(`${card} .tally`, (el) => el.textContent) === "On air", `${tag} 17: approved story not On air`);
+  await shot(page, `${PFX}-${tag}-en.png`);
+  const undo = await page.$("#desk .undo");
+  expect(undo && await undo.isVisible(), `${tag} 17: no Undo after a decision`);
+  if (undo && await undo.isVisible()) {
+    await undo.click();
+    expect(await page.$eval(`${card} .tally`, (el) => el.textContent) === want.undone, `${tag} 17: after Undo the story is not ${want.undone}`);
+    const back = await page.$eval("#desk .done-msg", (el) => el.textContent);
+    expect(want.back.test(back), `${tag} 17: after Undo the status line says ${JSON.stringify(back)}`);
+  }
+
+  // 14 and 18. the audit log: the last column in reach, people's names not ids
+  // LAYOUT_BREAK=1 widens the table past any phone (as the reviewer's run had it): the check must still find the last column
+  if (process.env.LAYOUT_BREAK === "1") await page.addStyleTag({ content: "#desk table.log { min-width: 640px; }" });
+  await page.evaluate(() => document.querySelector("#tab-audit").click());
+  await page.waitForTimeout(100);
+  const audit = await page.evaluate(() => {
+    const t = document.querySelector("#desk table.log");
+    if (!t) return { none: true };
+    const last = t.querySelector("tr").lastElementChild;
+    // scroll every scrollable ancestor to its end, then the last header must be inside all their boxes
+    const clips = [];
+    for (let a = t.parentElement; a && a !== document.body; a = a.parentElement) {   // the desk's own boxes; the page is style.mjs's
+      const o = getComputedStyle(a).overflowX;
+      if (o !== "visible") { if (o === "auto" || o === "scroll") a.scrollLeft = a.scrollWidth; clips.push(a); }
+    }
+    const r = last.getBoundingClientRect();
+    const cut = clips.filter((a) => { const b = a.getBoundingClientRect(); return r.right > b.right + 1 || r.left < b.left - 1; }).map((a) => a.id || a.className);
+    if (r.right > innerWidth + 1) cut.push("viewport");
+    // reaching it by scrolling the whole desk sideways does not count: only the table's own scroller may
+    const own = clips[0] === t.parentElement ? clips[0] : null;   // a scroller around the table alone
+    const wide = (a) => [...a.querySelectorAll("*")].filter((e) => e.getBoundingClientRect().right > a.getBoundingClientRect().right + 1 && e.checkVisibility())
+      .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}#${e.id}.${String(e.className).split(" ")[0]}`);
+    for (const a of clips) if (a !== own && a.scrollWidth > a.clientWidth + 1) cut.push(`${a.id || a.className} scrolls sideways (${wide(a)})`);
+    const who = [...t.querySelectorAll("tbody tr")].map((row) => row.cells[1]?.textContent ?? "");
+    return { cut, who, cells: t.querySelectorAll("tbody tr").length };
+  });
+  expect(!audit.none && audit.cells > 0, `${tag} 14: no audit rows after a decision`);
+  expect(!audit.none && !audit.cut?.length, `${tag} 14: the audit log's last column is cut by ${JSON.stringify(audit.cut)}`);
+  expect(!audit.who?.some((x) => x.includes("_")), `${tag} 18: audit Who shows ids ${JSON.stringify(audit.who)}`);
+  await page.evaluate(() => { const t = document.querySelector("#desk table.log")?.closest(".log-wrap"); if (t) t.scrollLeft = 0; });
+  await shot(page, `${PFX}-${tag}-audit.png`);
+  await page.evaluate(() => document.querySelector("#tab-traces").click());
+  await page.waitForTimeout(100);
+  const ids = await page.$$eval("#desk [data-agent] b, #desk .step-head b", (n) => n.map((x) => x.textContent).filter((x) => x.includes("_")));
+  expect(!ids.length, `${tag} 18: traces show ids ${JSON.stringify(ids)}`);
+  await page.evaluate(() => document.querySelector("#tab-stories").click());
+
+  // 15. Esc closes the drawer wherever the focus is
+  if (drawer) {
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    expect(!(await page.evaluate(() => document.body.classList.contains("desk-open"))), `${tag} 15: Esc with the focus on the page did not close the drawer`);
+  }
+
+  // 13. the strip: whole names, no cost per agent
+  const spill0 = await page.$eval("#activity", (el) => el.scrollWidth - el.clientWidth);
+  expect(spill0 <= 1, `${tag} 13: before the first hand-off the strip runs ${spill0} px past its box`);
+  const mid = await page.evaluate(() => { const t = window.studioDesk.desk.traces ?? []; return t.length ? t[Math.floor(t.length / 2)].ts + 1 : window.studioDesk.match.duration / 2; });
+  await seek(mid);
+  const strip = await page.$$eval("#activity .act-name, #activity .act-meta", (n) => n.filter((x) => x.checkVisibility()).map((x) => ({
+    cls: x.className, text: x.textContent, w: [x.scrollWidth, x.clientWidth, x.parentElement.clientWidth, document.querySelector("#activity").clientWidth], cut: x.scrollWidth > x.clientWidth + 1 })));
+  const spill = await page.$eval("#activity", (el) => el.scrollWidth - el.clientWidth);
+  expect(spill <= 1, `${tag} 13: the strip runs ${spill} px past its box`);
+  const names = strip.filter((x) => x.cls.includes("act-name"));
+  if (!names.length) console.log(`${tag} 13: the strip shows no agent at this size`);
+  for (const x of strip) {
+    if (x.cls.includes("act-name")) expect(!x.cut && !x.text.includes("_"), `${tag} 13/18: agent name ${JSON.stringify(x.text)} cut or an id ${JSON.stringify(x.w)}`);
+    else expect(!/\$|€|token/i.test(x.text), `${tag} 13: the strip shows a cost per agent ${JSON.stringify(x.text)}`);
+  }
+
+  await shot(page, `${PFX}-${tag}-strip.png`);
+
+  // 11. Italian everywhere outside the agents' own output
+  await page.selectOption("#lang", "it");
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
+  await openDesk();
+  const leftovers = await englishIn(page, "#desk, #activity, #desk-open");
+  expect(!leftovers.length, `${tag} 11: English in the Italian page ${JSON.stringify(leftovers.slice(0, 6))}`);
+  const kick = await page.evaluate(() => {
+    const sd = window.studioDesk, c = sd.desk.sheet(sd.match.cues, sd.state.audience, sd.state.lang).find((x) => x.graphic === "why_card");
+    return c?.ts;
+  });
+  if (kick === undefined) fail(`${tag} 11: no why card on air in Italian`);
+  else {
+    await seek(kick + 2);
+    const k = await page.evaluate(() => [...window.studioDesk.host.live.values()].map((i) => i.el.shadowRoot?.querySelector(".kicker")?.textContent).filter(Boolean));
+    expect(k.length && k.every((x) => !/WHY IT MATTERS|RECAP|SHOT SPEED|PASS SPEED|MOMENTUM/.test(x)), `${tag} 11: Italian kickers ${JSON.stringify(k)}`);
+  }
+  await openDesk();
+  await shot(page, `${PFX}-${tag}-it.png`);
+  await ctx.close();
+}
+
+async function shot(page, name) {
+  await page.screenshot({ path: path.join(shots, name) });
+}
+
+try {
+  for (const [w, h] of SIZES) { await run(w, h); console.log(`${w}x${h} done`); }
+} finally {
+  await browser.close();
+}
+if (failures.length) { console.log(`${failures.length} failure(s)`); process.exit(1); }
+console.log("layout-desk: all checks pass");

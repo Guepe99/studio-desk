@@ -3,7 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { momentTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
-import { reached, latestPerAgent, agentName } from "../../web/js/activity.js";
+import { reached, latestPerAgent } from "../../web/js/activity.js";
+import { agentName, TEXT, tr, riskBand } from "../../web/js/desk.js";
 
 const cue = (ts, story_id, duration_s = 6) => ({ ts, story_id, duration_s });
 
@@ -70,7 +71,28 @@ test("agent names", () => {
   assert.equal(agentName("commentator_it"), "Commentator IT");
   assert.equal(agentName("story_finder"), "Story finder");
   assert.equal(agentName("new_agent"), "new agent");
-  const it = { ag_commentator: "Commentatore" };
-  assert.equal(agentName("commentator_it", (k) => it[k]), "Commentatore IT");
-  assert.equal(agentName("story_finder", (k) => it[k]), "Story finder"); // a missing key falls back to English
+  assert.equal(agentName("commentator_it", "it"), "Commentatore IT");
+  assert.equal(agentName("studio_host"), "Studio host");
+  assert.equal(agentName("human", "es"), "Tú");
+  assert.equal(agentName("story_finder", "xx"), "Story finder"); // a missing language falls back to English
+  // every agent id of the replays has a display name, never the raw id (review finding 18)
+  for (const id of ["story_finder", "analyst", "commentator_en", "commentator_it", "commentator_es", "verifier", "director", "human", "auto", "studio_host"]) {
+    for (const lang of ["en", "it", "es"]) assert.ok(!agentName(id, lang).includes("_"), `${id} in ${lang}`);
+  }
+});
+
+test("desk strings: every language has every key, no em dash", () => {
+  for (const lang of ["it", "es"]) {
+    assert.deepEqual(Object.keys(TEXT[lang]).sort(), Object.keys(TEXT.en).sort(), lang);
+  }
+  const vars = { n: 2, m: 3, f: 2, e: 1, tok: "1", usd: "$1", s: "1", what: "Goal 10'", label: "x", kind: "Goal", r: "0.1", t: "0.35", a: 1, b: 2, why: "x", name: "x", run: true };
+  for (const lang of ["en", "it", "es"]) {
+    for (const k of Object.keys(TEXT.en)) assert.ok(!/[\u2014\u2013]/.test(tr(lang, k, vars)), `${lang} ${k}`);
+  }
+  assert.equal(tr("en", "traceSum", { n: "1", tok: "5", usd: "$0.01", s: "0.2" }), "1 hand-off, 5 tokens, $0.01, 0.2 s");
+  assert.equal(tr("it", "traceSum", { n: "2", tok: "5", usd: "$0.01", s: "0,2" }), "2 passaggi di consegne, 5 token, $0.01, 0,2 s");
+});
+
+test("risk bands", () => {
+  assert.deepEqual([0, 0.34, 0.35, 0.59, 0.6, 1, NaN].map(riskBand), ["low", "low", "mid", "mid", "high", "high", "high"]);
 });

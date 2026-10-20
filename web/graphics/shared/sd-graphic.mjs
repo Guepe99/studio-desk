@@ -60,7 +60,7 @@ export class SdGraphic extends HTMLElement {
     const all = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
     // A momentum series cites one fact per window: show the latest few, count the rest.
     const list = all.slice(-3), more = all.length - list.length;
-    const chips = list.map((f) => `<span>${esc(f)}</span>`).join("") + (more ? `<span>+${more} more</span>` : "");
+    const chips = list.map((f) => `<span>${esc(f)}</span>`).join("") + (more ? `<span>+${more} ${{ it: "altri", es: "más" }[this.lang] ?? "more"}</span>` : "");
     return this.showFacts && all.length ? `<div class="facts">${chips}</div>` : "";
   }
 
@@ -69,6 +69,7 @@ export class SdGraphic extends HTMLElement {
     this.data = structuredClone(params.data ?? {});
     this._loadData = structuredClone(this.data);
     this.renderType = params.renderType ?? "realtime";
+    this.lang = this.closest("[lang]")?.lang || "en"; // the host's language: kickers and labels follow it
     this.showFacts = !!params.v_showFactIds;
     this.players = params.v_players ?? {};
     this.teams = params.v_teams ?? {};

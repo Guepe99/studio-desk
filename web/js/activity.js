@@ -3,16 +3,9 @@
 // graphic is on air it shows how that graphic was made instead: the chain of its story. Reads only the
 // replay's traces (loaded by the desk). The DOM changes only when what is shown changes.
 // No live region: at 16x or 64x it would talk over everything, the strip is read on demand.
-import { summaryText, traceFailed } from "./desk.js";
+import { summaryText, traceFailed, agentName } from "./desk.js";
 
 const SHOWN = 7; // one hand-off chain: finder, analyst, three commentators, verifier, director
-const NAMES = { story_finder: "Story finder", analyst: "Analyst", commentator: "Commentator", verifier: "Verifier", director: "Director" };
-
-/** @param {(key: string) => string | undefined} [t]  the page strings: agent names are keys `ag_<role>` */
-export const agentName = (agent, t) => {
-  const [base, lang] = String(agent).split(/_(?=[a-z]{2}$)/); // commentator_it -> Commentator IT
-  return `${t?.(`ag_${base}`) ?? NAMES[base] ?? base.replace(/_/g, " ")}${lang ? ` ${lang.toUpperCase()}` : ""}`;
-};
 const usd = (v, lang) => {
   const d = v >= 0.1 ? 2 : 4;
   return new Intl.NumberFormat(lang, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -118,10 +111,11 @@ export class Activity {
     // the step name and the summary are agent output, in English like the desk's Traces tab
     p.append(el("span", "act-step", failed ? "fallback" : String(r.step ?? "")), ` ${out}`);
     p.lang = "en";
+    // the model only: tokens and cost are in the summary line and in the desk
     const meta = el("p", "act-meta");
-    if (r.model) meta.append(el("span", "act-model", r.model), el("span", "", `${fill(this.t("actTok"), { n: int((r.tokens_in || 0) + (r.tokens_out || 0), lang) })}, ${usd(r.cost_usd || 0, lang)}`));
+    if (r.model) { const m = el("span", "act-model", r.model); m.lang = "en"; meta.append(m); }
     else meta.append(el("span", "", this.t(r.agent === "director" ? "actRules" : "actCode")));
-    li.append(el("b", "act-name", agentName(r.agent, this.t)), p, meta);
+    li.append(el("b", "act-name", agentName(r.agent, lang)), p, meta);
     return li;
   }
 }

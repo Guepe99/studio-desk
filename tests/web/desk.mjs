@@ -104,8 +104,8 @@ async function scenario(browser, w, h) {
     expect(await page.$eval("#desk-open", (el) => el.getAttribute("aria-label")) === "Desk, 3 waiting for review", `${tag}: Desk button name`);
     expect(await page.$eval("#desk-open .off", (el) => el.hidden), `${tag}: Desk button says offline while online`);
   }
-  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Approve: Key pass at minute \d+/.test(l)),
-    `${tag}: Approve does not name its story`);
+  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
+    `${tag}: Put on air does not name its story`);
 
   // 1. held until approved
   expect(!(await onAirAt(page, HELD)), `${tag}: ${HELD.story_id} needs review but its graphic is on air`);
@@ -162,7 +162,8 @@ async function scenario(browser, w, h) {
   await page.focus(`${card(SWING)} .act-approved`);
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions")), page.keyboard.press("Space")]);
   expect(await page.evaluate(() => window.studioDesk.state.playing) === playing, `${tag}: Space in the desk toggled play`);
-  expect(await page.$eval(`${card(SWING)} .act-approved`, (el) => el.getAttribute("aria-pressed")) === "true", `${tag}: Space did not approve`);
+  await settled(page);
+  expect(await page.$eval(`${card(SWING)} .tally`, (el) => el.textContent) === "On air", `${tag}: Space did not approve`);
 
   // 4b. the AI proposal sits under the line on air; "Use proposal" puts it on air
   const proposal = await page.$eval(`${card(SWING)} .proposal-text`, (el) => el.textContent);
@@ -304,7 +305,8 @@ async function edges(browser) {
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
   await settled(page);
   expect(await page.inputValue(`${card(AUTO)} textarea[lang="en"]`).catch(() => null) === "Draft in English", "edges: a refused edit lost the editor or the draft");
-  expect(/character the desk does not accept/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
+  // the page is in Spanish here: the desk speaks it too
+  expect(/carácter que la mesa no acepta/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
   expect(await rule(page, "return d.status(s)", AUTO.story_id) === "auto_approved", "edges: a refused edit stayed as a decision");
   await page.unroute("**/api/decisions");
   await Promise.all([page.waitForResponse((r) => r.url().includes("/api/decisions") && r.request().method() === "POST"), page.click(`${card(AUTO)} .ctl.primary`)]);
@@ -324,7 +326,7 @@ async function edges(browser) {
   await rule(page, "s.default_status = 'auto_approved'; s.safety = 'flagged'; d.changed()", AUTO.story_id);
   await rule(page, "d.decisions.delete(s.story_id); d.changed()", AUTO.story_id);
   expect(JSON.stringify(await rule(page, "return [d.status(s), d.onAir(s)]", AUTO.story_id)) === '["needs_review",false]', "edges: flagged auto-approved story on air by itself");
-  expect(await page.$eval(`${card(AUTO)} .tally`, (el) => el.textContent) === "Held", "edges: flagged story not marked Held");
+  expect(await page.$eval(`${card(AUTO)} .tally`, (el) => el.textContent) === "En espera", "edges: flagged story not marked Held (En espera)");
   await page.context().close();
 
   // 4. malformed replay files: the desk and the traces still render

@@ -355,7 +355,8 @@ Agents only learn about an event when the clock releases it, in replay generatio
   the same, and Space plays and pauses, only with the focus in the broadcast frame or its controls
   (WCAG 2.1.4) and without Ctrl, Alt, Meta or Shift; the frame takes the focus once the page loads.
 - Agent activity: a strip under the pitch that follows the replay clock and shows each agent's latest
-  step of `traces.json` with `ts <= now` (agent, step, its output summary, model, tokens, cost).
+  step of `traces.json` with `ts <= now` (agent display name, step, its output summary, model;
+  tokens and cost are only in the summary line).
   While a story graphic is on air (the latest cue if several, a tie to the later `cue_id`) it shows
   how that graphic was made instead: the latest step per agent of the traces whose `story_ids`
   include its story, with that story's totals as in the desk's Traces tab (a hand-off shared by n

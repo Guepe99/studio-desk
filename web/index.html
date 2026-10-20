@@ -14,7 +14,7 @@
 </head>
 <body>
   <main id="app">
-    <div id="frame" role="region" aria-label="Match broadcast" tabindex="0">
+    <div id="frame" role="region" aria-label="Match broadcast" data-i18n-aria="broadcast" tabindex="0">
       <canvas id="view3d" aria-hidden="true"></canvas>
       <div id="stage">
         <canvas id="pitch"></canvas>
@@ -26,12 +26,12 @@
           <div class="sb-clock"><span class="sb-min"></span><span class="sb-period"></span></div>
         </div>
         <div id="overlay"></div>
-        <div id="ai-off" hidden>AI off</div>
+        <div id="ai-off" data-i18n="aioff" hidden>AI off</div>
         <div id="replay-badge" role="status"></div>
         <div id="status" role="status"></div>
       </div>
     </div>
-    <section id="activity" aria-label="Agent activity"></section>
+    <section id="activity" aria-label="Agent activity" data-i18n-aria="activity"></section>
     <div id="deck"></div>
 
     <div id="controls">
@@ -50,7 +50,7 @@
         <button class="ctl" type="button" data-speed="16">16x</button>
         <button class="ctl" type="button" data-speed="64">64x</button>
       </div>
-      <div class="seg" role="group" aria-label="View">
+      <div class="seg" role="group" aria-label="View" data-i18n-aria="view">
         <button class="ctl" type="button" data-view="2d" aria-pressed="true">2D</button>
         <button class="ctl" type="button" data-view="3d" aria-pressed="false">3D</button>
         <button class="ctl" type="button" data-view="split" aria-pressed="false">Radar</button>

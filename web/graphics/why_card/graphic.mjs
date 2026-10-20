@@ -1,7 +1,7 @@
 // "Why it matters" card and recap, top right.
 import { SdGraphic } from "../shared/sd-graphic.mjs";
 
-const KICKER = { why: "WHY IT MATTERS", recap: "RECAP" };
+const KICKER = { en: { why: "WHY IT MATTERS", recap: "RECAP" }, it: { why: "PERCHÉ CONTA", recap: "RIEPILOGO" }, es: { why: "POR QUÉ IMPORTA", recap: "RESUMEN" } };
 // The body gets 5 lines at 33 px; longer text shrinks to fit, down to 24 px (11 px on a phone in
 // portrait). Text that still does not fit is shown in full and the card grows: a body is never cut.
 const BODY_PX = 33, MIN_PX = 24, LINE = 1.22, MAX_H = 5 * BODY_PX * LINE;
@@ -22,7 +22,7 @@ export default class WhyCard extends SdGraphic {
 
   render() {
     const d = this.data, $ = (s) => this.stage.querySelector(s);
-    $(".kicker").textContent = KICKER[d.kind] ?? "";
+    $(".kicker").textContent = (KICKER[this.lang] ?? KICKER.en)[d.kind] ?? "";
     $(".title").textContent = d.title ?? "";
     $(".body").textContent = d.body ?? "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
