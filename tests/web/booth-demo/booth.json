@@ -2926,21 +2926,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Eastvale contra el Northbrook, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Eastvale y el Northbrook.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Eastvale contra el Northbrook, y arranca el partido.",
-"file": "booth/es/d878954dddac.mp3",
-"duration_s": 3.635,
+"text": "Bienvenidos. Arranca el partido entre el Eastvale y el Northbrook.",
+"file": "booth/es/365e96db70ba.mp3",
+"duration_s": 3.395,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Northbrook contra el Eastvale, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Northbrook y el Eastvale.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Northbrook contra el Eastvale, y arranca el partido.",
-"file": "booth/es/f8664f509a69.mp3",
-"duration_s": 3.731,
+"text": "Bienvenidos. Arranca el partido entre el Northbrook y el Eastvale.",
+"file": "booth/es/0e9d019543ea.mp3",
+"duration_s": 3.443,
 "voice": "ef_dora"
 },
 {
@@ -2989,21 +2989,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Eastvale y el Northbrook, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Eastvale y el Northbrook.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Eastvale y el Northbrook, echa a rodar el balón.",
-"file": "booth/es/743486769bad.mp3",
-"duration_s": 3.587,
+"text": "Buenas noches. Echa a rodar el balón entre el Eastvale y el Northbrook.",
+"file": "booth/es/82b1b7723d45.mp3",
+"duration_s": 3.659,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Northbrook y el Eastvale, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Northbrook y el Eastvale.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Northbrook y el Eastvale, echa a rodar el balón.",
-"file": "booth/es/3d4ded780e80.mp3",
-"duration_s": 3.683,
+"text": "Buenas noches. Echa a rodar el balón entre el Northbrook y el Eastvale.",
+"file": "booth/es/b8d9ca8f71d8.mp3",
+"duration_s": 3.755,
 "voice": "ef_dora"
 },
 {
@@ -3493,6 +3493,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Esperamos a que saque el Eastvale.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Eastvale.",
+"file": "booth/es/53eb29f07b8a.mp3",
+"duration_s": 2.075,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos a que saque el Northbrook.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Northbrook.",
+"file": "booth/es/0a9a561b9b8d.mp3",
+"duration_s": 2.003,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Estalla la alegría del Eastvale.",
 "lang": "es",
 "role": "pbp",
@@ -3565,6 +3583,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Falta a favor del Eastvale.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Eastvale.",
+"file": "booth/es/31eb8df854de.mp3",
+"duration_s": 1.667,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Northbrook.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Northbrook.",
+"file": "booth/es/12709774823f.mp3",
+"duration_s": 1.787,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Festeja el Eastvale.",
 "lang": "es",
 "role": "pbp",
@@ -3625,24 +3661,6 @@
 "text": "Grieve...",
 "file": "booth/es/0887e6d835c8.mp3",
 "duration_s": 0.683,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Eastvale.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Eastvale.",
-"file": "booth/es/18bc683d5ee0.mp3",
-"duration_s": 1.955,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Northbrook.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Northbrook.",
-"file": "booth/es/dc84b1a137b0.mp3",
-"duration_s": 1.955,
 "voice": "ef_dora"
 },
 {
@@ -3796,24 +3814,6 @@
 "text": "Lannon...",
 "file": "booth/es/280eaca8ab0a.mp3",
 "duration_s": 0.611,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Eastvale.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Eastvale.",
-"file": "booth/es/d6f7fda181e8.mp3",
-"duration_s": 1.955,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Northbrook.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Northbrook.",
-"file": "booth/es/01051860f27e.mp3",
-"duration_s": 1.955,
 "voice": "ef_dora"
 },
 {
@@ -4258,6 +4258,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Reanuda el juego el Eastvale.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Eastvale.",
+"file": "booth/es/c11eae0f7bef.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el juego el Northbrook.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Northbrook.",
+"file": "booth/es/96e535733b28.mp3",
+"duration_s": 1.859,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Reanudación para el Eastvale.",
 "lang": "es",
 "role": "pbp",
@@ -4399,24 +4417,6 @@
 "text": "Saltire...",
 "file": "booth/es/9881bb8462df.mp3",
 "duration_s": 0.755,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Eastvale.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Eastvale.",
-"file": "booth/es/fd6be113d16d.mp3",
-"duration_s": 1.523,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Northbrook.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Northbrook.",
-"file": "booth/es/6ece9ebcd4b2.mp3",
-"duration_s": 1.571,
 "voice": "ef_dora"
 },
 {
@@ -5167,21 +5167,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Northbrook.",
+"key": "pbp|Adesso c'è solo il Northbrook.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Northbrook.",
-"file": "booth/it/1e537230961e.mp3",
-"duration_s": 1.763,
+"text": "Adesso c'è solo il Northbrook.",
+"file": "booth/it/89afa2505a9d.mp3",
+"duration_s": 1.835,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto l'Eastvale.",
+"key": "pbp|Adesso c'è solo l'Eastvale.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto l'Eastvale.",
-"file": "booth/it/0f85eb45a307.mp3",
-"duration_s": 1.691,
+"text": "Adesso c'è solo l'Eastvale.",
+"file": "booth/it/43cab6305ace.mp3",
+"duration_s": 1.715,
 "voice": "if_sara"
 },
 {
@@ -5212,21 +5212,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Northbrook contro l'Eastvale, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Northbrook contro l'Eastvale.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Northbrook contro l'Eastvale, si parte.",
-"file": "booth/it/386fe8795d66.mp3",
-"duration_s": 2.963,
+"text": "Benvenuti. Si parte, il Northbrook contro l'Eastvale.",
+"file": "booth/it/f71fdfd47957.mp3",
+"duration_s": 2.915,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. l'Eastvale contro il Northbrook, si parte.",
+"key": "pbp|Benvenuti. Si parte, l'Eastvale contro il Northbrook.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. l'Eastvale contro il Northbrook, si parte.",
-"file": "booth/it/02a33ae5c2fe.mp3",
-"duration_s": 3.011,
+"text": "Benvenuti. Si parte, l'Eastvale contro il Northbrook.",
+"file": "booth/it/93e4844b625a.mp3",
+"duration_s": 2.963,
 "voice": "if_sara"
 },
 {
@@ -5257,21 +5257,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Northbrook e l'Eastvale, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Northbrook e l'Eastvale.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Northbrook e l'Eastvale, comincia la partita.",
-"file": "booth/it/0570a450e901.mp3",
-"duration_s": 3.275,
+"text": "Buonasera. Comincia la partita tra il Northbrook e l'Eastvale.",
+"file": "booth/it/1d533cd2c9ac.mp3",
+"duration_s": 3.491,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. l'Eastvale e il Northbrook, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra l'Eastvale e il Northbrook.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. l'Eastvale e il Northbrook, comincia la partita.",
-"file": "booth/it/34686fa49179.mp3",
-"duration_s": 3.299,
+"text": "Buonasera. Comincia la partita tra l'Eastvale e il Northbrook.",
+"file": "booth/it/f81565e972a8.mp3",
+"duration_s": 3.467,
 "voice": "if_sara"
 },
 {
@@ -5371,6 +5371,24 @@
 "text": "Corvel...",
 "file": "booth/it/9298b9e6d8d1.mp3",
 "duration_s": 0.755,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Northbrook.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Northbrook.",
+"file": "booth/it/21ff3e8ef89f.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire l'Eastvale.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire l'Eastvale.",
+"file": "booth/it/d1999ae8aa10.mp3",
+"duration_s": 1.811,
 "voice": "if_sara"
 },
 {
@@ -5770,6 +5788,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Northbrook ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Northbrook ha cambiato assetto.",
+"file": "booth/it/6a46297f4d73.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Northbrook ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5806,21 +5833,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Northbrook sembra cambiato.",
+"key": "pbp|Il Northbrook se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Northbrook sembra cambiato.",
-"file": "booth/it/e0ca514fcb88.mp3",
-"duration_s": 1.931,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Northbrook si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Northbrook si prende il suo tempo.",
-"file": "booth/it/265fe05eb9a7.mp3",
-"duration_s": 2.243,
+"text": "Il Northbrook se la prende comoda.",
+"file": "booth/it/98c86403c929.mp3",
+"duration_s": 2.123,
 "voice": "if_sara"
 },
 {
@@ -5941,6 +5959,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Eastvale ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Eastvale ha cambiato assetto.",
+"file": "booth/it/bbe1b8adfc9e.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Eastvale ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5977,21 +6004,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|L'Eastvale sembra cambiato.",
+"key": "pbp|L'Eastvale se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "L'Eastvale sembra cambiato.",
-"file": "booth/it/05335d462278.mp3",
-"duration_s": 1.811,
-"voice": "if_sara"
-},
-{
-"key": "pbp|L'Eastvale si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "L'Eastvale si prende il suo tempo.",
-"file": "booth/it/bbb04c9663bc.mp3",
-"duration_s": 2.123,
+"text": "L'Eastvale se la prende comoda.",
+"file": "booth/it/bb687d238bb3.mp3",
+"duration_s": 2.027,
 "voice": "if_sara"
 },
 {
@@ -6526,24 +6544,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ricicla il pallone il Northbrook.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Northbrook.",
-"file": "booth/it/8fe22d401d37.mp3",
-"duration_s": 2.099,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ricicla il pallone l'Eastvale.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone l'Eastvale.",
-"file": "booth/it/205592f866a0.mp3",
-"duration_s": 2.003,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Ricomincia il Northbrook.",
 "lang": "it",
 "role": "pbp",
@@ -6559,6 +6559,24 @@
 "text": "Ricomincia l'Eastvale.",
 "file": "booth/it/7c7339fdf4f9.mp3",
 "duration_s": 1.595,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Northbrook.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Northbrook.",
+"file": "booth/it/847c0000cb11.mp3",
+"duration_s": 2.123,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per l'Eastvale.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per l'Eastvale.",
+"file": "booth/it/fc54a54db0d7.mp3",
+"duration_s": 2.003,
 "voice": "if_sara"
 },
 {
@@ -6598,6 +6616,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riparte da dietro il Northbrook.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Northbrook.",
+"file": "booth/it/8dffab14bf3c.mp3",
+"duration_s": 2.003,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte da dietro l'Eastvale.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro l'Eastvale.",
+"file": "booth/it/eefbe825268e.mp3",
+"duration_s": 1.907,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Riparte il Northbrook da centrocampo.",
 "lang": "it",
 "role": "pbp",
@@ -6631,24 +6667,6 @@
 "text": "Riparte l'Eastvale.",
 "file": "booth/it/f0e5cf7a0b43.mp3",
 "duration_s": 1.475,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ripresa per il Northbrook.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per il Northbrook.",
-"file": "booth/it/342132aeace0.mp3",
-"duration_s": 1.739,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ripresa per l'Eastvale.",
-"lang": "it",
-"role": "pbp",
-"text": "Ripresa per l'Eastvale.",
-"file": "booth/it/366575ffa089.mp3",
-"duration_s": 1.667,
 "voice": "if_sara"
 },
 {
@@ -6760,21 +6778,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta il Northbrook.",
+"key": "pbp|Si aspetta che riparta il Northbrook.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta il Northbrook.",
-"file": "booth/it/e0fdcee30424.mp3",
-"duration_s": 1.691,
+"text": "Si aspetta che riparta il Northbrook.",
+"file": "booth/it/6f87f3507ddb.mp3",
+"duration_s": 2.195,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Si aspetta l'Eastvale.",
+"key": "pbp|Si aspetta che riparta l'Eastvale.",
 "lang": "it",
 "role": "pbp",
-"text": "Si aspetta l'Eastvale.",
-"file": "booth/it/d2d755f5c376.mp3",
-"duration_s": 1.595,
+"text": "Si aspetta che riparta l'Eastvale.",
+"file": "booth/it/eaf9acd3ea20.mp3",
+"duration_s": 2.099,
 "voice": "if_sara"
 },
 {
@@ -6937,24 +6955,6 @@
 "text": "Tiene il pallino del gioco l'Eastvale.",
 "file": "booth/it/8a71c62b0ad2.mp3",
 "duration_s": 2.219,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Northbrook.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Northbrook.",
-"file": "booth/it/ee793aef6024.mp3",
-"duration_s": 2.099,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per l'Eastvale.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per l'Eastvale.",
-"file": "booth/it/7048c44f2e3a.mp3",
-"duration_s": 1.955,
 "voice": "if_sara"
 },
 {

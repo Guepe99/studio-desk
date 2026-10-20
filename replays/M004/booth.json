@@ -2710,21 +2710,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Calderholt contra el Harbour Vale, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Calderholt y el Harbour Vale.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Calderholt contra el Harbour Vale, y arranca el partido.",
-"file": "booth/es/8f6cebcefc31.mp3",
-"duration_s": 3.851,
+"text": "Bienvenidos. Arranca el partido entre el Calderholt y el Harbour Vale.",
+"file": "booth/es/97d292a10e10.mp3",
+"duration_s": 3.731,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Bienvenidos. el Harbour Vale contra el Calderholt, y arranca el partido.",
+"key": "pbp|Bienvenidos. Arranca el partido entre el Harbour Vale y el Calderholt.",
 "lang": "es",
 "role": "pbp",
-"text": "Bienvenidos. el Harbour Vale contra el Calderholt, y arranca el partido.",
-"file": "booth/es/a28dbb70d0bb.mp3",
-"duration_s": 3.875,
+"text": "Bienvenidos. Arranca el partido entre el Harbour Vale y el Calderholt.",
+"file": "booth/es/d621832e93d0.mp3",
+"duration_s": 3.707,
 "voice": "ef_dora"
 },
 {
@@ -2773,21 +2773,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Calderholt y el Harbour Vale, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Calderholt y el Harbour Vale.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Calderholt y el Harbour Vale, echa a rodar el balón.",
-"file": "booth/es/5123d6c7f1f4.mp3",
-"duration_s": 3.803,
+"text": "Buenas noches. Echa a rodar el balón entre el Calderholt y el Harbour Vale.",
+"file": "booth/es/dfc7ec6069bd.mp3",
+"duration_s": 3.947,
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Buenas noches. el Harbour Vale y el Calderholt, echa a rodar el balón.",
+"key": "pbp|Buenas noches. Echa a rodar el balón entre el Harbour Vale y el Calderholt.",
 "lang": "es",
 "role": "pbp",
-"text": "Buenas noches. el Harbour Vale y el Calderholt, echa a rodar el balón.",
-"file": "booth/es/ac528463dd28.mp3",
-"duration_s": 3.755,
+"text": "Buenas noches. Echa a rodar el balón entre el Harbour Vale y el Calderholt.",
+"file": "booth/es/c584aa5c482f.mp3",
+"duration_s": 3.947,
 "voice": "ef_dora"
 },
 {
@@ -3250,6 +3250,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Esperamos a que saque el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Calderholt.",
+"file": "booth/es/fb3ca3716f07.mp3",
+"duration_s": 2.027,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Esperamos a que saque el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Esperamos a que saque el Harbour Vale.",
+"file": "booth/es/d46e4272d090.mp3",
+"duration_s": 2.315,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Estalla la alegría del Calderholt.",
 "lang": "es",
 "role": "pbp",
@@ -3265,6 +3283,24 @@
 "text": "Estalla la alegría del Harbour Vale.",
 "file": "booth/es/21482128bcb2.mp3",
 "duration_s": 2.195,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Calderholt.",
+"file": "booth/es/2ef96bbf3707.mp3",
+"duration_s": 1.835,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Falta a favor del Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Falta a favor del Harbour Vale.",
+"file": "booth/es/c15a3625fff9.mp3",
+"duration_s": 1.931,
 "voice": "ef_dora"
 },
 {
@@ -3355,24 +3391,6 @@
 "text": "Gran alegría para el Harbour Vale.",
 "file": "booth/es/dfa04855d266.mp3",
 "duration_s": 1.931,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Calderholt.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Calderholt.",
-"file": "booth/es/f12839582a8c.mp3",
-"duration_s": 2.027,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Habrá tiro libre, para el Harbour Vale.",
-"lang": "es",
-"role": "pbp",
-"text": "Habrá tiro libre, para el Harbour Vale.",
-"file": "booth/es/ef91b81d4a6e.mp3",
-"duration_s": 2.099,
 "voice": "ef_dora"
 },
 {
@@ -3499,24 +3517,6 @@
 "text": "La afición del Harbour Vale estalla.",
 "file": "booth/es/631a9e68bbef.mp3",
 "duration_s": 2.075,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Calderholt.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Calderholt.",
-"file": "booth/es/5c223bbeddcf.mp3",
-"duration_s": 2.003,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Le toca reanudar a el Harbour Vale.",
-"lang": "es",
-"role": "pbp",
-"text": "Le toca reanudar a el Harbour Vale.",
-"file": "booth/es/317e410c0b02.mp3",
-"duration_s": 2.195,
 "voice": "ef_dora"
 },
 {
@@ -3988,6 +3988,24 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Reanuda el juego el Calderholt.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Calderholt.",
+"file": "booth/es/805849f40e30.mp3",
+"duration_s": 1.907,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Reanuda el juego el Harbour Vale.",
+"lang": "es",
+"role": "pbp",
+"text": "Reanuda el juego el Harbour Vale.",
+"file": "booth/es/063aad91290b.mp3",
+"duration_s": 2.123,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Reanudación para el Calderholt.",
 "lang": "es",
 "role": "pbp",
@@ -4048,24 +4066,6 @@
 "text": "Saca el Harbour Vale de centro.",
 "file": "booth/es/7614561920c6.mp3",
 "duration_s": 1.763,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Calderholt.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Calderholt.",
-"file": "booth/es/31a978e5b619.mp3",
-"duration_s": 1.547,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Se espera a el Harbour Vale.",
-"lang": "es",
-"role": "pbp",
-"text": "Se espera a el Harbour Vale.",
-"file": "booth/es/3f736d29456a.mp3",
-"duration_s": 1.787,
 "voice": "ef_dora"
 },
 {
@@ -4735,39 +4735,39 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto il Calderholt.",
+"key": "pbp|Adesso c'è solo il Calderholt.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto il Calderholt.",
-"file": "booth/it/ed2961fb22ab.mp3",
-"duration_s": 1.739,
+"text": "Adesso c'è solo il Calderholt.",
+"file": "booth/it/9c3a2e1a882f.mp3",
+"duration_s": 1.811,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Adesso è tutto l'Harbour Vale.",
+"key": "pbp|Adesso c'è solo l'Harbour Vale.",
 "lang": "it",
 "role": "pbp",
-"text": "Adesso è tutto l'Harbour Vale.",
-"file": "booth/it/3cfe375e73c2.mp3",
-"duration_s": 1.835,
+"text": "Adesso c'è solo l'Harbour Vale.",
+"file": "booth/it/0fee19113948.mp3",
+"duration_s": 1.883,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. il Calderholt contro l'Harbour Vale, si parte.",
+"key": "pbp|Benvenuti. Si parte, il Calderholt contro l'Harbour Vale.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. il Calderholt contro l'Harbour Vale, si parte.",
-"file": "booth/it/646c153d0eb6.mp3",
+"text": "Benvenuti. Si parte, il Calderholt contro l'Harbour Vale.",
+"file": "booth/it/a8c570e69ef6.mp3",
 "duration_s": 3.131,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Benvenuti. l'Harbour Vale contro il Calderholt, si parte.",
+"key": "pbp|Benvenuti. Si parte, l'Harbour Vale contro il Calderholt.",
 "lang": "it",
 "role": "pbp",
-"text": "Benvenuti. l'Harbour Vale contro il Calderholt, si parte.",
-"file": "booth/it/fb808861f5fc.mp3",
-"duration_s": 3.083,
+"text": "Benvenuti. Si parte, l'Harbour Vale contro il Calderholt.",
+"file": "booth/it/96d2225a9ecd.mp3",
+"duration_s": 3.107,
 "voice": "if_sara"
 },
 {
@@ -4825,21 +4825,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. il Calderholt e l'Harbour Vale, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra il Calderholt e l'Harbour Vale.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. il Calderholt e l'Harbour Vale, comincia la partita.",
-"file": "booth/it/460128dcc7f2.mp3",
-"duration_s": 3.491,
+"text": "Buonasera. Comincia la partita tra il Calderholt e l'Harbour Vale.",
+"file": "booth/it/3ddc8a072c8d.mp3",
+"duration_s": 3.587,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Buonasera. l'Harbour Vale e il Calderholt, comincia la partita.",
+"key": "pbp|Buonasera. Comincia la partita tra l'Harbour Vale e il Calderholt.",
 "lang": "it",
 "role": "pbp",
-"text": "Buonasera. l'Harbour Vale e il Calderholt, comincia la partita.",
-"file": "booth/it/7ebc4b4d3910.mp3",
-"duration_s": 3.443,
+"text": "Buonasera. Comincia la partita tra l'Harbour Vale e il Calderholt.",
+"file": "booth/it/80f05d469d90.mp3",
+"duration_s": 3.635,
 "voice": "if_sara"
 },
 {
@@ -4939,6 +4939,24 @@
 "text": "Con pazienza l'Harbour Vale.",
 "file": "booth/it/31371243927a.mp3",
 "duration_s": 1.883,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire il Calderholt.",
+"file": "booth/it/8e386ff2dce1.mp3",
+"duration_s": 1.859,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Deve ripartire l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Deve ripartire l'Harbour Vale.",
+"file": "booth/it/31c1c19f4ee8.mp3",
+"duration_s": 1.955,
 "voice": "if_sara"
 },
 {
@@ -5284,6 +5302,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Il Calderholt ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "Il Calderholt ha cambiato assetto.",
+"file": "booth/it/dd436b7e8d4b.mp3",
+"duration_s": 2.027,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Il Calderholt ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5320,21 +5347,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Il Calderholt sembra cambiato.",
+"key": "pbp|Il Calderholt se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "Il Calderholt sembra cambiato.",
-"file": "booth/it/cc13aed612c8.mp3",
-"duration_s": 1.931,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Il Calderholt si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "Il Calderholt si prende il suo tempo.",
-"file": "booth/it/6e41992f2ecb.mp3",
-"duration_s": 2.219,
+"text": "Il Calderholt se la prende comoda.",
+"file": "booth/it/0eaec9d3f435.mp3",
+"duration_s": 2.147,
 "voice": "if_sara"
 },
 {
@@ -5455,6 +5473,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'Harbour Vale ha cambiato assetto.",
+"lang": "it",
+"role": "pbp",
+"text": "L'Harbour Vale ha cambiato assetto.",
+"file": "booth/it/55e1bcdffe0f.mp3",
+"duration_s": 2.123,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'Harbour Vale ha cambiato qualcosa, Marco.",
 "lang": "it",
 "role": "pbp",
@@ -5491,21 +5518,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|L'Harbour Vale sembra cambiato.",
+"key": "pbp|L'Harbour Vale se la prende comoda.",
 "lang": "it",
 "role": "pbp",
-"text": "L'Harbour Vale sembra cambiato.",
-"file": "booth/it/72dec080933c.mp3",
-"duration_s": 2.051,
-"voice": "if_sara"
-},
-{
-"key": "pbp|L'Harbour Vale si prende il suo tempo.",
-"lang": "it",
-"role": "pbp",
-"text": "L'Harbour Vale si prende il suo tempo.",
-"file": "booth/it/261af1218dad.mp3",
-"duration_s": 2.291,
+"text": "L'Harbour Vale se la prende comoda.",
+"file": "booth/it/00577c90cea3.mp3",
+"duration_s": 2.195,
 "voice": "if_sara"
 },
 {
@@ -6040,24 +6058,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ricicla il pallone il Calderholt.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone il Calderholt.",
-"file": "booth/it/fae5ee162e5c.mp3",
-"duration_s": 2.051,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Ricicla il pallone l'Harbour Vale.",
-"lang": "it",
-"role": "pbp",
-"text": "Ricicla il pallone l'Harbour Vale.",
-"file": "booth/it/984ad4c27bad.mp3",
-"duration_s": 2.147,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Ricomincia il Calderholt.",
 "lang": "it",
 "role": "pbp",
@@ -6073,6 +6073,24 @@
 "text": "Ricomincia l'Harbour Vale.",
 "file": "booth/it/ee25eb0e0889.mp3",
 "duration_s": 1.787,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per il Calderholt.",
+"file": "booth/it/14e427737dd9.mp3",
+"duration_s": 2.099,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Rimessa in gioco per l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Rimessa in gioco per l'Harbour Vale.",
+"file": "booth/it/633f8f42fe75.mp3",
+"duration_s": 2.195,
 "voice": "if_sara"
 },
 {
@@ -6139,6 +6157,24 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Riparte da dietro il Calderholt.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro il Calderholt.",
+"file": "booth/it/dddca3342d05.mp3",
+"duration_s": 1.931,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Riparte da dietro l'Harbour Vale.",
+"lang": "it",
+"role": "pbp",
+"text": "Riparte da dietro l'Harbour Vale.",
+"file": "booth/it/23bf5d75344d.mp3",
+"duration_s": 2.051,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Riparte il Calderholt da centrocampo.",
 "lang": "it",
 "role": "pbp",
@@ -6175,39 +6211,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ripresa per il Calderholt.",
+"key": "pbp|Si aspetta che riparta il Calderholt.",
 "lang": "it",
 "role": "pbp",
-"text": "Ripresa per il Calderholt.",
-"file": "booth/it/c06fa5843271.mp3",
-"duration_s": 1.715,
+"text": "Si aspetta che riparta il Calderholt.",
+"file": "booth/it/4b78791f5ce8.mp3",
+"duration_s": 2.147,
 "voice": "if_sara"
 },
 {
-"key": "pbp|Ripresa per l'Harbour Vale.",
+"key": "pbp|Si aspetta che riparta l'Harbour Vale.",
 "lang": "it",
 "role": "pbp",
-"text": "Ripresa per l'Harbour Vale.",
-"file": "booth/it/9c37a89188ba.mp3",
-"duration_s": 1.835,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Si aspetta il Calderholt.",
-"lang": "it",
-"role": "pbp",
-"text": "Si aspetta il Calderholt.",
-"file": "booth/it/a5998e5ff7bb.mp3",
-"duration_s": 1.667,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Si aspetta l'Harbour Vale.",
-"lang": "it",
-"role": "pbp",
-"text": "Si aspetta l'Harbour Vale.",
-"file": "booth/it/acc1d450ea70.mp3",
-"duration_s": 1.739,
+"text": "Si aspetta che riparta l'Harbour Vale.",
+"file": "booth/it/06d1d8e63a84.mp3",
+"duration_s": 2.267,
 "voice": "if_sara"
 },
 {
@@ -6370,24 +6388,6 @@
 "text": "Tiene il pallino del gioco l'Harbour Vale.",
 "file": "booth/it/f21e297f231c.mp3",
 "duration_s": 2.459,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per il Calderholt.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per il Calderholt.",
-"file": "booth/it/265e363c4fa6.mp3",
-"duration_s": 2.051,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Tocca ripartire per l'Harbour Vale.",
-"lang": "it",
-"role": "pbp",
-"text": "Tocca ripartire per l'Harbour Vale.",
-"file": "booth/it/521d5b62d83e.mp3",
-"duration_s": 2.147,
 "voice": "if_sara"
 },
 {

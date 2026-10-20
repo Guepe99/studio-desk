@@ -72,7 +72,7 @@ Clip counts, Kokoro, 24 kHz mono mp3 at 48 kbit/s like the studio clips:
 
 | | en | it | es |
 |---|---|---|---|
-| shared (`web/booth/<lang>/`) | 566 | 600 | 600 |
+| shared (`web/booth/<lang>/`) | 566 | 602 | 603 |
 | per match (`replays/<match>/booth/<lang>/`), M001 | 248 | 238 | 236 |
 | DEMO fixture (`tests/web/booth-demo/booth/<lang>/`) | 272 | 262 | 260 |
 

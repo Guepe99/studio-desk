@@ -7534,21 +7534,21 @@
 "voice": "em_alex"
 },
 {
-"key": "co|Ahora mismo es todo suyo: momentum de",
+"key": "co|Ahora mismo es todo suyo: dominio de",
 "lang": "es",
 "role": "co",
-"text": "Ahora mismo es todo suyo: momentum de",
-"file": "es/866a20f7efa5.mp3",
-"duration_s": 2.243,
+"text": "Ahora mismo es todo suyo: dominio de",
+"file": "es/540e25e15722.mp3",
+"duration_s": 2.267,
 "voice": "em_alex"
 },
 {
-"key": "co|Ahora tendrá que tener cuidado.",
+"key": "co|Ahora tendrá que ir con cuidado.",
 "lang": "es",
 "role": "co",
-"text": "Ahora tendrá que tener cuidado.",
-"file": "es/ae6cee627a50.mp3",
-"duration_s": 1.883,
+"text": "Ahora tendrá que ir con cuidado.",
+"file": "es/1bd3dd749158.mp3",
+"duration_s": 1.907,
 "voice": "em_alex"
 },
 {
@@ -7678,6 +7678,15 @@
 "voice": "em_alex"
 },
 {
+"key": "co|El sprint antes del remate:",
+"lang": "es",
+"role": "co",
+"text": "El sprint antes del remate:",
+"file": "es/fe2306d6c86d.mp3",
+"duration_s": 1.835,
+"voice": "em_alex"
+},
+{
 "key": "co|El árbitro deja jugar cuando puede.",
 "lang": "es",
 "role": "co",
@@ -7750,15 +7759,6 @@
 "voice": "em_alex"
 },
 {
-"key": "co|Fíjense en el sprint antes del remate:",
-"lang": "es",
-"role": "co",
-"text": "Fíjense en el sprint antes del remate:",
-"file": "es/11199d8f2e54.mp3",
-"duration_s": 2.267,
-"voice": "em_alex"
-},
-{
 "key": "co|Golpeado a",
 "lang": "es",
 "role": "co",
@@ -7792,6 +7792,15 @@
 "text": "Imparable.",
 "file": "es/33121f017b17.mp3",
 "duration_s": 0.875,
+"voice": "em_alex"
+},
+{
+"key": "co|Le ha pegado a",
+"lang": "es",
+"role": "co",
+"text": "Le ha pegado a",
+"file": "es/0650961d92b2.mp3",
+"duration_s": 1.091,
 "voice": "em_alex"
 },
 {
@@ -7840,12 +7849,12 @@
 "voice": "em_alex"
 },
 {
-"key": "co|Los números lo confirman: momentum de",
+"key": "co|Los números lo confirman: dominio de",
 "lang": "es",
 "role": "co",
-"text": "Los números lo confirman: momentum de",
-"file": "es/656ed0505a56.mp3",
-"duration_s": 2.243,
+"text": "Los números lo confirman: dominio de",
+"file": "es/11d60f1531d9.mp3",
+"duration_s": 2.219,
 "voice": "em_alex"
 },
 {
@@ -7855,6 +7864,15 @@
 "text": "Línea alta, a",
 "file": "es/6e228b60360e.mp3",
 "duration_s": 1.139,
+"voice": "em_alex"
+},
+{
+"key": "co|Mandan ellos: dominio de",
+"lang": "es",
+"role": "co",
+"text": "Mandan ellos: dominio de",
+"file": "es/640432675443.mp3",
+"duration_s": 1.643,
 "voice": "em_alex"
 },
 {
@@ -7966,12 +7984,12 @@
 "voice": "em_alex"
 },
 {
-"key": "co|No se fue lejos.",
+"key": "co|No se ha ido por mucho.",
 "lang": "es",
 "role": "co",
-"text": "No se fue lejos.",
-"file": "es/56a58c4b4089.mp3",
-"duration_s": 1.211,
+"text": "No se ha ido por mucho.",
+"file": "es/8befa16b33b0.mp3",
+"duration_s": 1.523,
 "voice": "em_alex"
 },
 {
@@ -8107,15 +8125,6 @@
 "text": "Tengo la sensación de que puede pasar algo.",
 "file": "es/42ead4ab089b.mp3",
 "duration_s": 2.651,
-"voice": "em_alex"
-},
-{
-"key": "co|Tienen el impulso,",
-"lang": "es",
-"role": "co",
-"text": "Tienen el impulso,",
-"file": "es/152c35f3ffb6.mp3",
-"duration_s": 1.259,
 "voice": "em_alex"
 },
 {
@@ -8263,21 +8272,39 @@
 "voice": "em_alex"
 },
 {
-"key": "co|ha manejado bien el balón,",
+"key": "co|ha manejado bien el balón, un",
 "lang": "es",
 "role": "co",
-"text": "ha manejado bien el balón,",
-"file": "es/aaf87dc267a9.mp3",
-"duration_s": 1.643,
+"text": "ha manejado bien el balón, un",
+"file": "es/e06d3fa5dda5.mp3",
+"duration_s": 1.763,
 "voice": "em_alex"
 },
 {
-"key": "co|hoy. Nadie corrió más.",
+"key": "co|ha recorrido",
 "lang": "es",
 "role": "co",
-"text": "hoy. Nadie corrió más.",
-"file": "es/94dc1166d74a.mp3",
-"duration_s": 1.499,
+"text": "ha recorrido",
+"file": "es/df1ef9c98a33.mp3",
+"duration_s": 0.971,
+"voice": "em_alex"
+},
+{
+"key": "co|ha terminado con un",
+"lang": "es",
+"role": "co",
+"text": "ha terminado con un",
+"file": "es/ee6e28f1a1a8.mp3",
+"duration_s": 1.331,
+"voice": "em_alex"
+},
+{
+"key": "co|hoy. Nadie ha corrido más.",
+"lang": "es",
+"role": "co",
+"text": "hoy. Nadie ha corrido más.",
+"file": "es/014062839153.mp3",
+"duration_s": 1.571,
 "voice": "em_alex"
 },
 {
@@ -8353,15 +8380,6 @@
 "voice": "em_alex"
 },
 {
-"key": "co|recorrió",
-"lang": "es",
-"role": "co",
-"text": "recorrió",
-"file": "es/cac44217e6db.mp3",
-"duration_s": 0.731,
-"voice": "em_alex"
-},
-{
 "key": "co|se ha replegado, línea a",
 "lang": "es",
 "role": "co",
@@ -8389,15 +8407,6 @@
 "voice": "em_alex"
 },
 {
-"key": "co|terminó con",
-"lang": "es",
-"role": "co",
-"text": "terminó con",
-"file": "es/897881f212ae.mp3",
-"duration_s": 0.899,
-"voice": "em_alex"
-},
-{
 "key": "co|tiene la línea a",
 "lang": "es",
 "role": "co",
@@ -8413,6 +8422,15 @@
 "text": "tiene que ir a puerta. Él lo sabe.",
 "file": "es/bfcf6dd65610.mp3",
 "duration_s": 1.955,
+"voice": "em_alex"
+},
+{
+"key": "co|un",
+"lang": "es",
+"role": "co",
+"text": "un",
+"file": "es/2eb55b13c753.mp3",
+"duration_s": 0.419,
 "voice": "em_alex"
 },
 {
@@ -8461,15 +8479,6 @@
 "voice": "em_alex"
 },
 {
-"key": "pbp|A un costado para",
-"lang": "es",
-"role": "pbp",
-"text": "A un costado para",
-"file": "es/4793bce01270.mp3",
-"duration_s": 1.187,
-"voice": "ef_dora"
-},
-{
 "key": "pbp|Agarrón de",
 "lang": "es",
 "role": "pbp",
@@ -8494,6 +8503,15 @@
 "text": "Ahí está",
 "file": "es/82f18fb24075.mp3",
 "duration_s": 0.683,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ahí lo corta",
+"lang": "es",
+"role": "pbp",
+"text": "Ahí lo corta",
+"file": "es/73b21a3e6187.mp3",
+"duration_s": 0.923,
 "voice": "ef_dora"
 },
 {
@@ -8560,6 +8578,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Asegura con",
+"lang": "es",
+"role": "pbp",
+"text": "Asegura con",
+"file": "es/ccb6de7273d8.mp3",
+"duration_s": 0.875,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Atrapa",
 "lang": "es",
 "role": "pbp",
@@ -8578,21 +8605,12 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Atrás para",
+"key": "pbp|Balón al área,",
 "lang": "es",
 "role": "pbp",
-"text": "Atrás para",
-"file": "es/20dbe06734b6.mp3",
-"duration_s": 0.851,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Balón al área de",
-"lang": "es",
-"role": "pbp",
-"text": "Balón al área de",
-"file": "es/251ff4c2650a.mp3",
-"duration_s": 1.283,
+"text": "Balón al área,",
+"file": "es/234e906f4a00.mp3",
+"duration_s": 1.067,
 "voice": "ef_dora"
 },
 {
@@ -8605,30 +8623,12 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Balón parado.",
-"lang": "es",
-"role": "pbp",
-"text": "Balón parado.",
-"file": "es/2cc60b140379.mp3",
-"duration_s": 0.971,
-"voice": "ef_dora"
-},
-{
 "key": "pbp|Balón tenso de",
 "lang": "es",
 "role": "pbp",
 "text": "Balón tenso de",
 "file": "es/00399e04888d.mp3",
 "duration_s": 1.187,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Bien leído por",
-"lang": "es",
-"role": "pbp",
-"text": "Bien leído por",
-"file": "es/cf6994d0003b.mp3",
-"duration_s": 1.067,
 "voice": "ef_dora"
 },
 {
@@ -8731,6 +8731,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|Centro raso de",
+"lang": "es",
+"role": "pbp",
+"text": "Centro raso de",
+"file": "es/3611d7a49961.mp3",
+"duration_s": 1.139,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|Chut de",
 "lang": "es",
 "role": "pbp",
@@ -8746,6 +8755,15 @@
 "text": "Cierra",
 "file": "es/38accee43cf5.mp3",
 "duration_s": 0.563,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Combina con",
+"lang": "es",
+"role": "pbp",
+"text": "Combina con",
+"file": "es/30d8e49ceb36.mp3",
+"duration_s": 0.899,
 "voice": "ef_dora"
 },
 {
@@ -9307,21 +9325,21 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|La salida de",
-"lang": "es",
-"role": "pbp",
-"text": "La salida de",
-"file": "es/33709648f59b.mp3",
-"duration_s": 0.947,
-"voice": "ef_dora"
-},
-{
 "key": "pbp|La tiene",
 "lang": "es",
 "role": "pbp",
 "text": "La tiene",
 "file": "es/2a2e7719c226.mp3",
 "duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|La toca para",
+"lang": "es",
+"role": "pbp",
+"text": "La toca para",
+"file": "es/a2a06cb48758.mp3",
+"duration_s": 0.947,
 "voice": "ef_dora"
 },
 {
@@ -9406,12 +9424,12 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Lo para todo",
+"key": "pbp|Lo lee bien",
 "lang": "es",
 "role": "pbp",
-"text": "Lo para todo",
-"file": "es/f2e14bf96f8e.mp3",
-"duration_s": 0.851,
+"text": "Lo lee bien",
+"file": "es/fc482f2db087.mp3",
+"duration_s": 0.827,
 "voice": "ef_dora"
 },
 {
@@ -9457,6 +9475,15 @@
 "text": "Para",
 "file": "es/e9d9e260819f.mp3",
 "duration_s": 0.443,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Partido parado.",
+"lang": "es",
+"role": "pbp",
+"text": "Partido parado.",
+"file": "es/c7f16347ccdc.mp3",
+"duration_s": 1.019,
 "voice": "ef_dora"
 },
 {
@@ -9586,15 +9613,6 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Raso al área de",
-"lang": "es",
-"role": "pbp",
-"text": "Raso al área de",
-"file": "es/f3b1c3d3bdae.mp3",
-"duration_s": 1.115,
-"voice": "ef_dora"
-},
-{
 "key": "pbp|Rebota en un defensa.",
 "lang": "es",
 "role": "pbp",
@@ -9610,15 +9628,6 @@
 "text": "Rechaza",
 "file": "es/757d74a5302c.mp3",
 "duration_s": 0.731,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Recicla con",
-"lang": "es",
-"role": "pbp",
-"text": "Recicla con",
-"file": "es/f056c764133b.mp3",
-"duration_s": 0.923,
 "voice": "ef_dora"
 },
 {
@@ -9673,6 +9682,15 @@
 "text": "Resuelve",
 "file": "es/1c6d515c5ef1.mp3",
 "duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Sale y atrapa",
+"lang": "es",
+"role": "pbp",
+"text": "Sale y atrapa",
+"file": "es/f17792a1b5fd.mp3",
+"duration_s": 1.043,
 "voice": "ef_dora"
 },
 {
@@ -10063,6 +10081,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|ha llegado antes que nadie.",
+"lang": "es",
+"role": "pbp",
+"text": "ha llegado antes que nadie.",
+"file": "es/033fc7bad92d.mp3",
+"duration_s": 1.739,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|intenta armar la jugada.",
 "lang": "es",
 "role": "pbp",
@@ -10099,6 +10126,15 @@
 "voice": "ef_dora"
 },
 {
+"key": "pbp|la pone arriba.",
+"lang": "es",
+"role": "pbp",
+"text": "la pone arriba.",
+"file": "es/29018f40cfde.mp3",
+"duration_s": 1.019,
+"voice": "ef_dora"
+},
+{
 "key": "pbp|la recupera.",
 "lang": "es",
 "role": "pbp",
@@ -10123,15 +10159,6 @@
 "text": "levanta la cabeza.",
 "file": "es/f21a4bd7d294.mp3",
 "duration_s": 1.307,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|llegó antes que nadie.",
-"lang": "es",
-"role": "pbp",
-"text": "llegó antes que nadie.",
-"file": "es/81ff04c5e554.mp3",
-"duration_s": 1.427,
 "voice": "ef_dora"
 },
 {
@@ -10261,12 +10288,12 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|se va de su par.",
+"key": "pbp|se va de su hombre.",
 "lang": "es",
 "role": "pbp",
-"text": "se va de su par.",
-"file": "es/fa691cd739e0.mp3",
-"duration_s": 1.043,
+"text": "se va de su hombre.",
+"file": "es/fdd6ad1e2e39.mp3",
+"duration_s": 1.139,
 "voice": "ef_dora"
 },
 {
@@ -10285,24 +10312,6 @@
 "text": "tiene espacio.",
 "file": "es/0fe4012d9a3f.mp3",
 "duration_s": 0.971,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|¡Adentro!",
-"lang": "es",
-"role": "pbp",
-"text": "¡Adentro!",
-"file": "es/85ae1bf3815d.mp3",
-"duration_s": 0.683,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|¡Adentro! ¡",
-"lang": "es",
-"role": "pbp",
-"text": "¡Adentro! ¡",
-"file": "es/ca3efd3b1e8b.mp3",
-"duration_s": 0.683,
 "voice": "ef_dora"
 },
 {
@@ -10330,6 +10339,24 @@
 "text": "¡Bloqueado! Le tapan el disparo a",
 "file": "es/fc6313911392.mp3",
 "duration_s": 1.931,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|¡Dentro!",
+"lang": "es",
+"role": "pbp",
+"text": "¡Dentro!",
+"file": "es/32fb97dc5a12.mp3",
+"duration_s": 0.635,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|¡Dentro! ¡",
+"lang": "es",
+"role": "pbp",
+"text": "¡Dentro! ¡",
+"file": "es/ad9f4bcaa327.mp3",
+"duration_s": 0.659,
 "voice": "ef_dora"
 },
 {
@@ -12925,12 +12952,12 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|Adesso è",
+"key": "co|Adesso gioca con il",
 "lang": "it",
 "role": "co",
-"text": "Adesso è",
-"file": "it/d103663b9500.mp3",
-"duration_s": 0.851,
+"text": "Adesso gioca con il",
+"file": "it/5cae979b907c.mp3",
+"duration_s": 1.427,
 "voice": "im_nicola"
 },
 {
@@ -12958,6 +12985,15 @@
 "text": "Bravo il portiere.",
 "file": "it/632b2d0b0b45.mp3",
 "duration_s": 1.427,
+"voice": "im_nicola"
+},
+{
+"key": "co|C'è mancato poco.",
+"lang": "it",
+"role": "co",
+"text": "C'è mancato poco.",
+"file": "it/589dd848026b.mp3",
+"duration_s": 1.355,
 "voice": "im_nicola"
 },
 {
@@ -13078,15 +13114,6 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|Guardate lo scatto prima del tiro:",
-"lang": "it",
-"role": "co",
-"text": "Guardate lo scatto prima del tiro:",
-"file": "it/65bc1145c406.mp3",
-"duration_s": 2.123,
-"voice": "im_nicola"
-},
-{
 "key": "co|Hanno l'inerzia,",
 "lang": "it",
 "role": "co",
@@ -13114,12 +13141,12 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|I numeri lo confermano: momentum",
+"key": "co|I numeri lo confermano: inerzia",
 "lang": "it",
 "role": "co",
-"text": "I numeri lo confermano: momentum",
-"file": "it/0ea9a495b11a.mp3",
-"duration_s": 2.027,
+"text": "I numeri lo confermano: inerzia",
+"file": "it/5ee42fb89dc5.mp3",
+"duration_s": 1.979,
 "voice": "im_nicola"
 },
 {
@@ -13204,6 +13231,15 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|L'ha calciata a",
+"lang": "it",
+"role": "co",
+"text": "L'ha calciata a",
+"file": "it/7c28cf758a39.mp3",
+"duration_s": 1.187,
+"voice": "im_nicola"
+},
+{
 "key": "co|L'ha colpita benissimo,",
 "lang": "it",
 "role": "co",
@@ -13231,12 +13267,12 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|La spinta è tutta loro in questa fase: momentum",
+"key": "co|La spinta è tutta loro in questa fase: inerzia",
 "lang": "it",
 "role": "co",
-"text": "La spinta è tutta loro in questa fase: momentum",
-"file": "it/9cc5e3a70efb.mp3",
-"duration_s": 2.771,
+"text": "La spinta è tutta loro in questa fase: inerzia",
+"file": "it/d5b61f35cc15.mp3",
+"duration_s": 2.723,
 "voice": "im_nicola"
 },
 {
@@ -13255,6 +13291,15 @@
 "text": "Linea alta, a",
 "file": "it/465c0ff880f0.mp3",
 "duration_s": 1.163,
+"voice": "im_nicola"
+},
+{
+"key": "co|Lo scatto prima del tiro:",
+"lang": "it",
+"role": "co",
+"text": "Lo scatto prima del tiro:",
+"file": "it/89567d18e9ae.mp3",
+"duration_s": 1.715,
 "voice": "im_nicola"
 },
 {
@@ -13363,15 +13408,6 @@
 "text": "Non può lamentarsi più di tanto, credo.",
 "file": "it/493dba79b411.mp3",
 "duration_s": 2.387,
-"voice": "im_nicola"
-},
-{
-"key": "co|Non è andato lontano.",
-"lang": "it",
-"role": "co",
-"text": "Non è andato lontano.",
-"file": "it/a2c8947c1dd9.mp3",
-"duration_s": 1.715,
 "voice": "im_nicola"
 },
 {
@@ -13636,15 +13672,6 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|di passaggi riusciti.",
-"lang": "it",
-"role": "co",
-"text": "di passaggi riusciti.",
-"file": "it/ed1c8e484496.mp3",
-"duration_s": 1.619,
-"voice": "im_nicola"
-},
-{
 "key": "co|e il pallone lo riconquistano lì.",
 "lang": "it",
 "role": "co",
@@ -13663,21 +13690,21 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|ha chiuso con",
+"key": "co|ha chiuso così, passaggi riusciti:",
 "lang": "it",
 "role": "co",
-"text": "ha chiuso con",
-"file": "it/6720bd8caca4.mp3",
-"duration_s": 1.019,
+"text": "ha chiuso così, passaggi riusciti:",
+"file": "it/9bc0c01ece27.mp3",
+"duration_s": 2.051,
 "voice": "im_nicola"
 },
 {
-"key": "co|ha gestito bene il pallone,",
+"key": "co|ha gestito bene il pallone, passaggi riusciti:",
 "lang": "it",
 "role": "co",
-"text": "ha gestito bene il pallone,",
-"file": "it/76a499da499c.mp3",
-"duration_s": 1.811,
+"text": "ha gestito bene il pallone, passaggi riusciti:",
+"file": "it/43034c77ead0.mp3",
+"duration_s": 2.651,
 "voice": "im_nicola"
 },
 {
@@ -13744,12 +13771,21 @@
 "voice": "im_nicola"
 },
 {
-"key": "co|per cento",
+"key": "co|passaggi riusciti,",
 "lang": "it",
 "role": "co",
-"text": "per cento",
-"file": "it/222e8772a54c.mp3",
-"duration_s": 0.827,
+"text": "passaggi riusciti,",
+"file": "it/e4b8ec3c0987.mp3",
+"duration_s": 1.259,
+"voice": "im_nicola"
+},
+{
+"key": "co|per cento.",
+"lang": "it",
+"role": "co",
+"text": "per cento.",
+"file": "it/c626667c0b89.mp3",
+"duration_s": 0.851,
 "voice": "im_nicola"
 },
 {
@@ -14266,12 +14302,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Da vicino... fuori! Come ha fatto, Marco?",
+"key": "pbp|Da vicino... fuori! Com'è possibile, Marco?",
 "lang": "it",
 "role": "pbp",
-"text": "Da vicino... fuori! Come ha fatto, Marco?",
-"file": "it/f7185c8a75eb.mp3",
-"duration_s": 2.363,
+"text": "Da vicino... fuori! Com'è possibile, Marco?",
+"file": "it/c002bb84e1d0.mp3",
+"duration_s": 2.459,
 "voice": "if_sara"
 },
 {
@@ -14392,6 +14428,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Fallo su",
+"lang": "it",
+"role": "pbp",
+"text": "Fallo su",
+"file": "it/03efc5c75a7e.mp3",
+"duration_s": 0.851,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Ferma tutto",
 "lang": "it",
 "role": "pbp",
@@ -14461,15 +14506,6 @@
 "text": "Fischia l'arbitro.",
 "file": "it/82bfbcb79975.mp3",
 "duration_s": 1.403,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Fuori dalla zona calda,",
-"lang": "it",
-"role": "pbp",
-"text": "Fuori dalla zona calda,",
-"file": "it/c106a676fcc6.mp3",
-"duration_s": 1.643,
 "voice": "if_sara"
 },
 {
@@ -14653,6 +14689,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|L'appoggia per",
+"lang": "it",
+"role": "pbp",
+"text": "L'appoggia per",
+"file": "it/a92ca7148618.mp3",
+"duration_s": 0.995,
+"voice": "if_sara"
+},
+{
 "key": "pbp|L'arbitro ammonisce",
 "lang": "it",
 "role": "pbp",
@@ -14716,6 +14761,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|La toglie dalla zona calda",
+"lang": "it",
+"role": "pbp",
+"text": "La toglie dalla zona calda",
+"file": "it/e5761be430e0.mp3",
+"duration_s": 1.619,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Lancio di",
 "lang": "it",
 "role": "pbp",
@@ -14752,20 +14806,11 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Lo gioca a favore di",
+"key": "pbp|Lungolinea di",
 "lang": "it",
 "role": "pbp",
-"text": "Lo gioca a favore di",
-"file": "it/1b9e48d70781.mp3",
-"duration_s": 1.403,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Lungo linea di",
-"lang": "it",
-"role": "pbp",
-"text": "Lungo linea di",
-"file": "it/0a4aaa4bd248.mp3",
+"text": "Lungolinea di",
+"file": "it/c1cdbacfac53.mp3",
 "duration_s": 1.139,
 "voice": "if_sara"
 },
@@ -14824,12 +14869,21 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Palla in mezzo di",
+"key": "pbp|Palla alle spalle della difesa per",
 "lang": "it",
 "role": "pbp",
-"text": "Palla in mezzo di",
-"file": "it/c70fc82ac5e6.mp3",
-"duration_s": 1.211,
+"text": "Palla alle spalle della difesa per",
+"file": "it/3a059de0f72c.mp3",
+"duration_s": 1.955,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Palla in mezzo,",
+"lang": "it",
+"role": "pbp",
+"text": "Palla in mezzo,",
+"file": "it/aeae9c243bb2.mp3",
+"duration_s": 1.139,
 "voice": "if_sara"
 },
 {
@@ -14848,24 +14902,6 @@
 "text": "Palla lunga di",
 "file": "it/1ccf0c90c535.mp3",
 "duration_s": 1.115,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Palla scavalcata per",
-"lang": "it",
-"role": "pbp",
-"text": "Palla scavalcata per",
-"file": "it/d5ea4803f305.mp3",
-"duration_s": 1.355,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Pallone fermo.",
-"lang": "it",
-"role": "pbp",
-"text": "Pallone fermo.",
-"file": "it/a942b5522d0d.mp3",
-"duration_s": 1.211,
 "voice": "if_sara"
 },
 {
@@ -14919,6 +14955,15 @@
 "role": "pbp",
 "text": "Parte il lancio di",
 "file": "it/dfba36b57ada.mp3",
+"duration_s": 1.211,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Partita ferma.",
+"lang": "it",
+"role": "pbp",
+"text": "Partita ferma.",
+"file": "it/667a8af76211.mp3",
 "duration_s": 1.211,
 "voice": "if_sara"
 },
@@ -14986,12 +15031,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Rasoterra in mezzo di",
+"key": "pbp|Rasoterra di",
 "lang": "it",
 "role": "pbp",
-"text": "Rasoterra in mezzo di",
-"file": "it/a1a44d8f40b5.mp3",
-"duration_s": 1.523,
+"text": "Rasoterra di",
+"file": "it/a568acff9221.mp3",
+"duration_s": 1.115,
 "voice": "if_sara"
 },
 {
@@ -15046,15 +15091,6 @@
 "text": "Rete di",
 "file": "it/35f7d73390ab.mp3",
 "duration_s": 0.827,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Riciclo, di nuovo",
-"lang": "it",
-"role": "pbp",
-"text": "Riciclo, di nuovo",
-"file": "it/fb97ea4f5a8b.mp3",
-"duration_s": 1.307,
 "voice": "if_sara"
 },
 {
@@ -15175,6 +15211,15 @@
 "voice": "if_sara"
 },
 {
+"key": "pbp|Si torna indietro, di nuovo",
+"lang": "it",
+"role": "pbp",
+"text": "Si torna indietro, di nuovo",
+"file": "it/3dc009cb29b3.mp3",
+"duration_s": 1.763,
+"voice": "if_sara"
+},
+{
 "key": "pbp|Sopra la traversa,",
 "lang": "it",
 "role": "pbp",
@@ -15229,15 +15274,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|Su",
-"lang": "it",
-"role": "pbp",
-"text": "Su",
-"file": "it/ee4078a72528.mp3",
-"duration_s": 0.515,
-"voice": "if_sara"
-},
-{
 "key": "pbp|Sul fondo la conclusione di",
 "lang": "it",
 "role": "pbp",
@@ -15262,6 +15298,15 @@
 "text": "Tempismo perfetto di",
 "file": "it/c99092bff420.mp3",
 "duration_s": 1.547,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Tenta il dribbling",
+"lang": "it",
+"role": "pbp",
+"text": "Tenta il dribbling",
+"file": "it/839cf7c1e596.mp3",
+"duration_s": 1.331,
 "voice": "if_sara"
 },
 {
@@ -15481,15 +15526,6 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|c'è irregolarità.",
-"lang": "it",
-"role": "pbp",
-"text": "c'è irregolarità.",
-"file": "it/6a4b3e99225f.mp3",
-"duration_s": 1.331,
-"voice": "if_sara"
-},
-{
 "key": "pbp|cerca il corridoio.",
 "lang": "it",
 "role": "pbp",
@@ -15553,12 +15589,12 @@
 "voice": "if_sara"
 },
 {
-"key": "pbp|da vicino... fuori! Come ha fatto, Marco?",
+"key": "pbp|da vicino... fuori! Come ha fatto a sbagliarlo, Marco?",
 "lang": "it",
 "role": "pbp",
-"text": "da vicino... fuori! Come ha fatto, Marco?",
-"file": "it/f7a146081f55.mp3",
-"duration_s": 2.363,
+"text": "da vicino... fuori! Come ha fatto a sbagliarlo, Marco?",
+"file": "it/1dcab8f099c2.mp3",
+"duration_s": 2.843,
 "voice": "if_sara"
 },
 {
@@ -15649,6 +15685,15 @@
 "text": "in fuorigioco.",
 "file": "it/9bca36caf1c3.mp3",
 "duration_s": 1.283,
+"voice": "if_sara"
+},
+{
+"key": "pbp|in mezzo.",
+"lang": "it",
+"role": "pbp",
+"text": "in mezzo.",
+"file": "it/5ede5c2fc8f1.mp3",
+"duration_s": 0.971,
 "voice": "if_sara"
 },
 {
