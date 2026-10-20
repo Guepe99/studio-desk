@@ -179,6 +179,7 @@ class PrecompressedStatic(StaticFiles):
 COOKIE = "sd_session"
 MATCH_PATTERN = r"^(M\d{3}|DEMO)$"
 EDIT_MAX_CHARS = 600            # a why_card body: five lines that shrink to fit
+TITLE_MAX_CHARS = 80            # a why_card headline: one line
 MAX_ACTIONS_PER_SESSION = 300   # decisions and kill-switch flips: plenty for a judge, a wall for a script
 MAX_NEW_SESSIONS_PER_DAY = 5000  # with the cap above, bounds what the public link can write in a day
 MAX_NEW_SESSIONS_PER_CLIENT = 50  # per address and UTC day: one script cannot use up the day's sessions for everyone
@@ -204,12 +205,16 @@ class Decision(BaseModel):
     match_id: str = Field(pattern=MATCH_PATTERN)
     story_id: str = Field(pattern=r"^S-\d{6}$")
     decision: Literal["approved", "edited", "rejected"]
-    edited_text: dict[Literal["en", "it", "es"], Text] | None = None
+    # a language's body, or its headline under title_<lang>
+    edited_text: dict[Literal["en", "it", "es", "title_en", "title_it", "title_es"], Text] | None = None
 
     @model_validator(mode="after")
     def _text_only_with_edit(self):
         if (self.decision == "edited") != bool(self.edited_text):
             raise ValueError("edited_text is required for 'edited' and not allowed otherwise")
+        for k, v in (self.edited_text or {}).items():
+            if k.startswith("title_") and (len(v) > TITLE_MAX_CHARS or "\n" in v):
+                raise ValueError(f"a headline is one line of at most {TITLE_MAX_CHARS} characters")
         return self
 
 
@@ -346,10 +351,10 @@ def get_decisions(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)
 
 
 def _detail(edited: dict | None) -> dict:
-    """Audit detail of a decision: for an edit, the languages and the SHA-1 of each text that went on air."""
+    """Audit detail of a decision: for an edit, the languages and the SHA-1 of each text (body or title_<lang>) that went on air."""
     if not edited:
         return {"langs": []}
-    return {"langs": sorted(edited), "sha1": {k: hashlib.sha1(v.encode("utf-8")).hexdigest() for k, v in sorted(edited.items())}}
+    return {"langs": sorted({k.removeprefix("title_") for k in edited}), "sha1": {k: hashlib.sha1(v.encode("utf-8")).hexdigest() for k, v in sorted(edited.items())}}
 
 
 @app.post("/api/decisions")

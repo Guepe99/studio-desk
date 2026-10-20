@@ -1,7 +1,7 @@
 // "Why it matters" card and recap, top right.
 import { SdGraphic } from "../shared/sd-graphic.mjs";
+import { KICKER } from "./kicker.mjs";
 
-const KICKER = { en: { why: "WHY IT MATTERS", recap: "RECAP" }, it: { why: "PERCHÉ CONTA", recap: "RIEPILOGO" }, es: { why: "POR QUÉ IMPORTA", recap: "RESUMEN" } };
 // The body gets 5 lines at 33 px; longer text shrinks to fit, down to 24 px (30 px in the compact
 // variant of a small frame). Text that still does not fit is shown in full and the card grows: a body is never cut.
 const BODY_PX = 33, MIN_PX = 24, COMPACT_PX = 30, LINE = 1.22, MAX_H = 5 * BODY_PX * LINE;

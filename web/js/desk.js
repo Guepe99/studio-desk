@@ -1,5 +1,6 @@
 // Control desk: the candidate stories with their evidence, approve / edit / reject, the AI kill
-// switch, the audit log and the agent traces (docs/CONTRACT.md, Runtime records and API).
+// switch, the audit log and the agent traces (docs/CONTRACT.md, Runtime records and API; the design
+// and its sources: docs/desk.md).
 //
 // One rule decides what goes on air: a story below the risk threshold is auto-approved and plays
 // unless this visitor rejects it; a story that needs review, or that Content Safety flagged, is held
@@ -9,6 +10,10 @@
 // does not answer within API_TIMEOUT_MS (CONNECT_TRIES times), they are kept in memory for the tab.
 // The desk's controls stay disabled until that is settled, and while a save is in flight: one request
 // at a time, so saves never cross and a server reply never undoes what the visitor did meanwhile.
+//
+// The stories tab lists only what the match has reached, plus LOOKAHEAD_S: a desk that showed the
+// whole replay would spoil it. Three sections: on air now, what needs you, what is done.
+import { KICKER } from "../graphics/why_card/kicker.mjs";
 
 const LANGS = ["en", "it", "es"];
 // Every string the desk shows, in the three page languages. Agent output (trace text, steps, model
@@ -17,9 +22,8 @@ const LANGS = ["en", "it", "es"];
 export const TEXT = {
   en: {
     title: "Control desk", close: "Close", closeLabel: "Close the control desk",
-    purpose: "The agents write these graphics. Nothing they write goes on air until you or the risk rule approve it.",
     ai: "AI graphics ", on: "on", off: "off", loadingDecisions: "Loading your decisions", saving: "Saving",
-    waiting: "{n} of {m} waiting for review", tabs: "Desk views", tabStories: "Stories", tabAudit: "Audit log", tabTraces: "Traces",
+    waiting: "{n} waiting", tabs: "Desk views", tabStories: "Stories", tabAudit: "Audit log", tabTraces: "Traces",
     kill: "AI off: only template graphics are on air. Stories stay listed for review.",
     footConnecting: "Connecting to the server: the desk unlocks once your saved decisions are in.",
     footOnline: "Your decisions are saved for this browser only. Other visitors see the original replay.",
@@ -47,7 +51,7 @@ export const TEXT = {
     dn_rewritten: "What the earlier AI drafts got wrong", dn_template: "Why the AI drafts were not kept", notes: "Verifier notes",
     s_passed: "Passed", s_flagged: "Flagged", s_not_checked: "Not checked",
     evidence: ({ f, e }) => `Evidence: ${f} fact${f === 1 ? "" : "s"}, ${e} event${e === 1 ? "" : "s"}`,
-    put: "Put on air", keep: "Keep on air", approve: "Approve", edit: "Edit", reject: "Reject", showTrace: "Show trace",
+    put: "Put on air", approve: "Approve", edit: "Edit", reject: "Reject", showTrace: "Show trace",
     actLabel: "{label}: {kind} at minute {m}",
     proposalOn: "AI proposal, on air: ", proposalOff: "AI proposal, not on air: ", useProposal: "Use proposal",
     lang_en: "English", lang_it: "Italian", lang_es: "Spanish", emptyText: "The {name} text cannot be empty. Reject the story to keep it off air.",
@@ -61,10 +65,10 @@ export const TEXT = {
     goals: ({ n }) => `${n} goal${n === "1" ? "" : "s"}`,
     pitch: ({ n, run }) => `Pitch map: ${n} evidence event${n === 1 ? "" : "s"}${run ? " and the run behind a speed fact" : ""}`,
     calls: "model calls", tokens: "tokens", cost: "model cost", yours: "of your actions", logCaption: "Audit log, newest first",
-    colUtc: "UTC", colWho: "Who", colWhat: "What", colCost: "Tokens and cost",
+    colWho: "Who", colWhat: "What", colCost: "Tokens and cost",
     a_ai_off: "switched AI graphics off", a_ai_on: "switched AI graphics on", a_ask: "your question, {s}", a_auto: "auto-approved, risk {r} below {t}",
     a_approved: "approved", a_edited: "edited", a_rejected: "rejected", a_undo: "undid the last action",
-    auditEmpty: "Nothing logged yet. Put a story on air, edit it or reject it and it shows up here.",
+    auditEmpty: "None yet. Put a story on air, edit it or reject it and it shows up here.",
     pipeline: "How a story is made", noTraces: "No agent traces in this replay yet.", wholeRun: "Whole run", showStory: "Show story",
     traceSum: ({ n, tok, usd, s }) => `${n} hand-off${n === "1" ? "" : "s"}, ${tok} tokens, ${usd}, ${s} s`,
     traceShared: ({ n }) => `, counting this story's share of the ${n} shared with other stories`,
@@ -78,14 +82,25 @@ export const TEXT = {
     role_commentator: "Writes the lines in English, Italian and Spanish.",
     role_verifier: "Checks every number against the fact ledger; rewrites twice at most, then a template line.",
     role_director: "Picks graphic, time and audience; never more than 2 on screen.",
+    sec_air: "On air now", sec_needs: "Needs you", sec_done: "Done",
+    airEmpty: "Nothing on screen right now.", doneEmpty: "Nothing decided yet.",
+    needsEmpty: "Nothing waits for you. The agents write these graphics, and nothing they write goes on air until you or the risk rule approve it.",
+    next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "its slot is now", toAirPast: "its slot was at {m}'", left: "{s} s left",
+    takeOut: "Take out", template: "template graphic", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_why_card: "Card",
+    done_takenOut: "{what} taken out", undone_template: "Undone: {what} can go on air again",
+    row_rejected: "rejected by you", row_kill: "off air while AI graphics are off", info: "About your decisions",
+    fHeadline: "Headline", fBody: "Text", emptyTitle: "The {name} headline cannot be empty.", factsLabel: "Facts: ",
+    yourActions: "Your actions", colMinute: "Minute", costHead: "What the agents cost",
+    y_ai_off: "AI graphics switched off", y_ai_on: "AI graphics switched on", y_undo: "Last action undone",
+    keysDesk: "In the control desk", key_a: "Put the story on air", key_e: "Edit the story", key_r: "Reject the story, or take it off air",
+    key_jk: "Next or previous story", key_u: "Undo the last decision",
     k_goal: "Goal", k_key_pass: "Key pass", k_momentum_swing: "Momentum swing", k_comeback: "Comeback", k_top_sprint: "Top sprint",
     k_high_press: "High press", k_tactical_shift: "Tactical shift", k_big_chance: "Big chance", k_pressing_spell: "Pressing spell", k_recap: "Recap",
   },
   it: {
     title: "Regia", close: "Chiudi", closeLabel: "Chiudi la regia",
-    purpose: "Queste grafiche le scrivono gli agenti. Niente di ciò che scrivono va in onda finché non lo approvi tu o la regola del rischio.",
     ai: "Grafiche IA ", on: "accese", off: "spente", loadingDecisions: "Caricamento delle tue decisioni", saving: "Salvataggio",
-    waiting: "{n} di {m} da rivedere", tabs: "Viste della regia", tabStories: "Storie", tabAudit: "Registro", tabTraces: "Tracce",
+    waiting: "{n} in attesa", tabs: "Viste della regia", tabStories: "Storie", tabAudit: "Registro", tabTraces: "Tracce",
     kill: "IA spenta: in onda solo le grafiche standard. Le storie restano in elenco da rivedere.",
     footConnecting: "Connessione al server: la regia si sblocca quando arrivano le tue decisioni salvate.",
     footOnline: "Le tue decisioni sono salvate solo per questo browser. Gli altri visitatori vedono il replay originale.",
@@ -113,7 +128,7 @@ export const TEXT = {
     dn_rewritten: "Cosa sbagliavano le bozze IA precedenti", dn_template: "Perché le bozze IA sono state scartate", notes: "Note del verificatore",
     s_passed: "Superato", s_flagged: "Segnalato", s_not_checked: "Non controllato",
     evidence: ({ f, e }) => `Prove: ${f} fatt${f === 1 ? "o" : "i"}, ${e} event${e === 1 ? "o" : "i"}`,
-    put: "Manda in onda", keep: "Tieni in onda", approve: "Approva", edit: "Modifica", reject: "Respingi", showTrace: "Mostra la traccia",
+    put: "Manda in onda", approve: "Approva", edit: "Modifica", reject: "Respingi", showTrace: "Mostra la traccia",
     actLabel: "{label}: {kind} al minuto {m}",
     proposalOn: "Proposta IA, in onda: ", proposalOff: "Proposta IA, non in onda: ", useProposal: "Usa la proposta",
     lang_en: "Inglese", lang_it: "Italiano", lang_es: "Spagnolo", emptyText: "Il testo ({name}) non può essere vuoto. Respingi la storia per tenerla fuori onda.",
@@ -128,10 +143,10 @@ export const TEXT = {
     goals: ({ n }) => `${n} gol`,
     pitch: ({ n, run }) => `Mappa del campo: ${n} event${n === 1 ? "o" : "i"} di prova${run ? " e la corsa dietro un dato di velocità" : ""}`,
     calls: "chiamate al modello", tokens: "token", cost: "costo dei modelli", yours: "azioni tue", logCaption: "Registro, dal più recente",
-    colUtc: "UTC", colWho: "Chi", colWhat: "Cosa", colCost: "Token e costo",
+    colWho: "Chi", colWhat: "Cosa", colCost: "Token e costo",
     a_ai_off: "ha spento le grafiche IA", a_ai_on: "ha acceso le grafiche IA", a_ask: "la tua domanda, {s}", a_auto: "approvata in automatico, rischio {r} sotto {t}",
     a_approved: "approvata", a_edited: "modificata", a_rejected: "respinta", a_undo: "ha annullato l'ultima azione",
-    auditEmpty: "Ancora niente nel registro. Manda in onda, modifica o respingi una storia e comparirà qui.",
+    auditEmpty: "Ancora nessuna. Manda in onda, modifica o respingi una storia e comparirà qui.",
     pipeline: "Come nasce una storia", noTraces: "Ancora nessuna traccia degli agenti in questo replay.", wholeRun: "Tutto il giro", showStory: "Mostra la storia",
     traceSum: ({ n, tok, usd, s }) => `${n} passaggi${n === "1" ? "o" : ""} di consegne, ${tok} token, ${usd}, ${s} s`,
     traceShared: ({ n }) => `, contando la quota di questa storia nei ${n} condivisi con altre storie`,
@@ -145,14 +160,25 @@ export const TEXT = {
     role_commentator: "Scrive le frasi in inglese, italiano e spagnolo.",
     role_verifier: "Controlla ogni numero sul registro dei fatti; riscrive al massimo due volte, poi usa una frase modello.",
     role_director: "Sceglie grafica, momento e pubblico; mai più di 2 sullo schermo.",
+    sec_air: "In onda ora", sec_needs: "Aspettano te", sec_done: "Già decise",
+    airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
+    needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, e niente di ciò che scrivono va in onda finché non lo approvi tu o la regola del rischio.",
+    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "il suo spazio è adesso", toAirPast: "il suo spazio era al {m}'", left: "ancora {s} s",
+    takeOut: "Togli", template: "grafica standard", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_why_card: "Scheda",
+    done_takenOut: "Fuori onda: {what}", undone_template: "Annullato: {what} può tornare in onda",
+    row_rejected: "respinta da te", row_kill: "fuori onda finché le grafiche IA sono spente", info: "Sulle tue decisioni",
+    fHeadline: "Titolo", fBody: "Testo", emptyTitle: "Il titolo ({name}) non può essere vuoto.", factsLabel: "Fatti: ",
+    yourActions: "Le tue azioni", colMinute: "Minuto", costHead: "Quanto sono costati gli agenti",
+    y_ai_off: "Grafiche IA spente", y_ai_on: "Grafiche IA accese", y_undo: "Ultima azione annullata",
+    keysDesk: "Nella regia", key_a: "Manda in onda la storia", key_e: "Modifica la storia", key_r: "Respingi la storia, o toglila dall'onda",
+    key_jk: "Storia successiva o precedente", key_u: "Annulla l'ultima decisione",
     k_goal: "Gol", k_key_pass: "Passaggio chiave", k_momentum_swing: "Cambio di inerzia", k_comeback: "Rimonta", k_top_sprint: "Scatto più veloce",
     k_high_press: "Pressing alto", k_tactical_shift: "Cambio tattico", k_big_chance: "Grande occasione", k_pressing_spell: "Fase di pressing", k_recap: "Riepilogo",
   },
   es: {
     title: "Mesa de control", close: "Cerrar", closeLabel: "Cerrar la mesa de control",
-    purpose: "Estos gráficos los escriben los agentes. Nada de lo que escriben sale al aire hasta que lo apruebes tú o la regla de riesgo.",
     ai: "Gráficos de IA ", on: "encendidos", off: "apagados", loadingDecisions: "Cargando tus decisiones", saving: "Guardando",
-    waiting: "{n} de {m} por revisar", tabs: "Vistas de la mesa", tabStories: "Historias", tabAudit: "Registro", tabTraces: "Trazas",
+    waiting: "{n} en espera", tabs: "Vistas de la mesa", tabStories: "Historias", tabAudit: "Registro", tabTraces: "Trazas",
     kill: "IA apagada: solo los gráficos estándar están al aire. Las historias siguen en la lista para revisarlas.",
     footConnecting: "Conectando con el servidor: la mesa se desbloquea cuando lleguen tus decisiones guardadas.",
     footOnline: "Tus decisiones se guardan solo para este navegador. Los demás visitantes ven la repetición original.",
@@ -180,7 +206,7 @@ export const TEXT = {
     dn_rewritten: "Qué fallaba en los borradores de IA anteriores", dn_template: "Por qué se descartaron los borradores de IA", notes: "Notas del verificador",
     s_passed: "Superado", s_flagged: "Marcado", s_not_checked: "Sin comprobar",
     evidence: ({ f, e }) => `Pruebas: ${f} dato${f === 1 ? "" : "s"}, ${e} evento${e === 1 ? "" : "s"}`,
-    put: "Poner al aire", keep: "Mantener al aire", approve: "Aprobar", edit: "Editar", reject: "Rechazar", showTrace: "Ver la traza",
+    put: "Poner al aire", approve: "Aprobar", edit: "Editar", reject: "Rechazar", showTrace: "Ver la traza",
     actLabel: "{label}: {kind} en el minuto {m}",
     proposalOn: "Propuesta de IA, al aire: ", proposalOff: "Propuesta de IA, no al aire: ", useProposal: "Usar la propuesta",
     lang_en: "Inglés", lang_it: "Italiano", lang_es: "Español", emptyText: "El texto ({name}) no puede quedar vacío. Rechaza la historia para dejarla fuera del aire.",
@@ -195,10 +221,10 @@ export const TEXT = {
     goals: ({ n }) => `${n} gol${n === "1" ? "" : "es"}`,
     pitch: ({ n, run }) => `Mapa del campo: ${n} evento${n === 1 ? "" : "s"} de prueba${run ? " y la carrera detrás de un dato de velocidad" : ""}`,
     calls: "llamadas al modelo", tokens: "tokens", cost: "coste de los modelos", yours: "acciones tuyas", logCaption: "Registro, del más reciente",
-    colUtc: "UTC", colWho: "Quién", colWhat: "Qué", colCost: "Tokens y coste",
+    colWho: "Quién", colWhat: "Qué", colCost: "Tokens y coste",
     a_ai_off: "apagó los gráficos de IA", a_ai_on: "encendió los gráficos de IA", a_ask: "tu pregunta, {s}", a_auto: "aprobada automáticamente, riesgo {r} por debajo de {t}",
     a_approved: "aprobada", a_edited: "editada", a_rejected: "rechazada", a_undo: "deshizo la última acción",
-    auditEmpty: "Todavía no hay nada en el registro. Pon una historia al aire, edítala o recházala y aparecerá aquí.",
+    auditEmpty: "Todavía ninguna. Pon una historia al aire, edítala o recházala y aparecerá aquí.",
     pipeline: "Cómo nace una historia", noTraces: "Todavía no hay trazas de los agentes en esta repetición.", wholeRun: "Toda la ejecución", showStory: "Ver la historia",
     traceSum: ({ n, tok, usd, s }) => `${n} relevo${n === "1" ? "" : "s"}, ${tok} tokens, ${usd}, ${s} s`,
     traceShared: ({ n }) => `, contando la parte de esta historia en los ${n} compartidos con otras historias`,
@@ -212,10 +238,23 @@ export const TEXT = {
     role_commentator: "Escribe las frases en inglés, italiano y español.",
     role_verifier: "Comprueba cada número con el registro de datos; reescribe dos veces como máximo y luego usa una frase de plantilla.",
     role_director: "Elige gráfico, momento y público; nunca más de 2 en pantalla.",
+    sec_air: "Al aire ahora", sec_needs: "Te esperan", sec_done: "Ya decididas",
+    airEmpty: "Ahora no hay nada al aire.", doneEmpty: "Todavía no hay nada decidido.",
+    needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, y nada de lo que escriben sale al aire hasta que lo apruebes tú o la regla de riesgo.",
+    next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "su hueco es ahora", toAirPast: "su hueco era en el {m}'", left: "quedan {s} s",
+    takeOut: "Quitar", template: "gráfico estándar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_why_card: "Tarjeta",
+    done_takenOut: "Fuera del aire: {what}", undone_template: "Deshecho: {what} puede volver al aire",
+    row_rejected: "rechazada por ti", row_kill: "fuera del aire mientras los gráficos de IA están apagados", info: "Sobre tus decisiones",
+    fHeadline: "Titular", fBody: "Texto", emptyTitle: "El titular ({name}) no puede quedar vacío.", factsLabel: "Datos: ",
+    yourActions: "Tus acciones", colMinute: "Minuto", costHead: "Lo que costaron los agentes",
+    y_ai_off: "Gráficos de IA apagados", y_ai_on: "Gráficos de IA encendidos", y_undo: "Última acción deshecha",
+    keysDesk: "En la mesa de control", key_a: "Pon la historia al aire", key_e: "Edita la historia", key_r: "Rechaza la historia, o quítala del aire",
+    key_jk: "Historia siguiente o anterior", key_u: "Deshaz la última decisión",
     k_goal: "Gol", k_key_pass: "Pase clave", k_momentum_swing: "Cambio de dominio", k_comeback: "Remontada", k_top_sprint: "Sprint más rápido",
     k_high_press: "Presión alta", k_tactical_shift: "Cambio táctico", k_big_chance: "Ocasión clara", k_pressing_spell: "Fase de presión", k_recap: "Resumen",
   },
 };
+
 /** A desk string in a page language, English when that language lacks it. */
 export function tr(lang, key, vars = {}) {
   const v = TEXT[lang]?.[key] ?? TEXT.en[key];
@@ -234,14 +273,17 @@ export const agentName = (agent, lang = "en") => {
 const AUTO_RISK = 0.35; // studiodesk/config.py AUTO_APPROVE_RISK
 const HIGH_RISK = 0.6;  // ours: from here the reviewer reads the evidence before anything else
 export const riskBand = (r) => (r < AUTO_RISK ? "low" : r < HIGH_RISK ? "mid" : "high"); // an unknown risk counts as high
-const UNDO_MS = 10000;
+const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself stays until the next decision
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
+const TITLE_MAX = 80; // studiodesk/api.py TITLE_MAX_CHARS
+const LOOKAHEAD_S = 60; // a story whose first graphic is this close is listed, as Next
 const ON_AIR = ["auto_approved", "approved", "edited"];
 const REASONS = ["number", "player", "moment", "tone"]; // why a story was rejected, one tap each
 const API_TIMEOUT_MS = 4000;
 const CONNECT_TRIES = 3; // a slow first answer (a cold container) is not a reason to work offline for the whole visit
 const RUN_MAX_FRAMES = 300; // a sprint run longer than 30 s is not a sprint: never draw a whole-match path
 const SVGNS = "http://www.w3.org/2000/svg";
+const FACT_ID = /F-[A-Z0-9_]+-\d+/g;
 
 export const kindName = (k, lang) => TEXT[lang]?.[`k_${k}`] ?? TEXT.en[`k_${k}`] ?? String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const usd = (v, lang = "en") => {
@@ -250,6 +292,19 @@ const usd = (v, lang = "en") => {
 };
 const int = (v, lang = "en") => Number(v).toLocaleString(lang);
 const dec = (v, lang, d) => Number(v).toLocaleString(lang, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false });
+const cap = (s, lang) => String(s).replace(/^./, (c) => c.toLocaleUpperCase(lang));
+
+/** The desk action of a keydown, or null. Single keys work only with the focus in the desk and never in a
+ *  text field (WCAG 2.1.4): A on air, E edit, R reject or take out, J and K next and previous, U undo, ? the list. */
+export function deskKey(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey || !e.key) return null;
+  const t = e.target;
+  if (!t?.closest?.("#desk") || t.closest("input, textarea, select, [contenteditable]")) return null;
+  if (e.key === "?") return e.repeat ? null : "keys";
+  if (e.shiftKey) return null;
+  const k = { a: "air", e: "edit", r: "reject", j: "next", k: "prev", u: "undo" }[e.key.toLowerCase()] ?? null;
+  return k && e.repeat && k !== "next" && k !== "prev" ? null : k; // held down, only J and K keep going
+}
 
 // DOM builder: text always goes in as text nodes, never as markup.
 function h(tag, attrs = {}, ...kids) {
@@ -304,32 +359,49 @@ export class Desk {
     this.ready = false;  // connect() has settled, online or not: until then the controls are disabled
     this.busy = false;   // a save is in flight
     this.lostFocus = null; // data-focus of a control that lost focus because it was disabled
+    this.focusTo = null;   // data-focus the next render moves to: the next story waiting, after a decision
     this.loaded = false;
     this.auditRows = []; // from the API: this visitor's actions and the agents' rows
     this.localAudit = []; // without the API: this tab's actions
     this.tab = "stories";
     this.editing = null;
-    this.drafts = new Map(); // `${story_id}|${lang}` -> text typed in the editor, kept until saved or cancelled
-    this.open = new Set(); // stories whose evidence is expanded
-    this.more = new Set(); // stories whose Details are expanded
-    this.live = new Set(); // stories with a graphic on screen now (app.js): only these read "On air"
+    this.drafts = new Map(); // `${story_id}|${key}` -> text typed in the editor (key: a language, or title_<lang>), kept until saved or cancelled
+    this.more = new Set(); // stories whose Details are open
+    this.live = new Set(); // stories with a graphic on screen now (app.js)
+    this.liveCues = [];    // the cues on screen now, templates included
+    this.hidden = new Set(); // template cues this visitor took off air, in this tab only (the API has no field for them)
     this.reasons = new Map(); // story_id -> Set of REASONS; the API has no field for them, so they stay in this tab
     this.note = "";
-    this.lastAct = null; // {id, prev}: the last decision, while its Undo is offered
-    this.done = null;    // {id, key}: the outcome the status line says
+    this.info = false;   // the note about where decisions are kept, opened from the info button
+    this.lastAct = null; // {id, prev} or {cue}: the last decision, while its Undo is offered
+    this.done = null;    // {id | cue, key}: the outcome the status line says
     this.factIndex = new Map(this.match.facts.map((f) => [f.fact_id, f]));
     this.eventIndex = new Map(this.match.events.map((e) => [e.event_id, e]));
+    // per story: when its first graphic airs, when its last one ends, and its why_card cues
+    this.firstAt = new Map();
+    this.slotEnd = new Map();
+    this.whyCues = new Map();
+    for (const c of this.match.cues) {
+      const id = c.story_id;
+      if (!id) continue;
+      if (!(this.firstAt.get(id) <= c.ts)) this.firstAt.set(id, c.ts);
+      this.slotEnd.set(id, Math.max(this.slotEnd.get(id) ?? -Infinity, c.ts + c.duration_s));
+      if (c.graphic === "why_card") this.whyCues.set(id, [...(this.whyCues.get(id) ?? []), c]);
+    }
     // Built once: the live regions stay in the page, so a render announces only a new message.
     this.headEl = h("header", { className: "desk-head" });
+    this.infoEl = h("p", { className: "desk-note", id: "desk-note" });
     this.killEl = h("p", { className: "banner", role: "status" });
     this.noteEl = h("p", { className: "banner warn", role: "alert" });
-    // the outcome of the last decision, polite, with its Undo next to it (outside the live region)
+    // the outcome of the last decision, polite, with its Undo next to it (outside the live region) and,
+    // after a reject, what was wrong under it
     this.doneMsg = h("p", { className: "done-msg", role: "status" });
-    this.undoBtn = h("button", { type: "button", className: "link undo", "data-focus": "undo", onclick: () => this.undo() });
-    this.doneEl = h("div", { className: "done" }, this.doneMsg, this.undoBtn);
+    this.undoBtn = h("button", { type: "button", className: "link undo", "data-focus": "undo", "aria-keyshortcuts": "U", onclick: () => this.undo() });
+    this.reasonsEl = h("div", { className: "reasons" });
+    this.doneEl = h("div", { className: "done" }, h("div", { className: "done-line" }, this.doneMsg, this.undoBtn), this.reasonsEl);
     this.bodyEl = h("div", { className: "desk-body", role: "tabpanel", tabindex: 0, "data-focus": "panel" });
-    this.footEl = h("footer", { className: "desk-foot" });
-    root.replaceChildren(this.headEl, this.killEl, this.noteEl, this.doneEl, this.bodyEl, this.footEl);
+    root.replaceChildren(this.headEl, this.infoEl, this.killEl, this.noteEl, this.doneEl, this.bodyEl);
+    root.addEventListener("keydown", (e) => this.onKey(e));
   }
 
   tx(key, vars) { return tr(this.state.lang, key, vars); }
@@ -401,7 +473,17 @@ export class Desk {
   defaultStatus(s) { return s.safety === "flagged" ? "needs_review" : s.default_status; }
   status(s) { return this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s); }
   onAir(s) { return !this.kill && ON_AIR.includes(this.status(s)); }
-  pending() { return this.stories.filter((s) => this.status(s) === "needs_review").length; }
+
+  // ---- the match so far -----------------------------------------------------------------------
+
+  firstOf(s) { return this.firstAt.get(s.story_id) ?? s.ts; }
+  /** Listed: its first graphic has aired, or airs within LOOKAHEAD_S. */
+  visible(s, now = this.state.ts) { return this.firstOf(s) <= now + LOOKAHEAD_S; }
+  isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
+  shown() { return this.stories.filter((s) => this.visible(s)); }
+  /** The stories waiting for this visitor, oldest first. */
+  queue() { return this.shown().filter((s) => this.status(s) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b)); }
+  pending() { return this.queue().length; }
 
   /** The cues to play for an audience and language, with this visitor's overlay applied. */
   sheet(cues, audience, lang) {
@@ -410,29 +492,67 @@ export class Desk {
     // template cues are written in English only until the agents translate them
     if (lang !== "en" && !own.some((c) => c.story_id === null)) own = own.concat(mine.filter((c) => c.lang === "en" && c.story_id === null));
     return own.flatMap((c) => {
-      if (c.story_id === null) return [c];
+      if (c.story_id === null) return this.hidden.has(c.cue_id) ? [] : [c];
       const s = this.byId.get(c.story_id); // a cue of a story nobody can review is held
       if (!s || !this.onAir(s)) return [];
-      const text = this.decisions.get(s.story_id)?.edited_text?.[c.lang];
-      return [text && c.graphic === "why_card" ? { ...c, payload: { ...c.payload, body: text } } : c];
+      const ed = this.decisions.get(s.story_id)?.edited_text, body = ed?.[c.lang], title = ed?.[`title_${c.lang}`];
+      return [(body || title) && c.graphic === "why_card" ? { ...c, payload: { ...c.payload, ...(body ? { body } : {}), ...(title ? { title } : {}) } } : c];
     });
   }
 
+  /** The story's why_card for the audience on screen, in a language (English when it has none). */
+  whyCue(s, lang) {
+    const cs = this.whyCues.get(s.story_id) ?? [], aud = this.state.audience;
+    return cs.find((c) => c.audience === aud && c.lang === lang) ?? cs.find((c) => c.audience === aud && c.lang === "en")
+      ?? cs.find((c) => c.lang === lang) ?? cs[0] ?? null;
+  }
+  // What airs, unedited: the card's headline and body, else the story's own line
+  origTitle(s, lang) { return this.whyCue(s, lang)?.payload?.title ?? null; }
+  origText(s, lang) {
+    const c = this.whyCue(s, lang);
+    return (c?.lang === lang ? c.payload?.body : null) ?? s.texts?.[lang] ?? c?.payload?.body ?? s.texts?.en ?? "";
+  }
+  /** The headline that goes on air, with this visitor's edit. */
+  title(s, lang) { return this.decisions.get(s.story_id)?.edited_text?.[`title_${lang}`] ?? this.origTitle(s, lang) ?? kindName(s.kind, lang); }
+  titleLang(s, lang) { return this.decisions.get(s.story_id)?.edited_text?.[`title_${lang}`] ? lang : this.whyCue(s, lang)?.lang ?? "en"; }
   /** The language the story text is shown in: the asked one, or English when it has no such text. */
-  textLang(s, lang) { return (this.decisions.get(s.story_id)?.edited_text?.[lang] ?? s.texts?.[lang]) ? lang : "en"; }
-  text(s, lang) { return this.decisions.get(s.story_id)?.edited_text?.[lang] ?? s.texts?.[lang] ?? s.texts?.en ?? ""; }
+  textLang(s, lang) {
+    const c = this.whyCue(s, lang);
+    return (this.decisions.get(s.story_id)?.edited_text?.[lang] ?? (c?.lang === lang ? c.payload?.body : null) ?? s.texts?.[lang]) ? lang : "en";
+  }
+  text(s, lang) { return this.decisions.get(s.story_id)?.edited_text?.[lang] ?? this.origText(s, lang); }
+
+  /** Agent text as a viewer reads it: a fact id becomes its label, a bracketed one goes. */
+  plain(text) {
+    return String(text ?? "").replace(/\s*\((?:F-[A-Z0-9_]+-\d+(?:,\s*)?)+\)/g, "")
+      .replace(FACT_ID, (id) => this.factIndex.get(id)?.label_en ?? "a fact");
+  }
 
   // ---- actions --------------------------------------------------------------------------------
+
+  /** The story the focus goes to after a decision on s: the next one waiting, else the one before. */
+  nextWaiting(id) {
+    const q = this.queue().map((s) => s.story_id), i = q.indexOf(id);
+    const next = i < 0 ? q[0] : q[i + 1] ?? q[i - 1];
+    return next && next !== id ? `${next}:card` : "sec:needs";
+  }
+
+  // Only when the visitor is working in the desk: a decision from elsewhere (a test, the voice) leaves focus alone.
+  aimFocus(key) {
+    const a = document.activeElement;
+    if (!a || a === document.body || this.root.contains(a)) this.focusTo = key;
+  }
 
   /** undoing: this decision takes back the last one, so the status line says so and offers no Undo. */
   async decide(s, decision, editedText = null, undoing = false) {
     if (this.locked()) return;
     const id = s.story_id, prev = this.decisions.get(id), wasStatus = this.status(s), at = new Date().toISOString();
+    if (!undoing) this.aimFocus(this.nextWaiting(id));
     this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at });
     this.note = "";
     if (!this.online) {
-      this.localAudit.unshift({ at, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
-        detail: { langs: Object.keys(editedText ?? {}) } });
+      this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
+        detail: { langs: [...new Set(Object.keys(editedText ?? {}).map((k) => k.replace(/^title_/, "")))] } });
       this.endEdit(id);
       this.announce(s, prev, wasStatus, undoing);
       this.changed();
@@ -449,6 +569,7 @@ export class Desk {
     } catch (e) {
       if (prev) this.decisions.set(id, prev); else this.decisions.delete(id);
       this.note = this.tx("notSaved", { why: e.validation && editedText ? this.tx("badChar") : e.message });
+      this.focusTo = null;
     }
     if (ok) this.announce(s, prev, wasStatus, undoing);
     this.busy = false;
@@ -474,7 +595,17 @@ export class Desk {
     this.changed();
   }
 
-  // The status line: what the decision did on air, and an Undo for a few seconds.
+  /** A template graphic off air: kept in this tab, undone like a decision. */
+  takeOut(cue) {
+    if (this.locked()) return;
+    this.aimFocus(this.nextWaiting(null));
+    this.hidden.add(cue.cue_id);
+    this.note = "";
+    this.setDone({ cue, key: "done_takenOut" }, { cue });
+    this.changed();
+  }
+
+  // The status line says what the decision did on air; its Undo stays until the next decision.
   announce(s, prev, wasStatus, undoing) {
     const st = this.status(s), id = s.story_id;
     let key;
@@ -483,25 +614,34 @@ export class Desk {
       key = st === "rejected" ? "done_rejected" : st === "edited" ? "done_edited" : wasStatus === "auto_approved" ? "done_kept" : "done_approved";
       if (this.kill && st !== "rejected") key += "Kill";
     }
-    this.done = { id, key };
-    this.lastAct = undoing ? null : { id, prev };
+    this.setDone({ id, key }, undoing ? null : { id, prev });
+  }
+
+  setDone(done, act) {
+    this.done = done;
+    this.lastAct = act;
     clearTimeout(this.doneTimer);
-    const expire = () => {
-      // never pull the Undo from under the visitor's focus
-      if (this.doneEl.contains(document.activeElement)) { this.doneTimer = setTimeout(expire, 2000); return; }
-      this.lastAct = null;
-      this.renderDone();
-    };
-    this.doneTimer = setTimeout(expire, UNDO_MS);
+    // an "Undone" notice has no Undo, so it goes by itself
+    if (!act) this.doneTimer = setTimeout(() => { if (this.done === done) { this.done = null; this.renderDone(); } }, UNDO_MS);
   }
 
   /** Takes back the last decision: the one before it again, or none (the story's default status). */
   async undo() {
-    const u = this.lastAct, s = u && this.byId.get(u.id);
-    if (!s || this.locked()) return;
+    const u = this.lastAct;
+    if (!u || this.locked()) return;
+    if (u.cue) {
+      this.hidden.delete(u.cue.cue_id);
+      this.setDone({ cue: u.cue, key: "undone_template" }, null);
+      this.aimFocus("sec:air");
+      this.changed();
+      return;
+    }
+    const s = this.byId.get(u.id);
+    if (!s) return;
+    this.aimFocus(`${u.id}:card`); // the Undo is gone: focus goes back to the story it changed
     if (!this.online) {
       if (u.prev) this.decisions.set(u.id, u.prev); else this.decisions.delete(u.id);
-      this.localAudit.unshift({ at: new Date().toISOString(), actor: "human", action: "undo", story_id: u.id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
+      this.localAudit.unshift({ at: new Date().toISOString(), ts: this.state.ts, actor: "human", action: "undo", story_id: u.id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
       this.announce(s, null, null, true);
       this.changed();
     } else if (u.prev) {
@@ -509,9 +649,6 @@ export class Desk {
     } else {
       await this.clear(s);
     }
-    // the Undo is gone: focus goes back to the story it changed
-    if (!this.doneEl.contains(document.activeElement) && document.activeElement !== document.body) return;
-    this.root.querySelector(`[data-focus="${CSS.escape(`${u.id}:edited`)}"]`)?.focus();
   }
 
   endEdit(id) {
@@ -524,7 +661,7 @@ export class Desk {
     const prev = this.kill;
     this.kill = on;
     this.note = "";
-    if (!this.online) this.localAudit.unshift({ at: new Date().toISOString(), actor: "human", action: on ? "ai_off" : "ai_on", story_id: null, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
+    if (!this.online) this.localAudit.unshift({ at: new Date().toISOString(), ts: this.state.ts, actor: "human", action: on ? "ai_off" : "ai_on", story_id: null, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
     this.busy = this.online;
     this.changed();
     if (!this.online) return;
@@ -552,47 +689,91 @@ export class Desk {
     g?.focus({ preventScroll: true });
   }
 
+  // ---- keys -----------------------------------------------------------------------------------
+
+  onKey(e) {
+    const k = deskKey(e);
+    if (!k) return;
+    if (k === "keys") {
+      const d = document.querySelector("#keys");
+      if (d?.showModal && !d.open) { e.preventDefault(); d.showModal(); }
+      return;
+    }
+    if (k === "undo") { if (this.lastAct) { e.preventDefault(); this.undo(); } return; }
+    if (this.tab !== "stories") return;
+    const items = [...this.bodyEl.querySelectorAll("[data-item]")];
+    const cur = document.activeElement?.closest?.("[data-item]");
+    if (k === "next" || k === "prev") {
+      if (!items.length) return;
+      e.preventDefault();
+      const i = items.indexOf(cur), d = k === "next" ? 1 : -1;
+      const el = items[i < 0 ? (d > 0 ? 0 : items.length - 1) : Math.min(items.length - 1, Math.max(0, i + d))];
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    // the story in focus, else the first one waiting
+    const item = cur ?? this.bodyEl.querySelector(".sec-needs [data-item]");
+    const b = item?.querySelector(`[data-key="${{ air: "a", edit: "e", reject: "r" }[k]}"]`);
+    if (b && !b.disabled) { e.preventDefault(); b.click(); }
+  }
+
+  /** The desk's rows in the broadcast's key list (#keys, index.html), in the page language. */
+  renderKeys() {
+    const dl = document.querySelector("#keys-desk");
+    if (!dl) return;
+    const row = (keys, k) => [h("dt", {}, keys.map((x, i) => [i ? " " : "", h("kbd", {}, x)])), h("dd", {}, this.tx(k))];
+    document.querySelector("#keys-desk-title")?.replaceChildren(this.tx("keysDesk"));
+    dl.replaceChildren(...row(["A"], "key_a"), ...row(["E"], "key_e"), ...row(["R"], "key_r"), ...row(["J", "K"], "key_jk"), ...row(["U"], "key_u"));
+  }
+
   // ---- rendering ------------------------------------------------------------------------------
 
   render() {
     const active = document.activeElement;
-    const focusKey = active?.closest?.("#desk") ? active.dataset.focus : active === document.body || !active ? this.lostFocus : null;
+    const focusKey = this.focusTo ?? (active?.closest?.("#desk") ? active.dataset.focus : active === document.body || !active ? this.lostFocus : null);
+    this.focusTo = null;
     const scroll = this.shownTab === this.tab ? this.bodyEl.scrollTop : 0;
     this.shownTab = this.tab;
     const locked = this.locked(), tx = (k, v) => this.tx(k, v);
-    const tabs = [["stories", tx("tabStories"), this.stories.length], ["audit", tx("tabAudit")], ["traces", tx("tabTraces")]];
-    const tabButton = ([id, label, n]) => h("button", {
+    const lang = this.state.lang, n = this.pending(), shown = this.shown().length;
+    const tabs = [["stories", tx("tabStories"), shown], ["audit", tx("tabAudit")], ["traces", tx("tabTraces")]];
+    const tabButton = ([id, label, count]) => h("button", {
       // only the selected tab's panel exists, so only that tab names it
       type: "button", role: "tab", id: `tab-${id}`, "aria-controls": this.tab === id ? `panel-${id}` : null, "aria-selected": String(this.tab === id),
       tabindex: this.tab === id ? 0 : -1, "data-focus": `tab:${id}`, onclick: () => { this.tab = id; this.render(); },
       onkeydown: (e) => this.tabKeys(e, tabs.map((t) => t[0])),
-    }, label, n !== undefined ? h("span", { className: "count" }, n) : null);
+    }, label, count !== undefined ? h("span", { className: "count" }, int(count, lang)) : null);
     const body = this.tab === "stories" ? this.renderStories() : this.tab === "audit" ? this.renderAudit() : this.renderTraces();
-    const lang = this.state.lang, n = this.pending();
-    const sum = !this.ready ? tx("loadingDecisions") : this.busy ? tx("saving") : this.stories.length ? tx("waiting", { n: int(n, lang), m: int(this.stories.length, lang) }) : "";
+    const sum = !this.ready ? tx("loadingDecisions") : this.busy ? tx("saving") : this.stories.length ? tx("waiting", { n: int(n, lang) }) : "";
     this.root.setAttribute("aria-label", tx("title"));
+    // one line: the desk, the AI switch, what waits; the tabs under it
     this.headEl.replaceChildren(
       h("div", { className: "desk-title" },
         h("h2", {}, tx("title")),
-        h("button", { type: "button", id: "desk-close", className: "ctl", "aria-label": tx("closeLabel"), "data-focus": "close",
-          onclick: () => this.closeDrawer() }, tx("close"))),
-      h("p", { className: "desk-purpose" }, tx("purpose")),
-      h("div", { className: "desk-bar" },
         h("button", { type: "button", role: "switch", id: "ai-switch", className: "switch", "aria-checked": String(!this.kill), "data-focus": "kill",
           disabled: locked, onclick: () => this.setKill(!this.kill) },
-        h("span", { className: "track", "aria-hidden": "true" }, h("span", { className: "knob" })),
-        h("span", { className: "switch-label" }, tx("ai"), h("b", {}, tx(this.kill ? "off" : "on")))),
-        h("span", { className: "desk-sum" }, sum)),
-      h("div", { role: "tablist", "aria-label": tx("tabs"), className: "tabs" }, tabs.map(tabButton)));
+        h("span", { className: "switch-label" }, tx("ai"), h("b", {}, tx(this.kill ? "off" : "on"))),
+        h("span", { className: "track", "aria-hidden": "true" }, h("span", { className: "knob" }))),
+        h("span", { className: "desk-sum" }, sum),
+        h("button", { type: "button", id: "desk-close", className: "ctl", "aria-label": tx("closeLabel"), "data-focus": "close",
+          onclick: () => this.closeDrawer() }, tx("close"))),
+      h("div", { className: "desk-tabs" },
+        h("div", { role: "tablist", "aria-label": tx("tabs"), className: "tabs" }, tabs.map(tabButton)),
+        h("button", { type: "button", id: "desk-info", className: "info", "aria-expanded": String(this.info), "aria-controls": "desk-note",
+          "aria-label": tx("info"), title: tx("info"), "data-focus": "info", onclick: () => { this.info = !this.info; this.render(); } }, "i")));
+    const why = this.offline === "timeout" ? tx("timeout") : this.offline.replace(/^./, (c) => c.toUpperCase()).replace(/([^.])$/, "$1.");
+    setText(this.infoEl, !this.ready ? tx("footConnecting") : this.online ? tx("footOnline") : this.offline ? tx("footOffline", { why }) : tx("footNoServer"));
+    // opened from the info button, or by itself when the server refused or did not answer
+    this.infoEl.hidden = !(this.info || (this.ready && !this.online && this.offline));
     setText(this.killEl, this.kill ? tx("kill") : "");
     setText(this.noteEl, this.note);
     this.renderDone();
+    this.renderKeys();
     this.bodyEl.id = `panel-${this.tab}`;
     this.bodyEl.setAttribute("aria-labelledby", `tab-${this.tab}`);
     this.bodyEl.replaceChildren(...[body].flat(Infinity).filter(Boolean)); // replaceChildren would print a null as "null"
     this.bodyEl.scrollTop = scroll;
-    const why = this.offline === "timeout" ? tx("timeout") : this.offline.replace(/^./, (c) => c.toUpperCase()).replace(/([^.])$/, "$1.");
-    setText(this.footEl, !this.ready ? tx("footConnecting") : this.online ? tx("footOnline") : this.offline ? tx("footOffline", { why }) : tx("footNoServer"));
     document.querySelector("#ai-off")?.toggleAttribute("hidden", !this.kill);
     // the Desk button (narrow screens) carries the count and the offline state, so a closed drawer still shows them
     const open = document.querySelector("#desk-open"), off = this.ready && !this.online;
@@ -604,31 +785,53 @@ export class Desk {
       open.setAttribute("aria-label", [tx("deskName"), n ? tx("deskWaiting", { n: int(n, lang) }) : "", off ? tx("offline") : ""].filter(Boolean).join(", "));
     }
     // focus stays on the same control; one disabled during a save gets it back once enabled; a closed
-    // editor, or an action that is gone once taken (Put on air, Reject), hands it to Edit
+    // editor, or an action that is gone once taken, hands it to Edit, else to the story itself
     const find = (k) => this.root.querySelector(`[data-focus="${CSS.escape(k)}"]`);
-    const el = focusKey ? find(focusKey) ?? find(focusKey.replace(/:(save|cancel|text:\w+|approved|rejected)$/, ":edited")) : null;
+    const el = focusKey ? find(focusKey) ?? find(focusKey.replace(/:[^:]+(:\w+)?$/, ":edited")) ?? find(focusKey.replace(/:[^:]+(:\w+)?$/, ":card")) : null;
     this.lostFocus = el?.disabled ? focusKey : null;
-    if (el && !el.disabled && el !== document.activeElement) el.focus({ preventScroll: true });
+    if (el && !el.disabled && el !== document.activeElement) {
+      el.focus({ preventScroll: true });
+      if (el.matches("[data-item], h3")) el.scrollIntoView({ block: "nearest" });
+    }
   }
 
   renderDone() {
-    const s = this.done && this.byId.get(this.done.id);
-    setText(this.doneMsg, s ? this.tx(this.done.key, { what: this.what(s) }) : "");
-    const undo = Boolean(s && this.lastAct?.id === s.story_id);
+    const d = this.done, s = d?.id && this.byId.get(d.id);
+    const what = s ? this.what(s) : d?.cue ? this.cueWhat(d.cue) : "";
+    setText(this.doneMsg, what ? this.tx(d.key, { what }) : "");
+    const undo = Boolean(what && this.lastAct && (this.lastAct.id ? this.lastAct.id === d.id : this.lastAct.cue === d.cue));
     this.undoBtn.hidden = !undo;
     this.undoBtn.disabled = this.locked();
-    setText(this.undoBtn, this.tx("undo"));
-    if (undo) this.undoBtn.setAttribute("aria-label", this.tx("undoLabel", { what: this.what(s) }));
+    this.undoBtn.replaceChildren(this.tx("undo"), kbd("u"));
+    if (undo) this.undoBtn.setAttribute("aria-label", this.tx("undoLabel", { what }));
     else this.undoBtn.removeAttribute("aria-label");
+    // what was wrong with a rejected story, one tap per reason, under the message: kept in this tab and in its audit row
+    const rejected = undo && s && d.key === "done_rejected";
+    this.reasonsEl.hidden = !rejected;
+    if (!rejected) { this.reasonsEl.replaceChildren(); return; }
+    const id = s.story_id, mine = this.reasons.get(id) ?? new Set();
+    const toggle = (r, b) => {
+      if (!mine.delete(r)) mine.add(r);
+      this.reasons.set(id, mine);
+      b.setAttribute("aria-pressed", String(mine.has(r)));
+    };
+    this.reasonsEl.setAttribute("role", "group");
+    this.reasonsEl.setAttribute("aria-labelledby", "why-reject");
+    this.reasonsEl.replaceChildren(h("span", { id: "why-reject" }, this.tx("whyReject")),
+      REASONS.map((r) => h("button", { type: "button", className: "ctl chip", "aria-pressed": String(mine.has(r)), "data-focus": `${id}:why:${r}`,
+        onclick: (e) => toggle(r, e.currentTarget) }, this.tx(`r_${r}`))));
   }
+
+  // "10'" or "45+2'": a match time as the lines say it
+  clockText(ts) {
+    const c = this.match.clock(ts), base = c.period === 1 ? 45 : 90;
+    return c.minute > base ? `${base}+${c.minute - base}` : String(c.minute);
+  }
+  minuteText(s) { return this.clockText(s.ts); }
 
   // "Goal 10'": a story as the status line and the buttons name it
-  minuteText(s) {
-    const c = this.match.clock(s.ts), base = c.period === 1 ? 45 : 90;
-    return c.minute > base ? `${base}+${c.minute - base}` : String(c.minute); // stoppage as the lines say it
-  }
-
   what(s) { return `${kindName(s.kind, this.state.lang)} ${this.minuteText(s)}'`; }
+  cueWhat(c) { return `${this.tx(`g_${c.graphic}`)} ${this.clockText(c.ts)}'`; }
 
   tally(s) { return this.onAir(s) ? "onair" : this.status(s) === "needs_review" && !this.kill ? "held" : "off"; }
 
@@ -641,20 +844,42 @@ export class Desk {
     if (t === "held") return this.tx("line_held", { why: s.safety === "flagged" ? this.tx("why_safety") : this.tx(`risk_${riskBand(Number(s.risk))}`).toLocaleLowerCase(lang) });
     if (t === "off") return this.tx(st === "rejected" ? "line_rejected" : this.kill ? "line_kill" : "offair");
     const by = this.tx(`by_${st}`);
-    return t === "onair" ? this.tx("line_live", { by }) : by.replace(/^./, (c) => c.toLocaleUpperCase(lang));
+    return t === "onair" ? this.tx("line_live", { by }) : cap(by, lang);
   }
 
-  /** The stories on screen now, from app.js every frame: their cards say so, without a full render. */
-  setLive(ids) {
-    const key = ids.join(" ");
-    if (key === this.liveKey) return;
-    this.liveKey = key;
-    this.live = new Set(ids);
-    for (const s of this.stories) {
-      const el = this.root.querySelector(`#story-${CSS.escape(s.story_id)}`);
-      if (!el) continue;
-      el.dataset.tally = this.tallyOf(s);
-      setText(el.querySelector(".tally"), this.stateLine(s));
+  // A Done row in a few words: who decided, or why it stays off air
+  outcome(s) {
+    const st = this.status(s);
+    return this.tx(st === "rejected" ? "row_rejected" : this.kill ? "row_kill" : `by_${st}`);
+  }
+
+  // Time words that change every second: how long to air, how long left on screen
+  when(el) {
+    const now = this.state.ts, [mode, id] = el.dataset.when.split("|");
+    if (mode === "left") {
+      const end = Math.max(...this.liveCues.filter((c) => (c.story_id ?? c.cue_id) === id).map((c) => c.ts + c.duration_s));
+      return Number.isFinite(end) ? this.tx("left", { s: int(Math.max(0, Math.ceil(end - now)), this.state.lang) }) : "";
+    }
+    const s = this.byId.get(id), at = s ? this.firstOf(s) : now, sec = int(Math.ceil(at - now), this.state.lang);
+    if (mode === "in") return at > now ? this.tx("inS", { s: sec }) : "";
+    return at > now ? this.tx("toAir", { s: sec }) : now < (this.slotEnd.get(id) ?? at) ? this.tx("toAirNow") : this.tx("toAirPast", { m: this.clockText(at) });
+  }
+  whenSpan(mode, id) { const el = h("span", { className: `when when-${mode}`, "data-when": `${mode}|${id}` }); el.textContent = this.when(el); return el; }
+
+  /** The cues on screen now, from app.js every frame. The list is redrawn only when what is on screen,
+   *  or which stories the match has reached, changes, and never under the visitor's typing. */
+  setLive(cues) {
+    const now = this.state.ts;
+    this.liveCues = cues;
+    this.live = new Set(cues.map((c) => c.story_id).filter(Boolean));
+    const reach = this.stories.map((s) => (this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
+    const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
+    const a = document.activeElement, typing = this.root.contains(a) && a.matches("input, textarea");
+    if (key !== this.liveKey && !typing) { this.liveKey = key; this.render(); return; }
+    const sec = Math.floor(now);
+    if (sec !== this.tick) {
+      this.tick = sec;
+      for (const el of this.bodyEl.querySelectorAll("[data-when]")) setText(el, this.when(el));
     }
   }
 
@@ -667,80 +892,194 @@ export class Desk {
     this.root.querySelector(`#tab-${this.tab}`).focus();
   }
 
+  // ---- the stories tab: on air now, needs you, done ------------------------------------------
+
   renderStories() {
-    if (!this.loaded) return h("p", { className: "empty" }, this.tx("loadingStories"));
-    if (!this.stories.length) return h("p", { className: "empty" }, this.tx("noStories"));
-    return h("ol", { className: "stories" }, this.stories.map((s) => h("li", {}, this.renderStory(s))));
+    const tx = (k, v) => this.tx(k, v), shown = this.shown();
+    const needs = this.queue();
+    const done = shown.filter((s) => this.status(s) !== "needs_review" && !this.live.has(s.story_id));
+    // Next first, soonest first; then the rest, latest first
+    done.sort((a, b) => (this.isNext(b) - this.isNext(a)) || (this.isNext(a) ? this.firstOf(a) - this.firstOf(b) : this.firstOf(b) - this.firstOf(a)));
+    const air = this.airRows();
+    const section = (id, items, empty) => h("section", { className: `sec sec-${id}`, "aria-labelledby": `sec-${id}` },
+      h("h3", { id: `sec-${id}`, tabindex: -1, "data-focus": `sec:${id}` }, tx(`sec_${id}`), h("span", { className: "count" }, int(items.length, this.state.lang))),
+      items.length ? h("ul", { className: "items" }, items.map((x) => h("li", {}, x))) : h("p", { className: "empty" }, empty));
+    const needsEmpty = !this.loaded ? tx("loadingStories") : !this.stories.length ? tx("noStories") : tx("needsEmpty");
+    return [
+      section("air", air, tx("airEmpty")),
+      section("needs", needs.map((s) => this.renderCard(s)), needsEmpty),
+      section("done", done.map((s) => this.renderRow(s)), tx("doneEmpty")),
+    ];
   }
 
-  // Closed, a card says what a first-time reviewer needs: the moment, one status line, the text and
-  // the actions. Everything else (risk, proposal, checks, evidence, trace) sits in Details, which
-  // comes before the actions so the evidence is reached before the primary button.
-  renderStory(s) {
+  // A button with its key: one filled action where a decision waits, the rest outlined or quiet
+  act(s, decision, label, cls, key, onclick) {
+    const id = s.story_id, kind = kindName(s.kind, this.state.lang), who = this.who(s);
+    return h("button", {
+      type: "button", className: `${cls} act act-${decision}`, "data-focus": `${id}:${decision}`, "data-key": key, "aria-keyshortcuts": key?.toUpperCase(),
+      "aria-label": `${this.tx("actLabel", { label, kind, m: this.minuteText(s) })}${who ? `, ${who}` : ""}`, disabled: this.locked(),
+      onclick: onclick ?? (() => (decision === "edited" ? this.startEdit(s) : this.decide(s, decision))),
+    }, label, key ? kbd(key) : null);
+  }
+
+  who(s) { return s.player_id ? this.match.players[s.player_id]?.name : this.match.teams[s.team_id]?.short_name; }
+
+  minuteButton(s) {
+    const m = this.minuteText(s);
+    return h("button", { type: "button", className: "minute", "data-focus": `${s.story_id}:go`, "aria-label": this.tx("goMinute", { m }),
+      title: this.tx("goTitle"), onclick: () => this.seek(Math.max(0, this.firstOf(s) - 1)) }, `${m}'`);
+  }
+
+  // What will air, as the viewer reads it: the kicker, the headline, the body
+  airText(s) {
+    const lang = this.state.lang, c = this.whyCue(s, lang);
+    return [
+      c ? h("p", { className: "kicker" }, (KICKER[lang] ?? KICKER.en)[c.payload?.kind] ?? "") : null,
+      h("p", { className: "headline", lang: this.titleLang(s, lang) }, this.title(s, lang)),
+      h("p", { className: "story-text", lang: this.textLang(s, lang) }, this.text(s, lang)),
+    ];
+  }
+
+  // On air now: one row per story on screen, and one per template graphic
+  airRows() {
+    const seen = new Set(), rows = [];
+    for (const c of [...this.liveCues].sort((a, b) => a.ts - b.ts)) {
+      const s = c.story_id && this.byId.get(c.story_id);
+      if (s) {
+        if (seen.has(s.story_id)) continue;
+        seen.add(s.story_id);
+        rows.push(this.renderAir(s));
+      } else if (!c.story_id) rows.push(this.renderTemplate(c));
+    }
+    return rows;
+  }
+
+  renderAir(s) {
+    const id = s.story_id, tx = (k, v) => this.tx(k, v), editing = this.editing === id;
+    return h("article", { className: "story air", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`,
+      "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
+      this.storyHead(s, this.whenSpan("left", id)),
+      h("p", { className: "tally" }, this.stateLine(s)),
+      editing ? this.renderEditor(s) : this.airText(s),
+      editing ? null : h("div", { className: "actions" },
+        this.act(s, "rejected", tx("takeOut"), "ctl", "r"),
+        this.act(s, "edited", tx("edit"), "quiet", "e")),
+      this.renderDetails(s));
+  }
+
+  renderTemplate(c) {
+    const tx = (k, v) => this.tx(k, v), p = c.payload ?? {}, label = tx(`g_${c.graphic}`), m = this.clockText(c.ts);
+    const subject = p.name ?? (p.player_id ? this.match.players[p.player_id]?.name : null) ?? (c.graphic === "why_card" ? p.title : null);
+    return h("article", { className: "story air template", "data-tally": "onair", id: `cue-${c.cue_id}`, "aria-labelledby": `h-${c.cue_id}`,
+      "data-item": "", tabindex: -1, "data-focus": `cue:${c.cue_id}` },
+      h("div", { className: "story-head" },
+        h("span", { className: "minute static" }, `${m}'`),
+        h("h4", { id: `h-${c.cue_id}` }, label, subject ? h("span", { className: "who", lang: c.graphic === "why_card" ? "en" : null }, subject) : null),
+        this.whenSpan("left", c.cue_id)),
+      h("p", { className: "tally" }, tx("template")),
+      h("div", { className: "actions" },
+        h("button", { type: "button", className: "ctl act act-takeout", "data-focus": `cue:${c.cue_id}:out`, "data-key": "r", "aria-keyshortcuts": "R",
+          "aria-label": tx("actLabel", { label: tx("takeOut"), kind: label, m }), disabled: this.locked(), onclick: () => this.takeOut(c) }, tx("takeOut"), kbd("r"))));
+  }
+
+  storyHead(s, extra) {
+    const lang = this.state.lang, who = this.who(s);
+    return h("div", { className: "story-head" }, this.minuteButton(s),
+      h("h4", { id: `h-${s.story_id}` }, kindName(s.kind, lang), who ? h("span", { className: "who" }, who) : null),
+      extra);
+  }
+
+  // Needs you: what will air, why it waits, and one filled action
+  renderCard(s) {
+    const id = s.story_id, tx = (k, v) => this.tx(k, v), editing = this.editing === id;
+    const next = this.isNext(s);
+    return h("article", { className: "story", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`,
+      "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
+      this.storyHead(s, next ? h("span", { className: "tag" }, tx("next")) : null),
+      h("p", { className: "tally" }, h("span", {}, this.stateLine(s)), this.whenSpan("air", id)),
+      editing ? this.renderEditor(s) : this.airText(s),
+      // the actions come before Details, so they stay in view when it opens
+      editing ? null : h("div", { className: "actions" },
+        this.act(s, "approved", tx(this.kill ? "approve" : "put"), "ctl primary", "a"),
+        this.act(s, "edited", tx("edit"), "ctl", "e"),
+        this.act(s, "rejected", tx("reject"), "quiet", "r")),
+      this.renderDetails(s));
+  }
+
+  // Done: one line per story, its quiet actions at the end
+  renderRow(s) {
+    const id = s.story_id, tx = (k, v) => this.tx(k, v), editing = this.editing === id, lang = this.state.lang;
+    const rejected = this.status(s) === "rejected", next = this.isNext(s);
+    return h("div", { className: "row", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`, role: "group",
+      "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
+      h("div", { className: "row-line" },
+        this.minuteButton(s),
+        h("b", { id: `h-${id}`, className: "kind" }, kindName(s.kind, lang)),
+        h("span", { className: "outcome" }, this.outcome(s)),
+        next ? [h("span", { className: "tag" }, tx("next")), this.whenSpan("in", id)] : null,
+        editing ? null : h("span", { className: "row-acts" },
+          rejected ? this.act(s, "approved", tx(this.kill ? "approve" : "put"), "quiet", "a") : this.act(s, "rejected", tx("reject"), "quiet", "r"),
+          this.act(s, "edited", tx("edit"), "quiet", "e"))),
+      editing ? this.renderEditor(s) : null,
+      this.renderDetails(s));
+  }
+
+  // Details, one level: why it waits, the checks, the earlier drafts, the evidence. Built once opened.
+  renderDetails(s) {
+    const id = s.story_id;
+    const det = h("details", { className: "more", ...(this.more.has(id) ? { open: true } : {}) },
+      h("summary", { "data-focus": `${id}:more` }, this.tx("details")));
+    const fill = () => { if (det.open && det.children.length === 1) det.append(...this.detailsBody(s)); };
+    det.addEventListener("toggle", () => {
+      if (det.open) this.more.add(id); else this.more.delete(id);
+      fill();
+    });
+    fill();
+    return det;
+  }
+
+  detailsBody(s) {
     const lang = this.state.lang, st = this.status(s), id = s.story_id, tx = (k, v) => this.tx(k, v);
-    const minute = this.minuteText(s), kind = kindName(s.kind, lang);
-    const who = s.player_id ? this.match.players[s.player_id]?.name : this.match.teams[s.team_id]?.short_name;
-    const v = s.verifier ?? {}, flagged = v.flagged ?? [];
+    const v = s.verifier ?? {}, flagged = list(v.flagged);
     const risk = Number(s.risk), band = riskBand(risk);
     const tip = band === "low" && this.defaultStatus(s) !== "auto_approved" ? "tip_lowHeld" : `tip_${band}`;
-    const editing = this.editing === id;
-    const decided = this.decisions.has(id);
-    const status = (x) => tx(`st_${x}`) === `st_${x}` ? x : tx(`st_${x}`);
-    // One filled action, named by what it does on air; an action that would change nothing is not offered.
-    const primary = st === "needs_review" || st === "rejected" ? (this.kill ? "approve" : "put") : st === "auto_approved" ? (this.kill ? "approve" : "keep") : null;
-    const act = (decision, label, cls) => h("button", {
-      type: "button", className: `${cls} act act-${decision}`, "data-focus": `${id}:${decision}`,
-      "aria-label": `${tx("actLabel", { label, kind, m: minute })}${who ? `, ${who}` : ""}`, disabled: this.locked(),
-      onclick: () => (decision === "edited" ? this.startEdit(s) : this.decide(s, decision)),
-    }, label);
-    const firstCue = this.match.cues.find((c) => c.story_id === id);
-    const more = h("details", { className: "more", ...(this.more.has(id) ? { open: true } : {}) },
-      h("summary", { "data-focus": `${id}:more` }, tx("details")),
-      h("div", { className: "story-meta" },
-        h("span", { className: `status st-${st}` }, status(st)),
-        decided ? h("span", { className: "default" }, tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
-        s.safety === "flagged" && s.default_status === "auto_approved" ? h("span", { className: "default" }, tx("heldSafety")) : null,
+    const status = (x) => (tx(`st_${x}`) === `st_${x}` ? x : tx(`st_${x}`));
+    const facts = list(s.fact_ids).map((f) => this.factIndex.get(f) ?? { fact_id: f, missing: true });
+    const events = list(s.evidence_event_ids).map((e) => this.eventIndex.get(e) ?? { event_id: e, missing: true });
+    return [
+      // why it waits: the risk band (its score in the tooltip), or the safety flag, and what to do
+      h("p", { className: "why" },
         h("span", { className: `risk risk-${band}`, title: tx("riskTitle", { r: dec(risk, lang, 2), t: dec(AUTO_RISK, lang, 2) }) },
-          h("b", {}, tx(`risk_${band}`)),
-          h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` })),
-          h("small", {}, Number.isFinite(risk) ? dec(risk, lang, 2) : ""))),
-      h("p", { className: "risk-tip" }, tx(tip)),
-      editing ? null : this.renderProposal(s, lang),
+          h("b", {}, s.safety === "flagged" ? cap(tx("why_safety"), lang) : tx(`risk_${band}`)),
+          h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
+        " ", tx(tip)),
+      this.decisions.has(id) ? h("p", { className: "default" }, tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
+      s.safety === "flagged" && s.default_status === "auto_approved" && st !== "needs_review" ? h("p", { className: "default" }, tx("heldSafety")) : null,
+      this.editing === id ? null : this.renderProposal(s, lang),
       h("dl", { className: "checks" },
         v.on_air ? h("div", {}, h("dt", {}, tx("dtOnAir")), h("dd", {}, TEXT.en[`air_${v.on_air}`] ? tx(`air_${v.on_air}`) : v.on_air)) : null,
         h("div", {}, h("dt", {}, tx(v.on_air ? "dtDraft" : "dtVerifier")), h("dd", { className: `v-${v.status}` },
           TEXT.en[`${v.on_air ? "d" : "v"}_${v.status}`] ? tx(`${v.on_air ? "d" : "v"}_${v.status}`) : v.status ?? tx("none"),
           v.attempts ? tx("attempts", { n: v.attempts }) : "")),
         h("div", {}, h("dt", {}, tx("dtSafety")), h("dd", { className: `s-${s.safety}` }, TEXT.en[`s_${s.safety}`] ? tx(`s_${s.safety}`) : s.safety))),
-      flagged.length ? h("details", { className: "flagged" }, h("summary", { "data-focus": `${id}:notes` },
-        `${TEXT.en[`n_${v.status}`] ? tx(`${v.on_air ? "dn" : "n"}_${v.status}`) : tx("notes")} (${int(flagged.length, lang)})`),
-        h("ul", { lang: "en" }, flagged.map((f) => h("li", {}, flagText(f))))) : null,
-      this.renderEvidence(s),
-      this.traceGroups().has(id) ? h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, tx("showTrace")) : null);
-    more.addEventListener("toggle", () => { if (more.open) this.more.add(id); else this.more.delete(id); });
-    return h("article", { className: "story", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}` },
-      h("div", { className: "story-head" },
-        h("button", { type: "button", className: "minute", "data-focus": `${id}:go`, "aria-label": tx("goMinute", { m: minute }),
-          title: tx("goTitle"), onclick: () => this.seek(Math.max(0, (firstCue?.ts ?? s.ts) - 1)) }, `${minute}'`),
-        h("h3", { id: `h-${id}` }, kind, who ? h("span", { className: "who" }, who) : null)),
-      h("p", { className: "tally" }, this.stateLine(s)),
-      st === "rejected" && !editing ? this.renderReasons(s) : null,
-      editing ? this.renderEditor(s) : h("p", { className: "story-text", lang: this.textLang(s, lang) }, this.text(s, lang)),
-      more,
-      editing ? null : h("div", { className: "actions" },
-        primary ? act("approved", tx(primary), "ctl primary") : null,
-        act("edited", tx("edit"), "ctl"),
-        st === "rejected" ? null : act("rejected", tx("reject"), "quiet")));
-  }
-
-  // What was wrong with a rejected story, one tap per reason: kept in this tab and in its audit row.
-  renderReasons(s) {
-    const id = s.story_id, mine = this.reasons.get(id) ?? new Set();
-    const toggle = (r) => { if (!mine.delete(r)) mine.add(r); this.reasons.set(id, mine); this.render(); };
-    return h("div", { className: "reasons", role: "group", "aria-labelledby": `why-${id}` },
-      h("span", { id: `why-${id}` }, this.tx("whyReject")),
-      REASONS.map((r) => h("button", { type: "button", className: "ctl chip", "aria-pressed": String(mine.has(r)), "data-focus": `${id}:why:${r}`,
-        onclick: () => toggle(r) }, this.tx(`r_${r}`))));
+      // the earlier drafts, as a plain list
+      flagged.length ? [h("p", { className: "sub" }, TEXT.en[`n_${v.status}`] ? tx(`${v.on_air ? "dn" : "n"}_${v.status}`) : tx("notes")),
+        h("ul", { className: "flagged", lang: "en" }, flagged.map((f) => h("li", {}, this.plain(flagText(f)))))] : null,
+      h("p", { className: "sub" }, tx("evidence", { f: facts.length, e: events.length })),
+      h("div", { className: "ev-grid" },
+        this.miniPitch(s, facts, events),
+        h("table", { className: "facts" },
+          h("caption", { className: "sr" }, tx("factsCaption")),
+          h("thead", {}, h("tr", {}, h("th", { scope: "col" }, tx("fact")), h("th", { scope: "col" }, tx("value")))),
+          h("tbody", {}, facts.map((f) => h("tr", { className: f.missing ? "missing" : "" },
+            // the ledger's labels are English
+            h("td", {}, f.missing ? h("span", { className: "flabel" }, tx("notInLedger")) : h("span", { className: "flabel", lang: "en" }, f.label_en ?? "")),
+            h("td", { className: "num" }, f.missing ? "" : valueText(f, lang))))))),
+      events.some((e) => !e.missing) ? h("p", { className: "events" }, tx("events"), h("span", { lang: "en" },
+        events.filter((e) => !e.missing).map((e) => `${e.type_name.replace(/_/g, " ")} (${this.match.players[e.player_id]?.name ?? ""})`).join(", "))) : null,
+      s.analysis_en ? h("p", { className: "analysis" }, h("b", {}, tx("analyst")), h("span", { lang: "en" }, this.plain(s.analysis_en))) : null,
+      this.traceGroups().has(id) ? h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, tx("showTrace")) : null,
+    ].flat().filter(Boolean);
   }
 
   // The AI's own line, kept off air: one click puts it on air in all three languages, as an edit.
@@ -761,74 +1100,53 @@ export class Desk {
     this.root.querySelector(`[data-focus="${CSS.escape(`${s.story_id}:text:${this.state.lang}`)}"]`)?.focus();
   }
 
-  // All three languages in one editor: saving approves what goes on air in every language, so the
-  // reviewer sees every one. Unchanged text saves as a plain approval.
+  // All three languages in one editor, the headline and the body of each: saving approves what goes on
+  // air in every language, so the reviewer sees every one. Unchanged text saves as a plain approval.
   renderEditor(s) {
-    const id = s.story_id, locked = this.locked();
-    const areas = LANGS.map((lang) => {
-      const name = this.tx(`lang_${lang}`);
+    const id = s.story_id, locked = this.locked(), tx = (k, v) => this.tx(k, v);
+    const keys = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); cancel(); }
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+    };
+    const field = (tag, key, value, max, focus, extra) => {
+      const el = h(tag, { id: `${key.startsWith("title_") ? "title" : "edit"}-${id}-${key.replace(/^title_/, "")}`, lang: key.replace(/^title_/, ""), maxlength: max,
+        "data-focus": focus, onkeydown: keys, ...extra });
+      el.value = this.drafts.get(`${id}|${key}`) ?? value; // a draft survives a re-render and a failed save
+      return el;
+    };
+    const sets = LANGS.map((lang) => {
+      const name = tx(`lang_${lang}`), hasTitle = this.origTitle(s, lang) !== null;
       const counter = h("span", { className: "counter", id: `count-${id}-${lang}` });
-      const area = h("textarea", { id: `edit-${id}-${lang}`, lang, maxlength: EDIT_MAX, rows: 3, "aria-describedby": `count-${id}-${lang}`,
-        "data-focus": `${id}:text:${lang}` });
-      // a draft survives a re-render and a failed save
-      area.value = this.drafts.get(`${id}|${lang}`) ?? this.text(s, lang);
+      const area = field("textarea", lang, this.text(s, lang), EDIT_MAX, `${id}:text:${lang}`, { rows: 3, "aria-describedby": `count-${id}-${lang}` });
       const count = () => { counter.textContent = `${area.value.length}/${EDIT_MAX}`; };
       count();
       area.addEventListener("input", () => { this.drafts.set(`${id}|${lang}`, area.value); count(); });
-      area.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") { e.preventDefault(); cancel(); }
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
-      });
-      return h("div", { className: "edit-lang" }, h("label", { for: `edit-${id}-${lang}` }, name), area, counter);
+      const title = hasTitle ? field("input", `title_${lang}`, this.title(s, lang), TITLE_MAX, `${id}:title:${lang}`, { type: "text" }) : null;
+      title?.addEventListener("input", () => this.drafts.set(`${id}|title_${lang}`, title.value));
+      return h("fieldset", { className: "edit-lang" }, h("legend", {}, name),
+        title ? [h("label", { for: title.id }, tx("fHeadline")), title] : null,
+        h("label", { for: area.id }, tx("fBody")), area, counter);
     });
     const save = () => {
       if (this.locked()) return;
       const texts = {};
       for (const l of LANGS) {
+        const name = tx(`lang_${l}`);
         const v = (this.drafts.get(`${id}|${l}`) ?? this.text(s, l)).trim();
-        if (!v) { this.note = this.tx("emptyText", { name: this.tx(`lang_${l}`) }); this.render(); return; }
-        if (v !== (s.texts?.[l] ?? s.texts?.en ?? "")) texts[l] = v;
+        if (!v) { this.note = tx("emptyText", { name }); this.render(); return; }
+        if (v !== this.origText(s, l)) texts[l] = v;
+        if (this.origTitle(s, l) === null) continue;
+        const t = (this.drafts.get(`${id}|title_${l}`) ?? this.title(s, l)).trim();
+        if (!t) { this.note = tx("emptyTitle", { name }); this.render(); return; }
+        if (t !== this.origTitle(s, l)) texts[`title_${l}`] = t;
       }
       if (Object.keys(texts).length) this.decide(s, "edited", texts); else this.decide(s, "approved");
     };
-    const cancel = () => { this.endEdit(id); this.render(); };
-    return h("div", { className: "editor" }, areas,
+    const cancel = () => { this.endEdit(id); this.focusTo = `${id}:edited`; this.render(); };
+    return h("div", { className: "editor" }, sets,
       h("div", { className: "editor-bar" },
-        h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, disabled: locked, onclick: cancel }, this.tx("cancel")),
-        h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, disabled: locked, onclick: save }, this.tx("saveApprove"))));
-  }
-
-  renderEvidence(s) {
-    const facts = list(s.fact_ids).map((id) => this.factIndex.get(id) ?? { fact_id: id, missing: true });
-    const events = list(s.evidence_event_ids).map((id) => this.eventIndex.get(id) ?? { event_id: id, missing: true });
-    const det = h("details", { className: "evidence", ...(this.open.has(s.story_id) ? { open: true } : {}) },
-      h("summary", { "data-focus": `${s.story_id}:evidence` }, this.tx("evidence", { f: facts.length, e: events.length })));
-    // the body (and its pitch map) is built only once the evidence is open
-    const fill = () => { if (det.open && det.children.length === 1) det.append(...this.evidenceBody(s, facts, events)); };
-    det.addEventListener("toggle", () => {
-      if (det.open) this.open.add(s.story_id); else this.open.delete(s.story_id);
-      fill();
-    });
-    fill();
-    return det;
-  }
-
-  evidenceBody(s, facts, events) {
-    const lang = this.state.lang, tx = (k, v) => this.tx(k, v);
-    return [
-      h("div", { className: "ev-grid" },
-        this.miniPitch(s, facts, events),
-        h("table", { className: "facts" },
-          h("caption", { className: "sr" }, tx("factsCaption")),
-          h("thead", {}, h("tr", {}, h("th", { scope: "col" }, tx("fact")), h("th", { scope: "col" }, tx("value")))),
-          h("tbody", {}, facts.map((f) => h("tr", { className: f.missing ? "missing" : "" },
-            // the ledger's labels are English
-            h("td", { title: f.fact_id }, f.missing ? h("span", { className: "flabel" }, tx("notInLedger")) : h("span", { className: "flabel", lang: "en" }, f.label_en ?? "")),
-            h("td", { className: "num" }, f.missing ? "" : valueText(f, lang))))))),
-      events.length ? h("p", { className: "events" }, tx("events"), events.map((e) => h("span", { className: "eid", title: e.missing ? "not in events.json" : `${e.type_name}, ${this.match.players[e.player_id]?.name ?? e.player_id}` },
-        e.missing ? `${e.event_id}?` : [`${e.event_id} `, h("span", { lang: "en" }, e.type_name.replace(/_/g, " "))]))) : null,
-      s.analysis_en ? h("p", { className: "analysis" }, h("b", {}, tx("analyst")), h("span", { lang: "en" }, s.analysis_en)) : null,
-    ].filter(Boolean);
+        h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, disabled: locked, onclick: cancel }, tx("cancel")),
+        h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, disabled: locked, onclick: save }, tx("saveApprove"))));
   }
 
   // Where the evidence happened: event arrows from start to end, and the run behind a speed fact.
@@ -858,7 +1176,7 @@ export class Desk {
       const c = color(e.team_id), [x0, y0, x1, y1] = [e.start_x, Y(e.start_y), e.end_x, Y(e.end_y)];
       const len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len;
       marks.push(h("svg:g", {},
-        h("svg:title", {}, `Event ${e.event_id}: ${e.type_name.replace(/_/g, " ")}, ${this.match.players[e.player_id]?.name ?? e.player_id}`),
+        h("svg:title", {}, `${e.type_name.replace(/_/g, " ")}, ${this.match.players[e.player_id]?.name ?? ""}`),
         h("svg:line", { x1: x0, y1: y0, x2: x1 - ux * 1.6, y2: y1 - uy * 1.6, stroke: c, className: "ev" }),
         len > 2 ? h("svg:polygon", { fill: c, points: `${x1},${y1} ${x1 - ux * 2.6 - uy * 1.3},${y1 - uy * 2.6 + ux * 1.3} ${x1 - ux * 2.6 + uy * 1.3},${y1 - uy * 2.6 - ux * 1.3}` }) : null,
         h("svg:circle", { cx: x0, cy: y0, r: 1.4, fill: c, className: "dot" })));
@@ -868,12 +1186,14 @@ export class Desk {
       "aria-label": this.tx("pitch", { n, run: marks.length > n }) }, lines, marks);
   }
 
+  // ---- audit and traces -----------------------------------------------------------------------
+
   // Audit: the agents' rows (from the API, or from the replay traces) and this visitor's actions.
   auditData() {
     const fromApi = this.auditRows.filter((r) => r.actor !== "human" && r.actor !== "auto");
     // the visitor's own questions (studio_host, POST api/ask) are no reason to drop the replay's traces
     const asks = fromApi.filter((r) => r.actor === "studio_host");
-    const agents = fromApi.length > asks.length ? fromApi : [...asks, ...this.traces.map((t) => ({ at: t.at, actor: t.agent, action: t.step,
+    const agents = fromApi.length > asks.length ? fromApi : [...asks, ...this.traces.map((t) => ({ at: t.at, ts: t.ts, actor: t.agent, action: t.step,
       story_id: this.traceStory(t), model: t.model, tokens_in: t.tokens_in, tokens_out: t.tokens_out, cost_usd: t.cost_usd }))];
     const directorAt = new Map(this.traces.filter((t) => t.agent === "director").flatMap((t) => this.traceStories(t).map((id) => [id, t.at])));
     // the API lists the risk rule's approvals itself; without it the desk derives them from the replay
@@ -881,7 +1201,8 @@ export class Desk {
       .map((s) => ({ at: directorAt.get(s.story_id) ?? "", actor: "auto", action: "auto_approved", story_id: s.story_id, model: null,
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
     const humans = this.online ? this.auditRows.filter((r) => r.actor === "human") : this.localAudit;
-    return { rows: [...humans, ...auto, ...agents].sort((a, b) => String(b.at).localeCompare(String(a.at))), agents, humans };
+    const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
+    return { rows: [...auto, ...agents].sort(byAt), agents, humans: [...humans].sort(byAt) };
   }
 
   renderAudit() {
@@ -889,6 +1210,9 @@ export class Desk {
     const lang = this.state.lang, tx = (k, v) => this.tx(k, v);
     const calls = agents.filter((r) => r.model);
     const tokens = agents.reduce((n, r) => n + r.tokens_in + r.tokens_out, 0), cost = agents.reduce((n, r) => n + r.cost_usd, 0);
+    const utc = (r) => (r.at ? `${String(r.at).slice(11, 19)} UTC` : null);
+    // a row's match minute: its story's, else the match time it was logged at
+    const minute = (r) => (this.byId.has(r.story_id) ? `${this.minuteText(this.byId.get(r.story_id))}'` : Number.isFinite(r.ts) ? `${this.clockText(r.ts)}'` : "");
     const said = new Set(); // rows run newest first: a story's reject reasons go on its latest reject
     const what = (r) => {
       if (r.actor !== "human" && r.actor !== "auto" && r.actor !== "studio_host") return h("span", { lang: "en" }, String(r.action).replace(/_/g, " ")); // an agent's step
@@ -900,23 +1224,32 @@ export class Desk {
       if (r.action === "rejected") said.add(r.story_id);
       return a + (r.detail?.langs?.length ? ` (${r.detail.langs.join(", ")})` : "") + (why.length ? `: ${why.map((x) => tx(`r_${x}`).toLocaleLowerCase(lang)).join(", ")}` : "");
     };
+    // "23' Goal, rejected: a number": this visitor's own actions first, in match minutes
+    const mine = humans.map((r) => {
+      const s = this.byId.get(r.story_id);
+      const line = s ? `${this.minuteText(s)}' ${kindName(s.kind, lang)}, ${what(r)}` : TEXT.en[`y_${r.action}`] ? tx(`y_${r.action}`) : cap(what(r), lang);
+      return h("li", { title: utc(r) }, line);
+    });
     return h("div", { className: "audit" },
+      h("h3", { className: "audit-head" }, tx("yourActions")),
+      mine.length ? h("ol", { className: "mine" }, mine) : h("p", { className: "empty" }, tx("auditEmpty")),
+      // a narrow desk scrolls the table sideways instead of cutting its last column
+      rows.length ? [h("h3", { className: "audit-head" }, tx("logCaption")), h("div", { className: "log-wrap", role: "region", tabindex: 0, "aria-label": tx("logCaption") }, h("table", { className: "log" },
+        h("caption", { className: "sr" }, tx("logCaption")),
+        h("thead", {}, h("tr", {}, ["colMinute", "colWho", "colWhat", "colCost"].map((c) => h("th", { scope: "col" }, tx(c))))),
+        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" ? "auto" : "agent"}` },
+          h("td", { className: "num", title: utc(r) }, minute(r)),
+          // the model under its agent, and the story by its name and minute
+          h("td", {}, agentName(r.actor, lang), r.model ? h("span", { className: "model", lang: "en" }, r.model) : null),
+          h("td", {}, what(r), r.story_id && this.byId.has(r.story_id) ? h("span", { className: "sid" }, this.what(this.byId.get(r.story_id))) : null),
+          h("td", { className: "num" }, r.tokens_in + r.tokens_out ? [int(r.tokens_in + r.tokens_out, lang), h("br"), usd(r.cost_usd, lang)] : ""))))))] : null,
+      // what it cost, last: a reviewer comes for the decisions
+      h("h3", { className: "audit-head" }, tx("costHead")),
       h("div", { className: "totals" },
         h("div", {}, h("b", {}, int(calls.length, lang)), ` ${tx("calls")}`),
         h("div", {}, h("b", {}, int(tokens, lang)), ` ${tx("tokens")}`),
         h("div", {}, h("b", {}, usd(cost, lang)), ` ${tx("cost")}`),
-        h("div", {}, h("b", {}, int(humans.length, lang)), ` ${tx("yours")}`)),
-      // a narrow desk scrolls the table sideways instead of cutting its last column
-      rows.length ? h("div", { className: "log-wrap", role: "region", tabindex: 0, "aria-label": tx("logCaption") }, h("table", { className: "log" },
-        h("caption", { className: "sr" }, tx("logCaption")),
-        h("thead", {}, h("tr", {}, ["colUtc", "colWho", "colWhat", "colCost"].map((c) => h("th", { scope: "col" }, tx(c))))),
-        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "human" ? "human" : r.actor === "auto" ? "auto" : "agent"}` },
-          h("td", { className: "num" }, String(r.at).slice(11, 19)),
-          // the model under its agent, and the story by its name and minute (the id stays in the tooltip)
-          h("td", {}, agentName(r.actor, lang), r.model ? h("span", { className: "model", lang: "en" }, r.model) : null),
-          h("td", {}, what(r), r.story_id ? h("span", { className: "sid", title: r.story_id }, this.byId.has(r.story_id) ? this.what(this.byId.get(r.story_id)) : r.story_id) : null),
-          h("td", { className: "num" }, r.tokens_in + r.tokens_out ? [int(r.tokens_in + r.tokens_out, lang), h("br"), usd(r.cost_usd, lang)] : "")))))) :
-        h("p", { className: "empty" }, tx("auditEmpty")));
+        h("div", {}, h("b", {}, int(humans.length, lang)), ` ${tx("yours")}`)));
   }
 
   // A trace row belongs to the stories in its story_ids; older replays without them fall back to
@@ -958,11 +1291,12 @@ export class Desk {
     const legend = h("ol", { className: "pipeline", "aria-label": tx("pipeline") },
       AGENTS.map(([id, how]) => h("li", { "data-agent": id }, h("b", {}, agentName(id, lang)), h("span", { className: "how" }, tx(`how_${how}`)), h("span", { className: "role" }, tx(`role_${id}`)))));
     if (!this.traces.length) return [legend, h("p", { className: "empty" }, tx("noTraces"))];
+    const label = (f) => this.factIndex.get(f)?.label_en ?? "a fact";
     return [legend, [...this.traceGroups()].map(([sid, { rows, sum }]) => {
       const s = this.byId.get(sid);
       const shared = rows.filter((x) => x.shared > 1).length;
       return h("section", { className: "trace", "data-trace": sid, "data-focus": `trace:${sid}`, tabindex: -1, "aria-labelledby": `t-${sid || "run"}` },
-        h("h3", { id: `t-${sid || "run"}` }, s ? `${this.match.clock(s.ts).minute}' ${kindName(s.kind, lang)}` : tx("wholeRun"),
+        h("h3", { id: `t-${sid || "run"}` }, s ? `${this.minuteText(s)}' ${kindName(s.kind, lang)}` : tx("wholeRun"),
           s ? h("button", { type: "button", className: "link", "data-focus": `${sid}:show`, onclick: () => this.showStory(sid) }, tx("showStory")) : null),
         h("p", { className: "trace-sum" }, tx("traceSum", { n: int(rows.length, lang), tok: int(Math.round(sum.tokens), lang), usd: usd(sum.cost, lang), s: dec(sum.ms / 1000, lang, 1) }),
           shared ? tx("traceShared", { n: int(shared, lang) }) : ""),
@@ -970,16 +1304,19 @@ export class Desk {
           // the step, the model and the summaries are agent output: English
           h("div", { className: "step-head" }, h("b", {}, agentName(r.agent, lang)), h("span", { className: "step", lang: "en" }, r.step),
             h("span", { className: "how", lang: r.model ? "en" : null }, r.model ?? tx(HOW[String(r.agent).replace(/_[a-z]{2}$/, "")] === "rules" ? "rulesNoModel" : "codeNoModel"))),
-          h("p", { className: "io" }, h("span", { className: "io-k" }, tx("in")), h("span", { lang: "en" }, summaryText(r.input_summary))),
-          h("p", { className: "io" }, h("span", { className: "io-k" }, tx("out")), h("span", { lang: "en" }, summaryText(r.output_summary))),
+          h("p", { className: "io" }, h("span", { className: "io-k" }, tx("in")), h("span", { lang: "en" }, this.plain(summaryText(r.input_summary)))),
+          h("p", { className: "io" }, h("span", { className: "io-k" }, tx("out")), h("span", { lang: "en" }, this.plain(summaryText(r.output_summary)))),
           h("p", { className: "step-meta" },
             r.tokens_in ? tx("tokInOut", { a: int(r.tokens_in, lang), b: int(r.tokens_out, lang) }) : tx("zeroTokens"), `, ${int(r.latency_ms, lang)} ms`, r.cost_usd ? `, ${usd(r.cost_usd, lang)}` : "",
             n > 1 ? tx("sharedBy", { n: int(n, lang) }) : ""),
-          list(r.fact_ids).length ? h("p", { className: "fids" }, list(r.fact_ids).map((f) => h("span", { className: "fid" }, f))) : null))));
+          // the facts it used, by their labels: an id is a debug code to a viewer
+          list(r.fact_ids).length ? h("p", { className: "fids" }, tx("factsLabel"), h("span", { lang: "en" }, [...new Set(list(r.fact_ids).map(label))].join(", "))) : null))));
     })];
   }
 
   showStory(id) {
+    const s = this.byId.get(id);
+    if (s && !this.visible(s)) this.seek(Math.max(0, this.firstOf(s) - 1)); // a story the match has not reached: go there
     this.tab = "stories";
     this.render();
     const el = this.root.querySelector(`#story-${CSS.escape(id)}`);
@@ -987,12 +1324,13 @@ export class Desk {
     el?.querySelector(".minute")?.focus({ preventScroll: true });
   }
 
-  /** The drawer (narrow screens) is modal: the page behind leaves the tab order while it is open. */
+  /** The drawer (narrow screens) is a bottom sheet over the page, modal: the page behind leaves the tab order while it is open. */
   setDrawer(open) {
     document.body.classList.toggle("desk-open", open);
     document.querySelector("#app").inert = open;
     for (const [k, v] of [["role", "dialog"], ["aria-modal", "true"]]) if (open) this.root.setAttribute(k, v); else this.root.removeAttribute(k);
     document.querySelector("#desk-open")?.setAttribute("aria-expanded", String(open));
+    if (open) window.scrollTo({ top: 0 }); // the broadcast sits above the sheet
   }
 
   closeDrawer() {
@@ -1000,6 +1338,9 @@ export class Desk {
     document.querySelector("#desk-open")?.focus();
   }
 }
+
+// A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
+const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.
 function setText(el, text) {
@@ -1016,7 +1357,7 @@ function valueText(f, lang = "en") {
 function flagText(f) {
   if (typeof f === "string") return f;
   if (f && typeof f === "object") {
-    const parts = [f.claim ? `"${f.claim}"` : null, f.reason ?? f.text ?? null, f.fact_id ? `(${f.fact_id})` : null].filter(Boolean);
+    const parts = [f.claim ? `"${f.claim}"` : null, f.reason ?? f.text ?? null].filter(Boolean);
     return parts.length ? parts.join(" ") : JSON.stringify(f);
   }
   return String(f);

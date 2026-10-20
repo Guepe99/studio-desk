@@ -221,10 +221,8 @@ try {
     await seekTo(wide, await busyMoment(wide));
     await calm(wide);
     await wide.screenshot({ path: `${shots}/style-1280-2d.png` });
-    // the desk with the evidence of the first story open, and the Ask panel as a second shot
-    await wide.evaluate(() => { document.querySelector(".evidence")?.setAttribute("open", ""); });
-    await wide.locator(".evidence summary").first().click().catch(() => {});
-    await wide.locator(".evidence summary").first().click().catch(() => {});
+    // the desk with the Details (evidence) of the first story open
+    await wide.locator("#desk .more > summary").first().click().catch(() => {});
     await wide.screenshot({ path: `${shots}/style-1280-desk.png` });
     await wide.click("#tab-traces");
     await wide.screenshot({ path: `${shots}/style-1280-traces.png` });

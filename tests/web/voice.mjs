@@ -220,6 +220,8 @@ await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(
 await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "edited", { en: "Hand-written line." }); }, EDITED.story_id);
 await playFrom(firstCue(EDITED), 1);
 expect((await voice()).sid === null, "edited story stays silent");
+// the desk lists a story only once the match is within a minute of it
+await page.evaluate((x) => { window.studioDesk.setPlaying(false); window.studioDesk.seek(x); }, firstCue(STALE));
 await page.click(`#story-${STALE.story_id} .act-approved`);
 await playFrom(firstCue(STALE), 1);
 expect((await voice()).sid === null, "stale clip never plays");
