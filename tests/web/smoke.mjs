@@ -174,7 +174,7 @@ const overflow = (page) => page.evaluate(() => {
 });
 
 // POST api/ask stubbed (the static site has no API): {} is the page's probe; "limit", "offline", "broken" (500)
-// and "gone" (503) the error paths; "slow" answers after a second.
+// and "gone" (503) the error paths; "paused" Content Safety out of quota; "slow" answers after a second.
 const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   const b = JSON.parse(r.request().postData() || "{}");
   if (!b.question) return r.fulfill({ status: 422, json: { detail: [] } });
@@ -183,6 +183,7 @@ const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   if (b.question === "offline") return r.abort();
   if (b.question === "broken") return r.fulfill({ status: 500, json: { detail: "internal error" } });
   if (b.question === "gone") return r.fulfill({ status: 503, json: { detail: "no model on this site" } });
+  if (b.question === "paused") return r.fulfill({ json: { status: "paused", answer: "", fact_ids: [], questions_left: 5 } });
   if (b.question === "slow") await new Promise((done) => setTimeout(done, 1000));
   return r.fulfill({ json: { status: "answered", answer: '<img src=x onerror="window.__xss=2">The quickest sprint was 32 km/h.',
     fact_ids: ["F-SPRINT_SPEED-000001"], questions_left: 9 } });
@@ -824,13 +825,27 @@ try {
     await p.click('#ask [type="submit"]');
     await p.waitForFunction(() => document.querySelector("#ask-log li:nth-child(3)"), null, { timeout: 5000 }).catch(() => fail("ask: the slow answer never came"));
     if (sent.length !== before + 1) fail(`ask: ${sent.length - before} questions sent by a double press`);
-    for (const [q, msg] of [["limit", /limit is reached/], ["offline", /could not be reached/], ["broken", /had a problem/]]) {
+    for (const [q, msg] of [["limit", /limit has been reached/], ["offline", /could not be reached/], ["broken", /had a problem/]]) {
       await p.fill("#ask-q", q);
       await p.press("#ask-q", "Enter");
       await p.waitForFunction((src) => new RegExp(src).test(document.querySelector("#ask-status").textContent), msg.source, { timeout: 5000 })
         .catch(() => fail(`ask ${q}: no plain message`));
     }
+    // Content Safety out of quota: the questions are paused, not declined, and the page says so
+    await p.fill("#ask-q", "paused");
+    await p.press("#ask-q", "Enter");
+    await p.waitForFunction(() => /paused/.test(document.querySelector(".ask-a").textContent)
+      && /paused/.test(document.querySelector("#ask-live").textContent), null, { timeout: 5000 })
+      .catch(() => fail("ask paused: no paused message in the log and the live region"));
     await p.screenshot({ path: `${shots}/web-ask-1280x720.png` });
+    // the panel closed while a question is pending: the answer is still announced
+    await p.fill("#ask-q", "slow");
+    await p.press("#ask-q", "Enter");
+    await p.press("#ask-q", "Escape");
+    await p.waitForFunction(() => /32 km\/h/.test(document.querySelector("#ask-live").textContent), null, { timeout: 5000 })
+      .catch(() => fail("ask: an answer that came after the panel was closed was not announced"));
+    if (await p.evaluate(() => !!document.querySelector("#ask-live").closest("#ask"))) fail("ask: the live region is inside the panel");
+    await p.click("#ask-open");
     await p.press("#ask-q", "Escape");
     if (!(await p.evaluate(() => document.querySelector("#ask").hidden && document.activeElement?.id === "ask-open"))) fail("ask: Escape did not close the panel back to its button");
     // the model goes away while the panel is open: no box, no button, and the focus on the language control
@@ -841,6 +856,8 @@ try {
     const off = await p.evaluate(() => ({ panel: document.querySelector("#ask").hidden, button: document.querySelector("#ask-open").hidden,
       focus: document.activeElement?.id || document.activeElement?.tagName }));
     if (!off.panel || !off.button || off.focus !== "lang") fail(`ask 503: panel hidden ${off.panel}, button hidden ${off.button}, focus on ${off.focus}`);
+    await p.waitForFunction(() => /not available/.test(document.querySelector("#ask-live").textContent), null, { timeout: 2000 })
+      .catch(() => fail("ask 503: the box went without a message"));
     await p.context().close();
   });
 

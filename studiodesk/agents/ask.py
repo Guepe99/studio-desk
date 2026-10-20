@@ -10,6 +10,7 @@ Safety passed on the question and on the answer, with Prompt Shields on the ques
 import asyncio
 import functools
 import json
+import time
 from contextlib import closing
 
 from agent_framework import Agent, chat_middleware, tool
@@ -17,10 +18,11 @@ from agent_framework import Agent, chat_middleware, tool
 from .. import config, db, mcp_server
 from . import rules
 from .llm import Answer, azure_client, cost_usd
-from .safety import AzureSafety, verdict
+from .safety import AzureSafety, Throttled, verdict
 
 MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored the brief
 TOOL_RESULT_CHARS = 6000
+SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tried again after this
 
 DECLINED = {
     "en": "The studio cannot answer that from the match data so far.",
@@ -41,7 +43,7 @@ INSTRUCTIONS = (
     "markdown, no em or en dashes. Every number must be the value of a fact you cite, or appear in its label, "
     "written with digits as there; never compute a total, count, difference or average, never write a number "
     "in words. Quote the value of at least one fact you cite. Write a minute only as 'minute N' (or 'minuto N') "
-    "or N', and only the minute of a fact you cite. "
+    "or N', and only the minute of a fact you cite. Write a score home side first, as on the score bug (2-1 when the home side leads 2-1). "
     "Put the fact_id of every fact you rely on in fact_ids and never write fact ids in the answer. "
     "Name players and teams as the tools give them. Pass accuracy is the share of passes completed, never "
     "possession; momentum runs from 0 to 10.\n"
@@ -49,7 +51,8 @@ INSTRUCTIONS = (
     "fact_ids. Reply with JSON: {answer, fact_ids}.")
 
 _client = None
-_safety = None
+_safety = None        # the AzureSafety client; False while building it failed (see safety_down)
+_safety_failed = 0.0  # time.monotonic() of that failure
 
 
 def client(endpoint):
@@ -60,23 +63,39 @@ def client(endpoint):
     return _client
 
 
+def safety_down():
+    """True while the Content Safety client failed to build less than SAFETY_RETRY_S ago: the API answers 503."""
+    return _safety is False and time.monotonic() - _safety_failed < SAFETY_RETRY_S
+
+
 def safety_check(text, shield=False):
     """True only when Content Safety analysed the text and passed it: not checked counts as not passed.
-    With `shield`, Prompt Shields must also have found no attack in it (the visitor's question)."""
-    global _safety
-    if _safety is False:  # the resource could not be set up in this process: every check fails closed
+    With `shield`, Prompt Shields must also have found no attack in it (the visitor's question).
+    Raises Throttled when the resource is out of quota or rate limited (the page says questions are paused)."""
+    global _safety, _safety_failed
+    if safety_down():  # the resource could not be set up a moment ago: every check fails closed
         return False
     try:
-        if _safety is None:
+        if not _safety:
             try:
                 _safety = AzureSafety(timeout=config.ASK_SAFETY_TIMEOUT_S)
             except Exception:
-                _safety = False
+                _safety, _safety_failed = False, time.monotonic()
                 raise
         analysis = _safety(text)
         return bool(analysis) and verdict(analysis) == "passed" and (not shield or _safety.shield(text) is False)
-    except Exception:  # noqa: BLE001 - no endpoint, quota, network or auth: the answer is declined
+    except Throttled:
+        raise
+    except Exception:  # noqa: BLE001 - no endpoint, network or auth: the answer is declined
         return False
+
+
+async def _passed(text, shield=False):
+    """safety_check off the event loop: True, False, or None when Content Safety is out of quota or rate limited."""
+    try:
+        return await asyncio.to_thread(safety_check, text, shield)
+    except Throttled:
+        return None
 
 
 def match_times(match_id):
@@ -114,6 +133,30 @@ def declined(lang, reason, usage):
     return {"status": "declined", "answer": DECLINED[lang], "fact_ids": [], "reason": reason, "usage": usage}
 
 
+def paused(usage):
+    """Content Safety is out of quota or rate limited: the page shows its own sentence, not a decline."""
+    return {"status": "paused", "answer": "", "fact_ids": [], "reason": "content safety quota or rate limit",
+            "usage": usage}
+
+
+def check(match_id, ts, text, ids, lang, p1):
+    """The code checks on an answer and its cited fact ids, before Content Safety: "" when it may be shown,
+    otherwise the fixed reason (never the model's words). The facts and the score are read at ts."""
+    if not text or not ids:
+        return "no answer from the facts"
+    if len(text) > MAX_ANSWER_CHARS:
+        return "answer too long"
+    if len(ids) > rules.MAX_ASK_FACTS:
+        return "too many cited facts"
+    with mcp_server.clock_at(ts):  # a fact after ts reads as unknown
+        facts = [mcp_server.get_fact(match_id, i) for i in ids]
+        score = mcp_server.get_match_info(match_id)["score"]
+    if any("error" in f for f in facts):
+        return "cited fact unknown or after ts"
+    flags = rules.check_answer(text, facts, p1, lang, set(ids), (score["home"], score["away"]))
+    return flags[0].split(":")[0] if flags else ""
+
+
 def _charge_cut(usage):
     """A model call cut by a timeout is billed too: count what it was sent (instructions, question, tool results)."""
     tokens = usage.pop("pending_chars", 0) // 4
@@ -127,8 +170,9 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
     `usage` (new_usage()) is filled as the calls happen, so a caller that cuts this short still has it."""
     usage = new_usage() if usage is None else usage
 
-    if not await asyncio.to_thread(safety_check, question, True):
-        return declined(lang, "question not passed by content safety", usage)
+    ok = await _passed(question, True)
+    if not ok:
+        return paused(usage) if ok is None else declined(lang, "question not passed by content safety", usage)
 
     @chat_middleware
     async def count(ctx, call_next):
@@ -157,31 +201,23 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
 
     text = rules.tidy(rules.strip_citations(out.answer))
     ids = list(dict.fromkeys(i.strip().upper() for i in out.fact_ids))
-    if not text or not ids:
-        return declined(lang, "no answer from the facts", usage)
-    if len(text) > MAX_ANSWER_CHARS:
-        return declined(lang, "answer too long", usage)
-    if len(ids) > rules.MAX_ASK_FACTS:
-        return declined(lang, "too many cited facts", usage)
-    with mcp_server.clock_at(ts):  # a fact after ts reads as unknown
-        facts = [mcp_server.get_fact(match_id, i) for i in ids]
-    if any("error" in f for f in facts):
-        return declined(lang, "cited fact unknown or after ts", usage)
-    flags = rules.check_answer(text, facts, p1, lang, set(ids))
-    if flags:
-        return declined(lang, flags[0].split(":")[0], usage)  # the fixed part only, never the model's words
-    if not await asyncio.to_thread(safety_check, text):
-        return declined(lang, "answer not passed by content safety", usage)
+    reason = check(match_id, ts, text, ids, lang, p1)
+    if reason:
+        return declined(lang, reason, usage)
+    ok = await _passed(text)
+    if not ok:
+        return paused(usage) if ok is None else declined(lang, "answer not passed by content safety", usage)
     return {"status": "answered", "answer": text, "fact_ids": ids, "reason": "", "usage": usage}
 
 
-async def answer_within(endpoint, match_id, ts, question, lang, p1):
-    """`answer` under config.ASK_TIMEOUT_S, never raising: once a question is counted, any error or the
-    time limit becomes the declined result, with the usage spent so far, so the audit and the cost are kept."""
+async def answer_within(endpoint, match_id, ts, question, lang, p1, timeout=None):
+    """`answer` under `timeout` seconds (config.ASK_TIMEOUT_S by default), never raising: once a question is
+    counted, any error or the time limit becomes the declined result, with the usage spent so far, so the
+    audit and the cost are kept."""
     usage = new_usage()
     try:
         return await asyncio.wait_for(answer(client(endpoint), match_id, ts, question, lang, p1, usage),
-                                      config.ASK_TIMEOUT_S)
+                                      config.ASK_TIMEOUT_S if timeout is None else max(0.0, timeout))
     except Exception as e:  # noqa: BLE001 - the answer may fail anywhere: database, names list, client
         if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
             _charge_cut(usage)

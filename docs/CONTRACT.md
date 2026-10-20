@@ -323,19 +323,22 @@ Agents only learn about an event when the clock releases it, in replay generatio
   replay time `ts`. `question` is plain text, 1 to 280 characters; `lang` is `en`, `it` or `es`.
 - Answer: `{status, answer, fact_ids, questions_left}`. `status` is `answered`, or `declined` when
   the data up to `ts` cannot answer it or the answer fails a check (then `answer` is a fixed
-  sentence per language written in code, nothing from the model, and `fact_ids` is empty). Over a
-  cap: 429 with `{status: "limit", reason}`. No model configured (tests, a site without Foundry):
+  sentence per language written in code, nothing from the model, and `fact_ids` is empty), or
+  `paused` when Content Safety answers with a quota or rate error (`answer` empty, the page says the
+  questions are paused). Over a cap: 429 with `{status: "limit", reason}`. No model configured
+  (tests, a site without Foundry), or the Content Safety client failed to build in the last 60 s:
   503, and the page hides the box.
 - The agent `studio_host` (gpt-5-mini, reasoning minimal) reads the match only through the MCP tools
   with the clock set to `ts`: nothing after `ts`, never the hidden storylines. It answers in `lang`,
   at most two sentences, and cites the fact ids it used.
 - Checks before an answer is shown: every number in it is the value of a cited fact with
-  `fact.ts <= ts` (the verifier's rules in `studiodesk/agents/rules.py`), no forbidden name, and
+  `fact.ts <= ts`, written with the unit or noun that fact gives it, and a score equals the score at
+  `ts` (the rules in `studiodesk/agents/rules.py`, `check_answer`), no forbidden name, and
   Azure AI Content Safety on the question (with Prompt Shields) and on the answer. The question is data,
   never instructions.
 - Caps (`studiodesk/config.py`): `ASK_PER_SESSION_PER_DAY = 10`, `ASK_PER_CLIENT_PER_DAY = 30` per
-  client address (the last `X-Forwarded-For` entry, else the client host), `ASK_PER_DAY = 500` for the
-  site, and the existing stop once the day's cost passes $25. Counted in `questions_daily`
+  client address (the last `X-Forwarded-For` entry, else the client host), `ASK_PER_DAY = 40` for the
+  site (env `ASK_PER_DAY`; 40 a day fits the Content Safety free tier), and the existing stop once the day's cost passes $25. Counted in `questions_daily`
   (`day, session_id` with `'*'` for the site and `'ip:'` plus the salted SHA-256 of the address for a
   client, never the address itself; `questions`). Every question writes one `audit` row,
   `action: "ask"`, with its tokens, cost and status; the question text is kept in `detail`.

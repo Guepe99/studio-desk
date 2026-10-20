@@ -1,4 +1,5 @@
 """Thresholds and caps named in docs/CONTRACT.md."""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -13,7 +14,12 @@ LIVE_RUNS_PER_SESSION_PER_DAY = 2
 LIVE_RUNS_PER_DAY = 20
 DAILY_COST_STOP_USD = 25.0
 ASK_PER_SESSION_PER_DAY = 10
-ASK_PER_DAY = 500
+# The Content Safety resource is on the free tier F0: 5,000 text records a month. One question makes 3 calls
+# (text:analyze and text:shieldPrompt on the question, text:analyze on the answer), each one record (question
+# and answer are under 1,000 characters). 40 a day x 3 x 31 days = 3,720 records, which leaves 1,280 for the
+# stories' checks (studiodesk/agents/safety.py: at most 100 calls a match, so 4 matches checked 3 times).
+# Override with ASK_PER_DAY on a paid tier.
+ASK_PER_DAY = int(os.environ.get("ASK_PER_DAY", "40"))
 ASK_PER_CLIENT_PER_DAY = 30   # per client address: dropping the cookie does not reset it
 ASK_TIMEOUT_S = 55.0          # the whole answer, under the page's 60 s
 ASK_SAFETY_TIMEOUT_S = 5.0    # each Content Safety call made for a question

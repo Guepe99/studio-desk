@@ -11,6 +11,7 @@ token, the key is read with the az CLI at run time and kept in memory only.
 import json
 import os
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -29,6 +30,10 @@ SCOPE = "https://cognitiveservices.azure.com/.default"
 AZ = os.environ.get("AZ_CLI", "az")
 
 
+class Throttled(Exception):
+    """The resource refused a call for its rate limit (429) or its monthly quota (403 naming the quota)."""
+
+
 def _az(*args):
     return subprocess.run([AZ, *args, "-o", "tsv"], check=True, capture_output=True, text=True, timeout=60).stdout.strip()
 
@@ -43,6 +48,7 @@ class AzureSafety:
             "--query", "properties.endpoint")).rstrip("/")
         self.key, self.token, self.credential, self.last, self.requests = None, None, None, 0.0, 0
         self.timeout = timeout
+        self.lock = threading.Lock()  # the spacing holds across threads (two visitors' questions at once)
 
     def _headers(self):
         if self.key:
@@ -67,8 +73,9 @@ class AzureSafety:
         return out["userPromptAnalysis"]["attackDetected"]
 
     def _post(self, op, payload):
-        time.sleep(max(0.0, self.last + MIN_INTERVAL_S - time.monotonic()))
-        self.last = time.monotonic()
+        with self.lock:
+            time.sleep(max(0.0, self.last + MIN_INTERVAL_S - time.monotonic()))
+            self.last = time.monotonic()
         body = json.dumps(payload).encode()
         url = f"{self.endpoint}/contentsafety/text:{op}?api-version={API_VERSION}"
         for attempt in (1, 2):
@@ -85,10 +92,19 @@ class AzureSafety:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     return json.load(resp)
             except urllib.error.HTTPError as e:
+                if e.code == 429 or (e.code == 403 and "quota" in _body(e).lower()):
+                    raise Throttled(f"content safety {e.code}") from None
                 if e.code in (401, 403) and not self.key and attempt == 1:
                     self._use_key()
                     continue
                 raise
+
+
+def _body(e):
+    try:
+        return e.read().decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 - no body to read
+        return ""
 
 
 def verdict(analysis):
