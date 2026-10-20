@@ -4,6 +4,7 @@ import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
+import { BoothAudio } from "./booth-audio.js";
 import { View3D, probe, defaultView, RADAR, replays } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Moments, LEAD_S } from "./moments.js";
@@ -37,7 +38,7 @@ const STRINGS = {
     replay: "Replay", swap3d: "Swap: show the 3D picture large", swap2d: "Swap: show the 2D pitch large", load3d: "Loading the 3D view",
     fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
     slow3d: "The 3D view ran at {fps} frames a second here, so the 2D pitch is back. Pick 3D to keep it anyway.",
-    voiceOn: "AI voice-over on: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over off",
+    voiceOn: "AI voice-over on, with AI match commentary by fictional commentators and crowd sound: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over and AI commentary off",
     aioff: "AI off", view: "View", broadcast: "Match broadcast", activity: "Agent activity",
   },
   // every key in every language: a missing one would fall back to English
@@ -69,7 +70,7 @@ const STRINGS = {
     replay: "Replay", swap3d: "Scambia: l'immagine 3D in grande", swap2d: "Scambia: il campo 2D in grande", load3d: "Caricamento della vista 3D",
     fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
     slow3d: "Qui la vista 3D andava a {fps} fotogrammi al secondo, così è tornato il campo 2D. Scegli 3D per tenerla comunque.",
-    voiceOn: "Voce AI accesa: parla nella lingua scelta, solo a velocità 1x", voiceOff: "Voce AI spenta",
+    voiceOn: "Voce AI accesa, con telecronaca AI di commentatori inventati e il pubblico: parla nella lingua scelta, solo a velocità 1x", voiceOff: "Voce e telecronaca AI spente",
   },
   es: {
     play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "2.ª parte",
@@ -99,7 +100,7 @@ const STRINGS = {
     replay: "Repetición", swap3d: "Cambiar: la imagen 3D en grande", swap2d: "Cambiar: el campo 2D en grande", load3d: "Cargando la vista 3D",
     fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
     slow3d: "Aquí la vista 3D iba a {fps} fotogramas por segundo, así que vuelve el campo 2D. Elige 3D para mantenerla de todos modos.",
-    voiceOn: "Voz IA activada: habla en el idioma elegido, solo a 1x", voiceOff: "Voz IA desactivada",
+    voiceOn: "Voz IA activada, con narración IA de comentaristas inventados y el público: habla en el idioma elegido, solo a 1x", voiceOff: "Voz y narración IA desactivadas",
   },
 };
 
@@ -111,7 +112,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, ask = null, end = 0, moments = null, activity = null;
+let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
@@ -243,6 +244,7 @@ function seek(ts) {
   state.ts = Math.min(Math.max(ts, 0), end);
   state.seeked = true;
   voice?.reset();
+  booth?.reset();
 }
 
 function pressed(attr, value) {
@@ -368,6 +370,7 @@ function tick(now) {
   host.sync(state.ts, state.seeked, state.speed);
   placeRadar();
   voice?.update(state.ts, end); // null until its clips are checked
+  booth?.update(state.ts);
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
   desk.setLive([...host.live.values()].map((i) => i.cue.story_id).filter(Boolean).sort());
@@ -536,7 +539,7 @@ async function main() {
   ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
   // 2D, 3D or Radar (?view=split): ?view= or what the device can draw; any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
     notice: $("#notice"), status: $("#view-status"), buttons: document.querySelectorAll("[data-view]") }, layout, t);
@@ -548,6 +551,13 @@ async function main() {
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
   await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
+  // the booth and the crowd follow the same button (docs/commentary.md)
+  const b = new BoothAudio({ base: `data/${matchId}`, match, host, state, voice: v });
+  if (await b.load()) {
+    $("#voice").hidden = false;
+    $("#voice").addEventListener("click", () => b.unlock());
+    booth = b;
+  }
 }
 
 main();
