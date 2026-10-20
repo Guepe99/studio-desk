@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Booth, planMatch, inputs, shares, studioInputs, pieces, number, clipKey, RULES } from "../../web/js/booth.js";
+import { Booth, planMatch, inputs, shares, studioInputs, silences, pieces, number, clipKey, RULES } from "../../web/js/booth.js";
 
 const root = new URL("../../", import.meta.url);
 const read = (p) => JSON.parse(readFileSync(new URL(p, root), "utf8"));
@@ -188,14 +188,17 @@ test("pieces and number match studiodesk/booth.py", () => {
   assert.equal(clipKey("co", "Dan."), "co|Dan.");
 });
 
-test("the booth never stays quiet for a minute while the ball is in play (A7: it resumes after a studio clip)", () => {
-  for (const [lang, plan] of Object.entries(plans)) {
-    const sp = speech(plan);
-    for (let i = 1; i < sp.length; i++) {
-      const [a, b] = [endOf(sp[i - 1]), sp[i].t];
-      const ev = data.events.filter((e) => e.ts > a && e.ts < b).map((e) => e.ts);
-      const busy = ev.length && [a, ...ev, b].every((t, j, all) => j === 0 || t - all[j - 1] < 10); // an event every 10 s
-      assert.ok(!busy || b - a < 60, `${lang}: quiet from ${a.toFixed(1)} to ${b.toFixed(1)} with ${ev.length} events`);
+test("in play the booth is never silent over 6 s, outside the goal hold, a studio clip and the breaks (M001, DEMO)", () => {
+  const demo = Object.fromEntries(["meta", "events", "facts", "cues"].map((f) => [f, read(`web/data/DEMO/${f}.json`)]));
+  const demoClips = read("tests/web/booth-demo/booth.json");
+  for (const lang of ["en", "it", "es"]) {
+    const durations = new Map([...shared.clips, ...demoClips.clips].filter((r) => r.lang === lang).map((r) => [r.key, r.duration_s]));
+    const runs = [["M001", plans[lang], studio(lang), data.meta],
+      ["DEMO", planMatch({ lines, lang, meta: demo.meta, names: demoClips.names[lang], durations, seed: 7 }, inputs({ ...demo })), [], demo.meta]];
+    for (const [m, plan, st, meta] of runs) {
+      const q = silences(plan, st, meta);
+      console.log(`${m} ${lang}: longest silences ${q.slice(0, 3).map((x) => `${(x.to - x.from).toFixed(1)} s at ${x.from.toFixed(1)}`).join(", ")}`);
+      assert.ok(q.length && q[0].to - q[0].from <= RULES.quietS, `${m} ${lang}: silent from ${q[0].from.toFixed(1)} to ${q[0].to.toFixed(1)}`);
     }
   }
 });
