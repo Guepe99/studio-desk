@@ -7,8 +7,10 @@
 // as the controls with the clock at its end, the buttons on the rows below; no sideways scroll, a page
 // that can scroll, every control reachable; under 700 px wide or 500 px high speed, audience and
 // language behind a "Viewing" disclosure that Escape closes with the focus back on it; graphic text
-// at least 11 px for every graphic; goal buttons named "Goal, <player> (<code>), <minute>'" with the
-// team code, 24 px, landing 3 s before the goal; the open Ask panel off the picture; the Radar only
+// at least 11 px for every graphic; the score bug's text at least 11 px and inside the picture; goal
+// buttons only once the replay has reached the goal, named "Goal, <player> (<code>), <minute>'" on hover
+// too, showing the team code and the minute, 24 px, landing 3 s before the goal, one Tab stop after the
+// seek bar and before Play with arrows between them; the open Ask panel off the picture; the Radar only
 // with room for it. Then: Next key moment with AI graphics off, goal to goal; disabled pills with a
 // solid edge; the empty agent strip one row high; the voice button saying Voice in each language; the
 // momentum card on the half away from the ball; the 3D canvas never focused and its loading line a
@@ -99,8 +101,42 @@ try {
     const page = await open(browser, size, phone);
     const { goals, cues, hasVoice } = await page.evaluate(() => {
       const m = window.studioDesk.match;
-      return { goals: m.goals.map((f) => ({ ts: f.ts, code: m.teams[f.team_id]?.short_name })), hasVoice: !document.querySelector("#voice").hidden,
+      return { goals: m.goals.map((f) => ({ ts: f.ts, code: m.teams[f.team_id]?.short_name, label: m.clock(f.ts).label })).sort((a, b) => a.ts - b.ts),
+        hasVoice: !document.querySelector("#voice").hidden,
         cues: m.cues.filter((c) => c.lang === "en" && c.audience === "analyst").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })) };
+    });
+
+    // N8: no spoilers, a goal's button appears when the replay reaches the goal and stays after a seek back
+    await check(`${tag} goals revealed`, async () => {
+      const shownGoals = () => page.evaluate(() => [...document.querySelectorAll("#goals button")].filter((b) => b.getClientRects().length).map((b) => Number(b.dataset.ts)));
+      const at0 = await shownGoals();
+      if (at0.length) fail(`${tag}: at kick-off ${at0.length} goal buttons shown`);
+      for (const [i, g] of goals.entries()) {
+        await seekTo(page, g.ts - 1);
+        if ((await shownGoals()).length !== i) fail(`${tag}: 1 s before goal ${i + 1}, ${(await shownGoals()).length} goal buttons shown, want ${i}`);
+        await seekTo(page, g.ts);
+        if ((await shownGoals()).length !== i + 1) fail(`${tag}: at goal ${i + 1}, ${(await shownGoals()).length} goal buttons shown, want ${i + 1}`);
+      }
+      await seekTo(page, 0);
+      if ((await shownGoals()).length !== goals.length) fail(`${tag}: back at kick-off the goals already seen are gone`);
+    });
+
+    // N4: the score bug readable at every size: its smallest text at least 11 px, inside the picture
+    await check(`${tag} score bug`, async () => {
+      const b = await page.evaluate(() => {
+        let min = Infinity, what = "";
+        for (const el of document.querySelectorAll("#scorebug span")) {
+          if (!el.textContent.trim() || !el.getClientRects().length) continue;
+          const px = parseFloat(getComputedStyle(el).fontSize) * (el.getBoundingClientRect().height / el.offsetHeight);
+          if (px < min) { min = px; what = el.className; }
+        }
+        const r = document.querySelector("#scorebug").getBoundingClientRect(), f = document.querySelector("#frame").getBoundingClientRect();
+        return { min, what, inside: r.left >= f.left && r.top >= f.top && r.right <= f.right && r.bottom <= f.bottom, w: r.width / f.width };
+      });
+      if (!(b.min >= 11)) fail(`${tag}: score bug text at ${b.min.toFixed(1)} px (${b.what})`);
+      console.log(`${tag} score bug: smallest text ${b.min.toFixed(1)} px (${b.what}), ${(b.w * 100).toFixed(0)}% of the picture's width`);
+      // a 160 px picture (320x180, 400% zoom) needs most of its width for 11 px text: readable wins there
+      if (!b.inside || (b.w > 0.6 && h > 180)) fail(`${tag}: score bug ${b.inside ? "" : "out of the picture, "}${(b.w * 100).toFixed(0)}% of its width`);
     });
 
     // 1: the seek bar alone on the first row of the controls, the clock at its end
@@ -177,16 +213,20 @@ try {
       await page.screenshot({ path: `${shots}/layout-${tag}.png`, fullPage: true });
     }
 
-    // 6: goal buttons
+    // 6: goal buttons, all shown once the replay has been to the end
     await check(`${tag} goal buttons`, async () => {
-      const bs = await page.evaluate(() => [...document.querySelectorAll("#goals button")].map((b) => {
+      await seekTo(page, await page.evaluate(() => window.studioDesk.end));
+      const bs = await page.evaluate(() => [...document.querySelectorAll("#goals button")].filter((b) => b.getClientRects().length).map((b) => {
         const r = b.getBoundingClientRect();
-        return { ts: Number(b.dataset.ts), label: b.getAttribute("aria-label"), text: b.textContent, r: { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height } };
+        return { ts: Number(b.dataset.ts), label: b.getAttribute("aria-label"), title: b.title, text: b.innerText, r: { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height } };
       }));
       if (bs.length !== goals.length) { fail(`${tag}: ${bs.length} goal buttons for ${goals.length} goals`); return; }
       for (const [i, b] of bs.entries()) {
-        if (!/^Goal, .+ \([A-Z0-9]+\), \d+'$/.test(b.label ?? "")) fail(`${tag}: goal button named "${b.label}"`);
-        if (b.text !== goals[i].code) fail(`${tag}: goal button text "${b.text}", wanted the team code ${goals[i].code}`);
+        if (!/^Goal, .+ \([A-Z0-9]+\), \d+(\+\d+)?'$/.test(b.label ?? "")) fail(`${tag}: goal button named "${b.label}"`);
+        if (b.title !== b.label) fail(`${tag}: goal button hover label "${b.title}", wanted "${b.label}"`);
+        // on screen the code and the minute; a 320 px window has room for the codes only
+        const want = w > 320 ? `${goals[i].code} ${goals[i].label}'` : goals[i].code;
+        if (b.text !== want) fail(`${tag}: goal button text "${b.text}", wanted ${want}`);
         if (b.r.w < 24 || b.r.h < 24) fail(`${tag}: goal button ${b.r.w.toFixed(0)}x${b.r.h.toFixed(0)} px`);
         const o = bs.slice(i + 1).find((x) => x.r.l < b.r.r && b.r.l < x.r.r && x.r.t < b.r.b && b.r.t < x.r.b);
         if (o) fail(`${tag}: goal buttons at ${b.ts} and ${o.ts} overlap`);
@@ -198,6 +238,21 @@ try {
         at.push(await page.evaluate(() => window.studioDesk.state.ts));
       }
       for (const [i, ts] of at.entries()) if (Math.abs(ts - (goals[i].ts - LEAD_S)) > 0.2) fail(`${tag}: goal ${goals[i].ts} button seeks to ${ts.toFixed(1)}`);
+      if (w !== 1280 || bs.length < 2) return;
+      // N18: Tab goes seek bar, one goal, Play; the arrows move between the goals and do not seek
+      await page.focus("#seek-range");
+      const order = [];
+      for (let i = 0; i < 2; i++) {
+        await page.keyboard.press("Tab");
+        order.push(await page.evaluate(() => document.activeElement.closest("#goals") ? "goal" : document.activeElement.id));
+      }
+      if (order.join() !== "goal,play") fail(`${tag}: Tab after the seek bar goes ${order.join(", ")}, want goal, play`);
+      await page.keyboard.press("Shift+Tab");
+      const t0 = await page.evaluate(() => window.studioDesk.state.ts);
+      await page.keyboard.press("End");
+      await page.keyboard.press("ArrowLeft");
+      const f = await page.evaluate(() => ({ i: [...document.querySelectorAll("#goals button")].indexOf(document.activeElement), ts: window.studioDesk.state.ts }));
+      if (f.i !== bs.length - 2 || f.ts !== t0) fail(`${tag}: End then ArrowLeft in the goals: focus on goal ${f.i}, time ${t0} -> ${f.ts}`);
     });
 
     // 10: the open Ask panel never covers the picture
@@ -328,7 +383,8 @@ try {
       }
     });
     await page.click('[data-view="3d"]');
-    await page.waitForFunction(() => document.body.dataset.shownView === "3d", null, { timeout: 60000 });
+    // the software renderer can take over 60 s to show it when other jobs share the machine
+    await page.waitForFunction(() => document.body.dataset.shownView === "3d", null, { timeout: 120000 });
     const said = await page.evaluate(() => window.__said);
     if (!said.status.some((t) => /Loading/.test(t))) fail(`3D loading: not said in the status line (${JSON.stringify(said)})`);
     if (said.notice.some((t) => /Loading/.test(t))) fail("3D loading: said in the alert");

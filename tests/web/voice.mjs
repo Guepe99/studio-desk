@@ -3,7 +3,7 @@
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh voice.mjs   (Playwright image: it decodes MP3)
 //
 // Writes data/DEMO/voice.json and clips (copied from replays/M001/voice, any speech in the row's
-// language will do) with the text_sha1 of the DEMO stories, in English, Italian and Spanish, then checks at 1440x900: the button is off until pressed;
+// language will do) with the text_sha1 of the DEMO stories, in English, Italian and Spanish, then checks at 1440x900: the button is off until pressed; M toggles it;
 // at 1x a clip starts when an auto-approved story's cue goes on air; seeking stops it; a held
 // story stays silent until approved on the desk, then speaks; the AI switch stops a clip; an
 // edited story and 4x stay silent; a stale text_sha1 is never played; one Audio element plays every
@@ -152,6 +152,12 @@ expect(await page.evaluate(() => [...window.studioDesk.voice.clips.keys()].sort(
 await playFrom(firstCue(AUTO), 1);
 expect((await voice()).sid === null, "muted: no clip at the auto-approved cue");
 
+// M in the broadcast, as in a video player: on, then off again
+await page.focus("#frame");
+await page.keyboard.press("m");
+expect((await page.getAttribute("#voice", "aria-pressed")) === "true", "M turns the voice on");
+await page.keyboard.press("m");
+expect((await page.getAttribute("#voice", "aria-pressed")) === "false", "M turns the voice off again");
 await page.focus("#voice");
 await page.keyboard.press("Enter"); // keyboard press is a user gesture too
 expect((await page.getAttribute("#voice", "aria-pressed")) === "true", "Enter turns the voice on");

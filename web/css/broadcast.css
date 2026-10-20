@@ -78,7 +78,7 @@ body {
 
 /* Score bug: purple bars, the score on a green block, the clock on the darker purple */
 #scorebug { position: absolute; left: 56px; top: 40px; height: 66px; display: flex; align-items: stretch; border-radius: var(--r-box); overflow: hidden;
-  font-family: var(--font); font-weight: 800; line-height: 1; color: var(--page); box-shadow: var(--shadow); }
+  font-family: var(--font); font-weight: 800; line-height: 1; color: var(--page); box-shadow: var(--shadow); transform-origin: 0 0; }
 .sb-team { display: flex; align-items: center; gap: 12px; background: var(--purple); padding: 0 18px; font-size: 38px; }
 .sb-home { padding-left: 22px; }
 .sb-chip { width: 10px; height: 38px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--lilac-100); }   /* a dark team colour stays visible on the purple bar */
@@ -86,7 +86,8 @@ body {
 .sb-sep { width: 12px; height: 4px; border-radius: 2px; background: var(--purple); }
 .sb-clock { display: flex; align-items: center; gap: 12px; background: var(--purple-700); padding: 0 24px 0 18px; }
 .sb-min { font-size: 38px; color: var(--green); font-variant-numeric: tabular-nums; min-width: 58px; text-align: right; }
-.sb-period { font-size: 24px; font-weight: 700; color: var(--lilac-100); }
+.sb-period { font-size: 30px; font-weight: 700; color: var(--lilac-100); }
+.no-period .sb-period { display: none; }   /* a small frame (app.js) */
 
 /* Controls: every button and every segment is a pill. Selected = filled purple, unselected = outlined. */
 #controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; flex: none; font-size: 16px; }
@@ -145,6 +146,7 @@ select:hover { background-color: var(--lilac-100); }
 #goals button { position: absolute; top: 0; height: 24px; min-width: 24px; padding: 0 6px; border: 1.5px solid var(--purple); border-radius: var(--r-pill);
   font: 800 12px/1 var(--font); letter-spacing: .02em; cursor: pointer; }
 #goals button:hover { box-shadow: 0 0 0 2px var(--lilac-100); }
+#goals.tight .gm { display: none; }
 #seek { grid-area: 2 / 1; position: relative; min-width: 0; height: 36px; }
 #seek-row #time { grid-area: 2 / 2; }
 #seek-marks { position: absolute; left: 9px; right: 9px; top: 0; bottom: 0; pointer-events: none; }
@@ -153,7 +155,6 @@ select:hover { background-color: var(--lilac-100); }
 #seek-marks .tick { position: absolute; top: 25px; width: 1px; height: 5px; background: var(--purple-400); }
 #seek-marks .tick.major { height: 9px; background: var(--purple); }
 #seek-marks .half { position: absolute; top: 8px; width: 2px; height: 20px; background: var(--purple); }
-#seek-marks .goal { position: absolute; top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 2px solid var(--purple); }
 #seek-range { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; border-radius: var(--r-pill); }
 #seek-range::-webkit-slider-runnable-track { height: 36px; background: transparent; }
 #seek-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: 9px; border-radius: 50%; background: var(--purple); border: 3px solid var(--page); box-shadow: 0 0 0 1.5px var(--purple); }
@@ -172,7 +173,6 @@ select:hover { background-color: var(--lilac-100); }
   #seek-marks::before, #seek-marks .fill { top: 12px; }
   #seek-marks .tick { top: 21px; }
   #seek-marks .half { top: 5px; }
-  #seek-marks .goal { top: 0; }
   #seek-range::-webkit-slider-runnable-track { height: 30px; }
   #seek-range::-webkit-slider-thumb { margin-top: 6px; }
 }
@@ -181,6 +181,20 @@ select:hover { background-color: var(--lilac-100); }
   .ctl, select { height: 44px; }
   .ctl.icon { width: 44px; }
 }
+
+/* F: the broadcast column fills the screen, on the page's white; a phone can still scroll to its controls */
+#app:fullscreen { overflow-y: auto; background: var(--page); }
+/* ?: the keyboard shortcuts, a native modal dialog (Escape or Close shut it, the focus goes back) */
+#keys { border: none; border-radius: var(--r-card); box-shadow: var(--shadow); color: var(--purple); background: var(--page);
+  font-size: 16px; line-height: 1.35; padding: 20px 24px; max-width: min(460px, calc(100vw - 32px)); }
+#keys::backdrop { background: rgba(30, 0, 33, .45); }
+#keys h2 { margin: 0 0 14px; font-size: 20px; font-weight: 800; }
+#keys dl { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+#keys dt, #keys dd { margin: 0; }
+#keys dt { white-space: nowrap; }
+#keys kbd { display: inline-block; min-width: 26px; padding: 4px 6px; border: 1.5px solid var(--purple); border-radius: 6px;
+  font: 700 14px/1 var(--font); text-align: center; }
+#keys form { text-align: right; }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

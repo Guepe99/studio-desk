@@ -35,16 +35,17 @@
     <div id="deck"></div>
 
     <div id="controls">
-      <!-- the seek bar has its own row under the picture, the clock at its end, as in a video player -->
+      <!-- the seek bar has its own row under the picture, the clock at its end, as in a video player;
+           the goal buttons sit above it but come after it in the Tab order -->
       <div id="seek-row">
-        <div id="goals"></div>
         <div id="seek">
           <div id="seek-marks" aria-hidden="true"></div>
           <input id="seek-range" type="range" min="0" max="1" step="0.1" value="0" aria-label="Match time" data-i18n-aria="seek">
         </div>
+        <div id="goals"></div>
         <span id="time" class="readout">0'</span>
       </div>
-      <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play" aria-keyshortcuts="Space">
+      <button id="play" class="ctl icon" type="button" aria-label="Play" data-i18n-aria="play" aria-keyshortcuts="Space K">
         <!-- icons: one convex shape per path; Chromium on ANGLE over software Vulkan drops concave or multi-part paths (tests/web/voice.mjs) -->
         <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M7 4.5v15l12-7.5z"/><path class="i-pause" d="M6 4.5h4.2v15H6z"/><path class="i-pause" d="M13.8 4.5H18v15h-4.2z"/></svg>
       </button>
@@ -100,5 +101,20 @@
     </section>
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
+  <!-- ? with the focus in the broadcast or its controls (keys.js) -->
+  <dialog id="keys" aria-labelledby="keys-title">
+    <h2 id="keys-title" data-i18n="keysTitle">Keyboard shortcuts</h2>
+    <dl>
+      <dt><kbd data-i18n="keySpace">Space</kbd> <kbd>K</kbd></dt><dd data-i18n="keyPlay">Play or pause</dd>
+      <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd data-i18n="keyTen">Back or forward 10 seconds</dd>
+      <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd data-i18n="keyFive">Back or forward 5 seconds</dd>
+      <dt><kbd>0</kbd> &hellip; <kbd>9</kbd></dt><dd data-i18n="keyJump">Jump to 0%, 10% &hellip; 90% of the match</dd>
+      <dt><kbd>N</kbd></dt><dd data-i18n="next">Next key moment</dd>
+      <dt><kbd>M</kbd></dt><dd data-i18n="keyVoice">AI voice-over on or off</dd>
+      <dt><kbd>F</kbd></dt><dd data-i18n="keyFull">Full screen on or off</dd>
+      <dt><kbd>?</kbd></dt><dd data-i18n="keyList">This list</dd>
+    </dl>
+    <form method="dialog"><button class="ctl" data-i18n="close">Close</button></form>
+  </dialog>
 </body>
 </html>

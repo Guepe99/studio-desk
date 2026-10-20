@@ -8,8 +8,9 @@
 // player audience picked in the My team and Player modes (the nameplate on its
 // player, mapped from tracking by this file); never more than 2 graphics in the DOM, also while
 // playing at 16x and 64x, and none past its cue; the real-time path; Space toggling exactly once;
-// the clock frozen at the end of each period; the score bug and seek-bar goals against the score
-// facts; seek keys and aria-valuetext; shirt-number contrast; the 2D pitch (players and ball on
+// the video player keys (K, J, L, arrows, 0 to 9, ?, F, and none of them in a select or on the body);
+// the clock frozen at the end of each period, stoppage time as 45+n, the Italian period label; the score
+// bug against the score facts, no goal dots on the track; seek keys and aria-valuetext with the score; shirt-number contrast; the 2D pitch (players and ball on
 // the tracking, disc colours, the players named on air lit, draw time); the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
 // phone landscape and portrait (every control reachable by scrolling, with the Viewing menu open,
@@ -60,10 +61,12 @@ function scoreAt(fs, ts) {
   const top = (team) => Math.max(0, ...fs.filter((f) => f.kind === "score" && f.team_id === team && f.ts <= ts).map((f) => f.value));
   return [top(home), top(away)];
 }
+// the minute as a broadcast says it: stoppage time is 45+n and 90+n
 function minuteAt(ts) {
   const period = ts <= P1 ? 1 : 2, len = period === 1 ? P1 : meta.period2_s;
   const t = Math.min(period === 1 ? ts : ts - P1, len - 1e-6);
-  return { period: period === 1 ? "1H" : "2H", minute: `${Math.floor(t / 60) + (period === 2 ? 45 : 0) + 1}'` };
+  const m = Math.floor(t / 60) + (period === 2 ? 45 : 0) + 1, base = period * 45;
+  return { period: period === 1 ? "1H" : "2H", minute: `${m > base ? `${base}+${m - base}` : m}'` };
 }
 const luminance = (hex) => {
   const n = parseInt(hex.slice(1), 16);
@@ -342,7 +345,14 @@ try {
       await seekTo(page, ts);
       const got = await scorebug(page), want = minuteAt(ts);
       if (got.minute !== want.minute || got.period !== want.period) fail(`clock at ${ts}: ${got.minute} ${got.period}, want ${want.minute} ${want.period}`);
+      if ((await page.textContent("#time")) !== want.minute) fail(`clock at ${ts}: the seek row says ${await page.textContent("#time")}, want ${want.minute}`);
     }
+    // in Italian the period is 1°T, never "1T" (read as the language code)
+    await page.selectOption("#lang", "it");
+    await seekTo(page, 1);
+    const it = await scorebug(page);
+    await page.selectOption("#lang", "en");
+    if (it.period !== "1°T") fail(`Italian period label "${it.period}", want 1°T`);
   });
 
   await check("score", async () => {
@@ -352,8 +362,9 @@ try {
       const got = await scorebug(page), [h, a] = scoreAt(facts, ts);
       if (got.h !== String(h) || got.a !== String(a)) fail(`score at ${ts}: ${got.h}-${got.a}, facts say ${h}-${a}`);
     }
+    // the goals are buttons above the bar: a dot on the track would sit under the thumb
     const marks = await page.evaluate(() => document.querySelectorAll("#seek-marks .goal").length);
-    if (marks !== goals.length) fail(`seek bar: ${marks} goal marks, ${goals.length} score facts`);
+    if (marks) fail(`seek bar: ${marks} goal dots on the track`);
   });
 
   await check("seek keys", async () => {
@@ -368,8 +379,66 @@ try {
     if (Math.abs(t1 - t2 - 60) > 0.01) fail(`PageDown moved ${(t1 - t2).toFixed(2)} s, want -60`);
     await page.waitForTimeout(100);
     const text = await page.$eval("#seek-range", (el) => el.getAttribute("aria-valuetext"));
-    const want = minuteAt(t2);
+    const want = minuteAt(t2), [h, a] = scoreAt(facts, t2), [home, away] = ["home", "away"].map((sd) => meta.teams.find((x) => x.side === sd).name);
     if (!text || !text.includes(want.minute.replace("'", ""))) fail(`aria-valuetext "${text}" does not say minute ${want.minute}`);
+    if (!text?.endsWith(`${home} ${h}, ${away} ${a}`)) fail(`aria-valuetext "${text}" does not say the score ${home} ${h}, ${away} ${a}`);
+  });
+
+  // K, J, L, arrows, 0 to 9, ? and F, scoped as Space: in the broadcast and its controls, not in a select or on the body
+  await check("shortcuts", async () => {
+    const end = await page.evaluate(() => window.studioDesk.end);
+    const st = () => page.evaluate(() => ({ ts: window.studioDesk.state.ts, playing: window.studioDesk.state.playing }));
+    await seekTo(page, 600 % DUR);
+    await page.focus("#frame");
+    for (const [k, d] of [["l", 10], ["j", -10], ["ArrowRight", 5], ["ArrowLeft", -5]]) {
+      const t0 = (await st()).ts;
+      await page.keyboard.press(k);
+      const t1 = (await st()).ts;
+      if (Math.abs(t1 - t0 - d) > 0.05) fail(`key ${k}: moved ${(t1 - t0).toFixed(2)} s, want ${d}`);
+    }
+    await page.keyboard.press("5");
+    if (Math.abs((await st()).ts - end / 2) > 0.05) fail(`key 5: at ${(await st()).ts.toFixed(1)}, want ${(end / 2).toFixed(1)}`);
+    await page.keyboard.press("0");
+    if ((await st()).ts !== 0) fail(`key 0: at ${(await st()).ts}`);
+    await page.keyboard.press("k");
+    const on = (await st()).playing;
+    await page.keyboard.press("k");
+    if (!on || (await st()).playing) fail(`key K: playing ${on}, then ${(await st()).playing}`);
+    // in the seek bar the arrows stay the bar's own (5 s), L still works
+    await seekTo(page, 600 % DUR);
+    await page.focus("#seek-range");
+    const r0 = (await st()).ts;
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("l");
+    if (Math.abs((await st()).ts - r0 - 15) > 0.05) fail(`seek bar: ArrowRight then L moved ${((await st()).ts - r0).toFixed(2)} s, want 15`);
+    // never in a select, never on the page body
+    for (const where of ["#lang", "body"]) {
+      await seekTo(page, 600 % DUR);
+      if (where === "body") await page.evaluate(() => document.activeElement.blur()); else await page.focus(where);
+      const lang = await page.$eval("#lang", (el) => el.value);
+      for (const k of ["l", "5", "k"]) await page.keyboard.press(k);
+      const s1 = await st();
+      if (Math.abs(s1.ts - 600 % DUR) > 0.01 || s1.playing) fail(`keys on ${where}: moved to ${s1.ts.toFixed(1)}, playing ${s1.playing}`);
+      if (where === "#lang" && (await page.$eval("#lang", (el) => el.value)) !== lang) await page.selectOption("#lang", lang);
+    }
+    // ?: the list in a modal dialog, in the page's language; Escape closes it and gives the focus back
+    await page.focus("#frame");
+    await page.keyboard.press("Shift+Slash");
+    const dlg = await page.evaluate(() => { const d = document.querySelector("#keys"); return { open: d.open, modal: d.matches(":modal"), rows: d.querySelectorAll("dd").length, focus: document.activeElement?.closest("#keys") !== null }; });
+    if (!dlg.open || !dlg.modal || dlg.rows < 8) fail(`key ?: dialog ${JSON.stringify(dlg)}`);
+    await page.screenshot({ path: `${shots}/web-keys-1280x720.png` });
+    await page.keyboard.press("Escape");
+    const back = await page.evaluate(() => ({ open: document.querySelector("#keys").open, focus: document.activeElement?.id }));
+    if (back.open || back.focus !== "frame") fail(`key ?: after Escape open ${back.open}, focus on ${back.focus}`);
+    // F: the broadcast column full screen, F again leaves it
+    await page.keyboard.press("f");
+    await page.waitForTimeout(300);
+    const full = await page.evaluate(() => document.fullscreenElement?.id ?? null);
+    if (full !== "app") fail(`key F: full screen element ${full}, want app`);
+    await page.keyboard.press("f");
+    await page.waitForTimeout(300);
+    if (await page.evaluate(() => document.fullscreenElement)) fail("key F: still full screen after the second press");
+    await seekTo(page, 0);
   });
 
   await check("shirt contrast", async () => {

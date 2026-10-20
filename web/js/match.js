@@ -39,11 +39,13 @@ export class Match {
   }
 
   // ts = period1_s is the half-time whistle; the clock stops at the end of each period.
+  // label: the minute as a broadcast says it, stoppage time as 45+n and 90+n.
   clock(ts) {
     const period = ts <= this.meta.period1_s ? 1 : 2;
     const len = period === 1 ? this.meta.period1_s : this.meta.period2_s;
     const t = Math.min(period === 1 ? ts : ts - this.meta.period1_s, len - 1e-6);
-    return { period, t, minute: Math.floor(t / 60) + (period === 2 ? 45 : 0) + 1 };
+    const minute = Math.floor(t / 60) + (period === 2 ? 45 : 0) + 1, base = period * 45;
+    return { period, t, minute, label: minute > base ? `${base}+${minute - base}` : String(minute) };
   }
 
   score(ts) {

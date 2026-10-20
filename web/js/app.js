@@ -8,6 +8,7 @@ import { View3D, probe, defaultView, RADAR } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
+import { shortcut } from "./keys.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -15,7 +16,7 @@ const STRINGS = {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "2nd half",
     audience: "Audience", analyst: "Analyst", casual: "Casual fan", language: "Language",
     p1: "1H", p2: "2H", loading: "Loading match", error: "Could not load match {m}. {e}",
-    minute: "Minute {n}, {p}", h1: "first half", h2: "second half", goal: "Goal",
+    minute: "Minute {n}, {p}, {home} {h}, {away} {a}", h1: "first half", h2: "second half",
     nographic: "Some graphics could not load: {g}.",
     myteam: "My team", player: "Player", pickteam: "Choose the team", pickplayer: "Choose the player",
     ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
@@ -36,8 +37,8 @@ const STRINGS = {
   // every key in every language: a missing one would fall back to English
   it: {
     play: "Riproduci", pause: "Pausa", seek: "Tempo di gioco", speed: "Velocità di riproduzione", half2: "2° tempo",
-    language: "Lingua", p1: "1T", p2: "2T", loading: "Caricamento della partita", error: "Impossibile caricare la partita {m}. {e}",
-    minute: "Minuto {n}, {p}", h1: "primo tempo", h2: "secondo tempo", goal: "Gol",
+    language: "Lingua", p1: "1°T", p2: "2°T", loading: "Caricamento della partita", error: "Impossibile caricare la partita {m}. {e}",
+    minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primo tempo", h2: "secondo tempo",
     nographic: "Alcune grafiche non si sono caricate: {g}.",
     aioff: "IA spenta", view: "Vista", broadcast: "Diretta della partita", activity: "Attività degli agenti",
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
@@ -60,7 +61,7 @@ const STRINGS = {
   es: {
     play: "Reproducir", pause: "Pausa", seek: "Tiempo de partido", speed: "Velocidad de reproducción", half2: "2.ª parte",
     language: "Idioma", p1: "1T", p2: "2T", loading: "Cargando el partido", error: "No se pudo cargar el partido {m}. {e}",
-    minute: "Minuto {n}, {p}", h1: "primera parte", h2: "segunda parte", goal: "Gol",
+    minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primera parte", h2: "segunda parte",
     nographic: "Algunos gráficos no se pudieron cargar: {g}.",
     aioff: "IA apagada", view: "Vista", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
@@ -96,13 +97,22 @@ let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 const CONTROL_STRINGS = {
   en: { viewing: "Viewing", voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
     nextGoal: "Next goal", nonextGoal: "No more goals", nokeyGoal: "No goals",
-    goalsHint: "AI graphics are off: this jumps to the goals" },
+    goalsHint: "AI graphics are off: this jumps to the goals",
+    keysTitle: "Keyboard shortcuts", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
+    keyFive: "Back or forward 5 seconds", keyJump: "Jump to 0%, 10% … 90% of the match", keyVoice: "AI voice-over on or off",
+    keyFull: "Full screen on or off", keyList: "This list" },
   it: { viewing: "Opzioni", voice: "Voce", voiceName: "Voce AI", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
-    goalsHint: "Grafiche AI spente: il pulsante salta ai gol" },
+    goalsHint: "Grafiche AI spente: il pulsante salta ai gol",
+    keysTitle: "Scorciatoie da tastiera", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
+    keyFive: "Indietro o avanti di 5 secondi", keyJump: "Salta allo 0%, 10% … 90% della partita", keyVoice: "Voce AI accesa o spenta",
+    keyFull: "Schermo intero sì o no", keyList: "Questo elenco" },
   es: { viewing: "Opciones", voice: "Voz", voiceName: "Voz IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
-    goalsHint: "Gráficos IA apagados: el botón salta a los goles" },
+    goalsHint: "Gráficos IA apagados: el botón salta a los goles",
+    keysTitle: "Atajos de teclado", keySpace: "Espacio", keyPlay: "Reproducir o pausar", keyTen: "Atrás o adelante 10 segundos",
+    keyFive: "Atrás o adelante 5 segundos", keyJump: "Ir al 0%, 10% … 90% del partido", keyVoice: "Voz IA activada o desactivada",
+    keyFull: "Pantalla completa sí o no", keyList: "Esta lista" },
 };
 for (const [lang, more] of Object.entries(CONTROL_STRINGS)) STRINGS[lang] = { ...more, ...STRINGS[lang] };
 
@@ -146,6 +156,11 @@ function layout() {
   frame.style.width = `${fw}px`;
   frame.style.height = `${fh}px`;
   stage.style.transform = `scale(${s})`;
+  // the score bug is never drawn under MIN_PX either: magnified from its 38 px teams, minute and score;
+  // the 30 px period label goes when it would be smaller (the minute says the half: 45+2', 46')
+  const bug = Math.max(1, MIN_PX / (38 * s)), sb = $("#scorebug");
+  sb.style.transform = bug > 1 ? `scale(${bug})` : "";
+  sb.classList.toggle("no-period", 30 * s * bug < MIN_PX);
   compact = SMALLEST * s < MIN_PX;
   deckMode = side ? "side" : COMPACT_PX * s < MIN_PX ? "below" : "";
   body.toggle("deck", !!deckMode);
@@ -229,10 +244,28 @@ function drawScorebug() {
   $(".sb-away .sb-chip").style.background = match.away.color_primary;
   $(".sb-h").textContent = h;
   $(".sb-a").textContent = a;
-  $(".sb-min").textContent = `${c.minute}'`;
+  $(".sb-min").textContent = `${c.label}'`;
   $(".sb-period").textContent = t(c.period === 1 ? "p1" : "p2");
-  $("#time").textContent = `${c.minute}'`;
-  $("#seek-range").setAttribute("aria-valuetext", t("minute").replace("{n}", c.minute).replace("{p}", t(c.period === 1 ? "h1" : "h2")));
+  $("#time").textContent = `${c.label}'`;
+  const said = { n: c.label, p: t(c.period === 1 ? "h1" : "h2"), home: match.home.name, h, away: match.away.name, a };
+  $("#seek-range").setAttribute("aria-valuetext", t("minute").replace(/\{(\w+)\}/g, (_, k) => said[k]));
+}
+
+// a goal's button appears once the replay has reached the goal (no spoilers) and stays: it seeks to before the goal
+let reachedTs = 0;
+function revealGoals() {
+  reachedTs = Math.max(reachedTs, state.ts);
+  const bs = [...$("#goals").children];
+  let changed = false;
+  for (const b of bs) {
+    const hide = Number(b.dataset.ts) > reachedTs;
+    if (b.hidden !== hide) { b.hidden = hide; changed = true; }
+  }
+  if (!changed) return;
+  // the goals are one tab stop (arrows move between them): the first one shown takes it
+  const shown = bs.filter((b) => !b.hidden);
+  if (shown.length && !shown.some((b) => b.tabIndex === 0)) shown[0].tabIndex = 0;
+  placeGoals();
 }
 
 function buildSeekMarks() {
@@ -247,46 +280,61 @@ function buildSeekMarks() {
   }
   html += `<div class="half" style="left:${pct(match.meta.period1_s)}"></div>`;
   marks.innerHTML = html;
-  // team data goes through the DOM, never into markup; a goal of an unknown team gets no colour
-  for (const f of match.goals) {
-    const g = document.createElement("div");
-    g.className = "goal";
-    g.title = t("goal");
-    g.style.left = pct(f.ts);
-    g.style.background = match.teams[f.team_id]?.color_primary ?? "";
-    marks.append(g);
-  }
   const range = $("#seek-range");
   range.max = String(end);
-  // one button per goal above the bar: the scoring team's code on its colour; a press lands LEAD_S before it
-  $("#goals").replaceChildren(...match.goals.map((f) => {
+  // one button per goal above the bar: the scoring team's code and the minute on its colour; a press lands LEAD_S
+  // before it. Team data goes through the DOM, never into markup; a goal of an unknown team gets no colour.
+  $("#goals").replaceChildren(...[...match.goals].sort((p, q) => p.ts - q.ts).map((f) => {
     const b = document.createElement("button"), team = match.teams[f.team_id];
     b.type = "button";
+    b.hidden = true;
+    b.tabIndex = -1;
     b.dataset.ts = String(f.ts);
-    b.textContent = team?.short_name ?? "";
+    b.dataset.code = team?.short_name ?? "";
+    const minute = document.createElement("span");
+    minute.className = "gm";
+    minute.textContent = `${b.dataset.code ? " " : ""}${match.clock(f.ts).label}'`;
+    b.replaceChildren(b.dataset.code, minute);
     if (team) Object.assign(b.style, { background: team.color_primary, color: textOn(team.color_primary) });
     b.addEventListener("click", () => seek(Math.max(0, f.ts - LEAD_S)));
     return b;
   }));
+  // arrows, Home and End move between the goals shown
+  $("#goals").addEventListener("keydown", (e) => {
+    const bs = [...$("#goals").children].filter((b) => !b.hidden), i = bs.indexOf(e.target);
+    const j = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: bs.length - 1 }[e.key];
+    if (i < 0 || j === undefined) return;
+    e.preventDefault();
+    const to = bs[Math.max(0, Math.min(j, bs.length - 1))];
+    for (const b of bs) b.tabIndex = b === to ? 0 : -1;
+    to.focus();
+  });
   goalLabels();
+  revealGoals();
 }
 
-// "Goal, Okowande (RED), 10'": the scorer from the fact or its source event, the team code that is on the button
+// "Goal, Okowande (RED), 10'": the scorer from the fact or its source event, the team code that is on the button;
+// the same words show on hover
 function goalLabels() {
   for (const b of $("#goals").children) {
     const f = match.goals.find((g) => String(g.ts) === b.dataset.ts);
     const pid = f.player_id ?? match.events.find((e) => e.event_id === f.source_event_ids?.[0])?.player_id;
-    const name = match.players[pid]?.name, code = b.textContent;
+    const name = match.players[pid]?.name, code = b.dataset.code;
     const who = name && code ? `${name} (${code})` : name || code || "?";
-    b.setAttribute("aria-label", t("goalAt").replace("{who}", who).replace("{m}", match.clock(f.ts).minute));
+    b.title = t("goalAt").replace("{who}", who).replace("{m}", match.clock(f.ts).label);
+    b.setAttribute("aria-label", b.title);
     b.lang = state.lang;
   }
 }
 
-// at the goal's place on the bar, nudged apart when two goals are close: a forward pass, then back from the end
+// at the goal's place on the bar, nudged apart when two goals are close: a forward pass, then back from the end;
+// a bar too short for every minute (a 320 px window) shows the team codes only, the names keep the minutes
 function placeGoals() {
   const box = $("#goals"), w = box.clientWidth;
-  const items = [...box.children].map((b) => ({ b, w: b.offsetWidth, c: (Number(b.dataset.ts) / end) * w })).sort((p, q) => p.c - q.c);
+  const measure = () => [...box.children].filter((b) => !b.hidden).map((b) => ({ b, w: b.offsetWidth, c: (Number(b.dataset.ts) / end) * w })).sort((p, q) => p.c - q.c);
+  box.classList.remove("tight");
+  let items = measure();
+  if (items.reduce((n, it) => n + it.w + 2, 0) > w) { box.classList.add("tight"); items = measure(); }
   let edge = 0;
   for (const it of items) { it.x = Math.max(it.c - it.w / 2, edge); edge = it.x + it.w + 2; }
   edge = w;
@@ -315,6 +363,7 @@ function tick(now) {
   if (view3d?.shown !== "3d") pitch.draw(match, Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();
+  revealGoals();
   host.sync(state.ts, state.seeked, state.speed);
   // the radar steps aside while a graphic that is not pinned to a player is on the frame
   document.body.classList.toggle("radar-yield", !deckMode && [...host.live.values()].some((i) => !i.positioned));
@@ -409,6 +458,22 @@ function wireControls() {
     if (!e.repeat) setPlaying(!state.playing);
   }, true);
   window.addEventListener("keyup", (e) => { if (spaceKey(e)) e.preventDefault(); }, true);
+  // the video player keys (keys.js), scoped as Space is; a key a control already used (the seek bar's arrows) is left to it
+  const range = $("#seek-range");
+  window.addEventListener("keydown", (e) => {
+    const [act, x] = (!e.defaultPrevented && shortcut(e)) || [];
+    if (!act) return;
+    e.preventDefault();
+    if (act === "play") setPlaying(!state.playing);
+    else if (act === "step") seek(state.ts + x);
+    else if (act === "fraction") seek(end * x);
+    else if (act === "voice") { if (!$("#voice").hidden) $("#voice").click(); }
+    else if (act === "fullscreen") (document.fullscreenElement ? document.exitFullscreen() : $("#app").requestFullscreen()).catch(() => {});
+    else if (act === "keys") $("#keys").showModal();
+    range.value = String(state.ts);
+  });
+  // full screen is the broadcast column (picture, controls, strip), without the desk
+  document.addEventListener("fullscreenchange", layout);
   window.addEventListener("resize", layout);
 }
 
