@@ -285,7 +285,7 @@ def test_director_never_shows_more_than_two_graphics(desk_db):
     goal = rules.goal_candidates(m, m.kind("score")[0])[0]
     crowd = [{**goal, "story_id": f"S-{i:06d}", "fact_ids": [f["fact_id"] for f in goal["facts"]],
               "texts": {lang: "text" for lang in rules.LANGS}} for i in range(6)]
-    cues = rules.Director(m).plan(crowd)
+    cues = rules.Director(m).plan(crowd, goal["ts"])
     run(rt, FakeChatClient())
     cues += [{**c, "audience": "run:" + c["audience"]} for c in rows(rt, "cues")]
     assert cues
@@ -306,12 +306,55 @@ def test_the_full_time_recap_airs_at_the_whistle(desk_db):
         stories = [{**base, "story_id": "S-000001", "kind": "momentum_swing", "ts": end - before},
                    {**base, "story_id": "S-000002", "kind": "recap", "phase": "ft", "team_id": None},
                    {**base, "story_id": "S-000003", "kind": "goal"}]  # a goal at the whistle is still told
-        cues = rules.Director(m).plan(stories)
+        cues = rules.Director(m).plan(stories, end - before)
         by = {sid: [c for c in cues if c["story_id"] == sid] for sid in ("S-000001", "S-000002", "S-000003")}
         assert by["S-000002"] and all(c["ts"] == end for c in by["S-000002"]), before
         assert by["S-000003"], before
         assert all(c["ts"] + c["duration_s"] <= end for c in by["S-000001"]), before
         assert bool(by["S-000001"]) == (before == 30.0), before
+
+
+def test_a_story_never_airs_before_the_desk_decided_on_it(desk_db):
+    _, _, rt = desk_db
+    m = rules.Match(srv.get_match_info("M001"))
+    for f in srv.get_facts("M001"):
+        m.facts[f["fact_id"]] = f
+    goal = rules.goal_candidates(m, m.kind("score")[0])[0]
+    story = {**goal, "story_id": "S-000001", "fact_ids": [f["fact_id"] for f in goal["facts"]],
+             "texts": {lang: "text" for lang in rules.LANGS}}
+    cues = rules.Director(m).plan([story], goal["ts"] + 6.0)
+    assert cues and min(c["ts"] for c in cues) == goal["ts"] + 6.0
+    # a story from before a whistle already planned is not told after it
+    director, end = rules.Director(m), max(f["ts"] for f in m.kind("momentum"))
+    recap = {**story, "story_id": "S-000002", "kind": "recap", "phase": "ft", "team_id": None, "player_id": None,
+             "facts": [], "ts": end}
+    assert director.plan([recap], end)
+    assert director.plan([{**story, "kind": "top_sprint", "ts": end - 3.0}], end + 2.0) == []
+    # the whole workflow: every story cue starts at or after the desk's first trace of that story
+    run(rt, FakeChatClient())
+    first = {}
+    for t in rows(rt, "traces"):
+        for sid in json.loads(t["story_ids"] or "[]"):
+            first.setdefault(sid, t["ts"])
+    told = [c for c in rows(rt, "cues") if c["story_id"]]
+    assert told and all(c["ts"] >= first[c["story_id"]] for c in told)
+
+
+def test_big_chances_are_judged_per_shot_at_most_two_a_window():
+    m = rules.Match(INFO)
+    shots = []
+    for n, (ts, kmh) in enumerate(((100.0, 101.0), (110.0, 105.0), (120.0, 102.0), (130.0, 80.0), (310.0, 103.0)), 1):
+        m.facts[f"s{n}"] = fact("shot_speed", n, ts, kmh, "km/h", f"Shot at {kmh:.0f} km/h", period=1)
+        shots.append({"event_id": n, "ts": ts, "period": 1, "player_id": "T01-9", "type_name": "shot",
+                      "result_name": "fail", "bodypart_name": "foot", "start_x": 90.0, "start_y": 34.0,
+                      "end_x": 100.0, "end_y": 30.0})
+    offered = {}
+    first = rules.chance_candidates(m, shots[:1], (), offered)  # judged alone, as the poll after it sees it
+    rest = rules.chance_candidates(m, shots[1:], [{"ts": 120.5, "related_player_id": "T01-9"}], offered)
+    assert [c["ts"] for c in first + rest] == [100.0, 110.0, 310.0]  # the third one of minutes 1-5 waits out
+    assert [c["outcome"] for c in first + rest] == ["blocked", "blocked", "blocked"]
+    assert rules.chance_candidates(m, shots[2:3], [{"ts": 120.5, "related_player_id": "T01-9"}])[0]["outcome"] == "saved"
+    assert rules.SETTLE_S >= 5.0  # a save counts within 5 s of the shot (facts.engine.shot_outcome)
 
 
 def test_the_story_finder_skips_what_the_whistle_would_cut():
@@ -562,7 +605,7 @@ def test_tactical_shift_from_a_change_of_formation():
     ends = sorted({f["ts"] for f in m.facts.values()})
     shifted, found = set(), []
     for w0, w in zip([2700] + ends, ends):
-        found += [(w, c) for c in rules.window_candidates(m, w0, w, [], shifted)]
+        found += [(w, c) for c in rules.window_candidates(m, w0, w, shifted)]
     assert [(w, c["team_id"], c["shape"]) for w, c in found] == [(ends[-1], "T01", ("4-3-3", "4-4-2"))]
     story = {**found[0][1], "minute": 75, "player_id": None}
     text = rules.template(m, story, "en")
@@ -580,7 +623,7 @@ def test_a_line_pushed_back_by_the_other_team_is_not_a_shift():
             m.facts[f"{tid}{k}"] = fact("line_height", k + (10 if tid == "T02" else 0), 2700 + 300 * (k + 1),
                                         float(v), "m", f"Defensive line {v:.1f} m from goal", tid)
     w = 2700 + 300 * 6
-    found = rules.window_candidates(m, w - 300, w, [], set())
+    found = rules.window_candidates(m, w - 300, w, set())
     assert [(c["kind"], c["team_id"], c["note"]) for c in found] == [("tactical_shift", "T01", "line higher by 11 m")]
 
 

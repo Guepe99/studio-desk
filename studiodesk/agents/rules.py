@@ -9,7 +9,7 @@ import unicodedata
 
 from .. import config, names
 from ..export import DURATION
-from ..facts.engine import BOX_DEPTH, BOX_HALF_WIDTH, LENGTH, WIDTH, formation_name, shot_outcome
+from ..facts.engine import BOX_DEPTH, BOX_HALF_WIDTH, LENGTH, SAVE_S, WIDTH, WINDOW_S, formation_name, shot_outcome
 
 LANGS = ("en", "it", "es")
 MUST_TELL = {"goal", "comeback", "recap"}
@@ -19,6 +19,12 @@ MUST_TELL = {"goal", "comeback", "recap"}
 TOP_SPRINT_KMH = 34.0          # the contract's "sprint above 34 km/h"
 BIG_CHANCE_KMH = 100.0         # a saved or missed shot this fast is a big chance ...
 BIG_CHANCE_DIST_M = 11.0       # ... and so is any shot from this close to goal
+BIG_CHANCES_PER_WINDOW = 2     # at most this many big chances in one 5-minute window
+# a shot is judged this long after it is hit: its outcome is final by then. Wide, over and blocked are
+# in the shot event itself; a save counts within SAVE_S (facts.engine.shot_outcome), and in the four
+# matches every save came 0.1 to 1.1 s after its shot. Shot facts are released at most 0.6 s after
+# the shot and score facts at most 1.5 s, so a goal is never mistaken for a chance.
+SETTLE_S = SAVE_S
 SWING = 3.0                    # momentum: mean of the last 2 windows minus the 2 before
 PRESS_SPELL = 5.0              # press intensity in one window, or ...
 PRESS_PAIR = 4.3               # ... in two windows in a row, not flat (4.6 then 4.6 is no story)
@@ -325,17 +331,12 @@ def _line_delta(line, w):
     return (line[-1]["value"] + line[-2]["value"]) / 2 - sum(f["value"] for f in line[-5:-2]) / 3
 
 
-def window_candidates(m, w0, w, shots, shifted, saves=(), told=()):
-    """Candidates for the 5-minute window (w0, w]: big chances, momentum swings, pressing, tactical shift.
-
-    `shots` and `saves` are the window's shot and keeper_save events (from get_events); `shifted` is
-    the set of teams that already had a tactical shift story and is updated in place; `told` are the
-    stories told so far, so a team's swing or pressing is not told again within REPEAT_S.
-    """
-    def recent(kind, tid):
-        return any(s["kind"] == kind and s["team_id"] == tid and w - s["ts"] <= REPEAT_S for s in told)
-
-    out = []
+def chance_candidates(m, shots, saves=(), offered=None):
+    """Big chances among `shots` (shot events from get_events, each at least SETTLE_S old, so `saves`, the
+    keeper_save events up to now, settle its outcome): a shot without a goal at BIG_CHANCE_KMH or more or
+    from BIG_CHANCE_DIST_M or closer, the fastest first, at most BIG_CHANCES_PER_WINDOW per 5-minute
+    window. `offered` counts the chances already offered per window and is updated in place."""
+    offered = {} if offered is None else offered
     goal_events = {e for f in m.kind("score") for e in f["source_event_ids"]}
     by_event = {f["source_event_ids"][0]: f for f in m.kind("shot_speed") if f["source_event_ids"]}
     dist_of = {f["source_event_ids"][0]: f for f in m.kind("shot_distance") if f["source_event_ids"]}
@@ -346,11 +347,30 @@ def window_candidates(m, w0, w, shots, shifted, saves=(), told=()):
             continue
         if f["value"] >= BIG_CHANCE_KMH or (d and d["value"] <= BIG_CHANCE_DIST_M):
             chances.append((f, d, e))
-    for f, d, e in sorted(chances, key=lambda c: -c[0]["value"])[:2]:
+    out = []
+    for f, d, e in sorted(chances, key=lambda c: -c[0]["value"]):
         outcome = shot_outcome(e, saves)
+        start = m.p1 if e["period"] == 2 and m.p1 is not None else 0.0
+        window = (e["period"], math.floor((e["ts"] - start) / WINDOW_S))  # the windows of facts.engine
+        if outcome == "goal" or offered.get(window, 0) >= BIG_CHANCES_PER_WINDOW:
+            continue
+        offered[window] = offered.get(window, 0) + 1
         out.append(_cand("big_chance", f["ts"], [f] + ([d] if d else []), f["team_id"], f["player_id"],
                          note=f["label_en"] + (f", {d['label_en'].lower()}" if d else f", {OUTCOMES[outcome][0]}"),
                          outcome=outcome, header=e.get("bodypart_name") == "head", place=shot_place(e)))
+    return out
+
+
+def window_candidates(m, w0, w, shifted, told=()):
+    """Candidates for the 5-minute window (w0, w]: momentum swings, pressing, tactical shift.
+
+    `shifted` is the set of teams that already had a tactical shift story and is updated in place;
+    `told` are the stories told so far, so a team's swing or pressing is not told again within REPEAT_S.
+    """
+    def recent(kind, tid):
+        return any(s["kind"] == kind and s["team_id"] == tid and w - s["ts"] <= REPEAT_S for s in told)
+
+    out = []
     period = 2 if m.p1 is not None and w > m.p1 + 1e-6 else 1
     in_period = lambda f: f["period"] == period  # noqa: E731
     swings = []
@@ -1714,6 +1734,7 @@ class Director:
     def __init__(self, m):
         self.m = m
         self.placed = {}  # audience -> [(start, end)]
+        self.whistles = []  # the recaps planned so far: a story from before one never airs after it
         self.audiences = ["analyst", "casual"] + [f"team:{t}" for t in m.teams]
 
     def _slot(self, audience, ts, dur, by=math.inf):
@@ -1770,20 +1791,22 @@ class Director:
                 "away": [f["value"] for f in so_far if f["team_id"] == self.m.away["team_id"]],
                 "window": len({f["ts"] for f in so_far}), "fact_ids": [f["fact_id"] for f in so_far]}
 
-    def plan(self, stories):
+    def plan(self, stories, now):
         """Cues (without cue_id) for every audience and language. Player audiences start with their first story.
-        The must-tell stories and the recaps take their slots first; any other graphic must end by the next
-        whistle, so it can neither delay "Half-time" or "Full time" nor follow it."""
+        No graphic starts before `now`, when the desk decided on these stories: a story keeps the time of its
+        moment, its graphics air from the decision on. The must-tell stories and the recaps take their slots
+        first; any other graphic must end by the next whistle, so it can neither delay "Half-time" or
+        "Full time" nor follow it."""
         for s in stories:
             if s["player_id"] and f"player:{s['player_id']}" not in self.audiences:
                 self.audiences.append(f"player:{s['player_id']}")
         cues = []
-        whistles = sorted(s["ts"] for s in stories if s["kind"] == "recap")
+        self.whistles = sorted({*self.whistles, *(s["ts"] for s in stories if s["kind"] == "recap")})
         for s in sorted(stories, key=lambda s: (s["kind"] not in MUST_TELL, air_order(s))):
-            by = math.inf if s["kind"] in MUST_TELL else next((w for w in whistles if w >= s["ts"]), math.inf)
+            by = math.inf if s["kind"] in MUST_TELL else next((w for w in self.whistles if w >= s["ts"]), math.inf)
             for audience in self.audiences:
                 role = self._role(audience, s)
-                t = s["ts"]
+                t = max(s["ts"], now)
                 for graphic in PLAN[s["kind"]].get(role, ()) if role else ():
                     if self.payload(s, graphic, "en") is None:
                         continue

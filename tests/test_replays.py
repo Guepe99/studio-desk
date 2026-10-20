@@ -2,6 +2,7 @@
 produces, and every string a visitor can see is clean. CI builds the seed first, so there a missing
 database is a failure, not a skip."""
 import json
+import math
 import os
 import re
 import unicodedata
@@ -84,6 +85,18 @@ def test_pack_ids_exist_in_the_seed_build(pack):
         for where, text in _strings(data, name):
             assert not DASH.search(text), f"{pack.name} {where}: dash in {text!r}"
             assert not has_control(text), f"{pack.name} {where}: control character in {text!r}"
+
+
+@pytest.mark.parametrize("pack", PACKS, ids=[p.name for p in PACKS])
+def test_no_graphic_airs_before_the_agents_decided_on_it(pack):
+    cues = json.loads((pack / "cues.json").read_text())
+    first = {}
+    for t in sorted(json.loads((pack / "traces.json").read_text()), key=lambda t: t["ts"]):
+        for sid in t.get("story_ids") or []:
+            first.setdefault(sid, t["ts"])
+    early = [(c["cue_id"], c["story_id"], c["ts"], first.get(c["story_id"])) for c in cues
+             if c["story_id"] and not c["ts"] >= first.get(c["story_id"], math.inf) - 1.0]
+    assert not early, f"{pack.name}: {len(early)} cues before their story's first trace, e.g. {early[:3]}"
 
 
 def test_a_missing_seed_fails_in_ci_and_skips_locally(monkeypatch, tmp_path):

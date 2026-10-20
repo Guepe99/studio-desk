@@ -70,12 +70,15 @@ BOX_DEPTH, BOX_HALF_WIDTH = 16.5, 20.16
 BODY = {"head": "header", "foot": "foot", "foot_left": "left foot", "foot_right": "right foot"}
 
 
+SAVE_S = 5.0  # a keeper_save this soon after a shot answers it
+
+
 def shot_outcome(shot, saves=()):
-    """goal, saved (a keeper_save answers it within 5 s), wide or over (it reached the goal line outside
+    """goal, saved (a keeper_save answers it within SAVE_S), wide or over (it reached the goal line outside
     or between the posts), or blocked (it stopped short)."""
     if is_goal(shot):
         return "goal"
-    if any(s.get("related_player_id") == shot["player_id"] and 0 <= s["ts"] - shot["ts"] <= 5 for s in saves):
+    if any(s.get("related_player_id") == shot["player_id"] and 0 <= s["ts"] - shot["ts"] <= SAVE_S for s in saves):
         return "saved"
     line = LENGTH if shot["end_x"] > LENGTH / 2 else 0.0
     if abs(shot["end_x"] - line) < 0.05:

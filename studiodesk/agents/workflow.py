@@ -6,8 +6,8 @@
                                 -> commentator_it ├-> verifier -> director -> stories + cues
                                 -> commentator_es ┘
 
-A batch starts when the clock releases a goal, a sprint above 34 km/h or the end of a 5-minute
-window. Agents read the match only through the MCP server (studiodesk/mcp_server.py), served in
+A batch starts when the clock releases a goal, a sprint above 34 km/h, a big chance (a shot judged
+rules.SETTLE_S after it is hit) or the end of a 5-minute window. Agents read the match only through the MCP server (studiodesk/mcp_server.py), served in
 process over the MCP protocol on memory streams so its clock moves with ours. Any agent that fails
 or times out is replaced by rules and template sentences: the broadcast never waits.
 """
@@ -281,6 +281,8 @@ class Desk:
         self.polled = 0.0
         self.last_window = 0.0
         self.shifted = set()
+        self.shots_upto = 0.0                # shots up to here were looked at for big chances
+        self.chances = {}                    # big chances offered per 5-minute window
         self.openings = defaultdict(list)    # lang -> first words of the lines on air, so openings vary
         self.used = defaultdict(lambda: {"loud": set(), "openings": set()})  # lang -> what style_issues rations
         self.spent = set()                   # phrasebook openers already on air: each one once a match
@@ -467,6 +469,7 @@ class Desk:
         for f in await self.mcp("get_facts", to_ts=from_ts):
             self.m.facts[f["fact_id"]] = f
         self.last_window = max((f["ts"] for f in self.m.kind("momentum")), default=0.0)
+        self.shots_upto = from_ts
 
     async def ingest(self, now, final=False, full_time=False):
         """Read the facts released since the last call; return a Batch when something is worth a look."""
@@ -486,14 +489,19 @@ class Desk:
                     (e for e in shots if e["event_id"] in f["source_event_ids"]), None))
             elif f["kind"] == "sprint_speed":
                 cands += rules.sprint_candidates(f)
+        if (settled := now - rules.SETTLE_S) > self.shots_upto:  # big chances, once their outcome is known
+            shots = await self.mcp("get_events", from_ts=self.shots_upto + 1e-6, to_ts=settled, type_name="shot")
+            # a shot before a whistle already blown would air after "Half-time": not told
+            shots = [e for e in shots if not (self.m.p1 is not None and e["ts"] <= self.m.p1 < now)]
+            if shots:
+                saves = await self.mcp("get_events", from_ts=shots[0]["ts"], to_ts=now, type_name="keeper_save")
+                cands += rules.chance_candidates(self.m, shots, saves, self.chances)
+            self.shots_upto = settled
         window_end = max((f["ts"] for f in new if f["kind"] == "momentum"), default=None)
         if window_end is not None:
             if self.m.p1 is None:
                 self.m.update(await self.mcp("get_match_info"))
-            shots = await self.mcp("get_events", from_ts=self.last_window + 1e-6, to_ts=window_end, type_name="shot")
-            saves = await self.mcp("get_events", from_ts=self.last_window + 1e-6, to_ts=now, type_name="keeper_save")
-            cands += rules.window_candidates(self.m, self.last_window, window_end, shots, self.shifted, saves,
-                                             self.queue)
+            cands += rules.window_candidates(self.m, self.last_window, window_end, self.shifted, self.queue)
             if self.m.p1 is not None and abs(window_end - self.m.p1) < 1e-6:
                 cands.append(rules.recap_candidate(self.m, window_end, "ht"))
             self.last_window = window_end
@@ -802,7 +810,7 @@ def build_workflow(desk):
 
     @executor(id="director")
     async def director(rnd: Round, ctx: WorkflowContext[Round, Round]) -> None:
-        rnd.cues = desk.director.plan(rnd.stories)
+        rnd.cues = desk.director.plan(rnd.stories, rnd.batch.ts)
         desk.trace("director", "cue", f"{len(rnd.stories)} stories",
                    f"{len(rnd.cues)} cues for {len({c['audience'] for c in rnd.cues})} audiences",
                    [i for s in rnd.stories for i in s["fact_ids"]], story_ids=ids(rnd))
@@ -866,7 +874,7 @@ async def run_batch(desk, workflow, batch):
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
             stories = [desk.new_story(c, 0.5, c["note"]) for c in _rule_picks(batch.candidates)]
             stories = [template_story(desk, s, f"workflow error: {rules.brief_error(e)}") for s in stories]
-            rnd = Round(batch, stories, desk.director.plan(stories))
+            rnd = Round(batch, stories, desk.director.plan(stories, batch.ts))
             desk.trace("director", "fallback", "workflow failed", f"{len(stories)} template stories",
                        [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
         desk.save(rnd)

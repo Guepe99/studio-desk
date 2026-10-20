@@ -408,7 +408,7 @@ def _press(m, values, team="T01"):
 
 def test_story_choice_skips_repeats_stoppage_stubs_and_flat_pressing_pairs():
     kinds = lambda m, w, w0=None, told=(): [c["kind"] for c in rules.window_candidates(  # noqa: E731
-        m, w - 300 if w0 is None else w0, w, [], set(), told=told)]
+        m, w - 300 if w0 is None else w0, w, set(), told=told)]
     for values, told in (((3.0, 4.6, 4.6), False), ((3.0, 4.4, 4.9), True), ((3.0, 4.6, 5.6), True), ((5.6, 5.6), True)):
         m = rules.Match(INFO)
         assert (kinds(m, _press(m, values)) == ["pressing_spell"]) is told, values
