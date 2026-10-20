@@ -110,13 +110,19 @@ def get_events(match_id: str, from_ts: float, to_ts: float, type_name: str | Non
 
 def get_facts(match_id: str, kind: str | None = None, player_id: str | None = None,
               team_id: str | None = None, from_ts: float | None = None,
-              to_ts: float | None = None) -> list[dict]:
-    """Facts from the ledger, filtered by any of kind, player, team and time range."""
+              to_ts: float | None = None, top: int | None = None) -> list[dict]:
+    """Facts from the ledger, filtered by any of kind, player, team and time range; with top, only the top
+    facts by value, highest first (the fastest sprints, the hardest shots).
+    kind is one of: score (a goal: player_id the scorer, label "Goal 2-1" home side first), shot_speed,
+    shot_distance, sprint_speed, sprint_count, distance_covered, ball_speed, pass_distance, pass_difficulty,
+    pass_accuracy, xt_added, momentum, press_intensity, formation, line_height, team_length, team_width."""
     sql, args = "SELECT * FROM facts WHERE match_id = ? AND ts <= ?", [match_id, _now()]
     for col, op, val in (("kind", "=", kind), ("player_id", "=", player_id), ("team_id", "=", team_id),
                          ("ts", ">=", from_ts), ("ts", "<=", to_ts)):
         if val is not None:
             sql, args = sql + f" AND {col} {op} ?", args + [val]
+    if top:
+        return [_fact(r) for r in _rows(sql + " ORDER BY value DESC, ts, fact_id LIMIT ?", args + [max(1, int(top))])]
     return [_fact(r) for r in _rows(sql + " ORDER BY ts, fact_id", args)]
 
 

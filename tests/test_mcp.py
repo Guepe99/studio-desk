@@ -79,3 +79,17 @@ def test_never_reads_the_answer_key():
     word = "story" + "lines"
     for path in [ROOT / "studiodesk" / "mcp_server.py", *(ROOT / "studiodesk" / "facts").glob("*.py")]:
         assert word not in path.read_text().lower(), path
+
+
+def test_get_facts_names_every_kind_the_engine_writes():
+    # the model only finds goals if the tool description names kind "score"
+    import re
+    written = set(re.findall(r'add\("([a-z_]+)"', (ROOT / "studiodesk/facts/engine.py").read_text()))
+    doc = srv.get_facts.__doc__.split("kind is one of:")[1]
+    assert len(written) > 10 and [k for k in written if not re.search(rf"\b{k}\b", doc)] == []
+
+
+def test_get_facts_top_gives_the_highest_values_first(server_db):
+    every = srv.get_facts("M001", kind="pass_distance")
+    top = srv.get_facts("M001", kind="pass_distance", top=2)
+    assert len(every) > 2 and [f["value"] for f in top] == sorted((f["value"] for f in every), reverse=True)[:2]

@@ -514,7 +514,7 @@ def normalise(text):
 def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
     text = _FACT_ID.sub("", _CITATION.sub("", text))
-    return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*\)|\[\s*\]", "", text)).strip()
+    return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
 
 
 def allowed_numbers(facts, minutes=()):

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from studiodesk import api, config, db
 from studiodesk import mcp_server as srv
-from studiodesk.agents import ask, safety
+from studiodesk.agents import ask, rules, safety
 from studiodesk.agents.llm import FakeChatClient
 
 REAL_SAFETY_CHECK = ask.safety_check  # the fixture replaces it; the fail-closed tests need the real one
@@ -397,6 +397,16 @@ def test_get_facts_and_get_events_hide_what_comes_after_ts(studio):
     assert facts and events and max(f["ts"] for f in facts) <= 100.0 and max(e["ts"] for e in events) <= 100.0
     assert len(srv.get_facts("M001")) > len(facts) and len(srv.get_events("M001", 0, 10000)) > len(events)
     assert not held["get_facts"](match_id="M001", from_ts=101)
+
+
+def test_facts_reach_the_model_with_the_minute_on_screen_and_names(studio):
+    """The model guessed the minute from ts (595.7 s as minute 9, on screen 10) and wrote player ids."""
+    held = {t.name: t.func for t in ask.tools("M001", 1e9)}
+    p1 = ask.match_times("M001")[0]
+    for f in held["get_facts"](match_id="M001"):
+        assert f["minute"] == rules.stoppage(rules.minute(f["ts"], f["period"], p1), f["period"])
+        assert f.get("player_id") is None or f["player"] and not f["player"].startswith("T0")
+    assert held["get_fact"](match_id="M001", fact_id=held["get_facts"](match_id="M001")[0]["fact_id"])["team"]
 
 
 def test_the_storylines_table_is_never_read(studio, monkeypatch):

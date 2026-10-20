@@ -261,7 +261,7 @@ Tools, all read-only over `matches.sqlite`, filtered to `ts <= clock` when the c
 
 - `get_match_info(match_id)`
 - `get_events(match_id, from_ts, to_ts, type_name?)`
-- `get_facts(match_id, kind?, player_id?, team_id?, from_ts?, to_ts?)`
+- `get_facts(match_id, kind?, player_id?, team_id?, from_ts?, to_ts?, top?)`: with `top`, the top facts by value, highest first
 - `get_fact(match_id, fact_id)`
 - `get_player(match_id, player_id)`
 - `get_momentum(match_id, team_id?)`
