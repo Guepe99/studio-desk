@@ -11,6 +11,8 @@
   border: 3px solid var(--purple); border-radius: var(--r-card); background: var(--grass); cursor: pointer;
   box-shadow: var(--shadow); transform-origin: 0 100%; transition: left .25s ease, opacity .25s ease, transform .25s ease, border-color .12s; }
 #radar[hidden] { display: none; }
+/* the 2D minimap is see-through (pitch.js SEE_THROUGH draws its grass): the 3D picture shows behind it */
+#radar:not(.is-3d) { background: transparent; }
 #radar #pitch { inset: auto; left: -77.46px; top: -30.99px; width: 594.93px; height: 334.65px; }
 #radar #view3d { position: absolute; inset: 0; }
 /* the swap chip: a green fill with a purple icon, shown on hover and focus */

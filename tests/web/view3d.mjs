@@ -7,7 +7,9 @@
 // the graphics on air are the ones the 2D page shows, and that a nameplate sits on its 3D player.
 // On the minimap page: the inset hidden while the 3D loads, a click, Enter or Space on it swaps the
 // pictures in the same box, its name says what a click does (in each language), the swap icon only on
-// hover and focus, and the frame rate with the 3D large and with the 3D in the inset against the 3D
+// hover and focus, the 2D inset see-through (no box fill, the grass at 60 to 75% alpha read from the
+// canvas, opaque lines, discs and ball, keylines at 3:1 on a white and a black frame; the 3D inset and the
+// large 2D pitch opaque), and the frame rate with the 3D large and with the 3D in the inset against the 3D
 // alone (the 3D in the inset draws fewer pixels). Then on the 3D page: the frame rate while playing, a
 // seek sweep over the whole match twice (the heap and the scene must not grow), and the fall back to
 // 2D under the frame-rate floor; on a page without WebGL: the fall back at load, the 2D default and no
@@ -51,7 +53,6 @@ async function open(view, { noWebGL = false, quiet = false } = {}) {
   });
   await page.goto(new URL(`index.html?match=${MATCH}${view ? `&view=${view}` : ""}`, base).href);
   await page.waitForFunction(() => window.studioDesk?.view3d, null, { timeout: 120000 });
-  await page.waitForFunction(() => { const v = window.studioDesk.view3d; return v.mode === "2d" || v.scene || v.failed; }, null, { timeout: 300000 });
   // while the scene loads the 2D pitch is alone, never beside an empty 3D inset
   page.early = await page.evaluate(() => ({ loading: !window.studioDesk.view3d.scene, radar: !document.querySelector("#radar").hidden }));
   await page.waitForFunction(() => { const v = window.studioDesk.view3d; return v.mode === "2d" || v.scene || v.failed; }, null, { timeout: 300000 });
@@ -213,9 +214,43 @@ try {
           label: document.querySelector("#radar").getAttribute("aria-label"), box: [r.left, r.top, r.width, r.height].map(Math.round).join(),
           icon: getComputedStyle(document.querySelector("#radar .swap")).display !== "none" };
       });
+      // the 2D minimap is see-through like a game's radar: the box has no fill, the grass is drawn at
+      // pitch.js SEE_THROUGH, lines, discs and ball are opaque, and each disc has a dark keyline inside a
+      // white one, which stand out (3:1) on the grass over a white and over a black 3D frame
+      const see = () => page.evaluate(() => {
+        const cv = document.querySelector("#pitch"), g = cv.getContext("2d"), sd = window.studioDesk, k = sd.pitch.k;
+        const bg = getComputedStyle(document.querySelector("#radar")).backgroundColor;
+        const boxAlpha = /rgba/.test(bg) ? Number(bg.split(",")[3].replace(")", "")) : 1;
+        const d = g.getImageData(0, 0, cv.width, cv.height).data, hist = new Map();
+        for (let i = 3; i < d.length; i += 4 * 7) hist.set(d[i], (hist.get(d[i]) ?? 0) + 1);
+        const grass = [...hist].sort((a, b) => b[1] - a[1])[0][0];
+        let gi = 3; while (d[gi] !== grass) gi += 4;
+        const px = (x, y) => { const i = (Math.round(y) * cv.width + Math.round(x)) * 4; return [d[i], d[i + 1], d[i + 2], d[i + 3]]; };
+        const lum = ([r, gg, b]) => [r, gg, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+          .reduce((s, v, j) => s + v * [0.2126, 0.7152, 0.0722][j], 0);
+        const ps = sd.pitch.drawn.players, R = ps[0]?.r ?? 0, keylines = [];
+        for (const p of ps) {
+          if (p.focus || ps.some((q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 4 * R)) continue;   // a lit disc has its signal ring
+          const ray = [];
+          for (let a = 0; a < 8; a++) for (let r = R * k; r < R * k * 1.8 + 6; r += 0.5) ray.push(px(p.x * k + r * Math.cos(a * Math.PI / 4), p.y * k + r * Math.sin(a * Math.PI / 4)));
+          keylines.push({ center: px(p.x * k, p.y * k)[3], white: ray.some((c) => c[3] > 245 && lum(c) > 0.6), dark: ray.some((c) => c[3] > 245 && lum(c) < 0.03) });
+        }
+        const b = sd.pitch.drawn.ball;
+        return { boxAlpha, grass: grass / 255, grassRGB: [d[gi - 3], d[gi - 2], d[gi - 1]], opaque: hist.get(255) ?? 0,
+          ball: b ? px(b[0] * k, b[1] * k)[3] : 255, keylines };
+      });
+      const contrast = (a, b) => { const l = (c) => c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, j) => s + v * [0.2126, 0.7152, 0.0722][j], 0);
+        const [x, y] = [l(a), l(b)].sort((p, q) => p - q); return (y + 0.05) / (x + 0.05); };
+      const over = (rgb, a, back) => rgb.map((v) => a * v + (1 - a) * back);
       await seekTo(page, moments[0][1]);
       await page.mouse.move(5, 5);
       const before = await box();
+      const st = await see();
+      console.log(`minimap see-through: box alpha ${st.boxAlpha}, grass alpha ${st.grass.toFixed(3)}, keylines ${JSON.stringify(st.keylines.slice(0, 3))}`);
+      if (st.boxAlpha !== 0 || !(st.grass >= 0.6 && st.grass <= 0.75)) fail(`minimap: not see-through, box alpha ${st.boxAlpha}, grass alpha ${st.grass}`);
+      if (!st.opaque || st.ball !== 255 || !st.keylines.length || st.keylines.some((q) => q.center !== 255 || !q.white || !q.dark)) fail(`minimap: lines, discs or ball not opaque or a disc without its keylines ${JSON.stringify(st)}`);
+      const onWhite = contrast([4, 10, 22], over(st.grassRGB, st.grass, 255)), onBlack = contrast([255, 255, 255], over(st.grassRGB, st.grass, 0));
+      if (!(onWhite >= 3 && onBlack >= 3)) fail(`minimap keylines: dark ${onWhite.toFixed(2)}:1 on a white frame, white ${onBlack.toFixed(2)}:1 on a black one`);
       if (before.main !== "3d" || before.pitchIn !== "radar" || before.label !== "Show the 2D pitch large" || before.icon) fail(`minimap: ${JSON.stringify(before)}`);
       await page.hover("#radar");
       if (!(await box()).icon) fail("minimap: no swap icon on hover");
@@ -226,6 +261,8 @@ try {
       const r = await measure(page);
       if (sw.main !== "2d" || sw.pitchIn !== "stage" || sw.canvasIn !== "radar" || sw.label !== "Show the 3D view large") fail(`minimap swap: ${JSON.stringify(sw)}`);
       if (sw.box !== before.box) fail(`minimap swap: the box moved from ${before.box} to ${sw.box}`);
+      const st2 = await see();
+      if (st2.boxAlpha !== 1 || st2.grass !== 1) fail(`minimap swap: the 3D inset or the large 2D pitch not opaque, box alpha ${st2.boxAlpha}, grass alpha ${st2.grass}`);
       if (r.radar.covered) fail("minimap swap: the inset sits under a graphic");
       for (const g of r.graphics) if (g.nameplate && g.nameplate.visible && !(g.nameplate.offset < 2)) fail(`radar swap: nameplate ${g.nameplate.offset.toFixed(1)} px off its player on the 2D pitch`);
       await page.screenshot({ path: `${shots}/view3d-radar-swapped.png` });
@@ -262,7 +299,7 @@ try {
       }
       // the 3D in the inset is a fraction of the size of the 3D alone; with the 3D large it is the same size
       // (the drawn pixels also follow the quality steps, which move with the machine's load)
-      if (fps.swapped && !(fps.swapped.css < fps["3d"].css / 4)) fail(`the 3D in the inset is ${fps.swapped.css} px, the 3D alone ${fps["3d"].css}`);
+      if (fps.swapped && !(fps.swapped.px < fps["3d"].px / 4)) fail(`the 3D in the inset draws ${fps.swapped.px} px, the 3D alone ${fps["3d"].px}`);
       if (fps.split && fps.split.css !== fps["3d"].css) fail(`the 3D with the minimap is ${fps.split.css} px, the 3D alone ${fps["3d"].css}`);
       const fps3d = fps["3d"];
 
@@ -273,6 +310,8 @@ try {
         v.floor = floor;
         sd.seek(1500); sd.setPlaying(true); await wait(4000);
         sd.setPlaying(false); await wait(500);
+        // and a page frame after the pause: at under 1 fps 500 ms can pass without one
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const paused = { held: v.scene.held, scale: v.scene.scale };
         await wait(2500);
         paused.after = v.scene.scale;

@@ -1,6 +1,6 @@
 // Studio Desk 2D broadcast page: replay, score bug, controls and the OGraf overlay.
 import { loadMatch } from "./match.js";
-import { Pitch, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
+import { Pitch, SEE_THROUGH, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
@@ -209,7 +209,9 @@ function layout() {
   radarK = Math.max(1, RADAR_MIN / (RADAR_BOX.w * s));
   $("#radar").style.scale = radarK > 1 ? String(radarK) : "";
   // in the minimap the 2D pitch is drawn at RADAR of the stage
-  pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR * radarK : 1) * Math.min(window.devicePixelRatio || 1, 2));
+  const inset = view3d?.shown === "split" && view3d.main === "3d";
+  pitch.seeThrough = inset ? SEE_THROUGH : 1;
+  pitch.resize(s * (inset ? RADAR * radarK : 1) * Math.min(window.devicePixelRatio || 1, 2));
   minimapState();
   view3d?.resize();
   scale = s;

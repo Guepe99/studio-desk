@@ -69,9 +69,10 @@ const seekTo = async (page, ts) => {
 const shown = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); return !!el && el.getClientRects().length > 0; }, sel);
 
 // Each visible control scrolled into view, then inside the viewport and topmost at its centre.
-const unreachable = (page) => page.evaluate(async () => {
+// sel: the controls to try; the open settings menu covers what is under it, so the menu items are tried apart
+const unreachable = (page, sel = "#controls button:not(#settings-menu *), #controls select, #seek-range") => page.evaluate(async (sel) => {
   const lost = [];
-  for (const el of document.querySelectorAll("#controls button, #controls select, #seek-range")) {
+  for (const el of document.querySelectorAll(sel)) {
     if (el.hidden || !el.getClientRects().length) continue;
     el.scrollIntoView({ block: "nearest", inline: "nearest" });
     await new Promise((r) => requestAnimationFrame(r));
@@ -82,7 +83,7 @@ const unreachable = (page) => page.evaluate(async () => {
   }
   scrollTo(0, 0);
   return lost;
-});
+}, sel);
 const sideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 
 // The first screen holds the show: with the page at its top, the frame, the scorebug, play, the seek
@@ -179,7 +180,8 @@ try {
         const r = document.querySelector("#scorebug").getBoundingClientRect(), f = document.querySelector("#frame").getBoundingClientRect();
         return { min, what, inside: r.left >= f.left && r.top >= f.top && r.right <= f.right && r.bottom <= f.bottom, w: r.width / f.width };
       });
-      if (!(b.min >= 11)) fail(`${tag}: score bug text at ${b.min.toFixed(1)} px (${b.what})`);
+      // offsetHeight is a whole number of pixels, so the measured size can be a few hundredths short
+      if (!(b.min >= 10.95)) fail(`${tag}: score bug text at ${b.min.toFixed(1)} px (${b.what})`);
       console.log(`${tag} score bug: smallest text ${b.min.toFixed(1)} px (${b.what}), ${(b.w * 100).toFixed(0)}% of the picture's width`);
       // a 160 px picture (320x180, 400% zoom) needs most of its width for 11 px text: readable wins there
       if (!b.inside || (b.w > 0.6 && h > 180)) fail(`${tag}: score bug ${b.inside ? "" : "out of the picture, "}${(b.w * 100).toFixed(0)}% of its width`);
@@ -208,8 +210,9 @@ try {
       if (over > 0) fail(`${tag}: ${over} px of horizontal scroll`);
       const clip = await page.evaluate(() => [document.documentElement, document.body].map((el) => getComputedStyle(el).overflowY).filter((o) => o === "hidden" || o === "clip"));
       if (clip.length) fail(`${tag}: the page cannot scroll (overflow ${clip.join(", ")})`);
-      await page.click("#settings");
       const lost = await unreachable(page);
+      await page.click("#settings");
+      lost.push(...await unreachable(page, "#settings-menu button"));
       if (lost.length) fail(`${tag}: controls out of reach: ${lost.join(", ")}`);
       if ((await sideScroll(page)) > 0) fail(`${tag} with the settings open: horizontal scroll`);
       await page.keyboard.press("Escape");
@@ -255,8 +258,9 @@ try {
       const row = () => page.evaluate(() => {
         const items = [...document.querySelectorAll("#controls > button, #settings")].filter((el) => el.getClientRects().length);
         const mid = (el) => { const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; };
-        const m0 = mid(document.querySelector("#play"));
-        return { off: items.filter((el) => Math.abs(mid(el) - m0) > 4).map((el) => el.id), cut: items.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.id) };
+        // a 320 px window has no room for the Desk button on the row: it alone may go under
+        const m0 = mid(document.querySelector("#play")), narrow = innerWidth < 360;
+        return { off: items.filter((el) => Math.abs(mid(el) - m0) > 4 && !(narrow && el.id === "desk-open")).map((el) => el.id), cut: items.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.id) };
       });
       const r0 = await row();
       if (r0.off.length) fail(`${tag}: the buttons wrap: ${r0.off.join(", ")} off the row of Play`);
@@ -334,11 +338,12 @@ try {
         return { ts: Number(b.dataset.ts), label: b.getAttribute("aria-label"), title: b.title, text: b.innerText, r: { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height } };
       }));
       if (bs.length !== goals.length) { fail(`${tag}: ${bs.length} goal buttons for ${goals.length} goals`); return; }
+      const tight = await page.$eval("#goals", (el) => el.classList.contains("tight"));
       for (const [i, b] of bs.entries()) {
         if (!/^Goal, .+ \([A-Z0-9]+\), \d+(\+\d+)?'$/.test(b.label ?? "")) fail(`${tag}: goal button named "${b.label}"`);
         if (b.title !== b.label) fail(`${tag}: goal button hover label "${b.title}", wanted "${b.label}"`);
-        // on screen the code and the minute; a 320 px window has room for the codes only
-        const want = w > 320 ? `${goals[i].code} ${goals[i].label}'` : goals[i].code;
+        // on screen the code and the minute; a bar without room for them all (a 320 px window) shows the codes only
+        const want = w > 320 || !tight ? `${goals[i].code} ${goals[i].label}'` : goals[i].code;
         if (b.text !== want) fail(`${tag}: goal button text "${b.text}", wanted ${want}`);
         if (b.r.w < 24 || b.r.h < 24) fail(`${tag}: goal button ${b.r.w.toFixed(0)}x${b.r.h.toFixed(0)} px`);
         const o = bs.slice(i + 1).find((x) => x.r.l < b.r.r && b.r.l < x.r.r && x.r.t < b.r.b && b.r.t < x.r.b);

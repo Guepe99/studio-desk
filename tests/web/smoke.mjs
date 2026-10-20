@@ -167,10 +167,11 @@ const playAt = (page, speed, from, span) => page.evaluate(async ({ speed, from, 
 }, { speed, from, span, sel: GRAPHIC_NODES });
 
 // Every control in #controls, scrolled into view (the page scrolls), fully inside the viewport and the
-// topmost element at its centre. Controls behind a closed Viewing menu are not counted: open it first.
-const unreachable = (page) => page.evaluate(async () => {
+// topmost element at its centre. Controls behind the closed settings menu are not counted: open it and
+// pass its items, since the open menu covers the row under it.
+const unreachable = (page, sel = "#controls button:not(#settings-menu *), #controls select, #seek-range") => page.evaluate(async (sel) => {
   const lost = [];
-  for (const el of document.querySelectorAll("#controls button, #controls select, #seek-range")) {
+  for (const el of document.querySelectorAll(sel)) {
     if (el.hidden || !el.getClientRects().length) continue;   // the voice button stays hidden on a match without clips
     el.scrollIntoView({ block: "nearest", inline: "nearest" });
     await new Promise((r) => requestAnimationFrame(r));
@@ -181,7 +182,7 @@ const unreachable = (page) => page.evaluate(async () => {
   }
   scrollTo(0, 0);
   return lost;
-});
+}, sel);
 
 // How far the boxes of #app reach past the room it has (its height less its padding), in px.
 const overflow = (page) => page.evaluate(() => {
@@ -245,7 +246,7 @@ try {
   await check("cues", async () => {
     const shotFor = {};
     for (const audience of ["analyst", "casual"]) {
-      await page.click(`[data-audience="${audience}"]`);
+      await pick(page, `[data-audience="${audience}"]`);
       for (const c of cues.filter((x) => x.audience === audience)) {
         await seekTo(page, due(c) + Math.min(2, c.duration_s / 2));
         const { live, nodes, ts } = await onScreen(page);
@@ -817,7 +818,7 @@ try {
   for (const [speed, span] of [[64, 900], [16, 300]]) {
     await check(`${speed}x`, async () => {
       for (const audience of ["analyst", "casual"]) {
-        await page.click(`[data-audience="${audience}"]`);
+        await pick(page, `[data-audience="${audience}"]`);
         // start a little before the audience's first cue, so the window always holds graphics
         const from = Math.max(0, Math.min(...cues.filter((c) => c.audience === audience).map((c) => c.ts)) - 10);
         const r = await playAt(page, speed, from, span);
@@ -910,9 +911,9 @@ try {
     if (!got.you.endsWith("Who is the fastest so far?")) fail(`ask: question echo "${got.you}"`);
     if (!got.facts.includes("F-SPRINT_SPEED-000001")) fail(`ask: no fact ids in Analyst mode ("${got.facts}")`);
     if (!/9/.test(got.status)) fail(`ask: questions left not shown ("${got.status}")`);
-    await p.click('[data-audience="casual"]');
+    await pick(p, '[data-audience="casual"]');
     if ((await seen()).facts) fail("ask: fact ids shown to the casual fan");
-    await p.click('[data-audience="analyst"]');
+    await pick(p, '[data-audience="analyst"]');
     await setLang(p, "it");
     if ((await seen()).title !== "Chiedi allo studio") fail(`ask: Italian title "${(await seen()).title}"`);
     const langs = () => p.evaluate(() => ["#ask", "#ask-open", "#ask-live"].map((s) => document.querySelector(s).lang).join(" "));
@@ -979,8 +980,9 @@ try {
       await phone.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       // the page may be taller than the screen (it scrolls), never wider; speed, audience and language sit in the settings
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
-      await phone.click("#settings");
       const lost = await unreachable(phone);
+      await phone.click("#settings");
+      lost.push(...await unreachable(phone, "#settings-menu button"));
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);
       await phone.click("#settings");
       await seekTo(phone, shotAt);
