@@ -101,7 +101,7 @@ def timing(traces, stories):
 
 def live_delay(traces, stories, start_s, from_ts, speed):
     """(kind, seconds) per story of a real-speed run: wall time from its event, as the clock released it,
-    to the director's cues. The clock starts after the launch time start_s, so these are upper bounds."""
+    to the director's cues. The clock starts after start_s, so these are upper bounds."""
     by_id, out = {s["story_id"]: s for s in stories}, []
     # each cue trace names its own stories: live, a round's AI tail traces later, among the next rounds
     for t in (t for t in traces if t["agent"] == "director"):
@@ -119,10 +119,10 @@ def measure_live(runtime, start_file):
         stories = [dict(r) for r in rt.execute("SELECT story_id, ts, kind FROM stories WHERE match_id = ?", (LIVE["match"],))]
         first = rt.execute("SELECT run_id FROM traces WHERE match_id = ? ORDER BY seq LIMIT 1", (LIVE["match"],)).fetchone()
     start = at(start_file.read_text().strip()[:26] + "+00:00")  # date -u +%N: nanoseconds, fromisoformat takes micro
-    delays = live_delay(traces, stories, start, LIVE["from_ts"], LIVE["speed"])
-    # the run id carries the second the workflow started, so start-up is at least this
-    setup = datetime.strptime(first[0][2:16], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc).timestamp() - start if first else 0.0
-    return {"delays": delays, "setup_s": max(setup, 0.0)} if delays else None
+    # the run id carries the second the workflow started (rounded down): the program's start-up before it is left out
+    setup = max(datetime.strptime(first[0][2:16], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc).timestamp() - start, 0.0) if first else 0.0
+    delays = live_delay(traces, stories, start + setup, LIVE["from_ts"], LIVE["speed"])
+    return {"delays": delays, "setup_s": setup} if delays else None
 
 
 def measure(match_id, pack, runtime, mconn):
@@ -165,8 +165,8 @@ def live_section(live):
     return f"""Measured on a real-speed run (`python -m studiodesk.agents run {LIVE['match']} --speed 1 --from-ts
 {LIVE['from_ts']:.0f} --to-ts {LIVE['to_ts']:.0f}`): {LIVE['match']} from minute {LIVE['from_ts'] / 60:.0f} to minute
 {LIVE['to_ts'] / 60:.0f}, on Azure, the way the desk runs live. {'; '.join(said)}. These are upper bounds: they
-count from when the program was launched, and its start-up before the match clock began took at least
-{live['setup_s']:.1f} seconds. A story that needs a producer then waits for one; a story the director lets
+count from the second the workflow began, as its run id records it, before the match clock started; the
+program's start-up before that, {live['setup_s']:.1f} seconds, is left out. A story that needs a producer then waits for one; a story the director lets
 air by itself is on screen at that moment."""
 
 
