@@ -33,16 +33,22 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; }
+/* the page scrolls up and down when its content is taller than the window, never sideways */
 body {
   background: var(--page);
   color: var(--purple);
   font-family: var(--font);
-  overflow: hidden;
 }
 :focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 
-#app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; }
+/* from the top, not centred: the picture stays put when the strip under it grows or a menu opens */
+#app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 8px 16px; }
+/* under the picture: the controls (the seek bar first, as in a video player), the Ask panel, the agent strip, the graphics deck */
+#app > #controls { order: 1; }
+#app > #ask { order: 2; }
+#app > #activity { order: 3; }
+#app > #deck { order: 4; }
 
 /* The frame is sized by app.js to the largest 16:9 that fits; the 1920x1080 stage is scaled into it.
    It stays a dark picture: green grass in 2D, the stadium in 3D. */
@@ -53,15 +59,22 @@ body {
 #status { position: absolute; inset: 0; display: grid; place-items: center; font: 700 52px/1.2 var(--font); color: var(--page); text-align: center; padding: 0 200px; }
 #status:empty { display: none; }
 
-/* Phone in portrait: graphics sit in the deck under the pitch, each at its own scale (ograf-host.js) */
+/* A frame too small for 1920-wide graphics (app.js sets .deck): they leave the pitch for the deck, each
+   at its own scale (ograf-host.js), below the controls or, in a wide short window (.deck-side), beside the frame */
 #deck { display: none; }
-.portrait #deck { display: flex; flex-direction: column; gap: 8px; flex: none; overflow: hidden; }
-/* controls right under the pitch, graphics below them: no gap mid-page when no graphic is on air */
-.portrait #app { justify-content: flex-start; }
-.portrait #controls { order: 1; }
-.portrait #deck { order: 2; }
+.deck #deck { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.deck-side #app { display: grid; grid-template-columns: auto auto; grid-template-rows: auto 1fr auto auto; justify-content: center; align-content: center; column-gap: 10px; }
+.deck-side #app > #frame { grid-area: 1 / 1 / 3 / 2; }
+.deck-side #app > #ask { grid-area: 1 / 2; }
+.deck-side #app > #deck { grid-area: 2 / 2; align-self: start; }
+.deck-side #app > #controls { grid-area: 3 / 1 / 4 / 3; justify-self: center; }
+.deck-side #app > #activity { grid-area: 4 / 1 / 5 / 3; justify-self: center; }
 .deck-item { position: relative; flex: none; overflow: hidden; }
 .deck-item > div { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+/* the Radar inset would be a stamp on a small frame: the view is not offered there */
+.no-radar [data-view="split"] { display: none; }
+/* the docked desk stays in view while the page scrolls */
+@media (min-width: 1100px) { body > #desk { position: sticky; top: 0; height: 100vh; height: 100dvh; } }
 
 /* Score bug: purple bars, the score on a green block, the clock on the darker purple */
 #scorebug { position: absolute; left: 56px; top: 40px; height: 66px; display: flex; align-items: stretch; border-radius: var(--r-box); overflow: hidden;
@@ -77,7 +90,9 @@ body {
 
 /* Controls: every button and every segment is a pill. Selected = filled purple, unselected = outlined. */
 #controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; flex: none; font-size: 16px; }
-#notice { flex: 1 0 100%; margin: 0; text-align: center; font-weight: 700; color: var(--error); }
+#notice, #view-status { flex: 1 0 100%; margin: 0; text-align: center; font-weight: 700; color: var(--error); }
+#view-status { color: var(--purple); }
+#view-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } /* stays in the page as a live region */
 .ctl { font: 700 15px/1 var(--font); color: var(--purple); background: var(--page); border: 1.5px solid var(--purple); border-radius: var(--r-pill);
   height: 36px; padding: 0 14px; cursor: pointer; white-space: nowrap; transition: background-color .12s, color .12s; }
 .ctl:hover { background: var(--lilac-100); }
@@ -85,17 +100,34 @@ body {
 .ctl[aria-pressed="true"], .ctl.primary { background: var(--purple); color: var(--page); }
 .ctl[aria-pressed="true"]:hover, .ctl.primary:hover { background: var(--purple-500); }
 .ctl[aria-pressed="true"]:active, .ctl.primary:active { background: var(--purple-700); }
-/* disabled: still readable, dashed, no hover: it says it cannot be pressed without fading away */
-.ctl:disabled, .ctl:disabled:hover, .ctl[aria-disabled="true"], .ctl[aria-disabled="true"]:hover { background: var(--lilac-50); color: var(--purple-400); border-color: var(--purple-400); border-style: dashed; cursor: not-allowed; transform: none; }
+/* disabled: still readable, a lighter solid edge, no hover: it says it cannot be pressed without fading away
+   (a dashed pill edge broke into slivers in the software renderer) */
+.ctl:disabled, .ctl:disabled:hover, .ctl[aria-disabled="true"], .ctl[aria-disabled="true"]:hover { background: var(--lilac-50); color: var(--purple-400);
+  border-color: color-mix(in srgb, var(--purple-400) 45%, var(--page)); cursor: not-allowed; transform: none; }
 .ctl.icon { width: 40px; padding: 0; display: grid; place-items: center; }
 .ctl.icon svg { width: 20px; height: 20px; fill: currentColor; }
 .ctl.icon .i-pause, .ctl.icon.playing .i-play { display: none; }
 .ctl.icon.playing .i-pause { display: inline; }
 #play { background: var(--purple); color: var(--page); }
 #play:hover { background: var(--purple-500); }
+/* the voice-over: the speaker and the word, so it does not read as a mute button */
+#voice { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px 0 10px; }
+#voice svg { flex: none; width: 20px; height: 20px; fill: currentColor; }
 #voice[hidden], #voice .i-on, #voice[aria-pressed="true"] .i-off { display: none; }
 #voice[aria-pressed="true"] .i-on { display: inline; }
-.seg { display: flex; gap: 4px; }
+.seg { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+/* Viewing: speed, 2nd half, audience and language. In the row on wide screens; on a narrow or short
+   screen one disclosure button opens them as a row of their own under the buttons (app.js). */
+#viewing { display: contents; }
+#viewing-open { display: none; }
+#viewing-open::after { content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 2px 4px 9px; vertical-align: middle;
+  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+#viewing-open[aria-expanded="true"]::after { margin-bottom: -2px; transform: rotate(-135deg); }
+@media (max-width: 699px), (max-height: 500px) {
+  #viewing-open { display: inline-block; }
+  #viewing { display: none; }
+  #viewing.open { display: flex; flex: 1 0 100%; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 8px; border-radius: var(--r-box); background: var(--lilac-50); }
+}
 .readout { font-weight: 800; font-size: 18px; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--purple); }
 select { font: 700 15px/1 var(--font); color: var(--purple); background: var(--page); border: 1.5px solid var(--purple); border-radius: var(--r-pill);
   height: 36px; padding: 0 32px 0 14px; cursor: pointer;
@@ -105,8 +137,16 @@ select { font: 700 15px/1 var(--font); color: var(--purple); background: var(--p
 select:hover { background-color: var(--lilac-100); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-/* Seek bar: the played part purple, the rest a light track with a purple-400 edge (3:1 on white) */
-#seek { position: relative; flex: 1; min-width: 120px; height: 36px; }
+/* Seek bar: a row of its own, the clock at its end; the played part purple, the rest a light track with a
+   purple-400 edge (3:1 on white). Above it, one button per goal, in the scoring team's colour with its code. */
+#seek-row { flex: 1 0 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
+#goals { grid-area: 1 / 1; position: relative; height: 24px; margin: 0 9px 2px; }
+#goals:empty { display: none; }
+#goals button { position: absolute; top: 0; height: 24px; min-width: 24px; padding: 0 6px; border: 1.5px solid var(--purple); border-radius: var(--r-pill);
+  font: 800 12px/1 var(--font); letter-spacing: .02em; cursor: pointer; }
+#goals button:hover { box-shadow: 0 0 0 2px var(--lilac-100); }
+#seek { grid-area: 2 / 1; position: relative; min-width: 0; height: 36px; }
+#seek-row #time { grid-area: 2 / 2; }
 #seek-marks { position: absolute; left: 9px; right: 9px; top: 0; bottom: 0; pointer-events: none; }
 #seek-marks::before { content: ""; position: absolute; left: 0; right: 0; top: 15px; height: 6px; border-radius: 3px; background: var(--lilac-100); box-shadow: inset 0 0 0 1px var(--purple-400); }
 #seek-marks .fill { position: absolute; left: 0; top: 15px; height: 6px; border-radius: 3px; background: var(--purple); }
@@ -128,7 +168,7 @@ select:hover { background-color: var(--lilac-100); }
   select { padding-right: 28px; background-position: right 10px center; }
   .ctl.icon { width: 34px; }
   .readout { font-size: 15px; min-width: 32px; }
-  #seek { height: 30px; min-width: 80px; }
+  #seek { height: 30px; }
   #seek-marks::before, #seek-marks .fill { top: 12px; }
   #seek-marks .tick { top: 21px; }
   #seek-marks .half { top: 5px; }
@@ -372,4 +412,8 @@ li[data-agent="verifier"] { --agent: var(--green); }
   .act-name { flex: none; font-size: 12px; }
   .act-out { display: block; flex: 1; min-width: 0; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
 }
+/* no hand-off yet: one line, not an empty band under the picture (app.js gives the frame the height) */
+.act-steps:has(> .act-empty) { grid-column: 2; grid-row: 1; min-height: 0; }
+.act-steps > li.act-empty { padding: 0; line-height: 20px; }
+#activity:has(.act-empty) .act-sum { display: none; }
 #next-moment[aria-disabled="true"] { cursor: default; }

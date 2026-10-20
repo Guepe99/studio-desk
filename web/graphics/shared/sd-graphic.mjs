@@ -8,8 +8,9 @@
 //
 // Vendor load() params (OGraf "v_" fields): v_showFactIds (show the evidence fact ids),
 // v_players {player_id: {name, shirt, team_short, team_name, color, text}},
-// v_teams {home: {short, name, color}, away: {...}}, v_compact (a phone in portrait: the graphic is
-// drawn small, so the smallest type is raised to 28 px).
+// v_teams {home: {short, name, color}, away: {...}}, v_compact (a small frame or the deck: the graphic is
+// drawn small, so the smallest type is raised to 30 px), v_side ("left" or "right": a graphic that can
+// sit on either side goes there, momentum).
 
 export const EASE = "cubic-bezier(.2,.8,.2,1)";
 const REDUCED = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -31,7 +32,7 @@ const BASE_CSS = `
 /* fact id chips: the provenance, small and quiet, one line each (the floor size on a phone, never bigger) */
 .facts span { font-weight: 400; font-size: 17px; color: var(--lilac-100); white-space: nowrap;
   background: var(--purple-900); border-radius: var(--r-chip); padding: 3px 8px; }
-.compact .kicker, .compact .facts span { font-size: 28px; }
+.compact .kicker, .compact .facts span { font-size: 30px; }
 .compact .facts span { padding: 2px 8px; }
 `;
 

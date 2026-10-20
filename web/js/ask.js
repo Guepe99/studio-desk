@@ -21,7 +21,6 @@ export class Ask {
     panel.querySelector(".ask-close").addEventListener("click", () => this.setOpen(false));
     panel.addEventListener("keydown", (e) => { if (e.key === "Escape") this.setOpen(false); });
     this.form.addEventListener("submit", (e) => { e.preventDefault(); this.submit(); });
-    window.addEventListener("resize", () => { if (!panel.hidden) this.place(); });
   }
 
   // A 422 to an empty body means the endpoint is there with a model behind it; anything else keeps the box hidden.
@@ -38,7 +37,13 @@ export class Ask {
   setOpen(open) {
     this.panel.hidden = !open;
     this.button.setAttribute("aria-expanded", String(open));
-    if (open) { this.place(); this.render(); this.input.focus(); } else this.button.focus();
+    // the panel is in the page flow, beside or under the picture and never over it: the page scrolls to show it whole
+    if (open) {
+      this.render();
+      this.input.focus({ preventScroll: true });
+      // once the page has laid itself out around the panel
+      requestAnimationFrame(() => this.panel.scrollIntoView({ block: "nearest" }));
+    } else this.button.focus();
   }
 
   // the model went away (503): no box and no button, and focus on the control just before the hidden button
@@ -46,16 +51,10 @@ export class Ask {
     this.announce(this.t("askOff"), this.state.lang);
     this.form.hidden = this.button.hidden = this.panel.hidden = true;
     this.button.setAttribute("aria-expanded", "false");
-    this.controls.querySelector("#lang")?.focus(); // the Desk button is hidden on wide screens
+    // the Desk button is hidden on wide screens, the language inside the closed Viewing menu on narrow ones
+    const lang = this.controls.querySelector("#lang");
+    (lang?.offsetParent ? lang : this.controls.querySelector("#viewing-open"))?.focus();
     this.onLayout();
-  }
-
-  // over the broadcast, on the side of the controls with more room: above on a wide screen, below on a phone in portrait
-  place() {
-    const app = this.panel.parentElement.getBoundingClientRect(), c = this.controls.getBoundingClientRect();
-    const above = c.top - app.top, below = app.bottom - c.bottom, up = above >= below;
-    Object.assign(this.panel.style, up ? { top: "auto", bottom: `${app.bottom - c.top + 8}px` } : { top: `${c.bottom - app.top + 8}px`, bottom: "auto" },
-      { maxHeight: `${Math.max(120, (up ? above : below) - 16)}px` });
   }
 
   async submit() {

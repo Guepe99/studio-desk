@@ -351,7 +351,9 @@ Agents only learn about an event when the clock releases it, in replay generatio
   while an earlier story cue, of any story, is still on air (or within 1 s of its end) belongs to
   the same moment. A jump faster than 1x sets the speed back to 1x. The label is "Next key moment"
   while the stories load, "No more key moments" past the last one and "No key moments" when the
-  sheet has none (both aria-disabled, and a press says so in a polite live region). The N key does
+  sheet has none (both aria-disabled, and a press says so in a polite live region). With the AI
+  graphics off there are no story cues: a key moment is then a goal (a `score` fact, not AI), 3 seconds
+  before it, and the labels are "Next goal", "No more goals" and "No goals". The N key does
   the same, and Space plays and pauses, only with the focus in the broadcast frame or its controls
   (WCAG 2.1.4) and without Ctrl, Alt, Meta or Shift; the frame takes the focus once the page loads.
 - Agent activity: a strip under the pitch that follows the replay clock and shows each agent's latest

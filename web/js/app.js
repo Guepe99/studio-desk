@@ -6,7 +6,7 @@ import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { View3D, probe, defaultView, RADAR } from "./view3d.js";
 import { Ask } from "./ask.js";
-import { Moments } from "./moments.js";
+import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
@@ -83,41 +83,84 @@ const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck 
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, desk = null, voice = null, ask = null, end = 0, moments = null, activity = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
-// Phone in portrait: the pitch is too small for 1920-wide graphics, so they go to the deck below it.
-let portrait = false, scale = 1;
+// The controls' own strings (the layout's part of the page), in the same tables as the rest
+const CONTROL_STRINGS = {
+  en: { viewing: "Viewing", voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
+    nextGoal: "Next goal", nonextGoal: "No more goals", nokeyGoal: "No goals",
+    goalsHint: "AI graphics are off: this jumps to the goals" },
+  it: { viewing: "Opzioni", voice: "Voce", voiceName: "Voce AI", goalAt: "Gol, {who}, {m}'",
+    nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
+    goalsHint: "Grafiche AI spente: il pulsante salta ai gol" },
+  es: { viewing: "Opciones", voice: "Voz", voiceName: "Voz IA", goalAt: "Gol, {who}, {m}'",
+    nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
+    goalsHint: "Gráficos IA apagados: el botón salta a los goles" },
+};
+for (const [lang, more] of Object.entries(CONTROL_STRINGS)) STRINGS[lang] = { ...more, ...STRINGS[lang] };
+
+// Graphic text is never drawn under MIN_PX. A frame where the 17 px fact chips would be smaller gets the
+// compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
+// for the deck: beside the frame when a wide, short window leaves DECK_MIN px there, else below the controls.
+const MIN_PX = 11, SMALLEST = 17, COMPACT_PX = 30, DECK_MIN = 300;
+let compact = false, deckMode = "", scale = 1;
 
 function layout() {
-  // controls wrap: size them first, then give the frame the height that is left
-  // the docked desk (wide screens) takes its width from #app; the drawer (narrow) floats over it
-  const W = $("#app").clientWidth || window.innerWidth;
-  const cw = Math.min(W - 32, 860);
-  controls.style.width = `${cw}px`;
-  const ch = controls.offsetHeight + strip.offsetHeight + 36; // #app: 16 px of padding and 2 gaps of 10 between 3 boxes
-  const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
-  const s = Math.min(w / STAGE_W, h / STAGE_H);
-  frame.style.width = `${Math.round(STAGE_W * s)}px`;
-  frame.style.height = `${Math.round(STAGE_H * s)}px`;
+  const app = $("#app"), cs = getComputedStyle(app), ask = $("#ask"), body = document.body.classList;
+  const W = app.clientWidth || window.innerWidth, H = window.innerHeight;
+  const room = Math.max(160, W - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+  const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), gap = parseFloat(cs.rowGap) || 0;
+  // from the window alone, so hiding the button cannot change the answer
+  body.toggle("no-radar", Math.min(room, ((H - 120) * STAGE_W) / STAGE_H) < 600);
+  body.remove("deck", "deck-side");
+  // the open Viewing menu does not count: opening it moves the page down, never the picture
+  const menu = $("#viewing"), menuOpen = menu.classList.contains("open");
+  menu.classList.remove("open");
+  for (const el of [deck, ask]) el.style.width = el.style.maxHeight = "";
+  // the controls and the strip wrap: size them first, then give the frame the height that is left
+  const rows = (cw) => {
+    for (const el of [controls, strip]) el.style.width = `${cw}px`;
+    return controls.offsetHeight + strip.offsetHeight + 2 * gap;
+  };
+  const fit = (h) => Math.max(Math.min(room / STAGE_W, h / STAGE_H), 90 / STAGE_H);
+  // the open Ask panel never shrinks the picture: it sits beside it (side deck) or under the controls, and the page scrolls
+  let below = rows(room), s = fit(H - pad - below), side = 0;
+  if (COMPACT_PX * s < MIN_PX) {
+    // beside the frame, the Ask panel with it
+    const hs = fit(H - pad - below), colGap = 10;
+    if (STAGE_W * hs + colGap + DECK_MIN <= room) { s = hs; side = room - Math.round(STAGE_W * hs) - colGap; }
+  }
+  if (!side) {
+    // under the picture the controls take its width, and never less than room for a few buttons a row
+    below = rows(Math.max(Math.round(STAGE_W * s), Math.min(room, 560)));
+    s = fit(H - pad - below);
+  }
+  const fw = Math.round(STAGE_W * s), fh = Math.round(STAGE_H * s);
+  frame.style.width = `${fw}px`;
+  frame.style.height = `${fh}px`;
   stage.style.transform = `scale(${s})`;
-  controls.style.width = `${Math.max(Math.round(STAGE_W * s), cw)}px`;
-  strip.style.width = frame.style.width;
+  compact = SMALLEST * s < MIN_PX;
+  deckMode = side ? "side" : COMPACT_PX * s < MIN_PX ? "below" : "";
+  body.toggle("deck", !!deckMode);
+  body.toggle("deck-side", !!side);
+  if (side) {
+    for (const el of [deck, ask]) el.style.width = `${Math.min(side, 560)}px`;
+    ask.style.maxHeight = `${fh}px`;
+  } else if (deckMode) deck.style.width = controls.style.width;
   // in the radar the 2D pitch is drawn at RADAR of the stage
   pitch.resize(s * (view3d?.shown === "split" && view3d.main === "3d" ? RADAR : 1) * Math.min(window.devicePixelRatio || 1, 2));
   view3d?.resize();
   scale = s;
-  portrait = window.innerHeight > W;
-  document.body.classList.toggle("portrait", portrait);
-  if (portrait) {
-    deck.style.width = frame.style.width;
-    deck.style.height = `${Math.max(0, window.innerHeight - Math.round(STAGE_H * s) - controls.offsetHeight - strip.offsetHeight - 46)}px`;
-  }
+  menu.classList.toggle("open", menuOpen);
+  if (match) placeGoals();
   state.seeked = true; // graphics are rebuilt for the new size
-  laidOut = `${controls.offsetHeight}|${strip.offsetHeight}`;
+  laidOut = heights();
+  // a small screen has no Radar (the inset would be a stamp): who had it, or a link that asks for it, gets 3D
+  if (body.contains("no-radar") && view3d?.mode === "split") view3d.set("3d");
 }
 // a new label, a late font or the strip's narrow layout changes a height: the frame gets what is left
 let laidOut = "";
-const relayout = new ResizeObserver(() => { if (`${controls.offsetHeight}|${strip.offsetHeight}` !== laidOut) layout(); });
-relayout.observe(controls);
-relayout.observe(strip);
+const heights = () => [controls, strip].map((el) => el.offsetHeight).join("|");
+const relayout = new ResizeObserver(() => { if (heights() !== laidOut) layout(); });
+for (const el of [controls, strip]) relayout.observe(el);
 
 function applyStrings() {
   // the page chrome is English; the graphics and story texts carry the chosen language
@@ -127,6 +170,7 @@ function applyStrings() {
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   $("#play").setAttribute("aria-label", t(state.playing ? "pause" : "play"));
+  if (match) goalLabels();
 }
 
 function setPlaying(on) {
@@ -158,7 +202,8 @@ function cueSheet() {
 function refreshCues() {
   const sheet = cueSheet();
   host.setCues(sheet, state.ts);
-  moments.setSheet(sheet, desk.loaded);
+  // AI off: the score facts are not AI, so the button goes from goal to goal
+  moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => f.ts) : null);
   ask?.render();
 }
 
@@ -203,6 +248,39 @@ function buildSeekMarks() {
   }
   const range = $("#seek-range");
   range.max = String(end);
+  // one button per goal above the bar: the scoring team's code on its colour; a press lands LEAD_S before it
+  $("#goals").replaceChildren(...match.goals.map((f) => {
+    const b = document.createElement("button"), team = match.teams[f.team_id];
+    b.type = "button";
+    b.dataset.ts = String(f.ts);
+    b.textContent = team?.short_name ?? "";
+    if (team) Object.assign(b.style, { background: team.color_primary, color: textOn(team.color_primary) });
+    b.addEventListener("click", () => seek(Math.max(0, f.ts - LEAD_S)));
+    return b;
+  }));
+  goalLabels();
+}
+
+// "Goal, Okowande (RED), 10'": the scorer from the fact or its source event, the team code that is on the button
+function goalLabels() {
+  for (const b of $("#goals").children) {
+    const f = match.goals.find((g) => String(g.ts) === b.dataset.ts);
+    const pid = f.player_id ?? match.events.find((e) => e.event_id === f.source_event_ids?.[0])?.player_id;
+    const name = match.players[pid]?.name, code = b.textContent;
+    const who = name && code ? `${name} (${code})` : name || code || "?";
+    b.setAttribute("aria-label", t("goalAt").replace("{who}", who).replace("{m}", match.clock(f.ts).minute));
+    b.lang = state.lang;
+  }
+}
+
+// at the goal's place on the bar, nudged apart when two goals are close: a forward pass, then back from the end
+function placeGoals() {
+  const box = $("#goals"), w = box.clientWidth;
+  const items = [...box.children].map((b) => ({ b, w: b.offsetWidth, c: (Number(b.dataset.ts) / end) * w })).sort((p, q) => p.c - q.c);
+  let edge = 0;
+  for (const it of items) { it.x = Math.max(it.c - it.w / 2, edge); edge = it.x + it.w + 2; }
+  edge = w;
+  for (const it of items.reverse()) { it.x = Math.max(0, Math.min(it.x, edge - it.w)); edge = it.x - 2; it.b.style.left = `${it.x}px`; }
 }
 
 // the story of the latest story graphic on air (a tie goes to the later cue), or null
@@ -229,7 +307,7 @@ function tick(now) {
   drawScorebug();
   host.sync(state.ts, state.seeked, state.speed);
   // the radar steps aside while a graphic that is not pinned to a player is on the frame
-  document.body.classList.toggle("radar-yield", !portrait && [...host.live.values()].some((i) => !i.positioned));
+  document.body.classList.toggle("radar-yield", !deckMode && [...host.live.values()].some((i) => !i.positioned));
   voice?.update(state.ts, end); // null until its clips are checked
   moments.update(state.ts);
   activity.update(state.ts, state.seeked, onAirStory(), state.lang);
@@ -281,6 +359,15 @@ function wireControls() {
   }
   pick.addEventListener("change", () => setAudience(pick.value));
   $("#half2").addEventListener("click", () => seek(match.meta.period1_s));
+  // the Viewing menu of a narrow screen is a disclosure: Escape closes it and gives the focus back to its button
+  const viewing = $("#viewing"), viewingOpen = $("#viewing-open");
+  const setViewing = (open) => { viewing.classList.toggle("open", open); viewingOpen.setAttribute("aria-expanded", String(open)); };
+  viewingOpen.addEventListener("click", () => setViewing(!viewing.classList.contains("open")));
+  for (const el of [viewing, viewingOpen]) el.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !viewing.classList.contains("open") || !viewingOpen.offsetParent) return;
+    setViewing(false);
+    viewingOpen.focus();
+  });
   $("#seek-range").addEventListener("input", (e) => seek(Number(e.target.value)));
   // the range keeps a fine step for dragging; keys move by useful match time instead
   const KEY_STEP = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 60, PageDown: -60 };
@@ -331,19 +418,27 @@ async function main() {
       color: team.color_primary, text: textOn(team.color_primary) }];
   }));
   const teams = Object.fromEntries([match.home, match.away].map((tm) => [tm.side, { short: tm.short_name, name: tm.name, color: tm.color_primary }]));
+  const locate = (pid, now) => {
+    if (view3d?.main === "3d") return view3d.project(pid, now);
+    const p = match.index[pid] !== undefined ? match.at(match.index[pid], Math.min(now, match.duration)) : null;
+    if (!p) return { x: 0, y: 0, visible: false };
+    const [x, y] = toStage(p[0], p[1]);
+    return { x, y, visible: true };
+  };
+  // v_side: a card that can sit on either side (momentum) goes to the half of the frame away from the ball,
+  // unless the lower third has the bottom left
+  const awayFromBall = () => {
+    const ball = locate("ball", state.ts);
+    const third = [...host.live.values()].some((i) => i.cue.graphic === "pass_shot");
+    return ball.visible && ball.x > STAGE_W / 2 && !third ? "left" : "right";
+  };
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: 60,
-    locate: (pid, now) => {
-      if (view3d?.main === "3d") return view3d.project(pid, now);
-      const p = match.index[pid] !== undefined ? match.at(match.index[pid], Math.min(now, match.duration)) : null;
-      if (!p) return { x: 0, y: 0, visible: false };
-      const [x, y] = toStage(p[0], p[1]);
-      return { x, y, visible: true };
-    },
-    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams, v_compact: portrait }),
-    // the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
-    compact: () => (portrait ? { deck, magnify: Math.max(1, 11.5 / (26 * scale)) } : null),
+    locate,
+    vendorParams: () => ({ v_showFactIds: state.audience === "analyst", v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
+    // in the deck or not, the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
+    compact: () => ({ deck: deckMode ? deck : null, magnify: Math.max(1, 11.5 / (26 * scale)) }),
   });
   // a graphic that fails to register is left out (its cues are skipped) and named on screen
   const reg = await Promise.allSettled(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
@@ -368,7 +463,7 @@ async function main() {
   window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, seek, setPlaying, get end() { return end; } };
   // 2D, 3D or Radar (?view=split): ?view= or what the device can draw; any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
-    notice: $("#notice"), buttons: document.querySelectorAll("[data-view]") }, layout);
+    notice: $("#notice"), status: $("#view-status"), buttons: document.querySelectorAll("[data-view]") }, layout);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it

@@ -73,7 +73,9 @@ const measure = (page) => page.evaluate(() => {
     if (inst.cue.graphic === "nameplate") {
       const want = sd.host.opts.locate(inst.cue.payload.player_id, sd.state.ts);
       const t = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(inst.el.shadowRoot.querySelector(".anchor")?.style.transform ?? "");
-      out.nameplate = { visible: want.visible, offset: t ? Math.hypot(Number(t[1]) - want.x, Number(t[2]) - want.y) : Infinity };
+      // a magnified nameplate (a small frame, ograf-host.js) draws its own stage scaled by its width over 1920
+      const k = (inst.el.clientWidth || 1920) / 1920;
+      out.nameplate = { visible: want.visible, offset: t ? Math.hypot(Number(t[1]) * k - want.x, Number(t[2]) * k - want.y) : Infinity };
     }
     return out;
   });

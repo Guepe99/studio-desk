@@ -13,6 +13,7 @@ export default class PassShot extends SdGraphic {
   css() {
     return `
 .l3 { position: absolute; left: 96px; bottom: 84px; width: 860px; }
+.compact .l3 { width: 720px; }  /* fits a 264 px deck with its smallest type (30 px) at 11 px */
 .card { display: grid; grid-template-columns: 96px 1fr auto; align-items: stretch; height: 126px; overflow: hidden; }
 .num { display: grid; place-items: center; font-weight: 800; font-size: 60px; }
 .who { padding: 0 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
@@ -24,7 +25,7 @@ export default class PassShot extends SdGraphic {
 .q { display: flex; align-items: center; gap: 18px; height: 50px; padding: 0 24px; margin-top: 6px; border-radius: var(--r-box); background: var(--purple-900); }
 .q.none, .q.text .track, .q.text .qval { display: none; }
 .qlabel { font-weight: 700; font-size: 24px; letter-spacing: .08em; color: var(--lilac-100); }
-.compact .qlabel { font-size: 28px; }
+.compact .qlabel, .compact .team, .compact .unit { font-size: 30px; }
 .q.text .qlabel { font-size: 30px; font-weight: 800; letter-spacing: .02em; color: var(--page); }
 .q.goal { background: var(--green); }
 .q.goal .qlabel { color: var(--purple); letter-spacing: .12em; text-transform: uppercase; }
