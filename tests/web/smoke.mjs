@@ -165,6 +165,14 @@ const unreachable = (page) => page.evaluate(() => [...document.querySelectorAll(
     return !(hit && (hit === el || el.contains(hit) || hit.contains(el)));
   }).map((el) => el.id || el.dataset.speed || el.dataset.audience || el.tagName));
 
+// How far the boxes of #app reach past the room it has (its height less its padding), in px.
+const overflow = (page) => page.evaluate(() => {
+  const app = document.querySelector("#app"), cs = getComputedStyle(app);
+  const boxes = [...app.children].filter((el) => el.getClientRects().length && getComputedStyle(el).position !== "absolute").map((el) => el.getBoundingClientRect());
+  const span = Math.max(...boxes.map((r) => r.bottom)) - Math.min(...boxes.map((r) => r.top));
+  return span - (app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
+});
+
 // POST api/ask stubbed (the static site has no API): {} is the page's probe; "limit", "offline", "broken" (500)
 // and "gone" (503) the error paths; "slow" answers after a second.
 const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
@@ -206,6 +214,8 @@ try {
   const page = await open(browser, { viewport: { width: 1280, height: 720 } });
   page.on("requestfailed", (r) => fail(`request failed: ${r.url()}`));
   const cues = (await page.evaluate(() => window.studioDesk.match.cues)).filter(onAir);
+  // the broadcast has the focus once loaded, so Space and N work at once
+  if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("focus: the broadcast frame does not have the focus after loading");
 
   await check("cues", async () => {
     const shotFor = {};
@@ -294,19 +304,24 @@ try {
   });
 
   await check("space", async () => {
+    if (await page.$eval("#frame", (el) => el.tabIndex) !== 0) fail("space: the frame is not focusable");
     await page.evaluate(() => {
       window.__toggles = 0;
       new MutationObserver(() => window.__toggles++).observe(document.querySelector("#play"), { attributeFilter: ["class"] });
     });
-    for (const sel of ["#play", '[data-speed="4"]', "body"]) {
+    // a single-key shortcut only inside the broadcast and its controls (WCAG 2.1.4): not on the page body
+    for (const [sel, want] of [["#play", 1], ['[data-speed="4"]', 1], ["#frame", 1], ["body", 0]]) {
       const before = await page.evaluate(() => [window.__toggles, window.studioDesk.state.speed]);
       if (sel === "body") await page.evaluate(() => document.activeElement.blur()); else await page.focus(sel);
       await page.keyboard.press("Space");
       await page.waitForTimeout(150);
       const after = await page.evaluate(() => [window.__toggles, window.studioDesk.state.speed]);
-      if (after[0] - before[0] !== 1) fail(`space on ${sel}: play toggled ${after[0] - before[0]} times`);
+      if (after[0] - before[0] !== want) fail(`space on ${sel}: play toggled ${after[0] - before[0]} times, wanted ${want}`);
       if (after[1] !== before[1]) fail(`space on ${sel}: speed changed to ${after[1]}`);
     }
+    await page.click("#frame", { position: { x: 5, y: 5 } });
+    if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("space: a click on the frame does not focus it");
+    await page.evaluate(() => window.studioDesk.setPlaying(false));
     await page.evaluate(() => window.studioDesk.setPlaying(false));
   });
 
@@ -466,57 +481,179 @@ try {
   });
 
   const nextFrame = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  // Next key moment: 3 s before the next story cue on air for the audience (a graphic following its own
-  // story's previous one is the same moment), by button and by the N key; nothing past the last one.
+  // Next key moment: 3 s before the next story cue on air for the audience (a story graphic that starts
+  // while another story graphic is on air, plus 1 s, is the same moment, whatever its story), by button
+  // and by the N key; nothing past the last one, with the focus kept and the reason announced.
+  const nextBtn = () => page.$eval("#next-moment", (x) => ({ off: x.getAttribute("aria-disabled") === "true", disabled: x.disabled,
+    label: x.textContent, lang: x.lang, live: document.querySelector("#moments-live")?.textContent ?? "" }));
+  const clock = () => page.evaluate(() => window.studioDesk.state.ts);
   await check("next key moment", async () => {
     const all = await page.evaluate(() => window.studioDesk.match.cues);
     // the team with the most story cues on air (DEMO has none: there the button must stay disabled)
     const storyCount = (a) => cues.filter((c) => c.audience === a && c.story_id).length;
     const team = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith("team:")))].sort((a, b) => storyCount(b) - storyCount(a))[0];
+    const stopsFor = (aud) => {
+      const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
+      return story.filter((c, i) => !story.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1));
+    };
     for (const aud of ["analyst", team]) {
       if (aud === "analyst") await page.click('[data-audience="analyst"]');
       else { await page.click('[data-audience="team"]'); await page.selectOption("#audience-pick", aud); }
-      const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
-      const stops = story.filter((c, i) => !story.slice(0, i).some((p) => p.story_id === c.story_id && c.ts <= p.ts + p.duration_s + 1));
+      const stops = stopsFor(aud);
       if (!stops.length && aud === "analyst") fail("next analyst: no story cue on air");
+      if (MATCH === "M001" && aud === "analyst" && stops.some((c) => c.story_id === "S-000013")) fail("next: the comeback that shares the goal's event is a stop of its own");
       await seekTo(page, 0);
       for (const [i, c] of stops.entries()) {
-        if (await page.$eval("#next-moment", (b) => b.disabled)) { fail(`next ${aud}: disabled before ${c.cue_id}`); break; }
-        if (i % 2) await page.keyboard.press("n"); else await page.click("#next-moment");
+        const b = await nextBtn();
+        if (b.off || b.disabled) { fail(`next ${aud}: disabled before ${c.cue_id}`); break; }
+        // the last press is a keyboard press on the button: the focus must stay on it
+        if (i === stops.length - 1) { await page.focus("#next-moment"); await page.keyboard.press("Enter"); }
+        else if (i % 2) { await page.focus("#frame"); await page.keyboard.press("n"); }
+        else await page.click("#next-moment");
         await nextFrame(page);
-        const ts = await page.evaluate(() => window.studioDesk.state.ts), want = Math.max(0, c.ts - 3);
+        const ts = await clock(), want = Math.max(0, c.ts - 3);
         if (Math.abs(ts - want) > 0.01) { fail(`next ${aud}: landed at ${ts.toFixed(2)} s, wanted ${want.toFixed(2)} s for ${c.cue_id}`); break; }
       }
-      const at = await page.evaluate(() => window.studioDesk.state.ts);
-      const b = await page.$eval("#next-moment", (x) => ({ disabled: x.disabled, label: x.textContent }));
-      if (!b.disabled || b.label !== "No more key moments") fail(`next ${aud}: past the last moment the button is ${JSON.stringify(b)}`);
+      const at = await clock();
+      const b = await nextBtn();
+      if (!b.off || b.disabled || b.label !== (stops.length ? "No more key moments" : "No key moments")) fail(`next ${aud}: past the last moment the button is ${JSON.stringify(b)}`);
+      if (stops.length && await page.evaluate(() => document.activeElement?.id) !== "next-moment") fail(`next ${aud}: the focus left the button at the last moment`);
+      if (!stops.length) await page.focus("#next-moment");
+      await page.keyboard.press("Enter");
+      await nextFrame(page);
+      if ((await nextBtn()).live !== b.label) fail(`next ${aud}: a press past the last moment is not announced`);
+      await page.focus("#frame");
       await page.keyboard.press("n");
       await nextFrame(page);
-      if (await page.evaluate(() => window.studioDesk.state.ts) !== at) fail(`next ${aud}: N moved the clock past the last moment`);
+      if (await clock() !== at) fail(`next ${aud}: N moved the clock past the last moment`);
       console.log(`next ${aud}: ${stops.length} moments`);
     }
-    await page.selectOption("#lang", "it");
-    if (await page.$eval("#next-moment", (x) => x.textContent) !== "Nessun altro momento chiave") fail("next: label not in Italian");
-    await page.selectOption("#lang", "en");
+    // labels and their language
     await page.click('[data-audience="analyst"]');
+    await seekTo(page, await page.evaluate(() => window.studioDesk.end));
+    for (const [lang, label] of [["it", "Nessun altro momento chiave"], ["es", "No hay más momentos clave"]]) {
+      await page.selectOption("#lang", lang);
+      await nextFrame(page);
+      const b = await nextBtn();
+      if (b.label !== label || b.lang !== lang) fail(`next: label ${JSON.stringify(b.label)} lang ${b.lang}, wanted ${label} in ${lang}`);
+    }
+    await page.click('[data-audience="analyst"]');
+    await seekTo(page, 0);
+    for (const [lang, label] of [["it", "Prossimo momento chiave"], ["es", "Siguiente momento clave"], ["en", "Next key moment"]]) {
+      await page.selectOption("#lang", lang);
+      await nextFrame(page);
+      const b = await nextBtn();
+      if (b.label !== label || b.lang !== lang || b.off) fail(`next at 0: ${JSON.stringify(b)}, wanted ${label} in ${lang}`);
+    }
+    // N is ignored in the desk, with Shift and on the page body; at 64x a jump comes back to 1x
+    await seekTo(page, 0);
+    const first = stopsFor("analyst").map((c) => Math.max(0, c.ts - 3))[0];
+    await page.focus('#desk [role="tab"]');
+    await page.keyboard.press("n");
+    await nextFrame(page);
+    if (await clock() !== 0) fail("next: N in the desk moved the clock");
+    await page.focus("#frame");
+    await page.keyboard.press("Shift+N");
+    await nextFrame(page);
+    if (await clock() !== 0) fail("next: Shift+N moved the clock");
+    await page.evaluate(() => document.activeElement.blur());
+    await page.keyboard.press("n");
+    await nextFrame(page);
+    if (await clock() !== 0) fail("next: N on the page body moved the clock");
+    await page.click('[data-speed="64"]');
+    await page.focus("#frame");
+    await page.keyboard.press("n");
+    await nextFrame(page);
+    const sp = await page.evaluate(() => ({ speed: window.studioDesk.state.speed, pressed: document.querySelector('[data-speed="1"]').getAttribute("aria-pressed") }));
+    if (sp.speed !== 1 || sp.pressed !== "true") fail(`next: after a jump at 64x the speed is ${JSON.stringify(sp)}, wanted 1x`);
+    if (first !== undefined && Math.abs(await clock() - first) > 0.01) fail("next: N with the focus on the frame did not jump");
+    await page.click('[data-speed="1"]');
+
+    // the Ask box is outside the broadcast: a typed n is text, not a jump
+    const p = await open(browser, { viewport: { width: 1280, height: 720 } }, { route: askStub() });
+    await p.waitForSelector("#ask-open:not([hidden])", { timeout: 5000 });
+    await p.click("#ask-open");
+    await p.keyboard.type("n");
+    await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    if (await p.evaluate(() => window.studioDesk.state.ts) !== 0 || await p.inputValue("#ask-q") !== "n") fail("next: N typed in the Ask box moved the clock");
+    await p.context().close();
+
+    // while the stories load: "Next key moment", disabled; a replay without stories: "No key moments"
+    let release;
+    const held = new Promise((r) => { release = r; });
+    const empty = await open(browser, { viewport: { width: 1280, height: 720 } }, {
+      route: (q) => q.route(`**/data/${MATCH}/stories.json`, async (r) => { await held; r.fulfill({ json: [] }); }),
+    });
+    const loading = await empty.$eval("#next-moment", (x) => ({ off: x.getAttribute("aria-disabled"), label: x.textContent }));
+    if (loading.off !== "true" || loading.label !== "Next key moment") fail(`next while loading: ${JSON.stringify(loading)}`);
+    release();
+    await empty.waitForFunction(() => window.studioDesk.desk.loaded);
+    await empty.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const none = await empty.$eval("#next-moment", (x) => ({ off: x.getAttribute("aria-disabled"), label: x.textContent }));
+    if (none.off !== "true" || none.label !== "No key moments") fail(`next without stories: ${JSON.stringify(none)}`);
+    await empty.context().close();
   });
 
-  // Agent activity: each agent's latest step with ts <= now, after seeks both ways and while playing at
-  // 64x with a handful of DOM changes (one per trace that comes into reach, not one per frame).
+  // Agent activity: each agent's latest step with ts <= now; while a story graphic is on air (the latest
+  // cue wins, a tie goes to the later cue id), the chain of that story instead. After seeks both ways and
+  // while playing at 64x with a handful of DOM changes (one per view, not one per frame).
   await check("agent activity", async () => {
     const rows = (await page.evaluate(() => window.studioDesk.desk.traces)).sort((a, b) => a.ts - b.ts || a.seq - b.seq);
     if (!rows.length) { fail("activity: no traces in this replay"); return; }
-    const want = (ts) => {
+    const traceIds = (r) => (r.story_ids?.length ? r.story_ids : r.story_id ? [r.story_id] : []);
+    const storyCues = cues.filter((c) => c.audience === "analyst" && c.story_id);
+    const storyAt = (ts) => storyCues.filter((c) => c.ts <= ts && ts < c.ts + c.duration_s)
+      .sort((x, y) => y.ts - x.ts || (y.cue_id > x.cue_id ? 1 : -1))[0]?.story_id ?? null;
+    const chainOf = (story) => (story ? rows.filter((r) => traceIds(r).includes(story)).sort((a, b) => a.seq - b.seq) : []);
+    const latest = (src) => {
       const seen = new Set(), out = [];
-      for (const r of rows.filter((x) => x.ts <= ts).reverse()) if (!seen.has(r.agent) && out.length < 7) { seen.add(r.agent); out.unshift(r.seq); }
+      for (const r of [...src].reverse()) if (!seen.has(r.agent) && out.length < 7) { seen.add(r.agent); out.unshift(r.seq); }
       return out.join();
     };
-    const shown = () => page.evaluate(() => [...document.querySelectorAll("#activity li[data-seq]")].map((l) => l.dataset.seq).join());
+    const want = (ts) => { const chain = chainOf(storyAt(ts)); return latest(chain.length ? chain : rows.filter((x) => x.ts <= ts)); };
+    const money = (v) => `$${v.toFixed(v >= 0.1 ? 2 : 4)}`;
+    const sumWant = (ts) => {
+      const chain = chainOf(storyAt(ts));
+      if (chain.length) { // the Traces tab's totals: a hand-off shared by n stories counts 1/n
+        const tok = chain.reduce((a, r) => a + ((r.tokens_in || 0) + (r.tokens_out || 0)) / traceIds(r).length, 0);
+        const usd = chain.reduce((a, r) => a + (r.cost_usd || 0) / traceIds(r).length, 0);
+        return `How the graphic on air was made: ${chain.length} hand-offs, ${Math.round(tok).toLocaleString("en-US")} tokens, ${money(usd)}`;
+      }
+      const got = rows.filter((x) => x.ts <= ts);
+      if (!got.length) return "";
+      const tok = got.reduce((a, r) => a + (r.tokens_in || 0) + (r.tokens_out || 0), 0), usd = got.reduce((a, r) => a + (r.cost_usd || 0), 0);
+      return `Hand-offs so far: ${got.length}, ${tok.toLocaleString("en-US")} tokens, ${money(usd)}`;
+    };
+    const strip = () => page.evaluate(() => ({ seqs: [...document.querySelectorAll("#activity li[data-seq]")].map((l) => l.dataset.seq).join(),
+      sum: document.querySelector(".act-sum").textContent, title: document.querySelector(".act-title").textContent,
+      empty: document.querySelector(".act-empty")?.textContent ?? "", lang: document.querySelector("#activity").lang }));
+    const shown = async () => (await strip()).seqs;
     const mid = rows[Math.floor(rows.length / 2)].ts, last = rows.at(-1).ts;
-    for (const ts of [last + 1, mid, mid - 0.01, rows[0].ts - 1, mid, last + 1]) {
+    // every story graphic on air, 1 s in, and the times between them
+    const times = [last + 1, mid, mid - 0.01, rows[0].ts - 1, mid, last + 1, ...storyCues.map((c) => c.ts + 1)];
+    if (!storyCues.some((c) => chainOf(c.story_id).length)) fail("activity: no story graphic on air has a chain of traces");
+    for (const ts of times) {
       await seekTo(page, ts);
-      const got = await shown();
-      if (got !== want(ts)) fail(`activity at ${ts} s: shows ${got || "nothing"}, wanted ${want(ts) || "nothing"}`);
+      const got = await strip();
+      if (got.seqs !== want(ts)) fail(`activity at ${ts} s (story on air ${storyAt(ts)}): shows ${got.seqs || "nothing"}, wanted ${want(ts) || "nothing"}`);
+      if (got.sum !== sumWant(ts)) fail(`activity at ${ts} s: summary "${got.sum}", wanted "${sumWant(ts)}"`);
+    }
+    // the waiting line, and the strip in three languages, by the clock and on a story graphic
+    const before = rows[0].ts - 1, quiet = rows.find((r) => !storyAt(r.ts + 0.5))?.ts + 0.5, onAir = storyCues.find((c) => chainOf(c.story_id).length);
+    if (!storyAt(before)) {
+      await seekTo(page, before);
+      const got = await strip();
+      if (got.empty !== "No agent hand-offs yet at this point of the match") fail(`activity: waiting line "${got.empty}"`);
+    }
+    for (const [lang, title, sum, made] of [["it", "Gli agenti al lavoro", "Passaggi di consegne finora: ", "Come è nata la grafica in onda: "],
+      ["es", "Los agentes en acción", "Relevos hasta ahora: ", "Cómo se hizo el gráfico en pantalla: "], ["en", "Agents at work", "Hand-offs so far: ", "How the graphic on air was made: "]]) {
+      await page.selectOption("#lang", lang);
+      for (const [ts, start] of [[quiet, sum], [onAir?.ts + 1, made]]) {
+        if (!Number.isFinite(ts)) continue;
+        await seekTo(page, ts);
+        const got = await strip();
+        if (got.title !== title || got.lang !== lang || !got.sum.startsWith(start)) fail(`activity in ${lang} at ${ts} s: ${JSON.stringify(got)}`);
+      }
     }
     const failed = rows.find((r) => r.step === "fallback" || /(^| )fallback: /.test(r.output_summary));
     if (failed) {
@@ -532,12 +669,40 @@ try {
     await playAt(page, 64, from, 900);
     const end = await page.evaluate(() => window.studioDesk.state.ts);
     const batches = new Set(rows.filter((r) => r.ts > from && r.ts <= end).map((r) => r.ts)).size;
+    const graphics = storyCues.filter((c) => c.ts > from && c.ts <= end).length; // each one on air and off again
     const muts = await page.evaluate(() => window.__actMuts);
-    if (muts > 4 * (batches + 1)) fail(`activity at 64x: ${muts} DOM changes for ${batches} batches of traces`);
+    if (muts > 4 * (batches + 2 * graphics + 1)) fail(`activity at 64x: ${muts} DOM changes for ${batches} batches of traces and ${graphics} story graphics`);
     if (await shown() !== want(end)) fail(`activity at 64x: stale at ${end.toFixed(1)} s`);
     if (await page.$eval("#activity", (el) => !!(el.closest("[aria-live]") || el.querySelector("[aria-live]")))) fail("activity: a live region");
     await seekTo(page, mid + 1);
     await page.screenshot({ path: `${shots}/web-activity-1280x720.png` });
+    if (onAir) {
+      await seekTo(page, onAir.ts + 1);
+      await page.screenshot({ path: `${shots}/web-activity-graphic-1280x720.png` });
+    }
+
+    // WCAG 1.4.12 text spacing: a clamped summary ends on a whole line, never half a line
+    const spacing = await page.addStyleTag({ content: "* { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; } p { margin-bottom: 2em !important; }" });
+    await seekTo(page, mid + 1);
+    const cut = await page.evaluate(() => [...document.querySelectorAll("#activity .act-out")].map((el) => el.clientHeight / parseFloat(getComputedStyle(el).lineHeight))
+      .filter((lines) => Math.abs(lines - Math.round(lines)) > 0.15));
+    if (cut.length) fail(`activity with text spacing: summaries cut mid-line (${cut.map((x) => x.toFixed(2)).join(", ")} lines)`);
+    if (await overflow(page) > 1) fail(`activity with text spacing: the page overflows by ${await overflow(page)} px`);
+    await page.screenshot({ path: `${shots}/web-activity-spacing-1280x720.png` });
+    await spacing.evaluate((el) => el.remove());
+    await seekTo(page, mid + 1);
+  });
+
+  // The page fits the window: the frame, the strip and the controls (the overflow is clipped, so
+  // scrollHeight cannot see it). 1600x720 is a window where the height sets the frame size.
+  await check("layout fits", async () => {
+    if (await overflow(page) > 1) fail(`1280x720: the page overflows by ${await overflow(page)} px`);
+    const wide = await open(browser, { viewport: { width: 1600, height: 720 } });
+    await wide.waitForFunction(() => window.studioDesk.desk.loaded);
+    await wide.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const px = await overflow(wide);
+    if (px > 1) fail(`1600x720: the page overflows by ${px.toFixed(1)} px`);
+    await wide.context().close();
   });
 
   for (const [speed, span] of [[64, 900], [16, 300]]) {
@@ -689,6 +854,8 @@ try {
       const tall = await phone.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
       if (tall > 1) fail(`${w}x${h}: the page is ${tall} px taller than the screen`);
       if (await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) fail(`${w}x${h}: horizontal scroll`);
+      const over = await overflow(phone);
+      if (over > 1) fail(`${w}x${h}: the page overflows by ${over.toFixed(1)} px`);
       const lost = await unreachable(phone);
       if (lost.length) fail(`${w}x${h}: controls out of reach: ${lost.join(", ")}`);
       await seekTo(phone, shotAt);
