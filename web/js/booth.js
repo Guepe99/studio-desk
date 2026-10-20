@@ -113,7 +113,7 @@ export class Booth {
     this.blockFrom = Infinity; this.blockUntil = -1; this.needFresh = false;
     this.holdUntil = -1;
     this.said = new Map();     // name id -> last time said
-    this.lastVariant = new Map();
+    this.recent = new Map();     // `${role}|${kind}` -> the variants used last, newest first
     this.pending = [];         // follow-ups: {at, until, run(now)}
     this.coNext = 60;
     this.stoppage = -1e9; this.lastAB = 0;
@@ -221,7 +221,10 @@ export class Booth {
       if (r && !r.names.some((n) => PEOPLE.has(this.slotOf(slots, n)) && t - (this.said.get(n) ?? -1e9) < RULES.nameS)) ok.push([i, r]);
     });
     if (!ok.length) return null;
-    const fresh = vs.length > 1 ? ok.filter(([i]) => i !== this.lastVariant.get(`${role}|${kind}`)) : ok;
+    // never the last variant; of a kind said often (the fill-in lines), not one of the last few either
+    const recent = this.recent.get(`${role}|${kind}`) ?? [];
+    const rested = ok.filter(([i]) => !recent.slice(0, Math.max(1, Math.min(4, Math.floor(vs.length / 3)))).includes(i));
+    const fresh = vs.length < 2 ? ok : rested.length ? rested : ok.filter(([i]) => i !== recent[0]);
     if (!fresh.length) return null;
     const [i, r] = fresh[Math.floor(this.rand() * fresh.length)];
     return { ...r, variant: i }; // remembered once the line is really planned (emit)
@@ -263,7 +266,8 @@ export class Booth {
 
   emit(item, role) {
     const { names, factIds, variant, ...rest } = item;
-    this.lastVariant.set(`${role}|${item.kind}`, variant);
+    const k = `${role}|${item.kind}`;
+    this.recent.set(k, [variant, ...(this.recent.get(k) ?? [])].slice(0, 4));
     const out = { ...rest, fact_ids: factIds, names };
     this.plan.push(out);
     this.out.push(out);
