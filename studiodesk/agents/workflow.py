@@ -6,8 +6,8 @@
                                 -> commentator_it ├-> verifier -> director -> stories + cues
                                 -> commentator_es ┘
 
-A batch starts when the clock releases a goal, a sprint above 34 km/h or the end of a 5-minute
-window. Agents read the match only through the MCP server (studiodesk/mcp_server.py), served in
+A batch starts when the clock releases a goal, a sprint above 34 km/h, a big chance (a shot judged
+rules.SETTLE_S after it is hit) or the end of a 5-minute window. Agents read the match only through the MCP server (studiodesk/mcp_server.py), served in
 process over the MCP protocol on memory streams so its clock moves with ours. Any agent that fails
 or times out is replaced by rules and template sentences: the broadcast never waits.
 """

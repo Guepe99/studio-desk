@@ -496,12 +496,16 @@ try {
       const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
       return story.filter((c, i) => !story.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1));
     };
+    // M001's comeback, found by kind: its id moves when a regeneration tells one more story before it
+    const comeback = MATCH === "M001" && (await page.evaluate(() => fetch("data/M001/stories.json").then((r) => r.json())))
+      .find((s) => s.kind === "comeback")?.story_id;
+    if (MATCH === "M001" && !comeback) fail("next: no comeback in M001's stories");
     for (const aud of ["analyst", team]) {
       if (aud === "analyst") await page.click('[data-audience="analyst"]');
       else { await page.click('[data-audience="team"]'); await page.selectOption("#audience-pick", aud); }
       const stops = stopsFor(aud);
       if (!stops.length && aud === "analyst") fail("next analyst: no story cue on air");
-      if (MATCH === "M001" && aud === "analyst" && stops.some((c) => c.story_id === "S-000013")) fail("next: the comeback that shares the goal's event is a stop of its own");
+      if (MATCH === "M001" && aud === "analyst" && stops.some((c) => c.story_id === comeback)) fail("next: the comeback that shares the goal's event is a stop of its own");
       await seekTo(page, 0);
       for (const [i, c] of stops.entries()) {
         const b = await nextBtn();
