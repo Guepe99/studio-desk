@@ -25,8 +25,12 @@ const STRINGS = {
     askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
     askBad: "The studio could not take that question. Try a shorter one about this match.",
     next: "Next key moment", nonext: "No more key moments",
+    nokey: "No key moments", actTitle: "Agents at work", actWait: "No agent hand-offs yet at this point of the match",
+    actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
+    actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}", actTok: "{n} tok",
+    actRules: "rules, no model", actCode: "code, no model",
   },
-  // only the audience control is translated so far; every other key falls back to English
+  // the controls, Ask and the agent strip are translated; every other key falls back to English
   it: {
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
     pickteam: "Scegli la squadra", pickplayer: "Scegli il giocatore",
@@ -37,6 +41,12 @@ const STRINGS = {
     askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
     askBad: "Lo studio non può prendere questa domanda. Provane una più breve su questa partita.",
     next: "Prossimo momento chiave", nonext: "Nessun altro momento chiave",
+    nokey: "Nessun momento chiave", actTitle: "Gli agenti al lavoro",
+    actWait: "Ancora nessun passaggio di consegne tra gli agenti a questo punto della partita",
+    actNone: "Nessuna traccia degli agenti in questo replay", actSum: "Passaggi di consegne finora: {n}, {tokens} token, {usd}",
+    actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
+    actRules: "solo regole", actCode: "solo codice",
+    ag_story_finder: "Cerca storie", ag_analyst: "Analista", ag_commentator: "Commentatore", ag_verifier: "Verificatore", ag_director: "Regista",
   },
   es: {
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
@@ -48,6 +58,12 @@ const STRINGS = {
     askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se pudo contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
     askBad: "El estudio no puede aceptar esa pregunta. Prueba con una más corta sobre este partido.",
     next: "Siguiente momento clave", nonext: "No hay más momentos clave",
+    nokey: "No hay momentos clave", actTitle: "Los agentes en acción",
+    actWait: "Todavía no hay relevos entre los agentes en este punto del partido",
+    actNone: "No hay trazas de los agentes en esta repetición", actSum: "Relevos hasta ahora: {n}, {tokens} tokens, {usd}",
+    actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
+    actRules: "reglas, sin modelo", actCode: "código, sin modelo",
+    ag_story_finder: "Buscahistorias", ag_analyst: "Analista", ag_commentator: "Comentarista", ag_verifier: "Verificador", ag_director: "Realizador",
   },
 };
 
@@ -70,7 +86,7 @@ function layout() {
   const W = $("#app").clientWidth || window.innerWidth;
   const cw = Math.min(W - 32, 860);
   controls.style.width = `${cw}px`;
-  const ch = controls.offsetHeight + 24 + strip.offsetHeight + 10;
+  const ch = controls.offsetHeight + strip.offsetHeight + 36; // #app: 16 px of padding and 2 gaps of 10 between 3 boxes
   const w = Math.max(160, W - 32), h = Math.max(90, window.innerHeight - ch);
   const s = Math.min(w / STAGE_W, h / STAGE_H);
   frame.style.width = `${Math.round(STAGE_W * s)}px`;
@@ -114,6 +130,11 @@ function setPlaying(on) {
   $("#play").setAttribute("aria-label", t(on ? "pause" : "play"));
 }
 
+function setSpeed(x) {
+  state.speed = x;
+  pressed("data-speed", x);
+}
+
 function seek(ts) {
   state.ts = Math.min(Math.max(ts, 0), end);
   state.seeked = true;
@@ -131,7 +152,7 @@ function cueSheet() {
 function refreshCues() {
   const sheet = cueSheet();
   host.setCues(sheet, state.ts);
-  moments.setSheet(sheet);
+  moments.setSheet(sheet, desk.loaded);
   ask?.render();
 }
 
@@ -178,6 +199,15 @@ function buildSeekMarks() {
   range.max = String(end);
 }
 
+// the story of the latest story graphic on air (a tie goes to the later cue), or null
+function onAirStory() {
+  let best = null;
+  for (const { cue } of host.live.values()) {
+    if (cue.story_id && (!best || cue.ts > best.ts || (cue.ts === best.ts && cue.cue_id > best.cue_id))) best = cue;
+  }
+  return best?.story_id ?? null;
+}
+
 let lastFrame = null;
 function tick(now) {
   // a stall of the page (a 3D replan) keeps the clock in real time; a gap over 1 s is a hidden tab
@@ -196,7 +226,7 @@ function tick(now) {
   document.body.classList.toggle("radar-yield", !portrait && [...host.live.values()].some((i) => !i.positioned));
   voice?.update(state.ts, end); // null until its clips are checked
   moments.update(state.ts);
-  activity.update(state.ts, state.seeked);
+  activity.update(state.ts, state.seeked, onAirStory(), state.lang);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -207,7 +237,7 @@ function tick(now) {
 function wireControls() {
   $("#play").addEventListener("click", () => setPlaying(!state.playing));
   for (const b of document.querySelectorAll("[data-speed]")) {
-    b.addEventListener("click", () => { state.speed = Number(b.dataset.speed); pressed("data-speed", state.speed); });
+    b.addEventListener("click", () => setSpeed(Number(b.dataset.speed)));
   }
   // "team" and "player" need a pick: the select lists the ones the cue sheet has cues for
   const first = {}, last = {}; // audience -> its first cue: the picker says when a late substitute first appears
@@ -266,13 +296,15 @@ function wireControls() {
   $("#desk").addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains("desk-open") && !e.target.closest("textarea")) desk.closeDrawer();
   });
-  // Space toggles play anywhere; keyup is swallowed too so a focused button does not click as well.
+  // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
+  // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well.
+  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls");
   window.addEventListener("keydown", (e) => {
-    if (e.code !== "Space" || e.target.tagName === "SELECT" || e.target.closest?.("#desk, #ask")) return;
+    if (!spaceKey(e)) return;
     e.preventDefault();
     if (!e.repeat) setPlaying(!state.playing);
   }, true);
-  window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName !== "SELECT" && !e.target.closest?.("#desk, #ask")) e.preventDefault(); }, true);
+  window.addEventListener("keyup", (e) => { if (spaceKey(e)) e.preventDefault(); }, true);
   window.addEventListener("resize", layout);
 }
 
@@ -318,8 +350,8 @@ async function main() {
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   desk.render();
-  moments = new Moments($("#next-moment"), { state, seek, t });
-  activity = new Activity(strip, desk);
+  moments = new Moments($("#next-moment"), { state, seek, setSpeed, t, live: $("#moments-live") });
+  activity = new Activity(strip, desk, t);
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();
@@ -333,6 +365,8 @@ async function main() {
     notice: $("#notice"), buttons: document.querySelectorAll("[data-view]") }, layout);
   view3d.set(params.get("view") ?? defaultView(probe()));
   window.studioDesk.view3d = view3d;
+  // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
+  if (document.activeElement === document.body) frame.focus();
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, button: $("#voice") });

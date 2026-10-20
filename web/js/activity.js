@@ -1,18 +1,24 @@
 // Agent activity (docs/CONTRACT.md, Page additions): the last hand-offs of traces.json that the replay
-// clock has reached (ts <= now), so a viewer sees the agents work as the match goes. Reads only the
-// replay's traces (loaded by the desk). The DOM changes only when another trace comes into reach.
+// clock has reached (ts <= now), so a viewer sees the agents work as the match goes. While a story
+// graphic is on air it shows how that graphic was made instead: the chain of its story. Reads only the
+// replay's traces (loaded by the desk). The DOM changes only when what is shown changes.
 // No live region: at 16x or 64x it would talk over everything, the strip is read on demand.
 import { summaryText, traceFailed } from "./desk.js";
 
 const SHOWN = 7; // one hand-off chain: finder, analyst, three commentators, verifier, director
 const NAMES = { story_finder: "Story finder", analyst: "Analyst", commentator: "Commentator", verifier: "Verifier", director: "Director" };
 
-export const agentName = (agent) => {
+/** @param {(key: string) => string | undefined} [t]  the page strings: agent names are keys `ag_<role>` */
+export const agentName = (agent, t) => {
   const [base, lang] = String(agent).split(/_(?=[a-z]{2}$)/); // commentator_it -> Commentator IT
-  return `${NAMES[base] ?? base.replace(/_/g, " ")}${lang ? ` ${lang.toUpperCase()}` : ""}`;
+  return `${t?.(`ag_${base}`) ?? NAMES[base] ?? base.replace(/_/g, " ")}${lang ? ` ${lang.toUpperCase()}` : ""}`;
 };
-const usd = (v) => `$${Number(v).toFixed(v >= 0.1 ? 2 : 4)}`;
-const int = (v) => Number(v).toLocaleString("en-US");
+const usd = (v, lang) => {
+  const d = v >= 0.1 ? 2 : 4;
+  return new Intl.NumberFormat(lang, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+};
+const int = (v, lang) => Math.round(Number(v)).toLocaleString(lang);
+const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
 
 /** How many rows (sorted by ts) have ts <= now. */
 export function reached(rows, now) {
@@ -41,20 +47,25 @@ function el(tag, cls, text) {
 
 export class Activity {
   /** @param {HTMLElement} root  the #activity element
-   *  @param {{traces: object[], loaded: boolean}} desk  the desk, which loads the replay's traces */
-  constructor(root, desk) {
+   *  @param {{traces: object[], loaded: boolean, traceGroups: () => Map}} desk  the desk, which loads the replay's traces
+   *  @param {(key: string) => string} t  the page strings */
+  constructor(root, desk, t) {
     this.root = root;
     this.desk = desk;
+    this.t = t;
     this.src = null;
     this.rows = [];
-    this.count = -1;
+    this.count = -1;  // rows reached at the last view by the clock
+    this.view = null; // what is shown: the story on air or the rows reached, and the language
+    this.titleEl = el("h2", "act-title");
     this.sumEl = el("span", "act-sum");
     this.listEl = el("ol", "act-steps");
-    root.replaceChildren(el("h2", "act-title", "Agents at work"), this.sumEl, this.listEl);
+    root.replaceChildren(this.titleEl, this.sumEl, this.listEl);
   }
 
-  /** Every frame; seeked: the clock jumped instead of running. */
-  update(now, seeked) {
+  /** Every frame. seeked: the clock jumped instead of running; story: the story graphic on air (the
+   *  latest cue), or null; lang: the page language. */
+  update(now, seeked, story = null, lang = "en") {
     const traces = this.desk.traces;
     if (traces !== this.src) {
       this.src = traces;
@@ -62,24 +73,41 @@ export class Activity {
       let tokens = 0, cost = 0;
       this.sums = this.rows.map((r) => ({ tokens: (tokens += (r.tokens_in || 0) + (r.tokens_out || 0)), cost: (cost += r.cost_usd || 0) }));
       this.count = -1;
+      this.view = null;
     }
     const k = reached(this.rows, now);
-    if (k === this.count) return;
-    const from = seeked || this.count < 0 ? k : this.count; // rows that came into reach while playing animate in
+    if (seeked) this.count = k; // nothing reached by a jump animates in
+    // the same chain and totals as that story in the desk's Traces tab
+    const group = story && this.desk.loaded ? this.desk.traceGroups().get(story) : null;
+    const view = `${group ? `story:${story}` : k}|${lang}`;
+    if (view === this.view) return;
+    const [was, wasLang] = (this.view ?? "|").split("|");
+    this.view = view;
+    if (lang !== wasLang) { this.root.lang = lang; this.titleEl.textContent = this.t("actTitle"); }
+    const t = this.t;
+    if (group) {
+      const rows = group.rows.map((g) => g.t);
+      this.sumEl.textContent = fill(t("actMade"), { n: int(rows.length, lang), tokens: int(group.sum.tokens, lang), usd: usd(group.sum.cost, lang) });
+      // a graphic that comes on air while playing brings its chain in; a seek or a new language does not
+      const fresh = !seeked && lang === wasLang && was !== `story:${story}`;
+      let nth = 0;
+      this.listEl.replaceChildren(...latestPerAgent(rows, rows.length).map((i) => this.item(rows[i], fresh ? nth++ : -1, lang)));
+      return;
+    }
+    const from = this.count < 0 || lang !== wasLang ? k : this.count; // rows that came into reach while playing animate in
     this.count = k;
     if (!k) {
       this.sumEl.textContent = "";
-      this.listEl.replaceChildren(el("li", "act-empty", this.rows.length || !this.desk.loaded ? "Waiting for the first moment the clock releases" : "No agent traces in this replay"));
+      this.listEl.replaceChildren(el("li", "act-empty", t(this.rows.length || !this.desk.loaded ? "actWait" : "actNone")));
       return;
     }
     const s = this.sums[k - 1];
-    this.sumEl.textContent = `${int(k)} hand-off${k === 1 ? "" : "s"} so far, ${int(s.tokens)} tokens, ${usd(s.cost)}`;
-    const shown = latestPerAgent(this.rows, k);
+    this.sumEl.textContent = fill(t("actSum"), { n: int(k, lang), tokens: int(s.tokens, lang), usd: usd(s.cost, lang) });
     let nth = 0;
-    this.listEl.replaceChildren(...shown.map((i) => this.item(this.rows[i], i >= from ? nth++ : -1)));
+    this.listEl.replaceChildren(...latestPerAgent(this.rows, k).map((i) => this.item(this.rows[i], i >= from ? nth++ : -1, lang)));
   }
 
-  item(r, nth) {
+  item(r, nth, lang) {
     const failed = traceFailed(r), out = summaryText(r.output_summary);
     const li = el("li", failed ? "fallback" : "");
     li.dataset.agent = String(r.agent).replace(/_[a-z]{2}$/, "");
@@ -87,11 +115,13 @@ export class Activity {
     li.title = out;
     if (nth >= 0) { li.classList.add("new"); li.style.setProperty("--i", nth); }
     const p = el("p", "act-out");
+    // the step name and the summary are agent output, in English like the desk's Traces tab
     p.append(el("span", "act-step", failed ? "fallback" : String(r.step ?? "")), ` ${out}`);
+    p.lang = "en";
     const meta = el("p", "act-meta");
-    if (r.model) meta.append(el("span", "act-model", r.model), el("span", "", `${int((r.tokens_in || 0) + (r.tokens_out || 0))} tok, ${usd(r.cost_usd || 0)}`));
-    else meta.append(el("span", "", r.agent === "director" ? "rules, no model" : "code, no model"));
-    li.append(el("b", "act-name", agentName(r.agent)), p, meta);
+    if (r.model) meta.append(el("span", "act-model", r.model), el("span", "", `${fill(this.t("actTok"), { n: int((r.tokens_in || 0) + (r.tokens_out || 0), lang) })}, ${usd(r.cost_usd || 0, lang)}`));
+    else meta.append(el("span", "", this.t(r.agent === "director" ? "actRules" : "actCode")));
+    li.append(el("b", "act-name", agentName(r.agent, this.t)), p, meta);
     return li;
   }
 }

@@ -295,13 +295,13 @@ body { display: flex; }
 .act-name { display: block; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .act-step { color: var(--muted); }
 .fallback .act-step { color: var(--tally-held); font-weight: 700; }
-.act-out { margin: 2px 0 0; height: 2.3em; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #d7def2; }
+.act-out { margin: 2px 0 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #d7def2; }
 .act-meta { margin: 2px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .act-model::after { content: ", "; }
 @container (max-width: 1100px) {
   .act-meta span { display: block; overflow: hidden; text-overflow: ellipsis; }
   .act-model::after { content: none; }
-  .act-meta:has(> :only-child) { height: 2.3em; } /* code steps: every card keeps the same height */
+  .act-meta:has(> :only-child) { min-height: 2.3em; } /* code steps: every card keeps the same height */
   .act-steps { min-height: 100px; }
 }
 .act-steps li.act-empty { grid-column: 1 / -1; background: none; border: 0; padding: 4px 0; color: var(--muted); }
@@ -319,6 +319,8 @@ body { display: flex; }
   .act-steps li.act-empty { padding: 0; }
   .act-steps li.new { animation: none; }
   .act-name { flex: none; }
-  .act-out { display: block; flex: 1; min-width: 0; height: auto; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
+  .act-out { display: block; flex: 1; min-width: 0; margin: 0; white-space: nowrap; text-overflow: ellipsis; }
 }
-#next-moment:disabled { opacity: .55; cursor: default; }
+#next-moment[aria-disabled="true"] { opacity: .55; cursor: default; }
+/* the broadcast takes the focus on load, so Space and N work at once */
+#frame:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }

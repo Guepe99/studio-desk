@@ -339,8 +339,20 @@ Agents only learn about an event when the clock releases it, in replay generatio
 
 ## Page additions (feat/moments, additive)
 
-- "Next key moment": a button that seeks to 3 seconds before the next story cue of the current
-  audience after the current time (template cues without a story are skipped).
-- Agent activity: a strip beside the pitch that follows the replay clock and shows the last steps
-  of `traces.json` with `ts <= now` (agent, step, its output summary, model, tokens, cost). It
-  reads only the replay files; on a phone it folds to one line.
+- "Next key moment": a button that always moves forward: it seeks to 3 seconds before the first
+  key moment of the current audience whose lead-in starts more than 0.5 s after the current time.
+  A key moment is a story cue (template cues without a story are skipped); a story cue that starts
+  while an earlier story cue, of any story, is still on air (or within 1 s of its end) belongs to
+  the same moment. A jump faster than 1x sets the speed back to 1x. The label is "Next key moment"
+  while the stories load, "No more key moments" past the last one and "No key moments" when the
+  sheet has none (both aria-disabled, and a press says so in a polite live region). The N key does
+  the same, and Space plays and pauses, only with the focus in the broadcast frame or its controls
+  (WCAG 2.1.4) and without Ctrl, Alt, Meta or Shift; the frame takes the focus once the page loads.
+- Agent activity: a strip under the pitch that follows the replay clock and shows each agent's latest
+  step of `traces.json` with `ts <= now` (agent, step, its output summary, model, tokens, cost).
+  While a story graphic is on air (the latest cue if several, a tie to the later `cue_id`) it shows
+  how that graphic was made instead: the latest step per agent of the traces whose `story_ids`
+  include its story, with that story's totals as in the desk's Traces tab (a hand-off shared by n
+  stories counts 1/n): "How the graphic on air was made: N hand-offs, X tokens, $Y". A summary is
+  clamped to two lines; the full text is in the Traces tab of the desk. Its labels follow the page
+  language (en, it, es); the agent output stays in English. It reads only the replay files; on a phone it folds to one line.
