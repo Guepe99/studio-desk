@@ -1,6 +1,6 @@
 # Studio Desk
 
-An AI production desk for a football broadcast. Agents watch a match as it happens and write the text for the on-screen graphics in English, Italian and Spanish. Before anything goes on air, a producer approves it at the control desk.
+An AI production desk for a football broadcast. Agents follow a match as it is played and write the on-screen graphics in English, Italian and Spanish. Before anything goes on air, a producer approves it at the control desk.
 
 Built for the Inside the Game hackathon, in the Best Enterprise Solution category. All match data is synthetic: every club, player and stadium is invented.
 
@@ -8,16 +8,18 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 
 ## What to try
 
-1. Pick a match and press play. The 2D pitch and the graphics run on one clock.
-2. Open **Desk**. Each story shows the facts behind it and the verifier's verdict. Approve, edit or reject it. Stories below the risk threshold go to air automatically, and the audit log marks them auto-approved.
-3. Switch the language between EN, IT and ES. The numbers stay the same, because they come from the fact ledger rather than from the model.
-4. Turn on the voice to hear the approved stories read in the language on screen.
-5. Open the **Traces** tab to see which agent did what, with the model, the tokens, the time and the cost of each step.
-6. Switch the AI off and only the template graphics stay on air.
-7. Change who the broadcast is for: the analyst, a casual viewer, the fans of one team or one player.
-8. Open `/sample3d.html` on the same site for the 3D view of the same match.
+1. Open a match and press Play. The page opens on M001; the others are [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002), [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003) and [M004](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M004). The seek bar has a button for each goal, and **Next key moment** jumps to the next story the agents found.
+2. Switch the view with the **2D**, **3D** and **Radar** buttons under the picture (Radar is 3D with a small 2D pitch in one corner). The 3D view runs in your browser and uses the same tracking data.
+3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level (low, medium or high). Use **Put on air**, **Edit** or **Reject** on a story; **Undo** in the line that confirms it reverses the last decision. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
+4. Look at the strip under the picture. It shows which agent is working and what it passed on. While a graphic is on air, it shows how that graphic was made.
+5. Switch the language to EN, IT or ES. The desk, the controls and the graphics change language. The numbers do not change, because code computes them from the fact ledger; the model never writes them.
+6. Turn on **Voice** to hear approved stories read aloud in the language on screen.
+7. Open **Ask the studio** and type a question about the match so far. The answer may use only facts up to the current replay time. If an answer fails the checks, the studio shows a fixed sentence instead of it.
+8. Open the **Traces** tab on the desk. It lists each step with the agent, model, tokens, time and cost.
+9. Turn the **AI graphics** switch on the desk off. Only the template graphics stay on air, and **Next key moment** becomes **Next goal**.
+10. Change the audience with the buttons in the control row: analyst, casual fan, fans of one team or fans of one player. On a phone, these settings are under **Viewing**.
 
-The replay needs no model calls, so it has no daily quota. Each visitor session allows 300 desk actions. Every visitor gets their own session, so your choices never reach another judge, and each match starts clean.
+The replay makes no model calls, so it has no daily quota. Each session allows 300 desk actions and 10 questions per day, and the whole site answers 40 questions per day, to stay inside the Azure AI Content Safety free tier. Every visitor gets their own session, so your choices never reach another judge, and each match starts clean.
 
 ## How it works
 
@@ -27,15 +29,17 @@ match clock --event--> facts (MCP server) --batch--> story_finder -> analyst -> 
                                                                             -> commentator_es ┘
 ```
 
-- **Agents.** A Microsoft Agent Framework workflow on gpt-5-mini in Azure AI Foundry (Sweden Central). Agents read the match only through an MCP server whose clock moves with the match, so they cannot see the future.
-- **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id. Models never write the numbers. The desk shows which facts a story uses.
-- **Phrasebook.** The lines that go on air by themselves are composed by code from pieces written for each language, each with the fact that makes it true: "What a hit!" only for a shot of 100 km/h or more, "strikes again" only for a player's second goal. The story finder chooses the tone and what the line leads with (where the shot came from, how far out, how hard). The commentators' own lines are checked against the facts by the verifier and wait on the desk as a proposal that a person can put on air with one click.
+- **Agents.** A Microsoft Agent Framework workflow running gpt-5-mini in Azure AI Foundry (Sweden Central). Agents read the match only through a Model Context Protocol (MCP) server whose clock follows the match, so they cannot see later events.
+- **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id; models never write numbers. The desk shows which facts a story uses.
+- **Phrasebook.** Lines that go on air automatically are assembled by code from phrases written for each language. Each phrase is tied to the fact that justifies it: "What a hit!" is used only for a shot of 100 km/h or more, and "strikes again" only for a player's second goal. The story finder chooses the tone and what the line leads with (for example where the shot came from, its distance or its speed). The verifier checks the commentators' own lines against the facts, and they wait on the desk as proposals that a person can put on air with one click.
 - **Safety.** Approved texts pass through Azure AI Content Safety. The result is stored with the story, and a story that fails the check is held back.
 - **Fallbacks.** If an agent fails or times out, rules and template sentences take its place and the broadcast carries on. The trace records the fallback.
-- **Voice.** Azure AI Speech reads the verified stories ahead of time in English, Italian and Spanish. A clip plays only when its checksum matches the text on screen.
-- **Graphics.** Broadcast graphics in HTML, in the EBU OGraf open format (`web/graphics/`).
+- **Voice.** Azure AI Speech records the verified stories ahead of time in English, Italian and Spanish. A clip plays only if its checksum matches the text on screen.
+- **Ask the studio.** A `studio_host` agent answers a visitor's question through the same MCP server, on a clock held at the replay time. Code checks the answer before it is shown: every number must be a cited fact with its unit, a score must be the score at that moment, the answer must contain no link and no real name and be in the visitor's language, and Content Safety must pass both the question and the answer.
+- **Graphics.** Broadcast graphics are HTML in the open EBU OGraf format (`web/graphics/`). On a small screen they switch to a compact layout, and the text is never smaller than 11 px.
+- **3D view.** Babylon.js draws the players from the tracking data and adds a broadcast camera, goal replays and celebrations. The view falls back to 2D on devices that are too slow. For visitors who ask for reduced motion, it keeps the wide broadcast camera and makes no cuts.
 
-The four replays in `replays/` were produced by real runs on Azure. Their files hold the stories and every agent step. One match costs between $0.054 and $0.085 in model calls (203,000 to 335,000 tokens), counted from the audit of each run. Stories found, numbers blocked, tokens, cost and timing for each match are in [docs/MEASURES.md](docs/MEASURES.md).
+The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. Model calls for one match cost between $0.060 and $0.102 (236,000 to 430,000 tokens), taken from each run's audit. Stories found, numbers blocked, tokens, cost and timing for each match are in [docs/MEASURES.md](docs/MEASURES.md).
 
 The data contract, from the tables to the API, is in [docs/CONTRACT.md](docs/CONTRACT.md).
 
@@ -52,13 +56,13 @@ cp -r replays/. web/data/
 .venv/bin/uvicorn studiodesk.api:app --port 8000
 ```
 
-The export builds the tracking and the template graphics; the copy adds the recorded agent output on top. Then open http://127.0.0.1:8000/. The replay needs no Azure account. To run the agents yourself, run `.venv/bin/pip install -e '.[dev,agents]'`, then `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI for the real one.
+The export builds the tracking data and the template graphics; the copy adds the recorded agent output. Then open http://127.0.0.1:8000/. The replay needs no Azure account. To run the agents yourself, install the extras with `.venv/bin/pip install -e '.[dev,agents]'`, then use `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI to use the real one.
 
-Tests run offline and never call a paid service: `.venv/bin/pytest -q` (318 tests). GitHub Actions runs them on every push and builds the container image.
+Tests run offline and never call a paid service: `.venv/bin/pytest -q` and `node --test tests/web/*.test.mjs`. The browser checks in `tests/web/` (layout, desk, 3D, voice) run with `scripts/with-lock.sh chromium tests/web/run-smoke.sh <check>.mjs`. GitHub Actions runs them on every push and builds the container image.
 
 ## Deployment
 
-One container on Azure Container Apps (consumption plan, one replica), with its image on GitHub Container Registry. The container reaches Foundry through a managed identity. Live agent runs are disabled for visitors: the replays show agent output recorded on Azure. Visitors' desk decisions are kept per session inside the container (runtime.sqlite), so a new revision starts them afresh.
+One container on Azure Container Apps (consumption plan, one replica), with its image on GitHub Container Registry. The container reaches Foundry through a managed identity. Visitors cannot start live agent runs; the replays show agent output recorded on Azure. Desk decisions are stored per session inside the container (`runtime.sqlite`), so deploying a new revision resets them.
 
 ## How it was built
 
