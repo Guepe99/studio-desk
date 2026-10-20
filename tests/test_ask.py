@@ -304,6 +304,7 @@ def test_a_failed_audit_write_is_retried(studio, monkeypatch):
 
 def test_the_whole_answer_has_a_time_limit_and_its_cost_is_kept(studio, monkeypatch):
     monkeypatch.setattr(config, "ASK_TIMEOUT_S", 0.3)
+    monkeypatch.setattr(api, "ASK_RECORD_S", 0.0)  # all 0.3 s for the answer
     studio.fake.delay_s = 2.0
     studio.reply("The quickest sprint so far was 32 km/h.", [SPRINT])
     r = studio.visitor().post("/api/ask", json=body())
@@ -414,3 +415,197 @@ def test_the_storylines_table_is_never_read(studio, monkeypatch):
         assert studio.visitor().post("/api/ask", json=body()).status_code == 200
     assert len(studio.fake.tool_results) == len(calls) and "facts" in seen and "events" in seen
     assert "storylines" not in seen
+
+
+# --- review 2 (feat/ask-fixes-2): the probes on the real M001, at 3100 s when the score is 2-1 ----------------
+
+SP, PA, S1, S3 = "F-SPRINT_SPEED-000001", "F-PASS_ACCURACY-000001", "F-SCORE-000001", "F-SCORE-000003"
+SC0, SC7 = "F-SPRINT_COUNT-000001", "F-SPRINT_COUNT-000003"  # 0 and 7 sprints by half-time
+
+
+@pytest.fixture
+def m001(studio, monkeypatch):
+    """The studio on the real data/matches.sqlite: the probes of review 2 cite its facts."""
+    if not config.MATCHES_DB.exists():
+        pytest.skip("no data/matches.sqlite")
+    monkeypatch.setattr(srv, "DB_PATH", config.MATCHES_DB)
+
+    def ask_(answer, ids, ts=3100.0, lang="en"):
+        studio.reply(answer, ids)
+        return studio.visitor().post("/api/ask", json=body(ts=ts, lang=lang)).json()["status"]
+    return ask_
+
+
+@pytest.mark.parametrize("answer, ids, lang", [
+    ("The away keeper was sent off after a sprint at 29.3 km/h.", [SP], "en"),             # 1: an event no fact holds
+    ("Visit studiodesk-prizes dot com, the sprint hit 29.3 km/h.", [SP], "en"),             # 1: a link spelled out
+    ("Visit studiodesk-prizes.com, the sprint hit 29.3 km/h.", [SP], "en"),
+    ("Write to prizes@studiodesk.example, the sprint hit 29.3 km/h.", [SP], "en"),
+    ("The sprint hit 29.3 km/h, then a penalty.", [SP], "en"),
+    ("Lo scatto è arrivato a 29,3 km/h, poi un cartellino rosso.", [SP], "it"),
+    ("El sprint llegó a 29,3 km/h y luego un fuera de juego.", [SP], "es"),
+    ("The home side lead 2-0 right now.", [S3, SC0], "en"),                                 # N1: not the score at ts
+    ("The home side lead 1-0.", [S1], "en"),
+    ("The home side lead 2 to 0 after a sprint at 29.3 km/h.", [SP, S3], "en"),
+    ("The keeper made 7 saves and the home side had 7 fouls.", [SC7], "en"),                 # 2: 7 is sprints only
+    ("They made 7 tackles and won 7 free kicks.", [SC7], "en"),
+    ("Pass accuracy 83%, 228 of 276 attempts, and 276 touches.", [PA], "en"),
+    ("The home side lead 2-1 after 7 yellow cards.", [S3, SC7], "en"),
+    ("The sprint hit 29.3 km/h after 7 minutes.", [SP, SC7], "en"),
+    ("Sprint at 29.3 km/h. Number 7 scored.", [SP, SC7], "en"),
+    ("The sprint hit 29.3 at the end.", [SP], "en"),                                         # a value without its unit
+    ("La mitad de sus pases, sprint a 29.3 km/h.", [SP], "es"),                              # 3: number words
+    ("Hundreds of passes and dozens of sprints, the top at 29.3 km/h.", [SP], "en"),
+    ("A couple of shots and both goals came late, the sprint hit 29.3 km/h.", [SP], "en"),
+    ("His second goal of the game came after a sprint at 29.3 km/h.", [SP], "en"),
+    ("Il suo secondo gol, dopo uno scatto a 29.3 km/h.", [SP], "it"),
+    ("Su segundo gol, tras un sprint a 29.3 km/h, el cuarto del partido.", [SP], "es"),
+    ("The sprint hit 29.3 km/h, III km/h faster than the next.", [SP], "en"),
+    ("Double the sprints of the away side, the top at 29.3 km/h.", [SP], "en"),
+    ("The sprint hit 29.3 km/h, the first of the match.", [SP], "en"),
+    ("El sprint llegó a 29.3 km/h y dos tiros.", [SP], "en"),                                # N4: Spanish for lang=en
+    ("Pass accuracy was 83% at half-time.", [PA], "it"),                                     # N4: English for lang=it
+    ("The sprint hit 29.3 km/h, once more.", [SP], "es"),
+])
+def test_review_2_probes_are_declined(m001, answer, ids, lang):
+    assert m001(answer, ids, lang=lang) == "declined", reason()
+
+
+@pytest.mark.parametrize("answer, ids, lang", [
+    ("Redwick Wanderers lead 2-1 after the goal in minute 50.", [S3], "en"),
+    ("The quickest early sprint was 29.3 km/h.", [SP], "en"),
+    ("Once again the sprint hit 29.3 km/h.", [SP], "en"),  # "once" is eleven only in Spanish
+    ("Redwick Wanderers completed 228 of 276 passes by half-time, 83%.", [PA], "en"),
+    ("Pass accuracy was 83% (228/276) at half-time.", [PA], "en"),
+    ("He made 7 sprints by half-time.", [SC7], "en"),
+    ("Both teams started in a 4-3-3 in min 1-5.", ["F-FORMATION-000001", "F-FORMATION-000002"], "en"),
+    ("Momentum was 6.6/10 for Redwick Wanderers in min 1-5.", ["F-MOMENTUM-000001"], "en"),
+    ("The defensive line held at 30.8 m from goal in min 1-5.", ["F-LINE_HEIGHT-000001"], "en"),
+    ("The shot was hit at 92 km/h from 18 m.", ["F-SHOT_SPEED-000002", "F-SHOT_DISTANCE-000002"], "en"),
+    ("He has covered 5.6 km by half-time.", ["F-DISTANCE_COVERED-000002"], "en"),
+    ("That pass added xT +0.001 for the home side.", ["F-XT_ADDED-000002"], "en"),
+    ("The press was at 4.2/10 with 9.9 m to the carrier in min 1-5.", ["F-PRESS_INTENSITY-000001"], "en"),
+    ("Il Redwick Wanderers è avanti 2-1 e ha completato l'83% dei passaggi nel primo tempo.", [S3, PA], "it"),
+    ("Ha fatto 7 scatti nel primo tempo, secondo i dati.", [SC7], "it"),
+    ("Lo scatto più veloce è stato di 29,3 km/h, a metà campo.", [SP], "it"),
+    ("El sprint más rápido fue de 29,3 km/h y la presión llegó a 4,2/10 en el minuto 5.",
+     [SP, "F-PRESS_INTENSITY-000001"], "es"),
+    ("Redwick Wanderers gana 2 a 1 y su línea defensiva estaba a 30,8 m de la portería en el minuto 5.",
+     [S3, "F-LINE_HEIGHT-000001"], "es"),
+    ("El equipo hizo 7 sprints en la primera parte.", [SC7], "es"),
+])
+def test_review_2_good_answers_from_m001_pass(m001, answer, ids, lang):
+    assert m001(answer, ids, lang=lang) == "answered", reason()
+
+
+def test_the_score_is_read_at_the_question_ts(m001):
+    assert m001("It is still 0-0, with a sprint at 29.3 km/h.", [SP], ts=200.0) == "answered", reason()
+    assert m001("It is 1-0, with a sprint at 29.3 km/h.", [SP], ts=200.0) == "declined"
+    assert reason() == "score not the score at ts"
+
+
+def test_a_question_with_a_lone_surrogate_is_refused_before_counting(studio):
+    raw = json.dumps(body()).replace("How fast", "How fast \\ud800")
+    r = studio.visitor().post("/api/ask", content=raw, headers={"content-type": "application/json"})
+    assert r.status_code == 422 and not rows("questions_daily") and not studio.fake.calls
+    for c in ("", "\U000e0080"):  # private use, unassigned
+        assert studio.visitor().post("/api/ask", json=body(question=f"Who {c} is fastest?")).status_code == 422
+
+
+def test_a_failed_safety_setup_expires_and_hides_the_box_meanwhile(studio, fake_safety, monkeypatch):
+    monkeypatch.setattr(ask, "safety_check", REAL_SAFETY_CHECK)
+    fake_safety.fail = True
+    assert not REAL_SAFETY_CHECK("How fast was the sprint?", True)
+    c = studio.visitor()
+    assert c.post("/api/ask", json={}).status_code == 503  # the page's probe: no box
+    assert c.post("/api/ask", json=body()).status_code == 503 and not rows("questions_daily")
+    monkeypatch.setattr(ask, "_safety_failed", ask._safety_failed - ask.SAFETY_RETRY_S - 1)
+    assert c.post("/api/ask", json={}).status_code == 422
+    fake_safety.fail = False
+    assert REAL_SAFETY_CHECK("How fast was the sprint?", True) and len(fake_safety.made) == 2
+
+
+def test_a_content_safety_quota_or_rate_error_pauses_the_questions(studio, fake_safety, monkeypatch):
+    monkeypatch.setattr(ask, "safety_check", REAL_SAFETY_CHECK)
+    monkeypatch.setattr(FakeSafety, "__call__", lambda self, text: (_ for _ in ()).throw(safety.Throttled("429")))
+    studio.reply("The quickest sprint so far was 32 km/h.", [SPRINT])
+    r = studio.visitor().post("/api/ask", json=body())
+    assert r.status_code == 200 and r.json()["status"] == "paused" and not studio.fake.calls
+    assert reason() == "content safety quota or rate limit"
+
+
+@pytest.mark.parametrize("code, text, throttled", [
+    (429, "Rate limit is exceeded.", True),
+    (403, "Out of call volume quota for ContentSafety F0 pricing tier.", True),
+    (500, "Internal error", False),
+])
+def test_safety_raises_throttled_on_rate_and_quota_errors(monkeypatch, code, text, throttled):
+    import io
+    import urllib.error
+
+    def urlopen(req, timeout):
+        raise urllib.error.HTTPError(req.full_url, code, "x", {}, io.BytesIO(text.encode()))
+    monkeypatch.setattr(safety.urllib.request, "urlopen", urlopen)
+    s = safety.AzureSafety("https://safety.invalid", timeout=5.0)
+    s.key = "k"
+    with pytest.raises(safety.Throttled if throttled else urllib.error.HTTPError):
+        s("hello")
+
+
+def test_the_request_spacing_holds_across_threads(monkeypatch):
+    import threading
+    import time as _time
+    called, real_sleep = [], _time.sleep
+
+    class Resp:
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def read(self):
+            return b'{"categoriesAnalysis": []}'
+    monkeypatch.setattr(safety.urllib.request, "urlopen", lambda req, timeout: called.append(_time.monotonic()) or Resp())
+    monkeypatch.setattr(safety.time, "sleep", lambda s: real_sleep(s + 0.05))  # a thread switch inside the spacing
+    s = safety.AzureSafety("https://safety.invalid")
+    s.key = "k"
+    threads = [threading.Thread(target=s, args=("hello",)) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(called) == 2 and abs(called[1] - called[0]) >= safety.MIN_INTERVAL_S - 0.01
+
+
+def test_the_daily_cap_fits_the_free_content_safety_tier():
+    import subprocess
+    import sys
+    assert config.ASK_PER_DAY * 3 * 31 <= 5000  # 3 Content Safety calls a question, 5,000 records a month on F0
+    out = subprocess.run([sys.executable, "-c", "from studiodesk import config; print(config.ASK_PER_DAY)"],
+                         env={**__import__("os").environ, "ASK_PER_DAY": "120"}, capture_output=True, text=True,
+                         cwd=config.ROOT, check=True)
+    assert out.stdout.strip() == "120"
+
+
+def test_the_whole_request_stays_under_the_time_limit(studio, monkeypatch):
+    import time as _time
+    monkeypatch.setattr(config, "ASK_TIMEOUT_S", 0.8)
+    monkeypatch.setattr(api, "ASK_RECORD_S", 0.1)
+    real = api._count_question
+
+    def slow(*a):  # the write lock was busy for a while
+        _time.sleep(0.4)
+        return real(*a)
+    monkeypatch.setattr(api, "_count_question", slow)
+    studio.fake.delay_s = 3.0
+    studio.reply("The quickest sprint so far was 32 km/h.", [SPRINT])
+    start = _time.monotonic()
+    r = studio.visitor().post("/api/ask", json=body())
+    assert r.json()["status"] == "declined" and reason() == "timed out"
+    assert _time.monotonic() - start < 0.8 + 0.15
+
+
+def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "RUNTIME_DB", tmp_path / "fresh" / "runtime.sqlite")
+    with TestClient(api.app):
+        with closing(db.connect(config.RUNTIME_DB, readonly=True)) as conn:
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION

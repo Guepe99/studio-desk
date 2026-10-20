@@ -11,7 +11,8 @@ export class Ask {
     this.send = this.form.querySelector('[type="submit"]');
     this.statusEl = panel.querySelector("#ask-status");
     this.logEl = panel.querySelector("#ask-log");
-    this.live = panel.querySelector("#ask-live");
+    // outside the panel: an answer that comes after the panel is closed, and askOff as the box goes, are still announced
+    this.live = document.querySelector("#ask-live");
     this.log = [];
     this.left = null;
     this.status = "";
@@ -42,6 +43,7 @@ export class Ask {
 
   // the model went away (503): no box and no button, and focus on the control just before the hidden button
   turnOff() {
+    this.announce(this.t("askOff"), this.state.lang);
     this.form.hidden = this.button.hidden = this.panel.hidden = true;
     this.button.setAttribute("aria-expanded", "false");
     this.controls.querySelector("#lang")?.focus(); // the Desk button is hidden on wide screens
@@ -73,6 +75,13 @@ export class Ask {
     if (!r) this.status = "askNet";
     else if (r.status === 429) this.status = "askLimit";
     else if (r.status === 503) { this.status = "askOff"; this.turnOff(); }
+    else if (r.ok && data?.status === "paused") {
+      // Content Safety is out of quota or rate limited: not a decline, the questions are paused
+      this.log.unshift({ question, lang, answer: this.t("askPaused"), declined: true, facts: [] });
+      this.left = data.questions_left ?? this.left;
+      this.status = "";
+      this.announce(this.t("askPaused"), lang);
+    }
     else if (r.status >= 500) this.status = "askErr";
     else if (!r.ok || typeof data?.answer !== "string") this.status = "askBad";
     else {
@@ -80,12 +89,16 @@ export class Ask {
       this.left = data.questions_left;
       this.status = "";
       this.input.value = "";
-      // emptied first, so the same sentence twice (two declines) is still announced
-      this.live.textContent = "";
-      this.live.lang = lang;
-      requestAnimationFrame(() => { this.live.textContent = data.answer; });
+      this.announce(data.answer, lang);
     }
     this.render();
+  }
+
+  // emptied first, so the same sentence twice (two declines) is still announced
+  announce(text, lang) {
+    this.live.textContent = "";
+    this.live.lang = lang;
+    requestAnimationFrame(() => { this.live.textContent = text; });
   }
 
   // also called when the language or the audience changes: fact ids show only in Analyst mode

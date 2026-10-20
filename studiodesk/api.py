@@ -7,7 +7,7 @@ import mimetypes
 import os
 import re
 import secrets
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, closing, contextmanager
 from datetime import datetime, timezone
 from functools import lru_cache
 from stat import S_ISREG
@@ -31,8 +31,17 @@ ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.open
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
+@asynccontextmanager
+async def _startup(app):
+    # the runtime schema runs once here: two first requests on a new runtime.sqlite would both run it and one would fail
+    with closing(db.runtime()):
+        pass
+    yield
+
+
 # No /docs or /openapi.json in public: they would advertise the admin route and its header.
-app = FastAPI(title="Studio Desk", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="Studio Desk", version=__version__, docs_url=None, redoc_url=None, openapi_url=None,
+              lifespan=_startup)
 MAX_BODY_BYTES = 16384
 
 
@@ -209,8 +218,10 @@ def _now() -> str:
 
 
 @contextmanager
-def _runtime(write: bool = False):
+def _runtime(write: bool = False, busy_ms: int | None = None):
     conn = db.runtime()
+    if busy_ms is not None:  # a shorter wait for the write lock than the driver's 5 s
+        conn.execute(f"PRAGMA busy_timeout = {int(busy_ms)}")
     try:
         with conn:  # one transaction: an error rolls back the session row and the audit row too
             if write:  # take the write lock before the cap checks, so concurrent requests cannot pass a cap together
@@ -383,7 +394,10 @@ def get_audit(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)):
 # --- Ask the studio (docs/CONTRACT.md): a visitor's question at replay time, answered by studio_host -
 
 def _question(text: str) -> str:
-    """Control and separator characters become spaces, invisible format characters go; 1..280 characters left."""
+    """Control and separator characters become spaces, invisible format characters go; 1..280 characters left.
+    A lone surrogate, a private-use or an unassigned character is refused: it cannot be stored or checked."""
+    if any(unicodedata.category(c) in ("Cs", "Co", "Cn") for c in text):
+        raise ValueError("a question has no surrogate, private-use or unassigned characters")
     kept = "".join(" " if unicodedata.category(c) in ("Cc", "Zl", "Zp") else c for c in text
                    if unicodedata.category(c) != "Cf")
     text = " ".join(kept.split())
@@ -409,6 +423,8 @@ def _ask_ready():
         ask.client(ENDPOINT)  # built here, before anything is counted
     except Exception:  # noqa: BLE001 - no extra, no credential: no model on this site
         raise HTTPException(503, "no model on this site") from None
+    if ask.safety_down():  # every answer would be declined: the page hides the box instead
+        raise HTTPException(503, "content safety is not available")
 
 
 # Only a salted hash of the client address is stored. shortcut: a random salt per process resets the
@@ -452,9 +468,13 @@ def _count_question(request: Request, response: Response, day: str):
     return sid, min(config.ASK_PER_SESSION_PER_DAY - mine, config.ASK_PER_CLIENT_PER_DAY - by_addr) - 1
 
 
+# The audit write after an answer: 3 attempts of at most 1 s for the write lock and 2 pauses of 0.5 s.
+ASK_RECORD_S = 4.0
+
+
 def _record_answer(sid: str, q: Question, out: dict, day: str) -> None:
     u = out["usage"]
-    with _runtime(write=True) as conn:
+    with _runtime(write=True, busy_ms=1000) as conn:
         db.insert(conn, "audit", {
             "session_id": sid, "at": _now(), "actor": "studio_host", "action": "ask", "match_id": q.match_id,
             "model": DEPLOYMENT if u["calls"] or u["cost_usd"] > 0 else None, "tokens_in": u["tokens_in"],
@@ -468,6 +488,7 @@ def _record_answer(sid: str, q: Question, out: dict, day: str) -> None:
 @app.post("/api/ask", dependencies=[Depends(_ask_ready)])
 async def post_ask(q: Question, request: Request, response: Response):
     from .agents import ask
+    start = time.monotonic()  # the whole request stays under config.ASK_TIMEOUT_S, the page gives up at 60 s
     # SQLite waits up to 5 s for the write lock: the database work runs off the event loop
     times = await asyncio.to_thread(ask.match_times, q.match_id)
     if times is None:
@@ -479,7 +500,8 @@ async def post_ask(q: Question, request: Request, response: Response):
     if isinstance(counted, JSONResponse):
         return counted
     sid, left = counted
-    out = await ask.answer_within(ENDPOINT, q.match_id, q.ts, q.question, q.lang, times[0])
+    budget = config.ASK_TIMEOUT_S - (time.monotonic() - start) - ASK_RECORD_S
+    out = await ask.answer_within(ENDPOINT, q.match_id, q.ts, q.question, q.lang, times[0], budget)
     for attempt in range(3):  # the question is counted and maybe paid for: its audit row and cost must be written
         try:
             await asyncio.to_thread(_record_answer, sid, q, out, day)
@@ -488,7 +510,7 @@ async def post_ask(q: Question, request: Request, response: Response):
             if attempt == 2:
                 logging.getLogger("uvicorn.error").exception("ask audit lost: cost_usd %.6f", out["usage"]["cost_usd"])
                 raise
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
     return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"], "questions_left": left}
 
 

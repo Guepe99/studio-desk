@@ -517,11 +517,12 @@ def allowed_numbers(facts, minutes=()):
     return out
 
 
-def check_numbers(text, allowed, lang="en", ids=()):
+def check_numbers(text, allowed, lang="en", ids=(), bare=True):
     """Flags for every number in text that is not in the ledger: a number with a unit within rounding of
     a fact with that unit, a bare number exactly equal to one, a formation exactly one of the story's.
     Also numbers written in words, glued to letters or followed by a unit the ledger does not use, and
-    cited fact ids that are not among the story's (`ids`). Every flag starts with a fixed reason."""
+    cited fact ids that are not among the story's (`ids`). Every flag starts with a fixed reason.
+    With `bare` False no bare number passes: each must carry the unit of its fact (an Ask answer)."""
     text = normalise(text)
     flags = [f"cited fact not in the story: '{mt.group(0)}'" for mt in _FACT_ID.finditer(text)
              if mt.group(0).upper() not in ids]
@@ -552,7 +553,7 @@ def check_numbers(text, allowed, lang="en", ids=()):
         tol = 0.5 * 10 ** -decimals + 1e-9
         fam = _family(unit)
         if fam is None:  # a bare number claims nothing about what it measures: it must be one of the story's
-            if any(f not in ("formation", "km") and abs(x - v) < 1e-6 for v, f in allowed):
+            if bare and any(f not in ("formation", "km") and abs(x - v) < 1e-6 for v, f in allowed):
                 continue
             flags.append(f"number not in the facts: '{mt.group(0).strip()}'")
             continue
@@ -567,10 +568,10 @@ def check_numbers(text, allowed, lang="en", ids=()):
     return flags
 
 
-def check_text(text, allowed, lang="en", ids=()):
+def check_text(text, allowed, lang="en", ids=(), bare=True):
     """All rule checks on one text: numbers against the ledger, cited fact ids against the story's
     (`ids`), then forbidden real names. The flag never repeats the name, because flags are shown to people."""
-    return check_numbers(text, allowed, lang, ids) + ["forbidden name (real person or club)"] * bool(
+    return check_numbers(text, allowed, lang, ids, bare) + ["forbidden name (real person or club)"] * bool(
         names.find_forbidden(text))
 
 
@@ -579,38 +580,138 @@ def check_text(text, allowed, lang="en", ids=()):
 _MINUTE = re.compile(r"\b(?:min|minutes?|minut[oi]s?)\.?\s+(\d+(?:\+\d+)?)(?:\s*-\s*(\d+(?:\+\d+)?))?"
                      r"|" + _LB + r"(\d+(?:\+\d+)?)\s*['’′]", re.IGNORECASE)
 _LABEL_MINUTES = re.compile(r",?\s*\bmin (\d+(?:\+\d+)?)-(\d+(?:\+\d+)?)")
-# words that are numbers too; "uno" and "una" are left out, they are the Italian and Spanish articles
-_ASK_WORDS = {"en": r"zero|one|half|single", "it": r"zero|mezzo|metà", "es": r"cero"}
-_ASK_SPELLED = {lang: re.compile(rf"(?<!\w)(?:{w})(?!\w)", re.IGNORECASE) for lang, w in _ASK_WORDS.items()}
-_ASK_NOT_A_NUMBER = re.compile(r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bin mezzo\b|"
-                               r"\bmetà (?:del )?campo\b", re.IGNORECASE)
+# number words on top of _WORDS, in an answer every language's list runs (plurals too: "hundreds", "cientos");
+# "uno", "una" and "un" are left out, they are the Italian and Spanish articles
+_ASK_WORDS = {
+    "en": "zero one half halves single couple pair double triple treble both first second thrice eleventh twelfth "
+          "million",
+    "it": "zero mezzo metà paio coppia doppio doppia triplo tripla entrambi entrambe ambedue primo secondo seconda "
+          "centinaia decine migliaia dozzina dozzine milione milioni undicesimo dodicesimo",
+    "es": "cero mitad medio par doble triple ambos ambas primer primero primera segundo segunda cuarto cuarta sexta "
+          "séptima octava novena décima docena cientos centenares decenas miles millón millones undécimo duodécimo",
+}
+# words of another language's list that are ordinary words in the answer's own language
+_FALSE_FRIENDS = {"en": {"once", "due", "dues", "miles", "par", "pars"}, "it": {"medio", "medios"}, "es": {"ten"}}
+_ASK_SPELLED = re.compile(r"(?<!\w)(?:" + "|".join(sorted({re.escape(w) for lang in LANGS for w in (
+    _WORDS[lang] + " " + _ASK_WORDS[lang]).split()}, key=len, reverse=True))
+    + "|" + "|".join(f"(?:{t})\\w*" for t in _TENS.values() if t) + r")s?(?!\w)", re.IGNORECASE)
+_ASK_NOT_A_NUMBER = re.compile(
+    r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bfirst[- ]time\b|\bfirst touch\b|"
+    r"\bsecond balls?\b|\b(?:first|second) post\b|\bboth (?:teams|sides)\b|"
+    r"\bin mezzo\b|\bmetà (?:del )?campo\b|\b(?:prima|seconda) metà\b|\b(?:primo|secondo) (?:tempo|palo)\b|"
+    r"\bseconda palla\b|\bsecondo (?:i|il|lo|la|le|gli|l'|me|noi)\b|\bentrambe le squadre\b|"
+    r"\b(?:primer|segundo) (?:tiempo|palo)\b|\b(?:primera|segunda) (?:parte|mitad)\b|\bsegunda jugada\b|"
+    r"\bmitad del campo\b|\bmitad de (?:la )?cancha\b|\bmedio ?campo\b|\b(?:en|por) medio\b|\blos medios\b|"
+    r"\bambos equipos\b|\ba la par\b", re.IGNORECASE)
+_ROMAN = re.compile(r"(?<!\w)[IVXLC]{2,}(?!\w)")  # "III", "XI"; a lone "I" is the pronoun
+# events the ledger has no fact of: an answer may name one only when it cites a fact of that kind
+_EVENT_NOT = re.compile(r"\bpenalty (?:area|box)(?:es)?\b|\baree? di rigore\b|\b[aá]rea de penalti\b|\binjury time\b",
+                        re.IGNORECASE)
+_EVENTS = {kind: re.compile(rf"(?<!\w)(?:{w})(?!\w)", re.IGNORECASE) for kind, w in {
+    "card": r"red cards?|yellow cards?|sent off|sending[- ]off|booked|bookings?|cartellin[oi] (?:ross|giall)[oi]|"
+            r"espuls\w*|ammoni\w+|tarjetas? (?:rojas?|amarillas?)|expulsad[oa]s?|expulsi[oó]n|amonestad[oa]s?|"
+            r"amonestaci[oó]n",
+    "penalty": r"penalt(?:y|ies)|rigor[ei]|penaltis?|penales?",
+    "injury": r"injur(?:y|ies|ed)|infortun\w*|lesi[oó]n(?:es)?|lesionad[oa]s?",
+    "own_goal": r"own[- ]goals?|autogol\w*|autoret[ei]|propia (?:puerta|meta)",
+    "offside": r"offside|off-side|fuori ?gioco|fuera de (?:juego|lugar)",
+    "var": r"VAR",
+    "substitution": r"substitut\w*|subbed|sostitu\w*|sustitu\w*",
+}.items()}
+# a link, a domain or an address, also spelled out ("dot com"): the studio never sends a viewer anywhere
+_LINK = re.compile(r"https?:|www\.|@|(?<![\w.])[\w-]{2,}\.(?:[a-z]{2,}\.)*[a-z]{2,}(?![\w])|"
+                   r"\b(?:dot|punto)\s*(?:com|net|org|io|info|eu|co|uk|it)\b|\bdot\s*es\b|\bdotcom\b|[(\[]\s*dot\s*[)\]]",
+                   re.IGNORECASE)
+# function words only one of the three languages uses; the answer must have more of its own than of any other
+_LANG_WORDS = {lang: re.compile(rf"(?<!\w)(?:{w})(?!\w)", re.IGNORECASE) for lang, w in {
+    "en": "the|of|and|was|were|is|are|at|on|with|by|to|has|have|had|his|their|from|after|for|this|that|than|far",
+    "it": "il|gli|di|della|dei|delle|degli|nel|nei|nella|sul|dal|alla|alle|agli|è|e|che|per|sono|più|dopo|finora|"
+          "hanno|stato|stata",
+    "es": "el|los|las|y|de|que|por|para|en|fue|tras|más|es|sus|hasta|ahora|ha sido",
+}.items()}
+# a score: "2-1", "2 to 1", "2 a 1", never part of a formation or a decimal
+_ASK_SCORE = re.compile(r"(?<![\w.,-])(\d{1,2})(?:\s*[-–]\s*|\s+(?:to|a)\s+)(\d{1,2})(?![\w.,-]*\d)", re.IGNORECASE)
+# numbers that carry a noun, not a unit: "7 sprints", "xT +0.034", a pass count "228/276" or "228 of 276 passes"
+_NOUN_NUMBERS = {
+    "sprints": re.compile(_LB + r"(\d+)\s+(?:sprints?|scatt[oi]|esprints?)\b", re.IGNORECASE),
+    "xT": re.compile(r"\bxT\s*(?:of|di|de|:)?\s*([+-]?\d+(?:[.,]\d+)?)|" + _LB + r"([+-]?\d+(?:[.,]\d+)?)\s*xT\b"),
+}
+_PAIR = re.compile(_LB + r"(\d+)\s*/\s*(\d+)(?![\d.,]*\d)|" + _LB
+                   + r"(\d+)\s+(?:of|out of|su|de|di)\s+(\d+)\s+(?:passes|passaggi|pases)\b", re.IGNORECASE)
+_LABEL_PAIR = re.compile(r"\((\d+)/(\d+)\)")
 MAX_ASK_FACTS = 8
 
 
-def check_answer(text, facts, p1, lang, ids):
+def _near(raw, value):
+    """A number as written ("0,03") within rounding of a value."""
+    decimals = len(re.split(r"[.,]", raw)[1]) if re.search(r"[.,]", raw) else 0
+    return abs(float(raw.replace(",", ".")) - value) <= 0.5 * 10 ** -decimals + 1e-9
+
+
+def _language(text, lang):
+    """True unless another language has as many function words in the answer as `lang`, and at least one
+    ("Both teams in a 4-3-3." has none of the three and passes)."""
+    counts = {k: len(p.findall(text)) for k, p in _LANG_WORDS.items()}
+    other = max(n for k, n in counts.items() if k != lang)
+    return other == 0 or counts[lang] > other
+
+
+def check_answer(text, facts, p1, lang, ids, score=None):
     """All checks on an Ask answer about `facts` (the cited ones, all at or before the question's ts).
+    `score` is (home, away) at ts; without it no score may be claimed.
     On top of check_text: minutes only as minutes ("2'", "min 2", "45+2'") and only the cited facts' own;
-    no bare number from a minute or from "/10"; number words in English and in `lang`; no letter-number
-    characters ("Ⅲ"); and the answer must quote at least one cited fact, its value or its label."""
+    a score only as the score at ts; every other number with the unit or noun its fact gives it (7 with
+    "sprints", 29.3 with "km/h"), never bare; number words of all three languages; no letter-number
+    characters ("Ⅲ") or roman numerals; the answer quotes at least one cited fact; no event (card, penalty,
+    injury, own goal, offside, VAR, substitution) without a cited fact of that kind; no link; in `lang`."""
     flags = ["number in words: letter-number character"] * any(unicodedata.category(c) == "Nl" for c in text)
     minutes = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts}
     for f in facts:
         for mt in _LABEL_MINUTES.finditer(display_label(f)):
             minutes |= set(mt.groups())
+    quoted = False
 
     def said(mt):
         flags.extend(f"minute not in the facts: '{g}'" for g in mt.groups() if g and g not in minutes)
         return " "
     rest = _MINUTE.sub(said, normalise(text))
+
+    def scored(mt):
+        nonlocal quoted
+        if _NUM.match(rest, mt.start(2)).group(2):  # "from 3 to 5 m" is a range with a unit, not a score
+            return mt.group(0)
+        if score is None or sorted(map(int, mt.groups())) != sorted(score):
+            flags.append(f"score not the score at ts: '{mt.group(0)}'")
+        quoted |= any(f["kind"] == "score" for f in facts)
+        return " "
+    rest = _ASK_SCORE.sub(scored, rest)
+
+    def licensed(values):
+        def sub(mt):
+            nonlocal quoted
+            raws = [g for g in mt.groups() if g is not None]
+            if any(len(raws) == len(v) and all(_near(r, x) for r, x in zip(raws, v)) for v in values):
+                quoted = True
+                return " "
+            return mt.group(0)  # left for check_text, which declines a bare number
+        return sub
+    for unit, pattern in _NOUN_NUMBERS.items():
+        rest = pattern.sub(licensed([(f["value"],) for f in facts if f["unit"] == unit]), rest)
+    pairs = [tuple(map(float, mt.groups())) for f in facts for mt in _LABEL_PAIR.finditer(f["label_en"])]
+    rest = _PAIR.sub(licensed(pairs), rest)
+
     bare = [{**f, "label_en": _LABEL_MINUTES.sub("", f["label_en"])} for f in facts]
-    values = {(f["value"], None) for f in facts}
-    allowed = [a for a in allowed_numbers(bare) if a != (10.0, None) or a in values]  # "/10" is no licence for "10 shots"
-    flags += check_text(rest, allowed, lang, ids)
+    flags += check_text(rest, allowed_numbers(bare), lang, ids, bare=False)
     words = _NOT_A_NUMBER.sub("", _ASK_NOT_A_NUMBER.sub("", _FACT_ID.sub("", rest)))
-    for pattern in {_SPELLED["en"], _ASK_SPELLED["en"], _ASK_SPELLED[lang]}:  # check_text ran `lang`'s own list
-        flags += [f"number in words: '{w}' (write digits from the facts)" for w in pattern.findall(words)]
-    quoted = _NUM.search(_FACT_ID.sub("", rest)) or any(display_label(f).lower() in text.lower() for f in facts)
-    return flags + ["answer quotes no cited fact"] * (not quoted)
+    flags += [f"number in words: '{w}' (write digits from the facts)" for w in _ASK_SPELLED.findall(words)
+              if w.lower() not in _FALSE_FRIENDS[lang]]
+    flags += [f"number in words: roman numeral '{w}'" for w in _ROMAN.findall(rest)]
+    quoted = quoted or _NUM.search(_FACT_ID.sub("", rest)) or any(display_label(f).lower() in text.lower() for f in facts)
+    flags += ["answer quotes no cited fact"] * (not quoted)
+    kinds, events = {f["kind"] for f in facts}, _EVENT_NOT.sub("", text)
+    flags += [f"event not in the facts: {kind}" for kind, p in _EVENTS.items() if kind not in kinds and p.search(events)]
+    flags += ["link or address in the answer"] * bool(_LINK.search(text))
+    return flags + ["answer not in the visitor's language"] * (not _language(text, lang))
 
 
 def story_facts(story, cited=True):
