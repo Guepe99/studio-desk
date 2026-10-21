@@ -328,6 +328,13 @@ try {
     await page.waitForTimeout(2600);
     const rt = (await onScreen(page)).live.find((x) => x.cue === first.cue_id);
     if (!rt || rt.mode !== "realtime" || rt.step !== 0 || rt.opacity < 0.9) fail(`real-time path: ${JSON.stringify(rt)}`);
+    // the same sheet again (the desk reached or approved another story) leaves the graphic on air as it was
+    const kept = await page.evaluate((id) => {
+      const h = window.studioDesk.host, el = h.live.get(id)?.el;
+      h.setCues(h.cues.slice(), window.studioDesk.state.ts);
+      return !!el && h.live.get(id)?.el === el && h.live.get(id).mode === "realtime";
+    }, first.cue_id);
+    if (!kept) fail("real-time path: an unchanged cue sheet rebuilt the graphic on air");
     await page.evaluate(() => window.studioDesk.setPlaying(false));
   });
 

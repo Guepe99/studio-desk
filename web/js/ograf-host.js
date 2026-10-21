@@ -10,6 +10,8 @@
 //   time are rebuilt. Graphics with supportsNonRealTime get the non-real-time path:
 //   setActionsSchedule([play at 0, stop at end]) and goToTime(cue-local ms) on every frame until the
 //   cue ends. Others are loaded and played with skipAnimation.
+// - A new cue sheet that leaves every graphic on screen as it was (the desk reached or approved a
+//   story) is not a seek: the graphics stay, and the new cues come and go as in playback.
 // - Convention: if a manifest declares the custom action "position", the host calls it every frame
 //   with {x, y, visible}, the renderer-pixel position of data.player_id (the nameplate uses it).
 // - At most MAX_ON_SCREEN graphics at once (docs/CONTRACT.md), counting those animating out.
@@ -55,7 +57,10 @@ export class OGrafHost {
 
   setCues(cues, now) {
     this.cues = cues.filter((c) => this.graphics[c.graphic]).sort((a, b) => a.ts - b.ts);
-    this.sync(now, true);
+    const next = new Map(this.cues.map((c) => [c.cue_id, c]));
+    const same = (a, b) => b && a.ts === b.ts && a.duration_s === b.duration_s && JSON.stringify(a.payload) === JSON.stringify(b.payload);
+    const kept = this.last !== null && [...this.live.values()].every((inst) => same(inst.cue, next.get(inst.cue.cue_id)));
+    this.sync(now, !kept, this.speed);
   }
 
   /** Call once per animation frame. seeked: the time jumped (not continuous playback); speed: match

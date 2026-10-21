@@ -150,7 +150,7 @@ for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[l
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
 // for the deck: beside the frame when a wide, short window leaves DECK_MIN px there, else below the controls.
 const MIN_PX = 11, SMALLEST = 17, COMPACT_PX = 30, DECK_MIN = 300;
-let compact = false, deckMode = "", scale = 1, radarK = 1;
+let compact = false, deckMode = "", scale = 1, radarK = 1, laidFor = "";
 
 function layout() {
   const app = $("#app"), cs = getComputedStyle(app), ask = $("#ask"), body = document.body.classList;
@@ -217,7 +217,9 @@ function layout() {
   view3d?.resize();
   scale = s;
   if (match) placeGoals();
-  state.seeked = true; // graphics are rebuilt for the new size
+  // graphics are rebuilt for a new size, not when only a label moved the controls
+  const size = [s, compact, deckMode, deck.style.width, deck.style.maxHeight].join("|");
+  if (size !== laidFor) { laidFor = size; state.seeked = true; }
   laidOut = heights();
   if (!$("#settings-menu").hidden) placeMenu();
 }
