@@ -81,6 +81,20 @@ body {
 #overlay { position: absolute; inset: 0; pointer-events: none; }
 #status { position: absolute; inset: 0; display: grid; place-items: center; font: 700 52px/1.2 var(--font); color: var(--page); text-align: center; padding: 0 200px; }
 #status:empty { display: none; }
+/* The 3-2-1 before kick-off and the full-time strap (countdown.js): top centre, where the replay badge goes,
+   on the green of the score block. Always in the page, empty when off, so each word is read out; see-through
+   (still read) while a graphic or the replay badge sits there (app.js placeMoment). app.js magnifies it on a
+   small frame as it does the score bug, and moves it under the score bug there. */
+#moment { position: absolute; left: 50%; top: 40px; translate: -50% 0; transform-origin: 50% 0; height: 80px; min-width: 80px;
+  display: flex; align-items: center; justify-content: center; padding: 0 34px; border-radius: var(--r-box);
+  background: var(--green); color: var(--purple); box-shadow: 0 0 0 4px var(--purple), var(--shadow);
+  font: 800 42px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; font-variant-numeric: tabular-nums;
+  transition: opacity .2s; }
+#moment span { display: block; }
+#moment.digit { padding: 0; width: 96px; height: 96px; font-size: 62px; letter-spacing: 0; }
+#moment:not(.on) { padding: 0; min-width: 0; background: none; box-shadow: none; }
+#moment.covered { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { #moment { transition: none; } }
 
 /* A frame too small for 1920-wide graphics (app.js sets .deck): they leave the pitch for the deck, each
    at its own scale (ograf-host.js), below the controls or, in a wide short window (.deck-side), beside the frame */

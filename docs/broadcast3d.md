@@ -225,3 +225,79 @@ Compared still by still against the before set, these are the parts that still g
   not checked on an 8-bit phone screen.
 - **Not tested on a real GPU or phone.** Every number and still here comes from software
   renderers (lavapipe and SwiftShader), which run at a fraction of real speed.
+
+## 9. Big screen, kick-off and full time
+
+Code: `web/js/scene3d/screen.js` (the screens), `web/js/countdown.js` (the two moments), small
+changes in `web/js/scene3d.js`, `web/js/app.js`, `web/index.html` and `web/css/broadcast.css`.
+Tests: `tests/web/stadium.test.mjs` (node, the pure logic) and `tests/web/stadium.mjs` (browser).
+
+### The big screen
+
+Two screens, one in each far corner, on legs just behind the boards at world (±58.4, 40.6): the
+corner of the pitch is at (±52.5, 34), so the screens stand beyond the corner flag and everything
+on the pitch is in front of them; they never hide play. Each is 6.4 x 3.2 m, from 1 m (just over
+the 0.9 m boards) to 4.2 m, turned to camera 1. They show the two short names with their colour
+chips, the score from the `score` facts and the minute from the match clock (`45+2'` in stoppage
+time), at the time the scene shows: a goal replay shows the screen as it was then.
+
+Why that height: camera 1 at (0, 18, -68) on its long lens sees only the bottom of the stands. A
+first version was 7.5 x 3.75 m from 1.8 to 5.55 m; in a sweep of the wide shot over M001 (47
+frames, one every 120 s) the top of the frame cut it in 23 of the 25 frames it was in, so most
+of the time only its lower half was on air. From those cuts the top of the frame at the far
+corners sits between about 3 and 4.8 m. The lower, smaller screen is whole in 6 or 7 of the 47 frames
+(runs differ by one frame) and partly in about 18 more. A screen up under the roof, where real grounds hang theirs, would never be
+on air.
+
+Where each camera sees it, from the camera matrices (share of the frame, whole in frame only):
+
+| Camera | Left screen | Right screen |
+|---|---|---|
+| Camera 1, wide shot (47 frames) | whole in 5 frames, up to 1.7% | whole in 1 or 2 frames, up to 1.5% |
+| Replay, goal (behind the goal) | never | never |
+| Replay, low (pitch level, on the 18-yard line) | never on this replay (right-end goal) | up to 8.2% |
+| Replay, reverse | never | never |
+| Replay, high | never | never whole (0.5% cut) |
+
+Cost: the faces are one merged mesh with one 1024 x 512 `DynamicTexture` (a power of two for
+WebGL 1), the housings and legs another merged mesh, world matrices and materials frozen: 2 draw
+calls (377 against 375 on the high profile). The canvas is drawn again only when the text changes,
+once a minute or at a goal (4 draws for 4 minute changes over 200 s of play at 4x), never per
+frame; one draw and upload took 1.1 to 2.3 ms on a page that had played a while and 15 ms on a fresh page
+(three runs, under a load average of 18). The frame
+time could not be told apart on this machine: the same frame drawn six times with the screens and
+six without, alternated, took a median of 13.8 to 14.6 s against 15.4 to 16.7 s in three runs and
+7.0 against 6.6 s, 11.8 against 11.5 s, 6.9 against 7.1 s and 6.6 against 6.6 s in four more (software WebGL 2, every frame waits on a CPU shared with other
+agents): the sign flips between runs, so the difference is under the noise; on a real
+GPU two more draw calls of 4 and 1 triangles are negligible.
+
+### Kick-off and full time
+
+When the viewer presses Play at the very start (match time under 0.5 s), a strap at the top
+centre counts 3, 2, 1 and then says "Kick off" for 1.5 s. The clock is held during the count and
+starts on "Kick off", as a broadcast counts down to air. A second press stops the count; a seek
+(or a deep link past kick-off, or a programmatic play from a test) never shows it. From 2 s before
+the final whistle to 4 s after it the strap says "Full time". Words in en, it and es; the strap is
+`role="status"` so screen readers hear each step; with `prefers-reduced-motion` it has no pop and
+no fade. It hides (opacity 0, still read out) while a graphic on air or the replay badge covers
+that spot.
+
+Speed: the count and the full-time strap show at 1x and 4x only. At 16x and 64x the viewer is
+skimming: a three second wait would cost a minute of match, and full time would flash for a third
+of a second. 4x is also the fastest speed the 3D goal replays play at.
+
+Sound: three short pips and a long one from a WebAudio oscillator (880 and 1320 Hz, 5 ms ramps,
+no file), only with the Voice button on and at 1x, the speeds the voice and the booth play at. The
+whistles are the booth's own: `booth.js` already blows `whistle.mp3` at kick-off and at each
+period end, so nothing new is played at full time.
+
+The count runs on real time: on a page that stalls for more than a second or two (the software
+renderers here) a label can be skipped; the clock is still held until the count is over.
+
+Commands: `node --test tests/web/stadium.test.mjs` (6 tests) and
+`WEBGL=2 MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh stadium.mjs`. Stills in
+`out/shots/` (not in git): `stadium-broadcast.png`, `stadium-replay-low.png`, `countdown-3d.png`,
+`countdown-1280.png`, `countdown-390.png` (in Spanish) and `countdown-fulltime.png`. The two screen stills
+are taken on a fresh page: the sweep stubs out the draw to run quickly, and after minutes of undrawn
+play the first drawn frames showed the players with stretched limbs (stale skinning), which a viewer
+never gets because the page always draws.

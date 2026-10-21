@@ -426,10 +426,12 @@ try {
     if (Math.abs((await st()).ts - end / 2) > 0.05) fail(`key 5: at ${(await st()).ts.toFixed(1)}, want ${(end / 2).toFixed(1)}`);
     await page.keyboard.press("0");
     if ((await st()).ts !== 0) fail(`key 0: at ${(await st()).ts}`);
+    // at 0:00 K starts the kick-off count (the clock waits for it), a second K stops it
+    const going = () => page.evaluate(() => window.studioDesk.state.playing || window.studioDesk.countdown.counting);
     await page.keyboard.press("k");
-    const on = (await st()).playing;
+    const on = await going();
     await page.keyboard.press("k");
-    if (!on || (await st()).playing) fail(`key K: playing ${on}, then ${(await st()).playing}`);
+    if (!on || (await going())) fail(`key K: playing or counting ${on}, then ${await going()}`);
     // in the seek bar the arrows stay the bar's own (5 s), L still works
     await seekTo(page, 600 % DUR);
     await page.focus("#seek-range");

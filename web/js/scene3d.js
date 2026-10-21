@@ -21,6 +21,7 @@ import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
 import { smoothMatch } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
+import { buildScreens } from "./scene3d/screen.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -81,6 +82,7 @@ export class Scene3D {
     buildPitch(scene, this.profile);
     this._goals();
     this.crowd = buildStadium(scene, match, this.profile, mulberry(5));
+    this.screen = buildScreens(scene, match, this.profile, this.tv.position);   // the big screens in the far corners
     this.light.shadeStands(scene.meshes.filter((m) => /^(tier|w|rf)_merged$|^crowd/.test(m.name)));
     this._ball();
     this.post = setupPost(scene, this.cams.list, this.profile);
@@ -290,6 +292,7 @@ export class Scene3D {
     gr.commit();
 
     this.crowd.update(ts);
+    this.screen.update(ts);
     this.cams.update(view, ts, dt);
     this.post.update(this.cams);
     this.debug.camera = this.cams.mode;
