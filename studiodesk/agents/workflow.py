@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from agent_framework import Agent, WorkflowBuilder, WorkflowContext, chat_middleware, executor
 from agent_framework._mcp import MCPTool
 from mcp.shared.memory import create_connected_server_and_client_session
+from opentelemetry import trace
 
 from .. import config, db, mcp_server
 from ..clock import MatchClock
@@ -825,6 +826,12 @@ def build_workflow(desk):
                 proposals = {lang: rules.strip_citations(texts[(sid, lang)]) for lang in rules.LANGS}
             else:
                 status = "template"
+            for lang in rules.LANGS:  # one verdict per text on the OpenTelemetry span (no-op without an exporter)
+                why = problems.get((sid, lang))
+                trace.get_current_span().add_event("studiodesk.verdict", {
+                    "studiodesk.match_id": desk.match_id, "studiodesk.run_id": desk.run_id, "studiodesk.story_id": sid,
+                    "studiodesk.lang": lang, "studiodesk.accepted": ok[lang], "studiodesk.status": status,
+                    "studiodesk.reason": "" if ok[lang] else rules.reason(why[0]) if why else "no text"})
             air = {k: s["verifier"][k] for k in ("on_air", "opener")}
             s["unjudged"] = status != "template" and (sid not in analysis_judged or any(
                 (sid, lang) not in judged_ok for lang in rules.LANGS))

@@ -10,6 +10,7 @@ import re
 
 from agent_framework import (BaseChatClient, ChatMiddlewareLayer, ChatResponse, Content, FunctionInvocationLayer,
                              Message, UsageDetails)
+from agent_framework.observability import ChatTelemetryLayer
 from pydantic import BaseModel
 
 from .. import config
@@ -94,8 +95,9 @@ def azure_client(endpoint=None):
                             credential=token, function_invocation_configuration=TOOL_LOOP)
 
 
-class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, BaseChatClient):
-    """Deterministic offline stand-in for gpt-5-mini, used by tests and `--fake`.
+class FakeChatClient(FunctionInvocationLayer, ChatMiddlewareLayer, ChatTelemetryLayer, BaseChatClient):
+    """Deterministic offline stand-in for gpt-5-mini, used by tests and `--fake`; its layers are OpenAIChatClient's,
+    so it makes the same OpenTelemetry chat spans.
 
     It reads the JSON payload of the last user message and answers by response schema: the finder
     picks every candidate, the analyst cites the facts, the commentator writes the fact labels in its
