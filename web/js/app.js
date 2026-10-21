@@ -12,6 +12,7 @@ import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
+import { Countdown } from "./countdown.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
@@ -116,6 +117,8 @@ const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck 
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
+// the 3-2-1 before kick-off and the full-time strap; pips only with the Voice button on (countdown.js)
+const countdown = new Countdown($("#moment"), { lang: () => state.lang, sound: () => !!voice?.on && !$("#voice").hidden });
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
   en: { settings: "Settings", more: "More", minimap: "Minimap",
@@ -200,6 +203,10 @@ function layout() {
   const bug = Math.max(1, MIN_PX / (38 * s)), sb = $("#scorebug");
   sb.style.transform = bug > 1 ? `scale(${bug})` : "";
   sb.classList.toggle("no-period", 30 * s * bug < MIN_PX);
+  // the countdown strap magnified the same way, and under the score bug when that one is magnified (a phone)
+  const mo = $("#moment"), mk = Math.max(1, MIN_PX / (38 * s));
+  mo.style.scale = mk > 1 ? String(mk) : "";
+  mo.style.top = bug > 1 ? `${sb.offsetTop + sb.offsetHeight * bug + 16}px` : "";
   compact = SMALLEST * s < MIN_PX;
   deckMode = side ? "side" : COMPACT_PX * s < MIN_PX ? "below" : "";
   body.toggle("deck", !!deckMode);
@@ -258,13 +265,28 @@ function applyStrings() {
   minimapState();
   view3d?.relabel();
   voice?.render();
+  countdown.relabel();
 }
 
 function setPlaying(on) {
   if (on && state.ts >= end) seek(0);
+  if (countdown.counting) countdown.cancel();   // a programmatic play or pause (tests, demo scripts) goes at once
   state.playing = on;
+  showPlaying(on);
+}
+
+function showPlaying(on) {
   $("#play").classList.toggle("playing", on);
   $("#play").setAttribute("aria-label", t(on ? "pause" : "play"));
+}
+
+// The viewer's Play (the button, Space, K): from the very start it counts 3-2-1 first, the clock held
+// until "Kick off"; a press during the count stops it.
+function pressPlay() {
+  if (countdown.counting) return setPlaying(false);
+  if (!state.playing && state.ts >= end) seek(0);
+  if (!state.playing && countdown.start(state.ts, state.speed)) return showPlaying(true);
+  setPlaying(!state.playing);
 }
 
 function setSpeed(x) {
@@ -285,6 +307,9 @@ function seek(ts) {
   state.seeked = true;
   voice?.reset();
   booth?.reset();
+  const counting = countdown.counting;
+  countdown.cancel();   // a seek is never the very start, nor still the kick-off
+  if (counting) showPlaying(state.playing);
 }
 
 function checked(attr, value) {
@@ -465,8 +490,10 @@ function onAirStory() {
 let lastFrame = null;
 function tick(now) {
   // a stall of the page (a 3D replan) keeps the clock in real time; a gap over 1 s is a hidden tab
-  const gap = lastFrame === null ? 0 : (now - lastFrame) / 1000, dt = gap > 1 ? 0.1 : gap;
+  const gap = lastFrame === null ? 0 : (now - lastFrame) / 1000;
+  let dt = gap > 1 ? 0.1 : gap;
   lastFrame = now;
+  if (countdown.frame(now, state.ts, state.speed, match.duration)) { setPlaying(true); dt = 0; }   // the clock starts at 0 on "Kick off"
   if (state.playing) {
     state.ts += dt * state.speed;
     if (state.ts >= end) { state.ts = end; setPlaying(false); }
@@ -479,6 +506,7 @@ function tick(now) {
   revealGoals();
   host.sync(state.ts, state.seeked, state.speed);
   placeRadar();
+  placeMoment();
   voice?.update(state.ts, end); // null until its clips are checked
   try { booth?.update(state.ts); } catch (e) { booth.stop(); queueMicrotask(() => { throw e; }); } // reported, the frame goes on
   moments.update(state.ts);
@@ -497,17 +525,29 @@ function tick(now) {
 // on the pitch covers; it steps aside only when they cover all three. Stage px, as view3d.css #radar.
 // Magnified on a small frame (radarK), it grows from its bottom left corner and the spots move in with it.
 const RADAR_BOX = { w: 440, h: 291, bottom: 20 }, RADAR_MIN = 120, RADAR_K = 0.7;
+// The boxes of the graphics on the pitch (elements in stage px)
+const graphicBoxes = () => [...host.live.values(), ...host.leaving].filter((i) => !i.positioned && i.node === i.el)
+  .map((i) => i.el.shadowRoot?.querySelector(".stage")?.firstElementChild).filter((b) => b?.offsetWidth);
 function placeRadar() {
-  const boxes = [...host.live.values(), ...host.leaving].filter((i) => !i.positioned && i.node === i.el)
-    .map((i) => i.el.shadowRoot?.querySelector(".stage")?.firstElementChild).filter((b) => b?.offsetWidth);
+  const boxes = graphicBoxes();
   const w = RADAR_BOX.w * radarK, top = STAGE_H - RADAR_BOX.bottom - RADAR_BOX.h * radarK;
   const x = [(STAGE_W - w) / 2, STAGE_W - 40 - w, 40].find((l) => boxes.every((b) => b.offsetLeft >= l + w || b.offsetLeft + b.offsetWidth <= l || b.offsetTop + b.offsetHeight <= top));
   document.body.classList.toggle("radar-yield", x === undefined);
   if (x !== undefined) $("#radar").style.left = `${x}px`;
 }
 
+// The countdown and full-time strap (top centre) gives way to anything on air there: a graphic or the replay badge.
+function placeMoment() {
+  const m = $("#moment");
+  if (!m.classList.contains("on")) return;
+  const k = Number(m.style.scale) || 1, w = m.offsetWidth * k, x = (STAGE_W - w) / 2, y = m.offsetTop, h = m.offsetHeight * k;
+  const badge = $("#replay-badge.on"), boxes = graphicBoxes().map((b) => [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight]);
+  if (badge) boxes.push([badge.offsetLeft - badge.offsetWidth / 2, badge.offsetTop, badge.offsetWidth, badge.offsetHeight]);
+  m.classList.toggle("covered", boxes.some(([bx, by, bw, bh]) => bx < x + w && bx + bw > x && by < y + h && by + bh > y));
+}
+
 function wireControls() {
-  $("#play").addEventListener("click", () => setPlaying(!state.playing));
+  $("#play").addEventListener("click", pressPlay);
   // My team and Player: one item per team and per player the cue sheet has cues for; a player's item
   // says when he first appears (a late substitute)
   const first = {};
@@ -593,7 +633,7 @@ function wireControls() {
   window.addEventListener("keydown", (e) => {
     if (!spaceKey(e)) return;
     e.preventDefault();
-    if (!e.repeat) setPlaying(!state.playing);
+    if (!e.repeat) pressPlay();
   }, true);
   window.addEventListener("keyup", (e) => { if (spaceKey(e)) e.preventDefault(); }, true);
   // the video player keys (keys.js), scoped as Space is; a key a control already used (the seek bar's arrows) is left to it
@@ -602,7 +642,7 @@ function wireControls() {
     const [act, x] = (!e.defaultPrevented && shortcut(e)) || [];
     if (!act) return;
     e.preventDefault();
-    if (act === "play") setPlaying(!state.playing);
+    if (act === "play") pressPlay();
     else if (act === "step") seek(state.ts + x);
     else if (act === "fraction") seek(end * x);
     else if (act === "voice") { if (!$("#voice").hidden) $("#voice").click(); }
@@ -708,7 +748,7 @@ async function main() {
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, pitch, proof, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
