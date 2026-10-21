@@ -64,15 +64,21 @@ export const FACT_KINDS = {
   en: { ball_speed: "Ball speed", distance_covered: "Distance covered", formation: "Formation", line_height: "Defensive line height",
     momentum: "Momentum", pass_accuracy: "Pass completion", pass_difficulty: "Pass difficulty", pass_distance: "Pass length",
     press_intensity: "Pressing intensity", score: "Score", shot_distance: "Shot distance", shot_speed: "Shot speed", sprint_count: "Sprints",
-    sprint_speed: "Sprint speed", team_length: "Team length", team_width: "Team width", xt_added: "Threat added (xT)" },
+    sprint_speed: "Sprint speed", team_length: "Team length", team_width: "Team width", xt_added: "Threat added (xT)",
+    checkin_touches: "Touches so far", checkin_passes: "Passes completed so far", checkin_distance: "Distance covered so far",
+    checkin_sprints: "Sprints so far", checkin_top_speed: "Top speed so far" },
   it: { ball_speed: "Velocità della palla", distance_covered: "Distanza percorsa", formation: "Modulo", line_height: "Altezza della linea difensiva",
-    momentum: "Inerzia", pass_accuracy: "Precisione nei passaggi", pass_difficulty: "Difficoltà del passaggio", pass_distance: "Lunghezza del passaggio",
+    momentum: "Momentum", pass_accuracy: "Precisione nei passaggi", pass_difficulty: "Difficoltà del passaggio", pass_distance: "Lunghezza del passaggio",
     press_intensity: "Intensità del pressing", score: "Risultato", shot_distance: "Distanza del tiro", shot_speed: "Velocità del tiro", sprint_count: "Scatti",
-    sprint_speed: "Velocità nello scatto", team_length: "Lunghezza della squadra", team_width: "Ampiezza della squadra", xt_added: "Pericolosità aggiunta (xT)" },
+    sprint_speed: "Velocità massima", team_length: "Lunghezza della squadra", team_width: "Ampiezza della squadra", xt_added: "Pericolosità aggiunta (xT)",
+    checkin_touches: "Tocchi finora", checkin_passes: "Passaggi riusciti finora", checkin_distance: "Distanza percorsa finora",
+    checkin_sprints: "Scatti finora", checkin_top_speed: "Velocità massima finora" },
   es: { ball_speed: "Velocidad del balón", distance_covered: "Distancia recorrida", formation: "Sistema", line_height: "Altura de la línea defensiva",
-    momentum: "Dominio", pass_accuracy: "Precisión en el pase", pass_difficulty: "Dificultad del pase", pass_distance: "Longitud del pase",
+    momentum: "Empuje", pass_accuracy: "Precisión en el pase", pass_difficulty: "Dificultad del pase", pass_distance: "Longitud del pase",
     press_intensity: "Intensidad de la presión", score: "Marcador", shot_distance: "Distancia del disparo", shot_speed: "Velocidad del disparo", sprint_count: "Sprints",
-    sprint_speed: "Velocidad en sprint", team_length: "Longitud del equipo", team_width: "Anchura del equipo", xt_added: "Amenaza añadida (xT)" },
+    sprint_speed: "Velocidad punta", team_length: "Longitud del equipo", team_width: "Anchura del equipo", xt_added: "Amenaza añadida (xT)",
+    checkin_touches: "Toques hasta ahora", checkin_passes: "Pases acertados hasta ahora", checkin_distance: "Distancia recorrida hasta ahora",
+    checkin_sprints: "Sprints hasta ahora", checkin_top_speed: "Velocidad máxima hasta ahora" },
 };
 export const EVENT_KINDS = {
   en: { clearance: "Clearance", corner_crossed: "Corner into the box", corner_short: "Short corner", cross: "Cross", dribble: "Run with the ball",
@@ -166,7 +172,7 @@ function sourceOf(tok, { facts, events, story, match, minute }) {
   }
   const f = known.find((x) => {
     const v = Number(x.value);
-    if (tok.unit === "km") return x.unit === "m" && near(v / 1000, tok.n, tok.d);
+    if (tok.unit === "km") return (x.unit === "m" && near(v / 1000, tok.n, tok.d)) || (x.unit === "km" && near(v, tok.n, tok.d));
     if (!near(v, tok.n, tok.d)) return false;
     if (tok.unit === "/10") return x.unit === "/10" || x.unit === "index";
     return !tok.unit || tok.unit === x.unit;
