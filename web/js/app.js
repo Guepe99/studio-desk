@@ -9,13 +9,14 @@ import { View3D, probe, defaultView, warm3d, RADAR, replays } from "./view3d.js"
 import { Ask } from "./ask.js";
 import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
+import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
 const STRINGS = {
   en: {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "Jump to 2nd half",
-    audience: "Audience", analyst: "Analyst", casual: "Casual fan", language: "Language",
+    audience: "Audience", analyst: "Analyst", casual: "Casual fan", kids: "Kids", language: "Language",
     p1: "1H", p2: "2H", loading: "Loading match", error: "Could not load match {m}. {e}",
     minute: "Minute {n}, {p}, {home} {h}, {away} {a}", h1: "first half", h2: "second half",
     nographic: "Some graphics could not load: {g}.",
@@ -49,7 +50,7 @@ const STRINGS = {
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primo tempo", h2: "secondo tempo",
     nographic: "Alcune grafiche non si sono caricate: {g}.",
     aioff: "IA spenta", matchPick: "Scegli la partita", broadcast: "Trasmissione della partita", activity: "Attività degli agenti",
-    audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
+    audience: "Pubblico", analyst: "Analista", casual: "Spettatore", kids: "Bambini", myteam: "La mia squadra", player: "Giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
     askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
@@ -78,7 +79,7 @@ const STRINGS = {
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primera parte", h2: "segunda parte",
     nographic: "Algunos gráficos no se pudieron cargar: {g}.",
     aioff: "IA apagada", matchPick: "Elige el partido", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
-    audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
+    audience: "Público", analyst: "Analista", casual: "Espectador", kids: "Niños", myteam: "Mi equipo", player: "Jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
     askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos",
@@ -112,7 +113,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null;
+let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
@@ -207,6 +208,7 @@ function layout() {
     deck.style.maxHeight = `${fh}px`;
     if (!DOCKED.matches) { ask.style.width = deck.style.width; ask.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
+  $("#audiences").style.width = controls.style.width;
   // the minimap sits at RADAR_K of its box, as small as a game's radar, but never narrower than RADAR_MIN px:
   // magnified on a small frame, as the score bug is
   radarK = Math.max(RADAR_K, RADAR_MIN / (RADAR_BOX.w * s));
@@ -478,7 +480,9 @@ function tick(now) {
   voice?.update(state.ts, end); // null until its clips are checked
   try { booth?.update(state.ts); } catch (e) { booth.stop(); queueMicrotask(() => { throw e; }); } // reported, the frame goes on
   moments.update(state.ts);
-  activity.update(state.ts, state.seeked, onAirStory(), state.lang);
+  const onAir = onAirStory();
+  activity.update(state.ts, state.seeked, onAir, state.lang);
+  audBox.update(onAir, state.ts, state.lang, state.audience);
   desk.setLive([...host.live.values()].map((i) => i.cue));
   state.seeked = false;
   const range = $("#seek-range");
@@ -688,6 +692,12 @@ async function main() {
   desk.render();
   moments = new Moments($("#next-moment"), { state, seek, setSpeed, t, live: $("#moments-live") });
   activity = new Activity(strip, desk, t);
+  // the menu's name for an audience: a player by his name, a team by its full name; null when not on the menu
+  const audLabel = (aud) => {
+    const b = document.querySelector(`#settings-menu [data-audience="${CSS.escape(aud)}"]`);
+    return !b ? null : aud.startsWith("player:") ? b.dataset.short || b.textContent : b.textContent;
+  };
+  audBox = new AudienceBox($("#audiences"), desk, { label: audLabel, pick: setAudience });
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();

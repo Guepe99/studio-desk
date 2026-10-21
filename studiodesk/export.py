@@ -174,6 +174,8 @@ def export(match_id, conn, out_root, runtime=None):
         stories, cues, traces = runtime_records(match_id, runtime)
     else:
         stories, traces, cues = [], [], template_cues(m, facts, events)
+    from .agents import audiences  # every audience's line, the kids sheet and the player check-ins
+    stories, cues = audiences.apply(m, facts, events, stories, cues)
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
@@ -202,15 +204,19 @@ def runtime_records(match_id, runtime):
     return stories, cues, traces
 
 
-def pack(match_id, runtime, out_dir):
+def pack(match_id, runtime, out_dir, conn=None):
     """The AI replay pack: stories, cues and traces of a real run, committed under replays/<match_id>/
-    and copied over the template export at image build."""
+    and copied over the template export at image build. With the matches database `conn`, the audience
+    lines, the kids sheet and the player check-ins are added (studiodesk.agents.audiences)."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     for name, rows in zip(("stories", "cues", "traces"), runtime_records(match_id, runtime)):
         if not rows and name != "traces":
             raise SystemExit(f"no {name} for {match_id} in the runtime database")
         _dump(out / f"{name}.json", rows)
+    if conn is not None:
+        from .agents import audiences
+        audiences.apply_pack(match_id, conn, out)
     return out
 
 
@@ -223,8 +229,8 @@ if __name__ == "__main__":
     ap.add_argument("--pack", type=Path, help="write only stories, cues and traces from --runtime here (replays/M001)")
     args = ap.parse_args()
     if args.pack:
-        with closing(db.connect(args.runtime, readonly=True)) as rt:
-            print(pack(args.match_id, rt, args.pack))
+        with closing(db.connect(args.runtime, readonly=True)) as rt, closing(db.connect(args.db, readonly=True)) as conn:
+            print(pack(args.match_id, rt, args.pack, conn))
         raise SystemExit(0)
     with closing(db.connect(args.db, readonly=True)) as conn:
         rt = db.connect(args.runtime, readonly=True) if args.runtime.exists() else None

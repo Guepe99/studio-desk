@@ -544,6 +544,7 @@ class Desk:
             s["texts"] = {lang: rules.template(self.m, s, lang) for lang in rules.LANGS}
             return {"on_air": "template", "opener": None}
         s["texts"] = texts
+        phrasebook.cite_again(self.m, s, texts)
         for lang, t in texts.items():
             self.openings[lang].append(" ".join(t.split()[:3]))
             self.used[lang]["openings"].add(rules.opening(t))

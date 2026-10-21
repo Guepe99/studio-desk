@@ -88,7 +88,8 @@ Every number that can reach the screen is a row in `facts`, with:
 
 Kinds produced by B: `pass_distance`, `pass_difficulty`, `pass_accuracy`, `ball_speed`,
 `shot_speed`, `sprint_speed`, `sprint_count`, `distance_covered`, `momentum`, `xt_added`,
-`press_intensity`, `line_height`, `score`.
+`press_intensity`, `line_height`, `score`; since feat/audiences also `checkin_touches`,
+`checkin_passes`, `checkin_distance`, `checkin_sprints`, `checkin_top_speed` (see Audiences additions).
 
 `momentum` is one fact per team per 5-minute window. The value runs 0..10 and `ts` is the end of
 the window. Window labels name display minutes that never overlap (`min 66-70`, `min 71-75`);
@@ -127,7 +128,7 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
 
 ## Audiences, languages, graphics
 
-- Audiences: `analyst`, `casual`, `player:<player_id>`, `team:<team_id>`.
+- Audiences: `analyst`, `casual`, `kids` (feat/audiences), `player:<player_id>`, `team:<team_id>`.
 - Languages: `en`, `it`, `es`.
 - At most 2 graphics on screen at once (the director enforces it).
 
@@ -139,7 +140,7 @@ is the OGraf `data` for that graphic:
 | `nameplate` | `{player_id, name, shirt, team_short, speed_kmh, fact_id}` |
 | `pass_shot` | `{mode: "pass"\|"shot", player_id, value, unit, quality, fact_ids}` |
 | `momentum` | `{home: [..], away: [..], window: n, fact_ids}` |
-| `why_card` | `{kind: "why"\|"recap", title, body, fact_ids}` |
+| `why_card` | `{kind: "why"\|"recap"\|"checkin", title, body, fact_ids}` |
 
 ## Replay export (static, no API needed)
 
@@ -166,7 +167,7 @@ Shapes (JSON, UTF-8; ids and columns as in the tables, JSON-text columns already
   sorted by `ts`.
 
 Until the agents exist, `export` writes a **template cue sheet** from the facts alone (no AI),
-audiences `analyst` and `casual`, language `en`, `story_id` null: a nameplate for each top
+audiences `analyst` and `casual` (and `kids`, a copy of `casual`, since feat/audiences), language `en`, `story_id` null: a nameplate for each top
 sprint, a `pass_shot` for each shot and for the hardest passes, `momentum` at the end of every
 5-minute window, a `why_card` recap with template text at half-time and full time. `stories.json`
 and `traces.json` are then `[]`. At most 2 cues overlap for the same audience.
@@ -371,3 +372,33 @@ Agents only learn about an event when the clock releases it, in replay generatio
   stories counts 1/n): "How the graphic on air was made: N hand-offs, X tokens, $Y". A summary is
   clamped to two lines; the full text is in the Traces tab of the desk. Its labels follow the page
   language (en, it, es); the agent output stays in English. It reads only the replay files; on a phone it folds to one line.
+
+## Audiences additions (feat/audiences, additive)
+
+- `kids` audience: short, warm lines with the same true numbers. Its cue sheet is the `casual` one
+  (same stories, times and graphics) with the kids line in each `why_card`.
+- `stories.json`: each story gains `texts_by_audience`, `{audience: {"en", "it", "es"}}`, written by
+  code from the story's facts (`studiodesk/agents/audiences.py`, no model), every line through the
+  same checks as `texts`. Keys: `analyst`, `casual`, `kids`, `team:<team_id>`, `player:<player_id>`;
+  an audience may be missing. The line an audience sees is its own, else the `casual` one, else
+  `texts`; the `analyst` always sees `texts`, the line its voice clip says (a clip plays only when the
+  card shows `texts[lang]`). A `why_card` body of a story cue is that line.
+- "Again" is said only with the earlier fact it means cited: a line in `texts` or
+  `texts_by_audience` that says again ("strikes again", "tries again", "Ancora", "ci riprova",
+  "Otra vez", "vuelve a", "Another goal") adds to the story's `fact_ids`, and to its `why_card`
+  `fact_ids`, the scorer's earlier `score` facts (goal) or the shooter's last earlier `shot_speed`
+  fact (big chance).
+- Player check-ins: `checkin_*` facts at 15, 30 and 45 minutes of each period (900 s steps from
+  kick-off, so 15' to 90') for each player on the pitch, counted from the period's kick-off:
+  touches, passes completed, distance (km), sprints and top speed (km/h, only with a sprint peak).
+  They become `why_card` cues with `kind: "checkin"`, `story_id` null, for each `player:<player_id>`
+  audience of the sheet in its languages, one fact per line in the body. A card starts within 30 s of its facts' `ts`, in a
+  slot where it overlaps no other cue of that audience, ends before half-time or full time, and is
+  dropped when no slot is free.
+- `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
+  rewrites a pack offline; `export` and `export --pack` apply the same step.
+- Page: "Same moment, several audiences", a box under the controls (never on the 1920x1080 stage):
+  the story on air, else the latest one cleared for air that the clock has reached, as each audience
+  on the menu sees it, side by side in the page language. Each card's button switches the broadcast
+  to that audience (`aria-pressed` on the current one). This visitor's edited text replaces every
+  audience's line, as on the cue sheet.

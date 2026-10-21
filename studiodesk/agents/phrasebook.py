@@ -149,9 +149,41 @@ def earlier_goals(m, story):
     return [f for f in m.kind("score") if f["player_id"] == story["player_id"] and f["ts"] < story["ts"] - 1e-6]
 
 
+def earlier_shots(m, story):
+    return [f for f in m.kind("shot_speed") if f["player_id"] == story["player_id"] and f["ts"] < story["ts"] - 1.0]
+
+
 def tried_before(m, story):
     """True when the player had a shot earlier in the match: "tries again" is then true."""
-    return any(f["player_id"] == story["player_id"] and f["ts"] < story["ts"] - 1.0 for f in m.kind("shot_speed"))
+    return bool(earlier_shots(m, story))
+
+
+# "again" in each language ("strikes again", "Ancora X!", "ci riprova", "¡Otra vez X!", "Lo vuelve a
+# intentar", "Another goal for"); "sta ancora vincendo" is "still", not "again"
+AGAIN = {"en": re.compile(r"\bagain\b|\banother goal\b|\bonce more\b", re.I),
+         "it": re.compile(r"^ancora\b|\bci riprova\b|\bdi nuovo\b|\bancora una volta\b|\bun altro gol\b", re.I),
+         "es": re.compile(r"\botra vez\b|\bde nuevo\b|\bvuelve a\b|\botro gol\b", re.I)}
+
+
+def backing(m, story):
+    """The earlier facts an "again" stands on: the scorer's earlier goals, the shooter's last earlier shot."""
+    if story["kind"] == "goal":
+        return earlier_goals(m, story)
+    return earlier_shots(m, story)[-1:] if story["kind"] == "big_chance" else []
+
+
+def says_again(text, lang):
+    return bool(AGAIN[lang].search(text or ""))
+
+
+def cite_again(m, story, *texts):
+    """When a line of `texts` (dicts {lang: text}) says "again", the story cites the earlier facts behind
+    it (a groundedness check reads only the story's own facts). Returns the fact ids it added."""
+    if not any(says_again(t, lang) for tx in texts for lang, t in tx.items()):
+        return []
+    new = [f["fact_id"] for f in backing(m, story) if f["fact_id"] not in story["fact_ids"]]
+    story["fact_ids"] = [*story["fact_ids"], *new]
+    return new
 
 
 def goal_line(m, story, lang, tone, focus, opener, form=0):

@@ -2,7 +2,7 @@
 
 The web page is built against this fixture while the real simulator and export do not exist yet.
 Two 3-minute periods at 10 fps, a 4-4-2 each side, passes, a goal for each team, a saved shot and
-a cue sheet that uses all four graphics for both audiences, plus team and player cues. Every number in a cue is the value of
+a cue sheet that uses all four graphics for the analyst and casual audiences, plus team, player and kids cues. Every number in a cue is the value of
 a fact it cites; the recaps come from studiodesk/export.py. Stories, their why cards in en, it and
 es, and the agent traces come from scripts/demo_stories.py. Stdlib + numpy only.
 
@@ -17,6 +17,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from studiodesk.agents import audiences  # noqa: E402
 from studiodesk.export import recap  # noqa: E402
 from studiodesk.names import find_forbidden  # noqa: E402
 
@@ -410,6 +411,8 @@ def main(out_dir: Path) -> Path:
             "players": players, "lineups": lineups, "entities": ["ball"] + sim.ids}
     # what the agents will add: stories, their why cards in three languages, the hand-off traces
     stories, cues, traces = demo_stories.build(meta, events, facts, cues)
+    # every audience's line in its why cards and the kids sheet, as studiodesk/export.py does
+    stories, cues = audiences.apply(meta, facts, events, stories, cues)
 
     # self-checks: shapes, names, contract limits
     assert out.shape == (FRAMES, len(meta["entities"]), 3)

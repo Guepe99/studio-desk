@@ -78,6 +78,7 @@
           <div class="mg" role="group" aria-labelledby="mg-audience"><p id="mg-audience" class="mh" aria-hidden="true" data-i18n="audience">Audience</p>
             <button type="button" role="menuitemradio" tabindex="-1" data-audience="analyst" aria-checked="true" data-i18n="analyst">Analyst</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-audience="casual" aria-checked="false" data-i18n="casual">Casual fan</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="kids" aria-checked="false" data-i18n="kids">Kids</button>
           </div>
           <!-- one item per team and per player the cue sheet has cues for (app.js) -->
           <div class="mg" role="group" aria-labelledby="mg-team" hidden><p id="mg-team" class="mh" aria-hidden="true" data-i18n="myteam">My team</p></div>
@@ -113,6 +114,8 @@
       <p id="ask-status" role="status"></p>
       <ol id="ask-log"></ol>
     </section>
+    <!-- the story on air as each audience sees it, side by side; filled by audiences.js -->
+    <section id="audiences" hidden></section>
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
   <!-- ? with the focus in the broadcast or its controls (keys.js) -->

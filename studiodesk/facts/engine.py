@@ -27,6 +27,10 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   adds what the events know: inside or outside the box, the body part and the outcome.
 - Sprints: player speed from a 0.5 s centred moving average of the positions, a sprint is
   above 25.2 km/h for at least 1 s; steps above 45 km/h are tracking jumps and are ignored.
+- Player check-ins (`checkin_*`), every 15 minutes of a period up to 45' (15', 30', 45', 60', 75', 90'),
+  for each player on the pitch at that moment: touches (the player's events, fouls excluded),
+  passes completed, distance covered (km), sprints and top speed (the fastest sprint so far,
+  written only after a first sprint), all counted from kick-off to the check-in.
 """
 import json
 import math
@@ -44,6 +48,7 @@ LENGTH, WIDTH = 105.0, 68.0
 LINE_MARGIN = 0.5  # metres from a goal line at which a goal's ball counts as in
 WINDOW_S = 300.0
 SPRINT_KMH = 25.2
+CHECKIN_S = 900.0  # a player check-in every 15 minutes of a period
 SMOOTH = 5
 RELEASE_FRAMES = 5  # ball speed is read in the first half second after the kick
 MAX_PLAYER_KMH = 45.0
@@ -330,7 +335,7 @@ class Match:
             team, v = self.team_of[pid], speed[:, i]
             fast = np.concatenate(([0], (np.nan_to_num(v) > SPRINT_KMH).astype(np.int8), [0]))
             edges = np.diff(fast)
-            ends = []
+            ends, known = [], []  # known: (ts the sprint fact is released, its peak)
             for s, t in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
                 if t - s < self.fps:
                     continue
@@ -339,7 +344,9 @@ class Match:
                 ends.append(end_ts)
                 self.add("sprint_speed", end_ts, round(peak, 1), "km/h", f"Sprint at {peak:.1f} km/h", team, pid,
                          self.events_between(s / self.fps, end_ts), (s, min(t - 1 + SMOOTH // 2, len(v) - 1)))
+                known.append((self.facts[-1]["ts"], round(peak, 1)))
             step_m = np.nan_to_num(v) / 3.6 / self.fps
+            self.checkins(pid, team, known, step_m)
             for period, cp, when in checkpoints:
                 if not self.on_pitch(pid, cp):
                     continue
@@ -350,6 +357,34 @@ class Match:
                 m = float(step_m[:f + 1].sum())
                 self.add("distance_covered", cp, round(m, 1), "m", f"{m / 1000:.1f} km covered {when}",
                          team, pid, frames=(0, f), period=period)
+
+    def checkins(self, pid, team, sprints, step_m):
+        """The player check-in facts at 15', 30', 45' of each period, while `pid` is on the pitch."""
+        on, off = self.lineups.get(pid, (math.inf, None))
+        mine = [e for e in self.events if e["player_id"] == pid and e["type_name"] != "foul"]
+        for period, start, end in ((1, 0.0, self.p1), (2, self.p1, self.end)):
+            for k in (1, 2, 3):
+                cp = start + k * CHECKIN_S
+                if cp >= end or on >= cp or (off is not None and off <= cp):
+                    continue
+                by = f"by {math.ceil((cp - start) / 60 - 1e-9) + 45 * (period - 1)}'"
+                f = self.frame(cp)
+                touches = [e["event_id"] for e in mine if e["ts"] <= cp]
+                passes = [e["event_id"] for e in mine if e["ts"] <= cp and e["type_name"] in PASS_TYPES
+                          and e["result_name"] == "success"]
+                km = round(float(step_m[:f + 1].sum()) / 1000, 1)
+                peaks = [p for ts, p in sprints if ts <= cp + 1e-9]
+                self.add("checkin_touches", cp, len(touches), "touches", f"{len(touches)} touches {by}", team, pid,
+                         touches, period=period)
+                self.add("checkin_passes", cp, len(passes), "passes", f"{len(passes)} passes completed {by}", team,
+                         pid, passes, period=period)
+                self.add("checkin_distance", cp, km, "km", f"{km:.1f} km covered {by}", team, pid, frames=(0, f),
+                         period=period)
+                self.add("checkin_sprints", cp, len(peaks), "sprints", f"{len(peaks)} sprint{'s' * (len(peaks) != 1)} {by}",
+                         team, pid, frames=(0, f), period=period)
+                if peaks:
+                    self.add("checkin_top_speed", cp, max(peaks), "km/h", f"Top speed {max(peaks):.1f} km/h {by}", team,
+                             pid, frames=(0, f), period=period)
 
     def windows_facts(self):
         for n, (period, a, b, period_end) in enumerate(self.windows(), 1):
