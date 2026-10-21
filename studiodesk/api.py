@@ -36,7 +36,16 @@ async def _startup(app):
     # the runtime schema runs once here: two first requests on a new runtime.sqlite would both run it and one would fail
     with closing(db.runtime()):
         pass
+    # the agents' imports take seconds on half a CPU: done now, the page's 4 s Ask probe finds them ready
+    async def ready():
+        try:
+            await asyncio.to_thread(_ask_ready)
+        except HTTPException:
+            pass  # no model: the probe gets its 503 as before
+    warm = asyncio.create_task(ready()) if ENDPOINT else None
     yield
+    if warm:
+        warm.cancel()
 
 
 # No /docs or /openapi.json in public: they would advertise the admin route and its header.
