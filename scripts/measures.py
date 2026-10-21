@@ -33,6 +33,7 @@ NUMBER_REASONS = {rules.REASONS[k] for k in (
     "number not in the facts", "number in words", "garbled numbers", "formation not in the facts",
     "unit not in the facts", "letters glued to a number", "unit mismatch")}
 NAME_REASONS = {rules.REASONS["forbidden name (real person or club)"]}
+FOUNDRY = "\n## Foundry evaluators"
 
 
 def storylines_found(storylines, stories):
@@ -258,7 +259,9 @@ def main():
     with closing(db.connect(mcp_server.DB_PATH, readonly=True)) as mconn:
         rows = [measure(m, a.replays / m, a.runtime_dir / RUNTIME.format(m), mconn) for m in a.matches]
     live = measure_live(a.runtime_dir / LIVE["runtime"], a.runtime_dir / LIVE["start"])
-    a.out.write_text(markdown(rows, live))
+    old = a.out.read_text() if a.out.exists() else ""
+    kept = old[old.index(FOUNDRY):] if FOUNDRY in old else ""  # written by scripts/foundry_evals.py, always last
+    a.out.write_text(markdown(rows, live) + kept)
     print(a.out.read_text())
 
 

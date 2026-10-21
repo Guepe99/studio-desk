@@ -61,3 +61,29 @@ of match. Model calls added up to 4.3 seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of 0.9 seconds of match time before its round (goals at most
 0.9 seconds, other stories at most 5.5 seconds).
+
+## Foundry evaluators
+
+Computed by `scripts/foundry_evals.py` on 2026-10-21, not by `scripts/measures.py` (which keeps this section
+when it rewrites the page). The on-air text of each story was scored by four of Microsoft Foundry's built-in
+evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals` on the Foundry project
+`studiodesk`: all 249 items, every story of the 4 replay packs (M001, M002, M003, M004) in English, Italian and Spanish, one eval run per language. Each item gives the judge a neutral request ("Write the
+on-screen line, in Italian, for this moment of the match for a TV audience", with the kind of moment), the
+text that went on air, and, for groundedness, the facts the story cites from the ledger written out as plain
+sentences (value, unit, what it measures, who, minute), the score at that moment and the events it cites (for
+a story that cites more than 5 events, only its shots). Scores run from 1 to 5; an item passes at
+3 or more, the evaluators' default threshold.
+
+| evaluator | English: mean, passed | Italian: mean, passed | Spanish: mean, passed | all languages: mean, passed |
+|---|---|---|---|---|
+| groundedness | 4.54, 80 of 83 | 4.77, 83 of 83 | 4.60, 80 of 83 | 4.64, 243 of 249 |
+| relevance | 4.12, 83 of 83 | 4.28, 83 of 83 | 4.29, 83 of 83 | 4.23, 249 of 249 |
+| coherence | 4.13, 83 of 83 | 4.51, 83 of 83 | 4.45, 83 of 83 | 4.36, 249 of 249 |
+| fluency | 3.42, 83 of 83 | 3.41, 83 of 83 | 3.58, 83 of 83 | 3.47, 249 of 249 |
+
+Not passed: M001 S-000003 (goal, English, groundedness 2); M001 S-000013 (goal, English, groundedness 2); M001 S-000013 (goal, Spanish, groundedness 2); M002 S-000017 (goal, English, groundedness 2); M004 S-000018 (big chance, Spanish, groundedness 2); M004 S-000022 (tactical shift, Spanish, groundedness 2). The judge's reason for each is in the table named at the end of this section. 0 of 996 scores came back empty (the judge failed on that item); they count as not
+passed. The judge's calls used 1,396,853 input and 488,787 output tokens, about $1.327 at the gpt-5-mini price in
+`studiodesk/config.py`, as the eval runs report them. Per-item scores, pass flags and the judge's reasons are
+in `out/foundry-evals.sqlite`, table `foundry_evals` (git-ignored): one row per story, language and evaluator,
+with the run time, the Foundry eval and run ids, the match, story, kind, language, evaluator, score, passed,
+reason and tokens in and out.

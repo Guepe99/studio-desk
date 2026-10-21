@@ -45,6 +45,8 @@ The director puts a story on air as soon as the story finder has chosen it, with
 
 The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. Model calls for one match cost between $0.060 and $0.102 (236,000 to 430,000 tokens), taken from each run's audit. Stories found, numbers blocked, tokens, cost and timing for each match are in [docs/MEASURES.md](docs/MEASURES.md).
 
+The on-air texts were also scored by Microsoft Foundry's built-in evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals`: 249 items, every story of the four replays in English, Italian and Spanish. The judge read each text against the facts and events it cites. Mean scores out of 5: groundedness 4.64 (243 of 249 passed), relevance 4.23, coherence 4.36 and fluency 3.47 (249 of 249 passed each). Five of the six groundedness failures are lines that say a player "strikes again" or "tries again" when the earlier goal or shot is not among that story's facts. In the sixth, the judge read a defensive line moving from 15.7 m to 48.5 m from goal as a deeper line. The run cost about $1.33 in judge tokens. To rerun it: `.venv/bin/python scripts/foundry_evals.py` (it calls Azure and needs the Foundry User role on the `studiodesk` project). The table and the details are in [docs/MEASURES.md](docs/MEASURES.md#foundry-evaluators).
+
 The data contract, from the tables to the API, is in [docs/CONTRACT.md](docs/CONTRACT.md).
 
 ## Run it locally
