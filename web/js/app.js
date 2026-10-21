@@ -40,7 +40,7 @@ const STRINGS = {
     fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
     slow3d: "The 3D view ran at {fps} frames a second here, so the 2D pitch is back. Turn the minimap on in the settings to keep the 3D view anyway.",
     voiceOn: "AI voice-over on, with AI match commentary by fictional commentators and crowd sound: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over and AI commentary off",
-    aioff: "AI off", broadcast: "Match broadcast", activity: "Agent activity",
+    aioff: "AI off", matchPick: "Choose a match", broadcast: "Match broadcast", activity: "Agent activity",
   },
   // every key in every language: a missing one would fall back to English
   it: {
@@ -48,7 +48,7 @@ const STRINGS = {
     language: "Lingua", p1: "1°T", p2: "2°T", loading: "Caricamento della partita", error: "Impossibile caricare la partita {m}. {e}",
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primo tempo", h2: "secondo tempo",
     nographic: "Alcune grafiche non si sono caricate: {g}.",
-    aioff: "IA spenta", broadcast: "Trasmissione della partita", activity: "Attività degli agenti",
+    aioff: "IA spenta", matchPick: "Scegli la partita", broadcast: "Trasmissione della partita", activity: "Attività degli agenti",
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", myteam: "La mia squadra", player: "Giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
@@ -77,7 +77,7 @@ const STRINGS = {
     language: "Idioma", p1: "1T", p2: "2T", loading: "Cargando el partido", error: "No se pudo cargar el partido {m}. {e}",
     minute: "Minuto {n}, {p}, {home} {h}, {away} {a}", h1: "primera parte", h2: "segunda parte",
     nographic: "Algunos gráficos no se pudieron cargar: {g}.",
-    aioff: "IA apagada", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
+    aioff: "IA apagada", matchPick: "Elige el partido", broadcast: "Retransmisión del partido", activity: "Actividad de los agentes",
     audience: "Público", analyst: "Analista", casual: "Espectador", myteam: "Mi equipo", player: "Jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
@@ -106,7 +106,8 @@ const STRINGS = {
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
-const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: "en", seeked: true };
+// ?lang= keeps the language across a change of match (matchPicker)
+const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: STRINGS[params.get("lang")] ? params.get("lang") : "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
@@ -206,9 +207,10 @@ function layout() {
     deck.style.maxHeight = `${fh}px`;
     if (!DOCKED.matches) { ask.style.width = deck.style.width; ask.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
-  // the minimap is never narrower than RADAR_MIN px: magnified on a small frame, as the score bug is
-  radarK = Math.max(1, RADAR_MIN / (RADAR_BOX.w * s));
-  $("#radar").style.scale = radarK > 1 ? String(radarK) : "";
+  // the minimap sits at RADAR_K of its box, as small as a game's radar, but never narrower than RADAR_MIN px:
+  // magnified on a small frame, as the score bug is
+  radarK = Math.max(RADAR_K, RADAR_MIN / (RADAR_BOX.w * s));
+  $("#radar").style.scale = radarK !== 1 ? String(radarK) : "";
   // in the minimap the 2D pitch is drawn at RADAR of the stage
   const inset = view3d?.shown === "split" && view3d.main === "3d";
   pitch.seeThrough = inset ? SEE_THROUGH : 1;
@@ -474,7 +476,7 @@ function tick(now) {
 // The Radar box takes the first spot along the foot of the frame (centre, right, left) that no graphic
 // on the pitch covers; it steps aside only when they cover all three. Stage px, as view3d.css #radar.
 // Magnified on a small frame (radarK), it grows from its bottom left corner and the spots move in with it.
-const RADAR_BOX = { w: 440, h: 291, bottom: 20 }, RADAR_MIN = 120;
+const RADAR_BOX = { w: 440, h: 291, bottom: 20 }, RADAR_MIN = 120, RADAR_K = 0.7;
 function placeRadar() {
   const boxes = [...host.live.values(), ...host.leaving].filter((i) => !i.positioned && i.node === i.el)
     .map((i) => i.el.shadowRoot?.querySelector(".stage")?.firstElementChild).filter((b) => b?.offsetWidth);
@@ -593,8 +595,27 @@ function wireControls() {
   window.addEventListener("resize", layout);
 }
 
+// The match picker in the masthead: the replays in data/matches.json (team names, no score). A pick loads
+// that match in the same language and view.
+async function matchPicker() {
+  const sel = $("#mh-teams");
+  let rows = [];
+  try { const r = await fetch("data/matches.json"); if (r.ok) rows = await r.json(); } catch { /* the current match only */ }
+  if (!rows.some((r) => r.match_id === matchId)) rows = [{ match_id: matchId, home: match.home.name, away: match.away.name }];
+  sel.replaceChildren(...rows.map((r) => new Option(`${r.home} vs ${r.away}`, r.match_id, false, r.match_id === matchId)));
+  sel.disabled = rows.length < 2;
+  sel.addEventListener("change", () => {
+    const p = new URLSearchParams(location.search);
+    p.set("match", sel.value);
+    p.set("lang", state.lang);
+    if (view3d) p.set("view", view3d.mode);
+    location.search = p;
+  });
+}
+
 async function main() {
   applyStrings();
+  checked("data-lang", state.lang);
   layout();
   $("#status").textContent = t("loading");
   const view = params.get("view") ?? defaultView(probe());
@@ -609,7 +630,7 @@ async function main() {
     return;
   }
   end = Math.max(match.duration, ...match.cues.map((c) => c.ts + c.duration_s));
-  $("#mh-teams").textContent = `${match.home.name} vs ${match.away.name}`;
+  matchPicker();
   $("#mh-venue").textContent = match.meta.venue_name ?? "";
   const players = Object.fromEntries(match.meta.players.map((p) => {
     const team = match.teams[p.team_id];

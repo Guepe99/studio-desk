@@ -43,7 +43,7 @@ async function open(view, { noWebGL = false, quiet = false } = {}) {
   const tag = `${view ?? "default"}${noWebGL ? " without WebGL" : ""}`;
   // the desk's api/ calls and voice.json 404 on static hosting; without WebGL Babylon says so
   page.on("console", (m) => {
-    if (m.type() === "error" && !quiet && !/\/api\/|voice\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`);
+    if (m.type() === "error" && !quiet && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`);
   });
   // after the test loses the WebGL context on purpose, Babylon work already under way fails to make textures
   page.on("pageerror", (e) => { if (page.lostOnPurpose && /Unable to create texture/.test(e.message)) console.log(`after the lost context: ${e.stack?.split("\n").slice(0, 4).join(" | ")}`); else fail(`${tag} page error: ${e.message}`); });
@@ -247,7 +247,7 @@ try {
       const before = await box();
       const st = await see();
       console.log(`minimap see-through: box alpha ${st.boxAlpha}, grass alpha ${st.grass.toFixed(3)}, keylines ${JSON.stringify(st.keylines.slice(0, 3))}`);
-      if (st.boxAlpha !== 0 || !(st.grass >= 0.6 && st.grass <= 0.75)) fail(`minimap: not see-through, box alpha ${st.boxAlpha}, grass alpha ${st.grass}`);
+      if (st.boxAlpha !== 0 || !(st.grass >= 0.45 && st.grass <= 0.55)) fail(`minimap: not see-through, box alpha ${st.boxAlpha}, grass alpha ${st.grass}`);
       if (!st.opaque || st.ball !== 255 || !st.keylines.length || st.keylines.some((q) => q.center !== 255 || !q.white || !q.dark)) fail(`minimap: lines, discs or ball not opaque or a disc without its keylines ${JSON.stringify(st)}`);
       const onWhite = contrast([4, 10, 22], over(st.grassRGB, st.grass, 255)), onBlack = contrast([255, 255, 255], over(st.grassRGB, st.grass, 0));
       if (!(onWhite >= 3 && onBlack >= 3)) fail(`minimap keylines: dark ${onWhite.toFixed(2)}:1 on a white frame, white ${onBlack.toFixed(2)}:1 on a black one`);
@@ -298,31 +298,25 @@ try {
         if (!(f.drawn > 0.9)) fail(`${k} playing, the 3D picture was drawn in only ${(f.drawn * 100).toFixed(0)}% of the page frames`);
       }
       // the 3D in the inset is a fraction of the size of the 3D alone; with the 3D large it is the same size
-      // (the drawn pixels also follow the quality steps, which move with the machine's load)
       if (fps.swapped && !(fps.swapped.px < fps["3d"].px / 4)) fail(`the 3D in the inset draws ${fps.swapped.px} px, the 3D alone ${fps["3d"].px}`);
       if (fps.split && fps.split.css !== fps["3d"].css) fail(`the 3D with the minimap is ${fps.split.css} px, the 3D alone ${fps["3d"].css}`);
       const fps3d = fps["3d"];
 
       // the 3D canvas is no tab stop; a pause ends a run of play for the frame-rate watch (a pause
-      // inside the window must not read as a slow frame rate), and the quality steps wait while paused
+      // inside the window must not read as a slow frame rate)
       const pause = await page.evaluate(async (floor) => {
         const sd = window.studioDesk, v = sd.view3d, wait = (ms) => new Promise((r) => setTimeout(r, ms));
         v.floor = floor;
         sd.seek(1500); sd.setPlaying(true); await wait(4000);
         sd.setPlaying(false); await wait(500);
-        // and a page frame after the pause: at under 1 fps 500 ms can pass without one
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const paused = { held: v.scene.held, scale: v.scene.scale };
         await wait(2500);
-        paused.after = v.scene.scale;
         sd.setPlaying(true); await wait(4000);
-        const out = { tab: document.querySelector("#view3d").tabIndex, paused, shown: v.shown, notice: v.notice };
+        const out = { tab: document.querySelector("#view3d").tabIndex, shown: v.shown, notice: v.notice };
         sd.setPlaying(false); v.floor = 0;
         return out;
       }, fps3d.fps * 0.6);
       console.log(`pause and resume: ${JSON.stringify(pause)}`);
       if (pause.tab !== -1) fail(`the 3D canvas is a tab stop (tabIndex ${pause.tab})`);
-      if (!pause.paused.held || pause.paused.scale !== pause.paused.after) fail(`the quality steps ran while the picture was paused: ${JSON.stringify(pause)}`);
       if (pause.shown !== "3d" || pause.notice) fail(`a 3 s pause sent the page back to 2D: ${JSON.stringify(pause)}`);
 
       // the 3D notice gives the page's own notice back when it clears

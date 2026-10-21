@@ -384,7 +384,7 @@ export class Booth {
       this.inBreak = false;
       this.crowd("whistle", t);
       this.say("pbp", [e.period === 1 ? "kickoff" : "kickoff2"], { team: this.home, team2: this.other[this.home] },
-        Math.max(t + RULES.react, this.breakUntil ?? 0), "A", { at: Math.max(t + RULES.react, (this.breakUntil ?? 0) + 0.5) });
+        Math.max(t + RULES.react, this.breakUntil ?? 0), "A", { at: Math.max(t + RULES.react, (this.breakUntil ?? 0) + 0.5, this.earliest("pbp", t, "A")) });   // never over "That's half-time"
     }
     this.possession(e);
     const slots = { player: e.player_id, receiver: e.related_player_id, team: e.team_id, event_id: e.event_id };

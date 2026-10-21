@@ -49,7 +49,7 @@ const open = async (browser, [width, height], phone, query = `?match=${MATCH}`) 
   const ctx = await browser.newContext({ viewport: { width, height }, ...(phone ? { deviceScaleFactor: 2, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   // as in smoke.mjs: no API on the static site, and a match without clips has no voice.json
-  const optional = (m) => /\/api\/|\/voice\.json$/.test(m.location()?.url ?? "");
+  const optional = (m) => /\/api\/|\/(voice|booth)\.json$/.test(m.location()?.url ?? "");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m)) fail(`${width}x${height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${width}x${height} page error: ${e.message}`));
   // the static site has no API: an empty question answered 422 is the probe that shows the Ask button
@@ -236,7 +236,8 @@ try {
       const r = await page.evaluate(() => {
         const h = document.querySelector("#masthead"), m = window.studioDesk.match, b = h?.getBoundingClientRect();
         return h && { top: b.top + scrollY, h: b.height, title: h.querySelector("h1")?.textContent, text: h.innerText,
-          names: [m.home.name, m.away.name, m.meta.venue_name], frameTop: document.querySelector("#frame").getBoundingClientRect().top + scrollY };
+          names: [m.home.name, m.away.name, m.meta.venue_name], frameTop: document.querySelector("#frame").getBoundingClientRect().top + scrollY,
+          pick: (({ value, selectedOptions: [o] = [], offsetWidth }) => ({ value, label: o?.text, w: offsetWidth }))(h.querySelector("select#mh-teams") ?? {}), id: m.meta.match_id };
       });
       if (!r) { fail(`${tag}: no page header`); return; }
       const short = h <= 500, narrow = w <= 700, most = short ? 30 : narrow ? 72 : 56;
@@ -245,6 +246,9 @@ try {
       if (r.frameTop < r.top + r.h) fail(`${tag}: the picture starts at ${r.frameTop.toFixed(0)}, inside the header`);
       if (!short && !/football replay/.test(r.text)) fail(`${tag}: the header does not say what the page is: "${r.text}"`);
       if (!short && !narrow) for (const n of r.names) if (!r.text.includes(n)) fail(`${tag}: "${n}" missing from the header match line`);
+      // the match picker: on this match, named by its teams, and on screen wherever the match line is
+      if (r.pick.value !== r.id || r.pick.label !== `${r.names[0]} vs ${r.names[1]}`) fail(`${tag}: the match picker shows ${JSON.stringify(r.pick)} on ${r.id}`);
+      if (!short && !r.pick.w) fail(`${tag}: the match picker is not on screen`);
     });
 
     // C9: the first screen holds the picture, the graphics and the controls, at a quiet and a busy moment

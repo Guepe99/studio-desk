@@ -7,15 +7,15 @@
 #stage.loading3d #pitch { visibility: hidden; }
 /* The minimap (the "split" view): the small picture in a box at the bottom centre of the frame, as in a
    football game; a click swaps the two. 440 x 291 stage px = the pitch and a margin (1420 x 940 from
-   x 250, y 100) at RADAR = 440 / 1420 (view3d.js), magnified from its bottom left corner on a small frame
-   (app.js sets scale). Under the graphics: app.js moves it to the right or the left of the foot when a
+   x 250, y 100) at RADAR = 440 / 1420 (view3d.js), shown at 0.7 (app.js RADAR_K, as small as a game's radar)
+   and magnified from its bottom left corner on a small frame (app.js sets scale). Under the graphics: app.js moves it to the right or the left of the foot when a
    graphic covers the centre, and sets .radar-yield when they cover all three. */
 #radar { position: absolute; left: 740px; bottom: 20px; width: 440px; height: 291px; padding: 0; overflow: hidden;
   border: 3px solid var(--purple); border-radius: var(--r-card); background: var(--grass); cursor: pointer;
   box-shadow: var(--shadow); transform-origin: 0 100%; transition: left .25s ease, opacity .25s ease, transform .25s ease, border-color .12s; }
 #radar[hidden] { display: none; }
 /* the 2D minimap is see-through (pitch.js SEE_THROUGH draws its grass): the 3D picture shows behind it */
-#radar:not(.is-3d) { background: transparent; }
+#radar:not(.is-3d) { background: transparent; border: 1px solid rgb(255 255 255 / .45); box-shadow: none; }
 #radar #pitch { inset: auto; left: -77.46px; top: -30.99px; width: 594.93px; height: 334.65px; }
 #radar #view3d { position: absolute; inset: 0; }
 /* the swap chip: a green fill with a purple icon, shown on hover and focus */

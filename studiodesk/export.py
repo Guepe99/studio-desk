@@ -177,7 +177,18 @@ def export(match_id, conn, out_root, runtime=None):
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
+    index(out_root)
     return out
+
+
+def index(out_root):
+    """matches.json: every replay exported next to this one, for the page's match picker. Team names only:
+    the score would spoil the replay."""
+    rows = []
+    for p in sorted(Path(out_root).glob("*/meta.json")):
+        m = json.loads(p.read_text())
+        rows.append({"match_id": m["match_id"], "home": m["teams"][0]["name"], "away": m["teams"][1]["name"]})
+    _dump(Path(out_root) / "matches.json", rows)
 
 
 def runtime_records(match_id, runtime):

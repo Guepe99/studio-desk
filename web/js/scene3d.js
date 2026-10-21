@@ -8,7 +8,7 @@
 //
 // World axes: X = contract x - 52.5 (along the pitch), Z = contract y - 34 (across), Y up.
 // The TV camera stands on the y < 0 side, so x grows to the right as on the 2D pitch.
-import { pickProfile, detectEnv, startOptimizer } from "./scene3d/quality.js";
+import { pickProfile, detectEnv } from "./scene3d/quality.js";
 import { setupLighting, lightMode, pbr } from "./scene3d/lighting.js";
 import { Grounding } from "./scene3d/grounding.js";
 import { setupPost } from "./scene3d/post.js";
@@ -65,13 +65,13 @@ export class Scene3D {
     this.ballR = BALL_R;
     this.goalEnd = goalEnd;
     this.entities = entities;
-    const engine = this.engine = new B.Engine(canvas, true, { preserveDrawingBuffer: capture, stencil: false, powerPreference: "high-performance" }, true);
+    // no MSAA on the canvas: every frame goes through the post pipeline, which has its own (post.js)
+    const engine = this.engine = new B.Engine(canvas, false, { preserveDrawingBuffer: capture, stencil: false, powerPreference: "high-performance" }, true);
     const scene = this.scene = new B.Scene(engine);
     scene.skipPointerMovePicking = true;
     scene.constantlyUpdateMeshUnderPointer = false;
     const params = new URLSearchParams(location.search);
     this.profile = pickProfile(detectEnv(engine), params.get("quality"));
-    this.scale = 1;   // extra render scaling from the optimizer
 
     this.light = setupLighting(scene, this.profile, lightMode(params.get("light")));
     this.cams = new Cameras(scene, match, goalEnd);
@@ -88,31 +88,16 @@ export class Scene3D {
     this.debug = { profile: this.profile.name, ibl: !!scene.environmentTexture, shadows: this.profile.shadows, camera: "broadcast", light: this.light.mode };
 
     this.resize();
-    if (!capture) {
-      this.optimizer = startOptimizer(scene, {
-        scaleBy: (f) => { this.scale *= f; this.resize(); },
-        dropPost: () => this.post.drop(),
-        dropShadows: () => { this.light.dropShadows(); this._useBlobs(true); },
-        held: () => this.held,
-      });
-    }
   }
 
-  // Cap the render resolution (profile.maxWidth), times the optimizer's extra scaling. No more pixels
+  // Cap the render resolution (profile.maxWidth). No more pixels
   // than the screen shows: in the minimap the canvas sits in the scaled stage, smaller than its layout size.
   resize() {
     const cssW = this.canvas.clientWidth || 1280;
     const dpr = window.devicePixelRatio || 1, onScreen = this.canvas.getBoundingClientRect().width || cssW;
     const maxW = Math.min(this.profile.maxWidth, cssW < 900 ? 1100 : 1920);
-    this.engine.setHardwareScalingLevel(Math.max(cssW / (onScreen * dpr), cssW / maxW) * this.scale);
+    this.engine.setHardwareScalingLevel(Math.max(cssW / (onScreen * dpr), cssW / maxW));
     this.engine.resize();
-  }
-
-  // After the optimizer drops the shadow map: grounding.js reads the lights again every frame and
-  // draws blob shadows for all of them.
-  _useBlobs(on) {
-    this.blobs = on;
-    this.debug.shadows = on ? "blob" : "csm";
   }
 
   _goals() {
@@ -320,7 +305,7 @@ export class Scene3D {
   }
 
   // the page drives frames from its own requestAnimationFrame: beginFrame and endFrame let Babylon
-  // measure the real frame rate, which the SceneOptimizer and the fps readout read (else 60 forever)
+  // measure the real frame rate, which the fps readout reads (else 60 forever)
   render() { this.engine.beginFrame(); this.scene.render(); this.engine.endFrame(); }
 
   // Plug a driver in: {priority, pose(i, ts)}, see web/js/scene3d/players.js. Awareness modules

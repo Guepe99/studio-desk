@@ -21,6 +21,7 @@ export const MIX = {
 const LOOKAHEAD_S = 1.0;   // lines go on the audio clock this far ahead
 const PREFETCH_S = 15;     // and their clips are fetched and decoded this far ahead
 const LATE_S = 0.25;       // a line whose start was missed by more than this is dropped
+const JOIN_S = 0.05;       // the least silence between two lines when the audio clock runs late
 export const CROWD_URL = "vendor/crowd-audio";
 
 async function getJson(url) {
@@ -177,8 +178,15 @@ export class BoothAudio {
     if (bufs.some((b) => !b)) return; // not decoded in time, or missing: the line is skipped, never late
     const stopAt = it.until !== undefined ? this.at(it.until) : Infinity;
     const offs = it.voice === "crowd" ? [0] : it.clips.map((c) => c.off);
+    // When the audio clock falls behind the page's (a slow frame), a line never starts over the one before:
+    // all its clips move by the same delay, so a name stays after its phrase, and a line that would start
+    // more than LATE_S late is dropped
+    const now0 = this.ctx.currentTime, at0 = this.at(it.t);
+    const busy = it.voice === "crowd" ? now0 : Math.max(now0, ...this.live.filter((l) => l.voice !== "crowd").map((l) => l.end + JOIN_S));
+    const delay = Math.max(0, busy - at0);
+    if (it.voice !== "crowd" && delay > LATE_S) return;
     bufs.forEach((buf, i) => {
-      const start = Math.max(this.at(it.t + offs[i]), this.ctx.currentTime);
+      const start = this.at(it.t + offs[i]) + delay;
       if (start >= stopAt) return;
       const end = Math.min(start + buf.duration, stopAt);
       this.play(buf, start, end, it.voice === "crowd" ? this.crowdBus : this.voiceBus, it.voice, end < start + buf.duration);

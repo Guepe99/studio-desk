@@ -29,6 +29,20 @@ const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
 // broadcast shot keeps the numbers (at 120 px it lost them)
 const LOD_COVERAGE = 0.0008;
 
+// The shadow maps draw one copy of the far body per player (one draw per cascade) instead of the
+// near parts (about nine). The far body cannot cast by itself, being a LOD level: render targets
+// skip LOD levels. Its twin sits on a layer no camera has, which shadow maps do not check.
+const SHADOW_ONLY = 0x10000000;
+function shadowTwin(far, main) {
+  const m = new B.Mesh(`${far.name}-shadow`, far.getScene(), main);
+  far.geometry.applyToMesh(m);
+  m.skeleton = far.skeleton;
+  m.numBoneInfluencers = far.numBoneInfluencers;
+  m.material = far.material;
+  m.layerMask = SHADOW_ONLY;
+  return m;
+}
+
 // FNV-1a: the same player gets the same look in every render.
 function hash(s) {
   let h = 2166136261;
@@ -210,7 +224,7 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     hair1: tinted(lib, "hair1", look.hairColour, HAIR_LEVEL),
     kit_far: farMaterial(lib, farPalette(kit, look, gk)),
   };
-  const near = [], casters = [];
+  const near = [];
   let main = null;
   let far = null;
   for (const m of inst.rootNodes[0].getChildMeshes(false)) {
@@ -225,7 +239,6 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     else {
       if (part === "footballer") near.push(m);
       if (part === "footballer" && base === "skin") main = m;
-      if (base !== "eyes") casters.push(m);
     }
   }
   // the near body is several draws, the far one a single draw: the skin part hands over to the far
@@ -236,7 +249,7 @@ export function dressFootballer(lib, pid, { team, gk = false, shirt = null, capt
     if (m !== main) m.setBoundingInfo(new B.BoundingInfo(bounds.minimum, bounds.maximum));
     m.addLODLevel(LOD_COVERAGE, m === main ? far : null);
   }
-  return { ...inst, casters };
+  return { ...inst, casters: [shadowTwin(far, main)] };
 }
 
 // --- anime footballers (?players=anime, docs/anime3d.md) ---------------------------------------------
@@ -311,7 +324,7 @@ function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
     kit_far: farMaterial(lib, [...farPalette(kit, look, gk), look.hairColour]),
   };
   const outline = shared(lib, "outline", () => outlineMaterial(lib.scene));
-  const near = [], casters = [], managers = [];
+  const near = [], managers = [];
   let main = null, far = null;
   for (const m of inst.rootNodes[0].getChildMeshes(false)) {
     const part = m.name.slice(prefix.length).split("_primitive")[0];
@@ -327,7 +340,6 @@ function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
     near.push(m);
     if (part === "anime" && base === "skin") main = m;
     if (m.morphTargetManager) { m.morphTargetManager.optimizeInfluencers = false; managers.push(m.morphTargetManager); }
-    if (base !== "face") casters.push(m);   // eyes, brows and mouth cast no shadow
   }
   // the near parts hand over to the far body (with its hair) all at once, as in dressFootballer
   const bounds = main.getBoundingInfo();
@@ -336,7 +348,7 @@ function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
     if (m !== main) m.setBoundingInfo(new B.BoundingInfo(bounds.minimum, bounds.maximum));
     m.addLODLevel(LOD_COVERAGE, m === main ? far : null);
   }
-  return { ...inst, casters, height: look.height, face: animeFace(managers, look, relaxJoints(lib.scene, inst.rootNodes[0], pid)) };
+  return { ...inst, casters: [shadowTwin(far, main)], height: look.height, face: animeFace(managers, look, relaxJoints(lib.scene, inst.rootNodes[0], pid)) };
 }
 
 // After the clips and the upper-body emotions (players.js applyUpper), some joints of the anime body

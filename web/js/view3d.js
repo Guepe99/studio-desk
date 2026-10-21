@@ -17,9 +17,8 @@
 // The page falls back to 2D when the scene cannot start, or when it draws fewer than FPS_FLOOR
 // frames a second over FPS_WINDOW_S seconds of play (after FPS_GRACE_S for the shaders): 12 fps is
 // the "on twos" rate of TV animation, the slowest at which movement still reads as movement, and
-// the page clock stops keeping real time under 1 fps (app.js takes a longer gap as a pause). By then
-// the SceneOptimizer of scene3d/quality.js has had three of its 2 s steps to lower the quality; it
-// holds its steps while the 3D picture is paused, since a paused picture draws no frames to count.
+// the page clock stops keeping real time under 1 fps (app.js takes a longer gap as a pause). The 3D
+// quality itself never steps down (scene3d/quality.js).
 const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
 const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4 };
@@ -213,11 +212,6 @@ export class View3D {
   frame(ts, speed, seeked, playing) {
     this.clock = ts;
     const s = this.scene;
-    // the quality steps wait while the picture is paused, and for 2 s after, while the engine's
-    // frame-rate average still holds the pause
-    const now = performance.now();
-    if (!(playing && this.mode !== "2d")) this.playing = null; else this.playing ??= now;
-    if (s) s.held = this.playing == null || now - this.playing < 2000;
     if (!s || this.mode === "2d" || this.lost) return;
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
@@ -232,8 +226,8 @@ export class View3D {
     this._watch(playing);
     if (this.mode === "2d") return;
     // paused: nothing new to draw, once the shaders a seek needed have compiled (until then a
-    // paused picture would stay without its players) and unless the quality steps resized the
-    // canvas, which clears it
+    // paused picture would stay without its players) and unless the canvas was resized, which
+    // clears it
     const size = `${s.engine.getRenderWidth()}x${s.engine.getRenderHeight()}`;
     if (!jumped && v.ts === l.ts && this.ready && size === this.size) return;
     this.size = size;

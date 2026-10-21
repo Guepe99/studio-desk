@@ -19,6 +19,9 @@ def test_template_export(match_db, tmp_path):
     meta = data["meta"]
     assert meta["frames"] == info["frames"] and meta["entities"][0] == "ball" and len(meta["entities"]) == 23
     assert [t["side"] for t in meta["teams"]] == ["home", "away"] and len(meta["players"]) == 22
+    # the match picker's list: names, no score
+    assert json.loads((tmp_path / "web" / "matches.json").read_text()) == [
+        {"match_id": "M001", "home": meta["teams"][0]["name"], "away": meta["teams"][1]["name"]}]
     raw = (out / "tracking.f32").read_bytes()
     assert len(raw) == info["frames"] * info["entities"] * 3 * 4
     assert np.frombuffer(raw, "<f4").reshape(info["frames"], -1, 3)[0, 0, 2] == 0

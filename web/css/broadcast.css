@@ -47,15 +47,20 @@ body {
 /* The page header: the name, the match on air (from meta.json) and one line on what the page does.
    One band over the picture, at most 56 px; on a phone the match line gives way to the scorebug, and
    on a short screen (a phone on its side) only the name is left. app.js counts its height. */
-#masthead { flex: none; align-self: stretch; display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 16px; }
+#masthead { flex: none; align-self: stretch; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 2px 16px; }
 #masthead h1 { margin: 0; font-size: 22px; line-height: 26px; font-weight: 800; color: var(--purple); }
 .mh-match { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 15px; line-height: 20px; font-weight: 700; color: var(--purple); }
+/* the match picker reads as the masthead's line of text, with a chevron that says it opens */
+#mh-teams { appearance: none; margin: 0; padding: 2px 22px 2px 0; border: 0; border-bottom: 2px solid var(--green); border-radius: 0; font: inherit; color: inherit; cursor: pointer;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2337003c' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 4px center / 12px 8px; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+#mh-teams:disabled { border-bottom-color: transparent; background-image: none; padding-right: 0; cursor: default; opacity: 1; }
+#mh-teams:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 #mh-venue { font-weight: 600; color: var(--purple-400); }
 #mh-venue:empty { display: none; }
 .mh-tag { align-self: center; padding: 1px 8px; border-radius: var(--r-chip); background: var(--green); color: var(--purple); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .mh-sub { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 18px; font-weight: 600; color: var(--purple-400); }
 @media (max-width: 700px) {
-  #mh-teams, #mh-venue { display: none; }
+  #mh-venue, .mh-tag { display: none; }
   .mh-sub { font-size: 13px; line-height: 17px; }
 }
 @media (max-height: 500px) {

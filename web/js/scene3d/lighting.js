@@ -69,8 +69,9 @@ export function setupLighting(scene, profile, mode = "night") {
     csm.lambda = 0.8;
     csm.stabilizeCascades = true;
     csm.shadowMaxZ = 160;              // the far touchline is about 110 m from the main camera
-    // fit the cascades to what the camera really sees (WebGL 2 depth reduction): tighter maps
-    if (profile.autoDepthBounds) csm.autoCalcDepthBounds = true;
+    // fit the cascades to the part of the pitch the active camera sees: tighter maps. On the CPU:
+    // autoCalcDepthBounds needs a camera when it is set (there is none yet) and keeps that one
+    if (profile.autoDepthBounds) scene.onBeforeRenderObservable.add(() => { if (csm && scene.activeCamera) fitCascades(csm, scene.activeCamera); });
     csm.cascadeBlendPercentage = 0.08;
     csm.usePercentageCloserFiltering = true;
     csm.filteringQuality = profile.shadowQuality === "medium" ? B.ShadowGenerator.QUALITY_MEDIUM : B.ShadowGenerator.QUALITY_LOW;
@@ -101,9 +102,38 @@ export function setupLighting(scene, profile, mode = "night") {
         m.material.unfreeze(); m.material.emissiveColor.scaleInPlace(0.7); m.material.freeze();
       }
     },
-    // the optimizer's last resort: no shadow maps, the caller turns blob shadows on
+    // no shadow maps: for scene3d-perf.mjs, which measures what each part costs
     dropShadows() { if (csm) { csm.getShadowMap().refreshRate = 0; csm.dispose(); csm = null; this.csm = null; } },
   };
+}
+
+// Players and ball are the only casters, and they stay on the pitch or just off it: the cascades
+// only need the camera depths where rays through the frame cross that box (9 x 9 rays, slab test).
+const FIT_BOX = [[-HALF_L - 6, HALF_L + 6], [0, 2.5], [-HALF_W - 6, HALF_W + 6]], FIT_N = 9;
+const fitRay = new B.Ray(B.Vector3.Zero(), B.Vector3.Forward()), fitP = new B.Vector3(), fitM = B.Matrix.Identity();
+function fitCascades(csm, cam) {
+  const scene = cam.getScene(), view = cam.getViewMatrix(), e = scene.getEngine(), k = e.getHardwareScalingLevel();
+  const w = e.getRenderWidth() * k, h = e.getRenderHeight() * k;   // picking takes CSS pixels
+  let near = Infinity, far = -Infinity;
+  for (let i = 0; i < FIT_N; i++) for (let j = 0; j < FIT_N; j++) {
+    scene.createPickingRayToRef(w * i / (FIT_N - 1), h * j / (FIT_N - 1), fitM, fitRay, cam);
+    const o = fitRay.origin.asArray(), d = fitRay.direction.asArray();
+    let t0 = 0, t1 = Infinity;
+    for (let k = 0; k < 3; k++) {
+      const [lo, hi] = FIT_BOX[k];
+      if (Math.abs(d[k]) < 1e-9) { if (o[k] < lo || o[k] > hi) t1 = -1; continue; }
+      const a = (lo - o[k]) / d[k], b = (hi - o[k]) / d[k];
+      t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b));
+    }
+    if (t0 > t1) continue;
+    for (const t of [t0, t1]) {
+      const z = B.Vector3.TransformCoordinatesToRef(fitRay.origin.add(fitRay.direction.scale(t)), view, fitP).z;
+      near = Math.min(near, z); far = Math.max(far, z);
+    }
+  }
+  if (near > far) { csm.setMinMaxDistance(0, 1); return; }
+  const span = (cam.maxZ || csm.shadowMaxZ) - cam.minZ;
+  csm.setMinMaxDistance((near - 1 - cam.minZ) / span, (far + 1 - cam.minZ) / span);
 }
 
 // A grid of round lamps on a dark panel, as raw pixels (small canvas textures read back empty on

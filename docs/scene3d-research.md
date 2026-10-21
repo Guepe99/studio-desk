@@ -126,8 +126,9 @@ uses raw RGBA masks (`RawTexture`) on a Standard material. Neither bug shows on 
 - **low**: WebGL 1, phones (coarse pointer and short side under 820 CSS px) and the lavapipe
   tests. Blob shadows, no pipeline (materials tone-map themselves, one FXAA pass), one detail
   scale, 30% of the crowd, render width capped at 1100 px.
-- `?quality=low|high` forces one; `SceneOptimizer` at 30 fps then raises the render scale, drops
-  the post effects and finally turns sun shadows into blobs.
+- `?quality=low|high` forces one. No `SceneOptimizer` (removed 21/10/2026): it lowered the
+  picture while playing, and a softer picture was what a viewer noticed. A machine under 12 fps
+  gets the 2D pitch instead (view3d.js).
 
 ### Where the build departs from section D, and why
 
@@ -170,8 +171,26 @@ profile pays for everything at once in software. One earlier run that switched p
 (`scene3d-perf.mjs high all`, from 0.59 fps with everything on) gave 0.80 without sun shadows,
 1.08 without the crowd, 1.59 with post effects at their minimum and 1.65 with no pipeline. On a
 real GPU they should cost far less (shadow maps and MSAA are what GPUs are built for), but this was
-not measured: no GPU on this machine. `SceneOptimizer` is the safety net when a laptop falls
-under 30 fps.
+not measured: no GPU on this machine. The 2D fallback under 12 fps is the safety net.
+
+On 21/10/2026 `tests/web/frame-cost.mjs` (M001 high profile, SwiftShader, from the goal at 10:00)
+counted 1,179 draw calls a frame. Four changes took out work that did not reach the picture:
+
+- each player casts its shadow from a twin of the far body (`players3d.js` `shadowTwin`), one draw per
+  cascade instead of nine; Babylon's render targets skip LOD levels, so the twin sits on a layer
+  no camera has;
+- the cascades fit the part of the pitch the active camera sees, on the CPU (`lighting.js`
+  `fitCascades`). `autoCalcDepthBounds` had never run: it needs a camera when set and there was none
+  yet. The shadows of near players are sharper since;
+- the depth pass of depth of field stops when depth of field is off (the pipeline left it running);
+- no MSAA on the canvas or on the pipeline when SSAO2 is on: the scene is drawn into the SSAO2
+  prepass target, so those samples only multisampled full-screen passes. The scene itself has no
+  MSAA (prepass samples 1), before and after.
+
+Draw calls fell to 651 in the celebration shot (depth of field on) and to 375 in the wide shot
+(about 660 before); the shadow maps went from 64.5 to 2.7 ms of CPU a frame. Screenshots at four
+moments match the old ones (SSIM 0.992 to 0.997, the spread of two runs of the same code).
+SwiftShader stays at 0.05 to 0.08 fps: its time is pixel work, which these changes do not touch.
 
 ## F. Pitch and crowd (feat/pitchcrowd3d, 18 Oct 2026)
 

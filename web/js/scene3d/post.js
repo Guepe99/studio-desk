@@ -87,7 +87,9 @@ export function setupPost(scene, cameras, profile) {
     ssao.expensiveBlur = false;
   }
   const pipe = new B.DefaultRenderingPipeline("broadcast", true, scene, cameras);
-  pipe.samples = profile.msaa;
+  // with SSAO2 the scene is drawn into its prepass target, not the pipeline's: MSAA there would only
+  // multisample full-screen passes (depth of field, bloom), which gains nothing and costs a resolve each
+  pipe.samples = ssao ? 1 : profile.msaa;
   pipe.fxaaEnabled = profile.fxaa;
   pipe.sharpenEnabled = profile.sharpen;
   if (profile.sharpen) { pipe.sharpen.edgeAmount = 0.25; pipe.sharpen.colorAmount = 1; }
@@ -98,6 +100,7 @@ export function setupPost(scene, cameras, profile) {
     pipe.bloomKernel = 64;
     pipe.bloomScale = profile.bloomScale;
   }
+  pipe.depthOfFieldBlurLevel = B.DepthOfFieldEffectBlurLevel.Low;   // here, as setting it rebuilds the pipeline
   pipe.chromaticAberrationEnabled = false;
   pipe.grainEnabled = false;
   pipe.imageProcessingEnabled = true;
@@ -113,7 +116,15 @@ export function setupPost(scene, cameras, profile) {
     // per frame: depth of field on for a tight shot or a replay (focus in metres), off otherwise
     update(cams) {
       const want = !!profile.dof && cams.focus !== null && !!pipe;
-      if (want !== dof) { dof = want; pipe.depthOfFieldEnabled = want; if (want) pipe.depthOfFieldBlurLevel = B.DepthOfFieldEffectBlurLevel.Low; }
+      if (want !== dof) {
+        dof = want;
+        // the pipeline adds a depth observer at each rebuild with depth of field and never removes it,
+        // and leaves the depth pass of each camera running once depth of field is off: a whole
+        // extra draw of the scene every frame
+        scene.onAfterRenderTargetsRenderObservable.remove(pipe._depthOfFieldSceneObserver);
+        pipe.depthOfFieldEnabled = want;
+        for (const r of Object.values(scene._depthRenderer ?? {})) r.enabled = want;
+      }
       if (dof) {
         const cam = scene.activeCamera;
         pipe.depthOfField.focusDistance = cams.focus * 1000;   // millimetres
