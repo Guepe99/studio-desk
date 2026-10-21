@@ -307,7 +307,7 @@ export function deskKey(e) {
 }
 
 // DOM builder: text always goes in as text nodes, never as markup.
-function h(tag, attrs = {}, ...kids) {
+export function h(tag, attrs = {}, ...kids) {
   const el = tag.startsWith("svg:") ? document.createElementNS(SVGNS, tag.slice(4)) : document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === null || v === undefined || v === false) continue;
@@ -1353,7 +1353,7 @@ function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;
 }
 
-function valueText(f, lang = "en") {
+export function valueText(f, lang = "en") {
   const v = Number(f.value);
   const n = Number.isInteger(v) ? String(v) : dec(v, lang, Math.abs(v) >= 100 ? 0 : 1);
   if (f.unit === "formation") return String(Math.round(v)).split("").join("-"); // 442 is 4-4-2

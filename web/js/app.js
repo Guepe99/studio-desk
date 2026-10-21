@@ -7,6 +7,7 @@ import { Voice } from "./voice.js";
 import { BoothAudio } from "./booth-audio.js";
 import { View3D, probe, defaultView, warm3d, RADAR, replays } from "./view3d.js";
 import { Ask } from "./ask.js";
+import { Proof } from "./proof.js";
 import { Moments, LEAD_S } from "./moments.js";
 import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
@@ -113,7 +114,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null;
+let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
 const CONTROL_STRINGS = {
@@ -155,13 +156,13 @@ const MIN_PX = 11, SMALLEST = 17, COMPACT_PX = 30, DECK_MIN = 300;
 let compact = false, deckMode = "", scale = 1, radarK = 1, laidFor = "";
 
 function layout() {
-  const app = $("#app"), cs = getComputedStyle(app), ask = $("#ask"), body = document.body.classList;
+  const app = $("#app"), cs = getComputedStyle(app), ask = $("#ask"), pf = $("#proof"), body = document.body.classList;
   const W = app.clientWidth || window.innerWidth, H = window.innerHeight;
   const room = Math.max(160, W - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
   const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), gap = parseFloat(cs.rowGap) || 0;
   const head = $("#masthead").offsetHeight, top = head ? head + gap : 0;
   body.remove("deck", "deck-side");
-  for (const el of [deck, ask]) el.style.width = el.style.maxHeight = "";
+  for (const el of [deck, ask, pf]) el.style.width = el.style.maxHeight = "";
   // the header, the controls and the strip wrap: size them first, then give the frame the height that
   // is left. The strip counts at its height with cards (.reserve), so the picture does not move when
   // the first hand-off comes in; a short window lets the strip go under the fold before the graphics
@@ -206,7 +207,7 @@ function layout() {
   if (side) {
     deck.style.width = `${Math.min(side, 560)}px`;
     deck.style.maxHeight = `${fh}px`;
-    if (!DOCKED.matches) { ask.style.width = deck.style.width; ask.style.maxHeight = `${fh}px`; }
+    if (!DOCKED.matches) for (const el of [ask, pf]) { el.style.width = deck.style.width; el.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
   $("#audiences").style.width = controls.style.width;
   // the minimap sits at RADAR_K of its box, as small as a game's radar, but never narrower than RADAR_MIN px:
@@ -472,6 +473,7 @@ function tick(now) {
   }
   // past the last tracking frame (full-time recap) the picture holds the last frame
   if (view3d?.shown !== "3d") pitch.draw(match, Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
+  proof.update([...host.live.values()].map((i) => i.cue));
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();
   revealGoals();
@@ -587,7 +589,7 @@ function wireControls() {
   // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
   // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well. On the gear Space opens
   // the settings menu, in the menu it picks the item (a menu button), on the minimap it swaps the pictures.
-  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls") && !e.target.closest('#settings-wrap, #radar');
+  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls") && !e.target.closest('#settings-wrap, #radar, #proof-bar');
   window.addEventListener("keydown", (e) => {
     if (!spaceKey(e)) return;
     e.preventDefault();
@@ -703,9 +705,10 @@ async function main() {
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
   ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout });
+  proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, pitch, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, pitch, proof, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),

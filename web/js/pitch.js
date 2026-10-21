@@ -73,6 +73,7 @@ export class Pitch {
     this.ctx = canvas.getContext("2d");
     this.bg = document.createElement("canvas");
     this.drawn = { players: [], ball: null };   // what the last draw put where, in stage pixels (tests read it)
+    this.cited = new Set();   // the players an open proof panel cites (proof.js): a white ring each
   }
 
   // k: device pixels per stage pixel
@@ -187,9 +188,9 @@ export class Pitch {
       // direction of run from the tracking 0.4 s ago: only drawn above a jog (2 m/s)
       const q = match.at(i, ts - 0.4);
       const dx = q ? p[0] - q[0] : 0, dy = q ? q[1] - p[1] : 0, v = Math.hypot(dx, dy) / 0.4;
-      players.push({ id: pl.player_id, pl, x, y, r: R, v, dx, dy, focus: lit.has(pl.player_id) });
+      players.push({ id: pl.player_id, pl, x, y, r: R, v, dx, dy, focus: lit.has(pl.player_id), cited: this.cited.has(pl.player_id) });
     }
-    players.sort((a, b) => a.focus - b.focus);   // lit players on top
+    players.sort((a, b) => (a.focus || a.cited) - (b.focus || b.cited));   // lit and cited players on top
     this.drawn.players = players;
 
     const shape = (x, y, r, square) => {
@@ -228,7 +229,7 @@ export class Pitch {
       g.closePath();
     }
     g.fill();
-    for (const { pl, x, y, focus } of players) {
+    for (const { pl, x, y, focus, cited } of players) {
       const team = match.teams[pl.team_id], square = team.side === "away";
       const fill = pl.position === "GK" ? this._keeper[pl.team_id] : team.color_primary;
       if (focus) {
@@ -245,6 +246,12 @@ export class Pitch {
       if (focus) {
         shape(x, y, R + edge + ring * 0.9, square);
         g.lineWidth = ring * 1.1; g.strokeStyle = SIGNAL; g.stroke();
+      }
+      // cited by the open proof: a white ring outside the green one, a dark one under it for a pale picture
+      if (cited) {
+        for (const [w, c] of [[ring * 1.6, "rgba(4,10,22,0.6)"], [ring * 0.9, "#fff"]]) {
+          g.beginPath(); g.arc(x, y, R * 1.75, 0, TAU); g.lineWidth = w; g.strokeStyle = c; g.stroke();
+        }
       }
       if (!numbers) continue;
       g.fillStyle = this._text.get(fill) ?? this._text.set(fill, textOn(fill)).get(fill);

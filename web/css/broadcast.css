@@ -69,7 +69,7 @@ body {
 }
 /* under the picture: the controls (the seek bar first, as in a video player), the Ask panel, the agent strip, the graphics deck */
 #app > #controls { order: 1; }
-#app > #ask { order: 2; }
+#app > #ask, #app > #proof { order: 2; }
 #app > #activity { order: 3; }
 #app > #deck { order: 4; }
 #app > #audiences { order: 5; }
@@ -91,9 +91,9 @@ body {
 .deck-side #app > #masthead { grid-area: 1 / 1 / 2 / 3; }
 .deck-side #app > #frame { grid-area: 2 / 1 / 4 / 2; }
 /* the deck is never taller than the frame (app.js) and scrolls on its own; the open Ask panel takes its place */
-.deck-side #app > #ask { grid-area: 2 / 2 / 4 / 3; align-self: start; z-index: 1; }
+.deck-side #app > #ask, .deck-side #app > #proof { grid-area: 2 / 2 / 4 / 3; align-self: start; z-index: 1; }
 .deck-side #app > #deck { grid-area: 2 / 2 / 4 / 3; align-self: start; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-@media (max-width: 1099px) { .deck-side:has(#ask:not([hidden])) #deck { visibility: hidden; } }
+@media (max-width: 1099px) { .deck-side:has(#ask:not([hidden]), #proof:not([hidden])) #deck { visibility: hidden; } }
 .deck-side #app > #controls { grid-area: 4 / 1 / 5 / 3; justify-self: center; }
 .deck-side #app > #activity { grid-area: 5 / 1 / 6 / 3; justify-self: center; }
 .deck-side #app > #audiences { grid-area: 6 / 1 / 7 / 3; justify-self: center; }
@@ -144,7 +144,7 @@ body {
 #voice[aria-pressed="true"] .i-on { display: inline; }
 /* One row as in a video player: play, voice and the next moment on the left; the settings, Ask and the desk on the right */
 #settings-wrap { position: relative; margin-left: auto; display: flex; align-items: center; gap: 6px; }
-#controls > :not(#seek-row, #notice, #view-status) { flex: none; }
+#controls > :not(#seek-row, #notice, #view-status, #proof-bar) { flex: none; }
 #settings .hole { fill: var(--page); }
 #settings:hover .hole { fill: var(--lilac-100); }
 #settings[aria-expanded="true"] { background: var(--purple); color: var(--page); }

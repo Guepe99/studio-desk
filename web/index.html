@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/desk.css">
   <link rel="stylesheet" href="css/view3d.css">
   <link rel="stylesheet" href="css/ask.css">
+  <link rel="stylesheet" href="css/proof.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -60,6 +61,8 @@
         <span data-i18n="voice">Voice</span>
       </button>
       <button id="next-moment" class="ctl" type="button" aria-disabled="true">Next key moment</button>
+      <!-- Show proof: one button per graphic on air, in the room the row has left (proof.js) -->
+      <div id="proof-bar" role="group" aria-label="Proof of the graphics on air"></div>
       <!-- the settings: one menu button (a gear), its state beside it when it is not the default (4x, an audience) -->
       <div id="settings-wrap">
         <button id="settings" class="ctl icon" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="settings-menu"
@@ -116,6 +119,8 @@
     </section>
     <!-- the story on air as each audience sees it, side by side; filled by audiences.js -->
     <section id="audiences" hidden></section>
+    <!-- what the numbers of a graphic on air come from: filled by proof.js when a proof button opens it -->
+    <section id="proof" aria-labelledby="proof-title" hidden></section>
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
   <!-- ? with the focus in the broadcast or its controls (keys.js) -->
