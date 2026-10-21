@@ -87,7 +87,8 @@ Docker, symlink them: `ln -s ../../../replays/M001/voice.json web/data/M001/` an
   with no clip in that language stays silent rather than speak another language. Held, rejected and AI-off stories never reach the screen, so they
   never speak; the module also asks `desk.onAir()` every frame and stops a clip whose story leaves
   the air (reject, AI switch off).
-- An edited story stays silent: the clip would say the old text. A clip whose `text_sha1` does not
+- A story whose body was edited in the page language stays silent: the clip would say the old text.
+  A new headline alone keeps the clip. A clip whose `text_sha1` does not
   match the story text the page loaded is never played.
 - One clip at a time. A story that comes up while another speaks waits; it is dropped if it would
   start more than 4 s of match time after its cue. Only one story waits: a newer one takes its

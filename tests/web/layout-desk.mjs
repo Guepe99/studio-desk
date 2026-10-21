@@ -113,6 +113,14 @@ async function run(w, h) {
     });
     expect(head.h <= 80, `${tag} ${lang}: the desk header is ${head.h} px tall ${JSON.stringify(head)}`);
   }
+  // on a phone the title, the AI switch and Close share one row in the three languages
+  if (w === 390) for (const lang of ["en", "it", "es", "en"]) {
+    await setLang(page, lang);
+    const rows = await page.evaluate(() => ["#desk .desk-title h2", "#ai-switch", "#desk-close"].map((s) => {
+      const r = document.querySelector(s).getBoundingClientRect(); return Math.round(r.top + r.height / 2);
+    }));
+    expect(Math.max(...rows) - Math.min(...rows) <= 12, `${tag} ${lang}: the desk header wraps on the phone ${JSON.stringify(rows)}`);
+  }
   // the phone sheet leaves at least 40% of the height to the broadcast
   if (drawer) {
     const top = await page.$eval("#desk", (el) => el.getBoundingClientRect().top);
@@ -188,13 +196,15 @@ async function run(w, h) {
   await page.click(`${card} .${want.act}`);
   const said = await page.$eval("#desk .done-msg", (el) => el.textContent).catch(() => "");
   expect(want.said.test(said), `${tag} 17: after ${want.act} the status line says ${JSON.stringify(said)}`);
-  const line = () => page.$eval(card, (el) => (el.querySelector(".tally > span") ?? el.querySelector(".tally") ?? el.querySelector(".outcome"))?.textContent ?? "");
-  expect(want.line.test(await line()), `${tag} 17: after ${want.act} the story reads ${JSON.stringify(await line())}`);
+  const now = () => page.$eval(card, (el) => (el.querySelector(".tally > span") ?? el.querySelector(".tally") ?? el.querySelector(".outcome"))?.textContent ?? "");
+  // the graphic reaches the screen a frame or two after the click: give the card up to 3 s to settle
+  const line = async (re) => { for (let i = 0; i < 30 && !re.test(await now()); i++) await page.waitForTimeout(100); return now(); };
+  expect(want.line.test(await line(want.line)), `${tag} 17: after ${want.act} the story reads ${JSON.stringify(await now())}`);
   const undo = await page.$("#desk .undo");
   expect(undo && await undo.isVisible(), `${tag} 17: no Undo after a decision`);
   if (undo && await undo.isVisible()) {
     await undo.click();
-    expect(want.undone.test(await line()), `${tag} 17: after Undo the story reads ${JSON.stringify(await line())}, not ${want.undone}`);
+    expect(want.undone.test(await line(want.undone)), `${tag} 17: after Undo the story reads ${JSON.stringify(await now())}, not ${want.undone}`);
     const back = await page.$eval("#desk .done-msg", (el) => el.textContent);
     expect(want.back.test(back), `${tag} 17: after Undo the status line says ${JSON.stringify(back)}`);
   }

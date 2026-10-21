@@ -37,7 +37,7 @@ body { display: flex; }
 #desk-close:hover { background: var(--purple-500); }
 .desk-sum { color: var(--lilac-100); font-weight: 600; font-size: 14px; white-space: nowrap; }
 /* a phone: "2 waiting" would push Close to a row of its own, and the Waiting heading carries the same count */
-@media (max-width: 480px) { .desk-sum { display: none; } }
+@media (max-width: 480px) { .desk-sum.is-count { display: none; } }
 .desk-tabs { display: flex; align-items: center; gap: 4px; }
 .desk-tabs .tabs { flex: 1; }
 .info { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--lilac-100); background: none; color: var(--page);
@@ -254,7 +254,7 @@ body { display: flex; }
   .sec-air + .sec { margin-top: 14px; }
   /* J/K scrolls the next card into view below the sticky strip, not under it (WCAG 2.4.11) */
   /* shortcut: sized for two graphics on air, measure the strip if three ever overlap */
-  .desk-body [data-item] { scroll-margin-top: 120px; }
+  .desk-body .sec:not(.sec-air) [data-item] { scroll-margin-top: 120px; }
 }
 /* touch: 44 px targets (WCAG 2.5.5) */
 @media (pointer: coarse) {

@@ -151,7 +151,7 @@ export const TEXT = {
     traceSum: ({ n, tok, usd, s }) => `${n} passaggi${n === "1" ? "o" : ""} di consegne, ${tok} token, ${usd}, ${s} s`,
     traceShared: ({ n }) => `, contando la quota di questa storia nei ${n} condivisi con altre storie`,
     rulesNoModel: "solo regole", codeNoModel: "solo codice", in: "Input", out: "Output",
-    tokInOut: "{a} in entrata, {b} in uscita", zeroTokens: "0 token", sharedBy: ({ n }) => `, condiviso da ${n} storie`,
+    tokInOut: "{a} in input, {b} in output", zeroTokens: "0 token", sharedBy: ({ n }) => `, condiviso da ${n} storie`,
     how_ai: "IA", how_codeai: "Codice e IA", how_rules: "Regole",
     ag_story_finder: "Cercastorie", ag_analyst: "Analista", ag_commentator: "Commentatore", ag_verifier: "Verificatore", ag_director: "Regista",
     ag_human: "Tu", ag_auto: "Regola del rischio", ag_studio_host: "Conduttore",
@@ -177,7 +177,7 @@ export const TEXT = {
   },
   es: {
     title: "Realización", close: "Cerrar", closeLabel: "Cerrar la realización",
-    ai: "Gráficos de IA ", on: "encendidos", off: "apagados", loadingDecisions: "Cargando tus decisiones", saving: "Guardando",
+    ai: "IA ", on: "encendida", off: "apagada", loadingDecisions: "Cargando tus decisiones", saving: "Guardando",
     waiting: "{n} en espera", tabs: "Vistas de la realización", tabStories: "Historias", tabAudit: "Registro", tabTraces: "Trazas",
     kill: "IA apagada: solo los gráficos estándar están en antena. Las historias siguen en la lista para revisarlas.",
     footConnecting: "Conectando con el servidor: la realización se desbloquea cuando lleguen tus decisiones guardadas.",
@@ -373,6 +373,7 @@ export class Desk {
     this.reasons = new Map(); // story_id -> Set of REASONS; the API has no field for them, so they stay in this tab
     this.note = "";
     this.info = false;   // the note about where decisions are kept, opened from the info button
+    this.dismissed = false; // closed from the info button while it had opened by itself
     this.lastAct = null; // {id, prev} or {cue}: the last decision, while its Undo is offered
     this.done = null;    // {id | cue, key}: the outcome the status line says
     this.factIndex = new Map(this.match.facts.map((f) => [f.fact_id, f]));
@@ -755,17 +756,17 @@ export class Desk {
           disabled: locked, onclick: () => this.setKill(!this.kill) },
         h("span", { className: "switch-label" }, tx("ai"), h("b", {}, tx(this.kill ? "off" : "on"))),
         h("span", { className: "track", "aria-hidden": "true" }, h("span", { className: "knob" }))),
-        h("span", { className: "desk-sum" }, sum),
+        h("span", { className: `desk-sum${this.ready && !this.busy ? " is-count" : ""}` }, sum),
         h("button", { type: "button", id: "desk-close", className: "ctl", "aria-label": tx("closeLabel"), "data-focus": "close",
           onclick: () => this.closeDrawer() }, tx("close"))),
       h("div", { className: "desk-tabs" },
         h("div", { role: "tablist", "aria-label": tx("tabs"), className: "tabs" }, tabs.map(tabButton)),
-        h("button", { type: "button", id: "desk-info", className: "info", "aria-expanded": String(this.info), "aria-controls": "desk-note",
-          "aria-label": tx("info"), title: tx("info"), "data-focus": "info", onclick: () => { this.info = !this.info; this.render(); } }, "i")));
+        h("button", { type: "button", id: "desk-info", className: "info", "aria-controls": "desk-note",
+          "aria-label": tx("info"), title: tx("info"), "data-focus": "info", onclick: () => { this.info = this.infoEl.hidden; this.dismissed = !this.info; this.render(); } }, "i")));
     const why = this.offline === "timeout" ? tx("timeout") : this.offline.replace(/^./, (c) => c.toUpperCase()).replace(/([^.])$/, "$1.");
     setText(this.infoEl, !this.ready ? tx("footConnecting") : this.online ? tx("footOnline") : this.offline ? tx("footOffline", { why }) : tx("footNoServer"));
     // opened from the info button, or by itself when the server refused or did not answer
-    this.infoEl.hidden = !(this.info || (this.ready && !this.online && this.offline));
+    this.infoEl.hidden = !(this.info || (!this.dismissed && this.ready && !this.online && this.offline));
     this.root.querySelector("#desk-info")?.setAttribute("aria-expanded", String(!this.infoEl.hidden));
     setText(this.killEl, this.kill ? tx("kill") : "");
     setText(this.noteEl, this.note);

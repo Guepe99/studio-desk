@@ -3,9 +3,11 @@
 Every number a rule uses comes from a fact the workflow read through the MCP server.
 """
 import asyncio
+import bisect
 import math
 import re
 import unicodedata
+from collections import Counter
 
 from .. import config, names
 from ..export import DURATION
@@ -643,9 +645,26 @@ _GOAL_ORDINALS = {w: k for words in (
 _GOAL_ORDINALS |= {"primero": 1, "tercero": 3}
 _GOAL_ORDINAL = re.compile(r"(?<!\w)(?:" + "|".join(_GOAL_ORDINALS) + r")(?!\w)", re.IGNORECASE)
 _GOAL_LABEL = re.compile(r"\bGoal (\d+)-(\d+)\b")
-# an equaliser is a claim about the score: the goal at the minute that follows the word must leave it level
-_EQUALISER = re.compile(r"\b(?:equali[sz]\w*|pareggi\w*|parit[àa]|empat\w*)", re.IGNORECASE)
-_MINUTE_AFTER = re.compile(r"\bmin(?:ut[eo]s?|\.)?\s*(\d+(?:\+\d+)?)|(\d+(?:\+\d+)?)'", re.IGNORECASE)
+# an equaliser is a claim about the score: the goal at the minute next to the word must leave it level
+_EQUALISER = re.compile(r"(?<!\w)(?:equali[sz](?:ers?|ed|es|ing|e)|pareggi(?:o|a|ano|ato|are|ando)|"
+                        r"empat(?:e|ó|a|an|ar|ado|aron)|igual(?:ó|a|an|ar|aron)|levell?ed|drew level|in pari)(?!\w)", re.IGNORECASE)
+_SENTENCE_END = re.compile(r"(?<!\bmin)[.!?;](?=\s|$)", re.IGNORECASE)
+
+
+def _paired_minutes(text, spans, most):
+    """Each span (a score, a word) with the nearest minute of its sentence at most `most` characters away,
+    one minute per span, the closest pairs first: {span index: minute as said}."""
+    ends = [mt.start() for mt in _SENTENCE_END.finditer(text)]
+    sentence = lambda i: bisect.bisect(ends, i)
+    mins = [(mt.start(), mt.end(), mt.group(1) or mt.group(3)) for mt in _MINUTE.finditer(text)]
+    near = sorted((max(m0 - b, a - m1, 0), i, j) for i, (a, b) in enumerate(spans) for j, (m0, m1, _) in enumerate(mins)
+                  if sentence(a) == sentence(m0) and max(m0 - b, a - m1, 0) <= most)
+    out, used = {}, set()
+    for _, i, j in near:
+        if i not in out and j not in used:
+            out[i] = mins[j][2]
+            used.add(j)
+    return out
 _ASK_NOT_A_NUMBER = re.compile(
     r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bfirst[- ]time\b|\bfirst touch\b|"
     r"\bsecond balls?\b|\b(?:first|second) post\b|\bboth (?:teams|sides)\b|"
@@ -730,15 +749,19 @@ def check_answer(text, facts, p1, lang, ids, score=None):
         return " "
     rest = _MINUTE.sub(said, normalise(text))
 
+    # a cited goal's own label ("Goal 2-1") is the score right after it: it may be said paired with that goal's minute
     after_goal = {tuple(map(int, g)): stoppage(minute(f["ts"], f["period"], p1), f["period"])
                   for f in facts if f["kind"] == "score" for g in _GOAL_LABEL.findall(f["label_en"])}
+    norm = normalise(text)
+    said_scores = [(mt.span(), tuple(map(int, mt.groups()))) for mt in _ASK_SCORE.finditer(norm)]
+    paired = _paired_minutes(norm, [sp for sp, _ in said_scores], 40)
+    past = Counter(sc for i, (_, sc) in enumerate(said_scores) if sc in after_goal and paired.get(i) == after_goal[sc])
 
     def at_its_goal(said):
-        """A cited goal's own label ("Goal 2-1") is the score right after it, said next to its minute."""
-        mi = after_goal.get(said)
-        return mi is not None and any(
-            re.search(rf"(?<![\d+]){re.escape(mi)}(?![\d+])", text[max(0, o.start() - 40):o.end() + 40])
-            for o in re.finditer(rf"(?<!\d){said[0]}\s*-\s*{said[1]}(?!\d)", text))
+        if past[said] <= 0:
+            return False
+        past[said] -= 1
+        return True
 
     def scored(mt):
         nonlocal quoted
@@ -775,12 +798,15 @@ def check_answer(text, facts, p1, lang, ids, score=None):
     flags += [f"number in words: roman numeral '{w}'" for w in _ROMAN.findall(rest)]
     quoted = quoted or _NUM.search(_FACT_ID.sub("", rest)) or any(display_label(f).lower() in text.lower() for f in facts)
     flags += ["answer quotes no cited fact"] * (not quoted)
-    level = {stoppage(minute(f["ts"], f["period"], p1), f["period"]) for f in facts if f["kind"] == "score"
-             for a, b in _GOAL_LABEL.findall(f["label_en"]) if a == b}
-    for mt in _EQUALISER.finditer(text):
-        at = _MINUTE_AFTER.search(text[mt.end():mt.end() + 60])
-        if not (level if at is None else (at.group(1) or at.group(2)) in level):
-            flags.append(f"equaliser not in the facts: '{mt.group(0)}'")
+    goals_said = [(a == b, stoppage(minute(f["ts"], f["period"], p1), f["period"])) for f in facts if f["kind"] == "score"
+                  for a, b in _GOAL_LABEL.findall(f["label_en"])]
+    level = {mi for even, mi in goals_said if even}
+    equalisers = list(_EQUALISER.finditer(norm))
+    at = _paired_minutes(norm, [mt.span() for mt in equalisers], 60)
+    # with no minute the word is fine for a level score now ("still level"), or when every cited goal left it level
+    unpaired_ok = (score is not None and score[0] == score[1]) or (bool(level) and all(even for even, _ in goals_said))
+    flags += [f"equaliser not in the facts: '{mt.group(0)}'" for i, mt in enumerate(equalisers)
+              if not (at[i] in level if i in at else unpaired_ok)]
     kinds, events = {f["kind"] for f in facts}, _EVENT_NOT.sub("", text)
     flags += [f"event not in the facts: {kind}" for kind, p in _EVENTS.items() if kind not in kinds and p.search(events)]
     flags += ["link or address in the answer"] * bool(_LINK.search(text))

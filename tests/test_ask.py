@@ -669,3 +669,17 @@ def test_a_goal_ordinal_passes_only_for_a_cited_goal():
         ["score not the score at ts: '2-0'"]
     assert rules.check_answer("Il 2-1 è arrivato.", facts[1:], 2700, "it", {facts[1]["fact_id"]}, (2, 2)) == \
         ["score not the score at ts: '2-1'"]
+    # the minute paired with a score or an equaliser is the nearest one in its sentence, each minute used once
+    two, two_ids = facts[1:] + [level], {facts[1]["fact_id"], level["fact_id"]}
+    ask = lambda text, lang="it": rules.check_answer(text, two, 2700, lang, two_ids, (2, 2))
+    assert ask("Il pareggio è arrivato al minuto 25.") == ["equaliser not in the facts: 'pareggio'"]
+    assert ask("Al minuto 25 è arrivato il pareggio.") == ["equaliser not in the facts: 'pareggio'"]
+    assert ask("Al minuto 30 il pareggio.") == []
+    assert ask("Il 2-1 al minuto 30, il 2-2 al minuto 25.") == ["score not the score at ts: '2-1'"]
+    assert ask("Al minuto 25 il 2-1, e adesso l'Eastvale conduce 2-1.") == ["score not the score at ts: '2-1'"]
+    assert ask("Il Northbrook ha pareggiato. Al minuto 25 aveva accorciato sul 2-1.") == []
+    assert ask("El Northbrook igualó en el minuto 25.", "es") == ["equaliser not in the facts: 'igualó'"]
+    assert ask("Northbrook levelled in minute 25.", "en") == ["equaliser not in the facts: 'levelled'"]
+    # a level score now is no equaliser claim: at 0-0 "still level" passes, "parità" is not an equaliser word
+    zero = rules.check_answer("Ancora in parità, ancora pareggio al minuto 25.", facts[1:], 2700, "it", {facts[1]["fact_id"]}, (0, 0))
+    assert zero == ["equaliser not in the facts: 'pareggio'"], zero

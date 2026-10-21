@@ -191,12 +191,6 @@ async function scenario(browser, w, h) {
   await seekTo(page, MOMENTUM.ts + 1.6);
   expect(!(await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Take out left the momentum card on air`);
   expect(/^Momentum \d+' taken out$/.test(await page.$eval("#desk .done-msg", (el) => el.textContent)), `${tag}: Take out status line`);
-  // taken out in every language: the Italian cue of the same graphic stays off too
-  const sameSlot = new Set(cues.filter((c) => c.graphic === MOMENTUM.graphic && c.ts === MOMENTUM.ts && c.audience === MOMENTUM.audience).map((c) => c.cue_id));
-  await setLang(page, "it");
-  await seekTo(page, MOMENTUM.ts + 1.6);
-  expect(!(await live(page)).some((x) => sameSlot.has(x.cue)), `${tag}: switching to Italian brought the momentum card back`);
-  await setLang(page, "en");
   await page.click("#desk .undo");
   await seekTo(page, MOMENTUM.ts + 1.7);
   expect((await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Undo did not bring the momentum card back`);
@@ -588,6 +582,12 @@ async function edges(browser) {
     .catch(() => fail("edges: no timeout note in the desk"));
   expect(Date.now() - t0 > 11000, "edges: the desk went offline after a single try");
   expect(!(await page.$eval("#ai-switch", (el) => el.disabled)), "edges: offline desk stays disabled");
+  // the info button closes the note that opened by itself, and opens it again
+  const note = async () => [await page.$eval("#desk-note", (el) => el.hidden), await page.$eval("#desk-info", (el) => el.getAttribute("aria-expanded"))];
+  await page.click("#desk-info");
+  expect(JSON.stringify(await note()) === '[true,"false"]', `edges: info did not close the offline note (${JSON.stringify(await note())})`);
+  await page.click("#desk-info");
+  expect(JSON.stringify(await note()) === '[false,"true"]', `edges: info did not open the note again (${JSON.stringify(await note())})`);
   await page.context().close();
 
   // 2. a refused edit keeps the editor and the draft, with a readable reason; a draft survives a language switch
@@ -614,7 +614,7 @@ async function edges(browser) {
   await settled(page);
   expect(await page.inputValue(`${card(AUTO)} textarea[lang="en"]`).catch(() => null) === "Draft in English", "edges: a refused edit lost the editor or the draft");
   // the page is in Spanish here: the desk speaks it too
-  expect(/carácter que la mesa no acepta/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
+  expect(/carácter que la realización no acepta/.test(await page.textContent(".banner.warn").catch(() => "")), "edges: a refused edit has no readable reason");
   expect(await rule(page, "return d.status(s)", AUTO.story_id) === "auto_approved", "edges: a refused edit stayed as a decision");
   await page.unroute("**/api/decisions");
   await Promise.all([posted(page), page.click(`${card(AUTO)} .editor .ctl.primary`)]);

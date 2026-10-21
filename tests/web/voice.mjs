@@ -223,6 +223,10 @@ await playFrom(firstCue(AUTO), 1, 4);
 expect((await voice()).sid === null, "4x: silent");
 
 await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "approved"); }, EDITED.story_id);
+// a new headline alone leaves the body, and so the clip, as it was
+await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "edited", { title_en: "A new headline" }); }, EDITED.story_id);
+await playFrom(firstCue(EDITED), 1);
+expect((await voice()).sid === EDITED.story_id, "a headline-only edit silenced the clip");
 await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "edited", { en: "Hand-written line." }); }, EDITED.story_id);
 await playFrom(firstCue(EDITED), 1);
 expect((await voice()).sid === null, "edited story stays silent");
