@@ -14,7 +14,7 @@
 // the tracking, disc colours, the players named on air lit, draw time); the pass bar scale; why-card text
 // never cut; reduced motion; a manifest that fails; hostile data; Ask the studio with its API stubbed;
 // the settings menu (speed, audience, language, each beside the gear when not the default);
-// phone landscape and portrait (every control reachable by scrolling, with the settings menu open,
+// a link to a moment (?t=, audience, speed, play); phone landscape and portrait (every control reachable by scrolling, with the settings menu open,
 // graphic text at least 11 px in portrait, the agent strip on one line); Next key moment for analyst and a team; the agent strip after seeks and
 // at 64x. Screenshots go to out/shots/.
 import { createRequire } from "node:module";
@@ -115,7 +115,7 @@ const scorebug = (page) => page.evaluate(() => ({
   h: document.querySelector(".sb-h").textContent, a: document.querySelector(".sb-a").textContent,
   minute: document.querySelector(".sb-min").textContent, period: document.querySelector(".sb-period").textContent,
 }));
-const open = async (browser, opts, { route, ignoreConsole = false } = {}) => {
+const open = async (browser, opts, { route, ignoreConsole = false, query = "" } = {}) => {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();
   // with static hosting the desk's api/ calls 404 and the desk keeps decisions in the tab
@@ -124,7 +124,7 @@ const open = async (browser, opts, { route, ignoreConsole = false } = {}) => {
   if (!ignoreConsole) page.on("console", (m) => { if (m.type() === "error" && !apiMiss(m)) fail(`${opts.viewport.width}x${opts.viewport.height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${opts.viewport.width}x${opts.viewport.height} page error: ${e.message}`));
   if (route) await route(page);
-  await page.goto(url);
+  await page.goto(url + query);
   await page.waitForFunction(() => window.studioDesk?.match, null, { timeout: 10000 });
   await page.evaluate(() => document.fonts.ready);
   return page;
@@ -898,6 +898,20 @@ try {
     const msg = await broken.evaluate(() => { const n = document.querySelector("#notice"); return n && !n.hidden ? n.textContent : ""; });
     if (!/why_card/.test(msg)) fail(`manifest failure: no message on screen ("${msg}")`);
     await broken.context().close();
+  });
+
+  // a link to a moment opens the replay there, for that audience, at that speed, playing; values the
+  // menu does not offer are ignored
+  await check("deep link", async () => {
+    const aud = await page.evaluate(() => window.studioDesk.match.cues.find((c) => c.audience.startsWith("team:")).audience);
+    const at = await open(browser, { viewport: { width: 1280, height: 720 } }, { query: `&t=200&audience=${aud}&speed=4&play=1` });
+    const s = await at.evaluate(() => { const x = window.studioDesk.state; return { ts: x.ts, audience: x.audience, speed: x.speed, playing: x.playing }; });
+    if (s.ts < 200 || s.ts > 240 || s.audience !== aud || s.speed !== 4 || !s.playing) fail(`deep link: ${JSON.stringify(s)}`);
+    await at.context().close();
+    const bad = await open(browser, { viewport: { width: 1280, height: 720 } }, { query: "&t=x&audience=nobody&speed=3" });
+    const b = await bad.evaluate(() => { const x = window.studioDesk.state; return { ts: x.ts, audience: x.audience, speed: x.speed, playing: x.playing }; });
+    if (b.ts !== 0 || b.audience !== "analyst" || b.speed !== 1 || b.playing) fail(`deep link with bad values: ${JSON.stringify(b)}`);
+    await bad.context().close();
   });
 
   await check("ask the studio", async () => {

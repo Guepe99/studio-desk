@@ -18,6 +18,7 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 8. Open the **Traces** tab on the desk. It lists each step with the agent, model, tokens, time and cost.
 9. Turn the **AI graphics** switch on the desk off. Only the template graphics stay on air, and **Next key moment** becomes **Next goal**.
 10. Change the audience in the settings: analyst, casual fan, fans of one team or fans of one player. The speed and the audience show beside the gear when they are not the default.
+11. Open a match at a given moment with a link: `?match=M001&t=2400&audience=casual&speed=4&play=1` starts M001 at 40:00 of match time (`t` is in match seconds) for the casual fan, at 4x, playing. Audiences are `analyst`, `casual`, `team:<id>` and `player:<id>`, as in the settings; speeds are 1, 4, 16 and 64.
 
 The replay makes no model calls, so it has no daily quota. Each session allows 300 desk actions and 10 questions per day, and the whole site answers 40 questions per day, to stay inside the Azure AI Content Safety free tier. Every visitor gets their own session, so your choices never reach another judge, and each match starts clean.
 

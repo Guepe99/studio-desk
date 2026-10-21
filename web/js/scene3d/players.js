@@ -67,6 +67,8 @@ export function gait(mode, v) {
 export const ACTIONS = {
   slide: { phases: [["Slide_Start", 0, 0.83], ["Slide_Loop", 0, 0.35], ["Slide_Exit", 0, 0.5]], contact: 0.7 },
   header: { phases: [["Jump_Start", 0.5, 1.33], ["Jump_Land", 0, 0.9]], contact: 0.8 },
+  // the fouled player goes down and rolls over, from 0.1 s after the contact
+  tumble: { phases: [["Roll", 0, 1.47]], contact: -0.1 },
 };
 const IN_S = 0.15, OUT_S = 0.25;
 const TRACKS = new WeakMap();   // asset container -> {clip: upper-body tracks}
@@ -87,6 +89,7 @@ export function scheduleActions(events) {
     const at = [e.start_x, e.start_y];
     if (e.type_name === "tackle" || e.type_name === "foul") add(e.player_id, "slide", e.ts, at);
     else if (e.bodypart_name === "head") add(e.player_id, "header", e.ts, at);
+    if (e.type_name === "foul" && e.related_player_id) add(e.related_player_id, "tumble", e.ts, at);
   }
   for (const list of Object.values(out)) {
     list.sort((a, b) => a.start - b.start);

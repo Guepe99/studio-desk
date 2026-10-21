@@ -14,7 +14,8 @@
 //   degrees), tighter when play bunches; a small frame (a phone) zooms in further so players stay
 //   readable; on an attack inside 30 m of goal it narrows to 30 m and leans towards the goal
 //   mouth, so the shot, the keeper and the net read (docs/motion3d.md, "The goal"); on a goal it
-//   punches in on the goal mouth from the strike until the cut (PUNCH);
+//   punches in on the goal mouth from the strike until the cut (PUNCH), on any other shot a little
+//   less and only for the strike (SHOT_PUNCH);
 // - a hard limit keeps the ball inside the middle 80% of the frame whatever the spring does;
 // - around a kick it slides up to 10 m along a rail when another player's head would hide the
 //   kicker's foot from the lens (sightline.js).
@@ -57,6 +58,9 @@ export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the
 // punch-in on a goal: starts `lead` s before it, full after `ramp` s, `width` m across the frame,
 // aimed `front` m out from where the ball crosses into the net
 const PUNCH = { lead: 1.6, ramp: 1.4, width: 16, front: 4 };
+// a shot that is not a goal gets a lighter punch-in, held `hold` s after the strike and let go over `out` s
+const SHOT_PUNCH = { width: 22, hold: 1.2, out: 1.2 };
+const SHOTS = new Set(["shot", "shot_freekick", "shot_penalty"]);
 const STOP_EVENTS = new Set(["foul", "keeper_save"]);
 // prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no cut to camera 2, no replay camera
 const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -143,6 +147,12 @@ export class Cameras {
       const next = match.events[k + 1]?.ts ?? match.duration;
       if (STOP_EVENTS.has(e.type_name) && idx(e.player_id) > 0 && next - 0.5 - (e.ts + 1) >= 2) this.stops.push([e.ts + 1, Math.min(e.ts + 6, next - 0.5), idx(e.player_id)]);
     });
+    // punch-ins: goals until the cut to camera 2, other shots briefly ({ts, x, y, width, until, out})
+    this.punches = this.goals.map((g) => { const b = match.at(0, g.ts); return b && { ts: g.ts, x: b[0], y: b[1], width: PUNCH.width, until: g.ts + CELEBRATION[0], out: 0 }; }).filter(Boolean);
+    for (const e of match.events) {
+      if (!SHOTS.has(e.type_name) || this.goals.some((g) => g.ts >= e.ts - 0.5 && g.ts - e.ts < 3)) continue;
+      this.punches.push({ ts: e.ts, x: e.end_x, y: e.end_y, width: SHOT_PUNCH.width, until: e.ts + SHOT_PUNCH.hold, out: SHOT_PUNCH.out });
+    }
     // camera 1's slides along its rail so no kick hides behind a head (sightline.js)
     this.rail = railPlan(match, [HALF_L + BROADCAST_POS.x, BROADCAST_POS.y, HALF_W + BROADCAST_POS.z]);
     scene.activeCamera = this.tv;
@@ -273,16 +283,17 @@ export class Cameras {
     this.scene.activeCamera = cam;
   }
 
-  // The operator's punch-in on a goal: from 1.6 s before it he zooms in towards the goal mouth
-  // where the ball ends up, PUNCH.width across at the full, so the strike, the keeper and the net's
-  // bulge read large; held until the cut to camera 2. Returns the shown [x, z, width].
+  // The operator's punch-in on a shot: from 1.6 s before it he zooms in towards the goal mouth
+  // where the ball ends up, so the strike, the keeper and the net read large; on a goal PUNCH.width
+  // across, held until the cut to camera 2; on any other shot SHOT_PUNCH, let go after the strike,
+  // the way a game camera leans in on a shot. Returns the shown [x, z, width].
   _punch(ts, s) {
-    const g = this.goals.find((q) => ts > q.ts - PUNCH.lead && ts < q.ts + CELEBRATION[0]);
-    const b = g && this.match.at(0, g.ts);
-    if (!b) return [s.x[0], s.z[0], s.w[0]];
-    const p = smooth01((ts - g.ts + PUNCH.lead) / PUNCH.ramp), end = Math.sign(b[0] - HALF_L) || 1;
-    const ax = b[0] - HALF_L - end * PUNCH.front, az = (b[1] - HALF_W) * DEPTH;
-    return [s.x[0] + (ax - s.x[0]) * p, s.z[0] + (az - s.z[0]) * p, s.w[0] + (Math.min(s.w[0], PUNCH.width) - s.w[0]) * p];
+    const g = this.punches.find((q) => ts > q.ts - PUNCH.lead && ts < q.until + q.out);
+    if (!g) return [s.x[0], s.z[0], s.w[0]];
+    const p = smooth01((ts - g.ts + PUNCH.lead) / PUNCH.ramp) * (g.out ? 1 - smooth01((ts - g.until) / g.out) : 1);
+    const end = Math.sign(g.x - HALF_L) || 1;
+    const ax = g.x - HALF_L - end * PUNCH.front, az = (g.y - HALF_W) * DEPTH;
+    return [s.x[0] + (ax - s.x[0]) * p, s.z[0] + (az - s.z[0]) * p, s.w[0] + (Math.min(s.w[0], g.width) - s.w[0]) * p];
   }
 
   _replay(ts, angle) {

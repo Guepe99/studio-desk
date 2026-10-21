@@ -43,6 +43,8 @@ export const RULES = {
 const PH = /\{(player|receiver|keeper|team2?|fact:[a-z_]+)(?:\|(of))?\}/g;
 const PUNCT = /^(?:\.\.\.|[!?.,:;])/;
 const PEOPLE = new Set(["player", "receiver", "keeper"]);
+const KICKED = new Set(["pass", "cross", "clearance", "goalkick", "freekick_short", "freekick_crossed", "corner_short",
+  "corner_crossed", "shot", "shot_freekick", "shot_penalty"]);
 export const UNIT = { shot_speed: "km/h", sprint_speed: "km/h", shot_distance: "m", line_height: "m",
   momentum: "/10", press_intensity: "/10", pass_accuracy: "%", distance_covered: "km", formation: null };
 
@@ -387,6 +389,8 @@ export class Booth {
         Math.max(t + RULES.react, this.breakUntil ?? 0), "A", { at: Math.max(t + RULES.react, (this.breakUntil ?? 0) + 0.5, this.earliest("pbp", t, "A")) });   // never over "That's half-time"
     }
     this.possession(e);
+    // the ball's own sound on every kick, before any rule that keeps the voices quiet: a shot is a strike
+    if (KICKED.has(type)) this.crowd(type.startsWith("shot") ? "strike" : "kick", t);
     const slots = { player: e.player_id, receiver: e.related_player_id, team: e.team_id, event_id: e.event_id };
     const prio = (type === "shot" || type === "shot_freekick" || type === "keeper_save" ||
       (type === "foul" && res !== "fail")) ? "A"

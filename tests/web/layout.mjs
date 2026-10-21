@@ -146,12 +146,14 @@ try {
   for (const size of SIZES) {
     const [w, h] = size, tag = `${w}x${h}`, phone = Math.min(w, h) < 600;
     const page = await open(browser, size, phone);
+    await page.waitForFunction(() => window.studioDesk.desk.loaded);
     const { goals, cues, hasVoice } = await page.evaluate(() => {
       const m = window.studioDesk.match;
       const shot = (f) => m.events.find((e) => e.event_id === f.source_event_ids?.[0] && e.ts <= f.ts && e.ts >= f.ts - 10)?.ts ?? f.ts;
       return { goals: m.goals.map((f) => ({ ts: f.ts, shot: shot(f), code: m.teams[f.team_id]?.short_name, label: m.clock(f.ts).label })).sort((a, b) => a.ts - b.ts),
         hasVoice: !document.querySelector("#voice").hidden,
-        cues: m.cues.filter((c) => c.lang === "en" && c.audience === "analyst").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })) };
+        // the cues on air for the analyst: a story that waits for a person (a big chance) is not
+        cues: window.studioDesk.desk.sheet(m.cues, "analyst", "en").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })) };
     });
 
     // N8: no spoilers, a goal's button appears when the replay reaches the goal and stays after a seek back
@@ -442,12 +444,12 @@ try {
   }
 
   const page = await open(browser, [1280, 720]);
-  const { goals, shots, moms, hasVoice } = await page.evaluate(async () => {
+  const { goals, goalShots, moms, hasVoice } = await page.evaluate(async () => {
     const m = window.studioDesk.match, reps = (await import("./js/view3d.js")).replays(m);
     // a card due during a goal replay goes on air at its end (app.js refreshCues)
     const due = (c) => reps.find((r) => c.ts < r.to && c.ts + c.duration_s > r.from)?.to ?? c.ts;
     const shot = (f) => m.events.find((e) => e.event_id === f.source_event_ids?.[0] && e.ts <= f.ts && e.ts >= f.ts - 10)?.ts ?? f.ts;
-    return { goals: m.goals.map((f) => f.ts).sort((a, b) => a - b), shots: m.goals.map(shot).sort((a, b) => a - b), hasVoice: !document.querySelector("#voice").hidden,
+    return { goals: m.goals.map((f) => f.ts).sort((a, b) => a - b), goalShots: m.goals.map(shot).sort((a, b) => a - b), hasVoice: !document.querySelector("#voice").hidden,
       moms: m.cues.filter((c) => c.lang === "en" && c.graphic === "momentum").map((c) => ({ ts: due(c), audience: c.audience })) };
   });
 
@@ -476,7 +478,7 @@ try {
     await seekTo(page, 0);
     const label = await page.textContent("#next-moment");
     if (label.trim() !== "Next goal") fail(`AI off: the button reads "${label.trim()}", wanted "Next goal"`);
-    for (const g of shots) {
+    for (const g of goalShots) {
       // a script click: a pill that is wrongly disabled must fail the check, not stall it
       await page.evaluate(() => document.querySelector("#next-moment").click());
       await page.waitForTimeout(100);

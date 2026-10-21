@@ -270,6 +270,13 @@ function setSpeed(x) {
   settingsState();
 }
 
+function setAudience(a) {
+  state.audience = a;
+  checked("data-audience", a);
+  settingsState();
+  refreshCues();
+}
+
 function seek(ts) {
   state.ts = Math.min(Math.max(ts, 0), end);
   state.seeked = true;
@@ -527,7 +534,7 @@ function wireControls() {
     const b = e.target.closest('[role^="menuitem"]');
     if (!b || b.getAttribute("aria-disabled") === "true") return;
     if (b.dataset.speed) setSpeed(Number(b.dataset.speed));
-    else if (b.dataset.audience) { state.audience = b.dataset.audience; checked("data-audience", state.audience); settingsState(); refreshCues(); }
+    else if (b.dataset.audience) setAudience(b.dataset.audience);
     else if (b.dataset.lang) setLang(b.dataset.lang);
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
     else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
@@ -695,6 +702,12 @@ async function main() {
     notice: $("#notice"), status: $("#view-status") }, layout, t);
   view3d.set(view);
   window.studioDesk.view3d = view3d;
+  // a link to a moment: ?t= (match seconds), &audience=, &speed= (one of the menu's) and &play=1
+  const aud = params.get("audience"), sp = params.get("speed");
+  if (aud && document.querySelector(`[data-audience="${CSS.escape(aud)}"]`)) setAudience(aud);
+  if (sp && document.querySelector(`[data-speed="${CSS.escape(sp)}"]`)) setSpeed(Number(sp));
+  if (params.has("t") && Number.isFinite(Number(params.get("t")))) seek(Number(params.get("t")));
+  if (params.get("play") === "1") setPlaying(true);
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
   if (document.activeElement === document.body) frame.focus();
   requestAnimationFrame(tick);

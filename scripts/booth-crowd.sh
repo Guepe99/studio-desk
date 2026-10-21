@@ -30,3 +30,18 @@ make anticipation anticipation-829453/829453-hq.mp3 "$MONO,atrim=44:54,asetpts=N
 make ooh ooh-494362/494362-hq.mp3 "$MONO,atrim=2.5:8,asetpts=N/SR/TB,afade=t=in:d=0.15,afade=t=out:st=3.5:d=2" -22
 make roar roar-528799/528799-hq.mp3 "$MONO,atrim=2:24,asetpts=N/SR/TB,afade=t=in:d=0.3,afade=t=out:st=16:d=6" -24
 make whistle whistle-218318/218318-hq.mp3 "aresample=24000,atrim=0:1.6,asetpts=N/SR/TB,afade=t=out:st=1.0:d=0.6" -16
+
+# the ball: one kick of the same recording each, too short for a loudness reading, so levelled by its peak. A pass is
+# a touch under the crowd, as pitchside microphones give it; a shot is the fullest kick, with more low end
+peak() { ffmpeg -v info -nostats -i "$1" -af astats=measure_overall=Peak_level:measure_perchannel=0 -f null - 2>&1 | awk '/Peak level dB/{print $NF; exit}'; }
+makepk() {
+  local name=$1 file=$2 shape=$3 target=$4 tmp gain
+  tmp=$(mktemp --suffix=.wav)
+  ffmpeg -v error -y -i "$src/$file" -af "$shape" -ac 1 "$tmp"
+  gain=$(awk -v t="$target" -v i="$(peak "$tmp")" 'BEGIN{printf "%.2f", t - i}')
+  ffmpeg -v error -y -i "$tmp" -af "volume=${gain}dB" -ar 24000 -ac 1 -b:a 48k "$out/$name.mp3"
+  rm -f "$tmp"
+  echo "$name: gain ${gain} dB, peak $(peak "$out/$name.mp3") dB, $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out/$name.mp3") s"
+}
+makepk kick kick-515908/515908-hq.mp3 "$MONO,atrim=2.18:2.53,asetpts=N/SR/TB,afade=t=in:d=0.005,afade=t=out:st=0.15:d=0.2" -20
+makepk strike kick-515908/515908-hq.mp3 "$MONO,atrim=18.95:19.35,asetpts=N/SR/TB,bass=g=4:f=120,afade=t=in:d=0.005,afade=t=out:st=0.18:d=0.22" -9

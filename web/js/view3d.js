@@ -8,10 +8,11 @@
 // 94-minute match never sits in memory; a seek out of the window costs one plan (0.1 to 0.3 s on
 // this server).
 //
-// After a goal the 3D view shows it again from behind the goal in the dead time before the
-// restart: from REPLAY.after s after the goal (when camera 2 leaves the scorer), for REPLAY.len s,
-// ending REPLAY.end s after the goal with the ball in the net. Only when the restart comes later
-// than that, and only up to 4x (at 16x it would last a third of a second). The page clock, the
+// After a goal the 3D view shows it again in the dead time before the restart, from REPLAY.after s
+// after the goal (when camera 2 leaves the scorer), for REPLAY.len s, as a TV director does: angle A
+// from behind the goal at full speed, ending REPLAY.end s after the goal with the ball in the net,
+// then angle B at pitch level at half speed on the strike (REPLAY.slow). Only when the restart comes
+// later than that, and only up to 4x (at 16x it would last a third of a second). The page clock, the
 // score bug, the 2D pitch and the graphics stay live.
 //
 // The page falls back to 2D when the scene cannot start, or when it draws fewer than FPS_FLOOR
@@ -21,7 +22,11 @@
 // quality itself never steps down (scene3d/quality.js).
 const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
-const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4 };
+// slow: angle B's page seconds, its speed, and the match seconds before the goal it starts (the shot is about 0.7 s before)
+const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4, slow: { len: 3, rate: 0.5, before: 1 } };
+// the name over the player on the ball: the player of the next touch, once within reach m of a ball no
+// higher than high m for hold s, drawn above m metres over the feet. Off the ball events name no carrier.
+const CARRIER = { reach: 2.5, high: 1, hold: 0.2, above: 2.1, off: new Set(["interception", "foul", "tackle", "keeper_claim", "keeper_save"]) };
 const BABYLON = ["vendor/babylonjs/9.29.0/babylon.js", "vendor/babylonjs/9.29.0/babylon.glTF2FileLoader.min.js"];
 export const VIEWS = ["2d", "3d", "split"];   // "split" is the minimap: one picture large, the other small
 // The radar shows the pitch lines and a margin (1420 x 940 stage px around the 1359 x 880 pitch) at
@@ -55,13 +60,18 @@ export function replays(match) {
     const from = g.ts + REPLAY.after, to = from + REPLAY.len, next = ev.find((e) => e.ts > g.ts + 1);
     if (to > match.duration || (next && next.ts < to + 1)) return null;
     const b = match.at(0, Math.min(g.ts + 0.7, match.duration));   // where the ball is a moment after the shot
-    return { from, to, src: g.ts + REPLAY.end - REPLAY.len, end: b && b[0] < 52.5 ? -1 : 1 };
+    const a = REPLAY.len - REPLAY.slow.len;   // angle A's page seconds
+    return { from, to, src: g.ts + REPLAY.end - a, cut: from + a, slow: g.ts - REPLAY.slow.before, end: b && b[0] < 52.5 ? -1 : 1 };
   }).filter(Boolean);
 }
 
-// The 3D picture at page time ts: {ts, replay, end?}.
+// The 3D picture at page time ts: {ts, replay, end?, angle?}.
 export function viewAt(reps, ts, speed) {
-  if (speed <= REPLAY.maxSpeed) for (const r of reps) if (ts >= r.from && ts < r.to) return { ts: r.src + (ts - r.from), replay: true, end: r.end };
+  if (speed <= REPLAY.maxSpeed) for (const r of reps) {
+    if (ts < r.from || ts >= r.to) continue;
+    if (ts < r.cut) return { ts: r.src + (ts - r.from), replay: true, end: r.end, angle: "goal" };
+    return { ts: r.slow + (ts - r.cut) * REPLAY.slow.rate, replay: true, end: r.end, angle: "low" };
+  }
   return { ts, replay: false };
 }
 
@@ -102,6 +112,9 @@ export class View3D {
     this.home = els.canvas.parentElement;
     els.radar.addEventListener("click", () => { this.swapped = !this.swapped; this._apply(); });
     document.addEventListener("visibilitychange", () => { this.since = null; });
+    this.tag = Object.assign(document.createElement("div"), { id: "carrier", hidden: true });
+    this.tag.setAttribute("aria-hidden", "true");   // the commentary says who has it
+    els.stage.insertBefore(this.tag, els.stage.querySelector("#overlay"));
   }
 
   // The visitor's choice (the minimap item of the settings): kept even when it is slow.
@@ -212,7 +225,7 @@ export class View3D {
   frame(ts, speed, seeked, playing) {
     this.clock = ts;
     const s = this.scene;
-    if (!s || this.mode === "2d" || this.lost) return;
+    if (!s || this.mode === "2d" || this.lost) return this._carrier(null);
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
     const [a, b] = s.span, end = this.match.duration;
@@ -224,7 +237,7 @@ export class View3D {
     const jumped = seeked || !l || v.replay !== l.replay || v.ts < l.ts || v.ts - l.ts > 1 || (v.ts > half) !== (l.ts > half);
     // a pause also ends a run of play for the frame-rate watch
     this._watch(playing);
-    if (this.mode === "2d") return;
+    if (this.mode === "2d") return this._carrier(null);
     // paused: nothing new to draw, once the shaders a seek needed have compiled (until then a
     // paused picture would stay without its players) and unless the canvas was resized, which
     // clears it
@@ -240,6 +253,29 @@ export class View3D {
     this.ready = ready;
     this.last = v;
     this._badge(v.replay);
+    this._carrier(v);
+  }
+
+  // The shirt and surname over the player on the ball, as a football game shows them: in open play
+  // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
+  _carrier(v) {
+    const tag = this.tag, i = v && !v.replay && this.main === "3d" ? this._holder(v.ts) : -1;
+    if (i < 0 || i !== this._holder(v.ts - CARRIER.hold)) { tag.hidden = true; return; }
+    const p = this.scene.project(i, v.ts, CARRIER.above);
+    tag.hidden = !p.visible;
+    const pl = this.match.players[this.match.meta.entities[i]], text = `${pl.shirt} ${pl.name.split(" ").at(-1)}`;
+    if (tag.textContent !== text) tag.textContent = text;
+    tag.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
+  }
+
+  // The player who makes the next touch, while the ball is on the ground within his reach, else -1.
+  _holder(ts) {
+    const m = this.match, on = (this.touches ??= m.events.filter((e) => e.player_id && !CARRIER.off.has(e.type_name)));
+    let lo = 0, hi = on.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (on[mid].ts < ts) lo = mid + 1; else hi = mid; }
+    const i = on[lo] ? m.index[on[lo].player_id] : undefined, b = m.at(m.index.ball, ts), p = i === undefined ? null : m.at(i, ts);
+    if (!b || !p || b[2] > CARRIER.high) return -1;
+    return (p[0] - b[0]) ** 2 + (p[1] - b[1]) ** 2 < CARRIER.reach ** 2 ? i : -1;
   }
 
   // Screen position of a player in the 3D picture, in 1920 x 1080 stage pixels (OGraf locate).

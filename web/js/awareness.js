@@ -188,10 +188,11 @@ export class Awareness {
       if (gk !== null) add(this.ents[gk], "organise", "SD_Point", arrive + 1.2, 2.5, src);
     }
 
-    // R14: fouls: the fouled player appeals, the fouler shows his palms, two teammates protest
+    // R14: fouls: the fouled player goes down (players.js "tumble") and then appeals, the fouler shows his palms,
+    // two teammates protest
     for (const e of this.events.filter((x) => x.type_name === "foul")) {
       const src = `event:${e.event_id}`;
-      add(e.related_player_id, "appeal", "SD_Appeal", e.ts + 0.4, 1.6, src);
+      add(e.related_player_id, "appeal", "SD_Appeal", e.ts + 1.6, 1.6, src);
       add(e.player_id, "protest", "SD_Palms", e.ts + 0.5, 1.5, src);
       const vi = idx(e.related_player_id);
       if (vi === null || !m.at(vi, e.ts)) continue;

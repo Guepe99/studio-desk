@@ -65,7 +65,10 @@ for the number and unit pieces.
 
 The six voices come out of Kokoro up to 10 dB apart (from -25.7 LUFS for `ef_dora` to -15.5 for `if_sara`), so
 each gets a fixed gain (`gain_db` in `lines.json`) that brings it to about -21 LUFS, the level of the studio
-clips, and a limiter keeps peaks under -1 dBFS. Every clip is rendered with a fixed seed, so a run gives the
+clips, and a limiter keeps peaks under -1 dBFS. Kokoro has no control for emotion, so a play-by-play line with
+a "!" (a goal, a save, a miss, a name called on them) is rendered 3 semitones higher with its formants kept,
+6% slower and 3 dB louder (`HYPE_AF` in `studiodesk/booth.py`): at a goal, commentators' pitch rises to 400 Hz
+and above, with lengthening (Trouvain 2011, https://www.coli.uni-saarland.de/~trouvain/trouvain_football_2011.pdf). Every clip is rendered with a fixed seed, so a run gives the
 same clip again on the same machine.
 
 Clip counts, Kokoro, 24 kHz mono mp3 at 48 kbit/s like the studio clips:

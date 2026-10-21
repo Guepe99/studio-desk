@@ -159,7 +159,7 @@ The numbers in `web/js/awareness.js` carry these rule numbers.
 | R11 | Teammates | nearest first, from goal + 0.5 s, 0.12 s apart, arms up, fist (Yes) or clap, facing the scorer; the keeper a fist; the nearest outfield team-mate (within 30 m) sprints over from 0.3 s before the goal, his track plus an offset to 1 m beside the scorer at about 7.5 m/s over the gap, stepping round whoever is in his way, joining in on arrival, held 8 s, eased back over 4 s | F23, F24 |
 | R12 | Conceding side | from their own goal outwards, from goal + 0.35 s, 0.07 s apart plus up to 0.15 s at random, 3-6 s of hands on head, hands on hips, slumped or palms out, in turn so neighbours differ; nobody stands within 1 m of the beaten keeper lying on the grass; the keeper shakes his head, then hands on hips | F26, F27 (durations J) |
 | R13 | Near miss | a shot off target that ends by the frame (within 2.5 m of a post or the bar line), or one saved within 2.5 s: shooter hands on head 2.5 s, two teammates within 20 m 2 s; the keeper points to organise | F27 |
-| R14 | Foul | fouled player appeals 1.6 s, fouler palms up 1.5 s, two teammates within 12 m arm up | F21 |
+| R14 | Foul | fouled player goes down and rolls (players.js `tumble`, Roll from 0.1 s after the contact), then appeals 1.6 s, fouler palms up 1.5 s, two teammates within 12 m arm up | F21 |
 | R15 | Calling | the receiver of a kick of 15 m or more raises an arm from 1.2 s before it is struck | F21 |
 | R16 | Keeper organises | points for 3.5 s from 4 s before an opponent's set piece | F29 |
 

@@ -60,8 +60,14 @@ shot of a match broadcast does.
   nothing but grass behind the players.
 - **Replays:** one free camera at four angles: the goal camera (14 m behind the goal line on the
   long axis, 13.5 degrees to the penalty mark), a pitch-level camera in line with the 18-yard line,
-  the reverse angle from the far stand and a high tactical view. The replay timing logic is the
-  one from `docs/flow3d.md`, unchanged.
+  the reverse angle from the far stand and a high tactical view. A goal replay runs 5.5 s: 2.5 s
+  from behind the goal at full speed, then the last second before the goal and the ball in the net
+  from pitch level at half speed (`view3d.js` REPLAY.slow), as broadcasts slow the decisive touch.
+- **Shots and the player on the ball:** every shot that is not a goal gets a short punch-in on
+  camera 1 towards where it ends (22 m wide, 1.2 s held, 1.2 s out, `camera.js` SHOT_PUNCH). In
+  open play the shirt and surname of the player on the ball hang over his head, as in a football
+  game (`view3d.js` CARRIER): the player of the next touch, while the ball is on the ground within
+  2.5 m of him for 0.2 s.
 
 ## 2. Post-processing
 
@@ -214,8 +220,6 @@ Compared still by still against the before set, these are the parts that still g
 - **The tight shot crosses traffic.** Camera 2 stands still and other players run through the
   frame, sometimes in front of the scorer; a real operator would reframe or wait. The lower-third
   nameplate covers the scorer's waist in the tight still.
-- **Replays run at normal speed.** A real goal replay is usually slowed down; the replay timing
-  logic from `docs/flow3d.md` is unchanged.
 - **The lens flare is faint**, on purpose, and nearly lost at phone size.
 - **Low profile shadows are blobs only**: no shadow shape, just a soft dark patch and a faint
   streak per mast.

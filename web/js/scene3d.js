@@ -342,13 +342,13 @@ export class Scene3D {
     this.drivers.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
   }
 
-  // Screen position, in 1920 x 1080 stage pixels, of a player's feet.
-  project(entityIndex, ts) {
+  // Screen position, in 1920 x 1080 stage pixels, of a player's feet (or of the point `above` metres over them).
+  project(entityIndex, ts, above = 0) {
     const p = this.match.at(entityIndex, Math.min(ts, this.match.duration));
     if (!p) return { x: 0, y: 0, visible: false };
     const o = offset(this.drivers, entityIndex, Math.min(ts, this.match.duration));
     const cam = this.scene.activeCamera;
-    const world = P(p[0] + o[0], p[1] + o[1], 0);
+    const world = P(p[0] + o[0], p[1] + o[1], above);
     const w = this.engine.getRenderWidth(), h = this.engine.getRenderHeight();
     const view = cam.getViewMatrix();
     if (B.Vector3.TransformCoordinates(world, view).z <= 0) return { x: 0, y: 0, visible: false };
