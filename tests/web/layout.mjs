@@ -221,16 +221,16 @@ try {
       await page.keyboard.press("Escape");
       if (!phone) {
         // a desktop window needs no scroll for the show; a short one may leave the agent strip, whole, under
-        // the fold (app.js keeps the graphics on the pitch first)
+        // the fold (app.js keeps the graphics on the pitch first); the audiences box always sits below it
         const r = await page.evaluate(() => {
-          const kids = [...document.querySelectorAll("#app > *")].filter((el) => el.id !== "activity" && el.getClientRects().length);
+          const kids = [...document.querySelectorAll("#app > *")].filter((el) => !["activity", "audiences"].includes(el.id) && el.getClientRects().length);
           const strip = document.querySelector("#activity").getBoundingClientRect();
           return { tall: document.documentElement.scrollHeight - innerHeight, show: Math.max(...kids.map((el) => el.getBoundingClientRect().bottom)) - innerHeight,
-            stripUnder: strip.top >= innerHeight - 1 };
+            stripUnder: strip.top >= innerHeight - 1 || strip.bottom <= innerHeight + 1 };  // under the fold or whole above it
         });
         if (r.show > 1) fail(`${tag}: the show ends ${r.show.toFixed(0)} px under the window`);
         else if (r.tall > 1 && !r.stripUnder) fail(`${tag}: the page is ${r.tall} px taller than the window, with the agent strip cut by the fold`);
-        else if (r.tall > 1) console.log(`${tag}: the agent strip under the fold, ${r.tall} px of scroll`);
+        else if (r.tall > 1) console.log(`${tag}: ${r.tall} px of scroll under the show (agent strip, audiences box)`);
       }
     });
 

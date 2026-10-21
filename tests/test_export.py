@@ -33,13 +33,13 @@ def test_template_export(match_db, tmp_path):
     cues = data["cues"]
     fact_ids = {f["fact_id"] for f in data["facts"]}
     assert {c["graphic"] for c in cues} == set(PAYLOAD_KEYS)
-    assert {c["audience"] for c in cues} == {"analyst", "casual"} and {c["lang"] for c in cues} == {"en"}
+    assert {c["audience"] for c in cues} == {"analyst", "casual", "kids"} and {c["lang"] for c in cues} == {"en"}
     assert len({c["cue_id"] for c in cues}) == len(cues)
     for c in cues:
         assert c["story_id"] is None and set(c["payload"]) == PAYLOAD_KEYS[c["graphic"]]
         used = c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]
         assert set(used) <= fact_ids
-    for audience in ("analyst", "casual"):
+    for audience in ("analyst", "casual", "kids"):
         mine = [c for c in cues if c["audience"] == audience]
         for c in mine:
             on_screen = [d for d in mine if d["ts"] <= c["ts"] < d["ts"] + d["duration_s"]]
@@ -59,4 +59,6 @@ def test_export_uses_runtime_cues_when_present(match_db, tmp_path):
     out = export("M001", conn, tmp_path / "web", rt)
     cues = json.loads((out / "cues.json").read_text())
     assert cues == [{"match_id": "M001", "cue_id": "C-000001", "story_id": None, "ts": 5.0, "duration_s": 6.0,
-                     "graphic": "nameplate", "audience": "casual", "lang": "en", "payload": {"player_id": "T01-9"}}]
+                     "graphic": "nameplate", "audience": "casual", "lang": "en", "payload": {"player_id": "T01-9"}},
+                    {"match_id": "M001", "cue_id": "C-000002", "story_id": None, "ts": 5.0, "duration_s": 6.0,  # the kids copy
+                     "graphic": "nameplate", "audience": "kids", "lang": "en", "payload": {"player_id": "T01-9"}}]

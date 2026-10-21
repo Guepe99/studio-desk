@@ -72,6 +72,7 @@ body {
 #app > #ask { order: 2; }
 #app > #activity { order: 3; }
 #app > #deck { order: 4; }
+#app > #audiences { order: 5; }
 
 /* The frame is sized by app.js to the largest 16:9 that fits; the 1920x1080 stage is scaled into it.
    It stays a dark picture: green grass in 2D, the stadium in 3D. */
@@ -86,7 +87,7 @@ body {
    at its own scale (ograf-host.js), below the controls or, in a wide short window (.deck-side), beside the frame */
 #deck { display: none; }
 .deck #deck { display: flex; flex-direction: column; gap: 8px; flex: none; }
-.deck-side #app { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto 1fr auto auto; justify-content: center; align-content: center; column-gap: 10px; }
+.deck-side #app { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto 1fr auto auto auto; justify-content: center; align-content: center; column-gap: 10px; }
 .deck-side #app > #masthead { grid-area: 1 / 1 / 2 / 3; }
 .deck-side #app > #frame { grid-area: 2 / 1 / 4 / 2; }
 /* the deck is never taller than the frame (app.js) and scrolls on its own; the open Ask panel takes its place */
@@ -95,6 +96,7 @@ body {
 @media (max-width: 1099px) { .deck-side:has(#ask:not([hidden])) #deck { visibility: hidden; } }
 .deck-side #app > #controls { grid-area: 4 / 1 / 5 / 3; justify-self: center; }
 .deck-side #app > #activity { grid-area: 5 / 1 / 6 / 3; justify-self: center; }
+.deck-side #app > #audiences { grid-area: 6 / 1 / 7 / 3; justify-self: center; }
 .deck-item { position: relative; flex: none; overflow: hidden; }
 .deck-item > div { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
 /* the docked desk stays in view while the page scrolls */
@@ -311,3 +313,18 @@ li[data-agent="verifier"] { --agent: var(--green); }
 .act-steps > li.act-empty { padding: 0; line-height: 20px; }
 #activity:has(.act-empty) .act-sum { display: none; }
 #next-moment[aria-disabled="true"] { cursor: default; }
+
+/* ---- Same moment, several audiences (audiences.js): under everything else, never on the picture.
+   One card per audience, as many a row as fit; the audience on screen has its name on green. */
+#audiences { flex: none; max-width: 100%; margin: 6px 0 12px; }
+#audiences[hidden] { display: none; }
+.aud-title { margin: 0; font-size: 13px; line-height: 20px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); }
+.aud-sub { margin: 0 0 6px; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--purple-400); }
+.aud-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 8px; }
+.aud-card { min-width: 0; background: var(--lilac-50); border: 1.5px solid transparent; border-radius: var(--r-box); padding: 8px 10px; }
+.aud-card.on { border-color: var(--purple); background: var(--page); }
+.aud-pick { max-width: 100%; min-height: 28px; padding: 3px 10px; border: 1.5px solid var(--purple); border-radius: var(--r-pill); background: var(--page); color: var(--purple);
+  font: 800 13px/1.2 var(--font); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.aud-pick:hover { background: var(--lilac-100); }
+.aud-pick[aria-pressed="true"] { background: var(--green); }
+.aud-text { margin: 6px 0 0; font-size: 15px; line-height: 1.35; color: var(--purple); overflow-wrap: anywhere; }

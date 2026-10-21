@@ -115,7 +115,9 @@ def get_facts(match_id: str, kind: str | None = None, player_id: str | None = No
     facts by value, highest first (the fastest sprints, the hardest shots).
     kind is one of: score (a goal: player_id the scorer, label "Goal 2-1" home side first), shot_speed,
     shot_distance, sprint_speed, sprint_count, distance_covered, ball_speed, pass_distance, pass_difficulty,
-    pass_accuracy, xt_added, momentum, press_intensity, formation, line_height, team_length, team_width."""
+    pass_accuracy, xt_added, momentum, press_intensity, formation, line_height, team_length, team_width,
+    and a player's totals since the period's kick-off every 15 minutes: checkin_touches, checkin_passes,
+    checkin_distance (km), checkin_sprints, checkin_top_speed."""
     sql, args = "SELECT * FROM facts WHERE match_id = ? AND ts <= ?", [match_id, _now()]
     for col, op, val in (("kind", "=", kind), ("player_id", "=", player_id), ("team_id", "=", team_id),
                          ("ts", ">=", from_ts), ("ts", "<=", to_ts)):

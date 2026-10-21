@@ -145,3 +145,37 @@ def test_window_labels_never_overlap_and_name_stoppage_time():
     assert window_label(2700.0, p1, 1, p1) == "first-half stoppage time"
     assert window_label(2580.0, 2760.0, 1, p1) == "min 44-45+1"
     assert window_label(p1 + 2700.0, p1 + 2880.0, 2, p1) == "second-half stoppage time"
+
+
+def test_player_checkins_count_from_kick_off(tmp_path, monkeypatch):
+    """Check-ins every CHECKIN_S of a period (900 s in a match; 60 s on the 3-minute fixture): touches,
+    passes completed, km, sprints and top speed so far, for each player on the pitch; other kinds unchanged."""
+    from studiodesk.facts import engine
+    info = write_fixture(tmp_path / "matches.sqlite")
+    conn = db.connect(info["path"])
+    build(conn, info["match_id"], xt_grid=None)
+    before = facts(conn)
+    monkeypatch.setattr(engine, "CHECKIN_S", 60.0)
+    build(conn, info["match_id"], xt_grid=None)
+    rows = facts(conn)
+    assert [r for r in rows if not r["kind"].startswith("checkin_")] == before  # new kinds only: ids unchanged
+    got = {(r["kind"], r["player_id"], r["ts"]): r for r in rows if r["kind"].startswith("checkin_")}
+    assert {ts for _, _, ts in got} == {60.0, 120.0, 240.0, 300.0}  # 180 and 360 are period ends
+    events = [dict(r) for r in conn.execute("SELECT * FROM events")]
+    for pid in (info["sprinter"], "T02-7"):
+        for cp in (60.0, 120.0, 240.0, 300.0):
+            mine = [e for e in events if e["player_id"] == pid and e["ts"] <= cp and e["type_name"] != "foul"]
+            ok = [e for e in mine if e["type_name"] in engine.PASS_TYPES and e["result_name"] == "success"]
+            assert got[("checkin_touches", pid, cp)]["value"] == len(mine)
+            assert got[("checkin_passes", pid, cp)]["value"] == len(ok)
+            assert sorted(json.loads(got[("checkin_passes", pid, cp)]["source_event_ids"])) == sorted(e["event_id"] for e in ok)
+    s = info["sprinter"]
+    assert got[("checkin_sprints", s, 60.0)]["value"] == 0 and ("checkin_top_speed", s, 60.0) not in got
+    assert got[("checkin_sprints", s, 120.0)]["value"] == 1
+    assert abs(got[("checkin_top_speed", s, 120.0)]["value"] - info["sprint_kmh"]) < 1.0
+    assert got[("checkin_top_speed", s, 120.0)]["label_en"].startswith("Top speed ")
+    # a jogger covers 1.5 m/s: 0.18 km by 2 minutes, a bit under 0.45 km by 5 (the half-time switch is not measured)
+    assert got[("checkin_distance", "T02-7", 120.0)]["value"] == 0.2
+    assert got[("checkin_distance", "T02-7", 300.0)]["value"] == 0.4
+    assert got[("checkin_distance", "T02-7", 120.0)]["unit"] == "km"
+    conn.close()
