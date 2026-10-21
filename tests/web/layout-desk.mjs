@@ -91,9 +91,10 @@ async function run(w, h) {
   }, ts);
   // a held story when the match has one (DEMO), else one the risk rule put on air (M001)
   const pick = await page.evaluate(() => {
-    const d = window.studioDesk.desk, s = d.stories.find((x) => d.status(x) === "needs_review") ?? d.stories.find((x) => d.status(x) === "auto_approved");
-    const at = Math.min(...window.studioDesk.match.cues.filter((c) => c.story_id === s?.story_id).map((c) => c.ts));
-    return s && { id: s.story_id, held: d.status(s) === "needs_review", at };
+    const d = window.studioDesk.desk, first = (x) => Math.min(...window.studioDesk.match.cues.filter((c) => c.story_id === x?.story_id).map((c) => c.ts));
+    // an auto story needs a second between its facts and its graphic, where it is listed as Next (check 9)
+    const s = d.stories.find((x) => d.status(x) === "needs_review") ?? d.stories.find((x) => d.status(x) === "auto_approved" && x.ts + 1 < first(x));
+    return s && { id: s.story_id, held: d.status(s) === "needs_review", at: first(s), ts: s.ts };
   });
   if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
   const card = `#story-${pick.id}`;
@@ -171,9 +172,9 @@ async function run(w, h) {
 
   // 9. a touch target that is still a disclosure: Details, and the evidence inside it
   if (touch) {
-    // an auto story on air sits in the compact strip, which hides Details on a phone: measure it one second earlier, as Next
+    // an auto story on air sits in the compact strip, which hides Details on a phone: measure it before its graphic, as Next
     const aired = !!(await page.$(`#desk .sec-air ${card}`));
-    if (aired) await seek(Math.max(0, pick.at - 1));
+    if (aired) await seek((pick.ts + pick.at) / 2);
     const sums = await page.evaluate((c) => {
       const more = document.querySelector(`${c} details.more`);
       if (more) more.open = true;
@@ -285,7 +286,9 @@ async function run(w, h) {
   if (roomy) for (const lang of ["it", "es", "it"]) {
     await setLang(page, lang);
     await page.evaluate(() => { for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = 0; });
-    const a = await firstAction();
+    // the desk re-renders after a language switch: measure once it has settled
+    let a = await firstAction();
+    for (let i = 0; i < 30 && !a.seen; i++) { await page.waitForTimeout(100); a = await firstAction(); }
     expect(a.seen, `${tag} N7 ${lang}: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`);
   }
   const leftovers = await englishIn(page, "#desk, #activity, #desk-open, #radar, #replay-badge, #voice");

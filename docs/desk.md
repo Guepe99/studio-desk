@@ -9,9 +9,10 @@ redesign of 20 Oct 2026 works and which professional tools and guidelines each c
 
 ## What the desk lists
 
-Only the stories the match has reached: a story is listed once its first graphic is at most
-`LOOKAHEAD_S` (60 s) after the replay time, the same `state.ts` the broadcast plays, so the rule
-works unchanged on a live clock. A story inside the look-ahead carries a yellow "Next" tag and the
+Only the stories the match has reached: a story is listed once the replay time, the same `state.ts`
+the broadcast plays, has passed its facts (the story's `ts`) and its first graphic is at most
+`LOOKAHEAD_S` (60 s) away. Live, a story is written only after its facts, so the rule works
+unchanged on a live clock: a goal is never listed before it is scored. A story inside the look-ahead carries a yellow "Next" tag and the
 seconds to its slot. Playout rundowns mark the item on air in red and the next one in yellow
 ([Viz Mosart Rundown View](https://docs.vizrt.com/viz-mosart-users-guide/5.7/Rundown_View.html)); a
 desk that showed the 23' goal at 11' would spoil the replay and could never happen live.

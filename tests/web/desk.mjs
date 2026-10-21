@@ -99,7 +99,9 @@ async function structure(page, all, storyIds, ts, tag) {
   await seekTo(page, ts);
   const secs = await sections(page);
   expect(secs.map((s) => s.id).join() === "air,needs,done", `${tag} @${ts}: sections ${secs.map((s) => s.id)}`);
-  const want = new Set(storyIds.filter((id) => firstCue(all, id) <= ts + LOOKAHEAD));
+  // live, a story exists once the match has passed its facts (its ts): a goal is never listed before it is scored
+  const tsOf = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.studioDesk.desk.byId.get(id)?.ts])), storyIds);
+  const want = new Set(storyIds.filter((id) => tsOf[id] <= ts && firstCue(all, id) <= ts + LOOKAHEAD));
   const listed = secs.flatMap((s) => s.items).filter((i) => i.id.startsWith("story-")).map((i) => i.id.slice(6));
   expect(listed.length === new Set(listed).size && listed.length === want.size && listed.every((id) => want.has(id)),
     `${tag} @${ts}: listed ${JSON.stringify(listed)}, reached ${JSON.stringify([...want])}`);
@@ -506,7 +508,8 @@ async function scenario(browser, w, h) {
   await ctx.close();
 }
 
-// The look-ahead on a real replay: at 11' of M002 the 17' big chance is not listed; a minute before its graphic it is, as Next.
+// The look-ahead on a real replay: the 17' big chance of M002 is not listed at 11', nor a minute before its graphic
+// (the shot has not happened yet); between the shot and its graphic it is, as Next.
 async function lookahead(browser) {
   const m2 = await getJson("M002", "cues.json"), s2 = await getJson("M002", "stories.json");
   const chance = s2.find((s) => s.story_id === "S-000002");
@@ -521,7 +524,10 @@ async function lookahead(browser) {
   await structure(page, m2, s2.map((s) => s.story_id), 11 * 60, "M002");
   expect(!(await minutes()).includes("17'") && !(await page.$(card(chance))), `M002 at 11': the 17' story is listed ${JSON.stringify(await minutes())}`);
   await structure(page, m2, s2.map((s) => s.story_id), at - LOOKAHEAD + 5, "M002");
-  expect(await page.$eval(card(chance), (el) => !!el.querySelector(".tag")).catch(() => false), `M002 a minute before: the 17' story is not listed as Next`);
+  expect(!(await page.$(card(chance))), "M002 a minute before its graphic: the 17' chance is listed before the shot");
+  expect(chance.ts + 1 < at, `M002: the 17' chance has no time between its shot (${chance.ts}) and its graphic (${at})`);
+  await structure(page, m2, s2.map((s) => s.story_id), chance.ts + 1, "M002");
+  expect(await page.$eval(card(chance), (el) => !!el.querySelector(".tag")).catch(() => false), "M002 after the shot: the 17' story is not listed as Next");
   await structure(page, m2, s2.map((s) => s.story_id), at + 1, "M002");
   await page.screenshot({ path: `${shots}/desk-lookahead-M002.png` });
   await page.context().close();

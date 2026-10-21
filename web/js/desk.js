@@ -11,7 +11,7 @@
 // The desk's controls stay disabled until that is settled, and while a save is in flight: one request
 // at a time, so saves never cross and a server reply never undoes what the visitor did meanwhile.
 //
-// The stories tab lists only what the match has reached, plus LOOKAHEAD_S: a desk that showed the
+// The stories tab lists only stories whose facts the match has reached, up to LOOKAHEAD_S before their graphic: a desk that showed the
 // whole replay would spoil it. Three sections: on air now, what needs you, what is done.
 import { KICKER } from "../graphics/why_card/kicker.mjs";
 
@@ -478,8 +478,8 @@ export class Desk {
   // ---- the match so far -----------------------------------------------------------------------
 
   firstOf(s) { return this.firstAt.get(s.story_id) ?? s.ts; }
-  /** Listed: its first graphic has aired, or airs within LOOKAHEAD_S. */
-  visible(s, now = this.state.ts) { return this.firstOf(s) <= now + LOOKAHEAD_S; }
+  /** Listed: the match has reached its facts (live, it is written only then), and its first graphic has aired or airs within LOOKAHEAD_S. */
+  visible(s, now = this.state.ts) { return s.ts <= now && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
   shown() { return this.stories.filter((s) => this.visible(s)); }
   /** The stories waiting for this visitor, oldest first. */
