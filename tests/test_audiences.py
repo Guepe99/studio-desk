@@ -18,6 +18,12 @@ from studiodesk.agents import rules
 
 WE = {"en": r"\b(we|us|our)\b", "it": r"\b(noi|nostr[oaie])\b", "es": r"\b(nosotros|nuestr[oa]s?)\b"}
 PACK_IDS = ("M001", "M002", "M003", "M004")
+# wordings a native reviewer flagged as calques or wrong; none may come back in an audience line
+CALQUES = {"it": r"\binerzia (?:del|dell['’]|dello|della [A-Z])|^L'inerzia|Indice di inerzia|Un altro gol per|Bel tentativo|"
+                 r"Velocità nello scatto|km/h per (?:il|l['’]|lo)\b",
+           "es": r"se le va alta|Mala noticia|Se estrena|Bien jugado|Queda la segunda parte para|Se escapa la ventaja|"
+                 r"Qué trabajo|momento para (?:el|la)\b|Velocidad del (?:disparo|cabezazo)|\by se (?:marcha|va por encima)|"
+                 r"adelanta a sus|echa atrás a sus|Ahora es \d|km/h para el|pases completados"}
 
 
 @pytest.fixture(scope="module", params=["frozen", "live"])
@@ -34,6 +40,7 @@ def test_every_audience_line_passes_every_check(packs):
                 assert set(texts) == set(rules.LANGS), (mid, sid, aud)
                 for lang, text in texts.items():
                     assert not pb.problems(m, s, text, lang), (mid, sid, aud, lang, text, pb.problems(m, s, text, lang))
+                    assert not re.search(CALQUES.get(lang, "$^"), text), (mid, sid, aud, lang, text)
                     if aud.startswith("team:"):
                         assert not re.search(WE[lang], text, re.I), (mid, sid, aud, text)  # partisan, never "we"
                 seen.add((s["kind"], aud.split(":")[0]))
@@ -43,6 +50,15 @@ def test_every_audience_line_passes_every_check(packs):
                 assert want <= set(lines), (mid, sid, sorted(want - set(lines)))
     for kind in au.LINES:
         assert {(kind, a) for a in ("analyst", "casual", "kids", "team")} <= seen, kind
+
+
+def test_italian_says_momentum_and_spanish_does_not():
+    assert not rules.english_words("Il momentum del Redwick sale a 7,1.", "it")
+    assert rules.english_words("El momentum del Redwick sube a 7,1.", "es")
+    assert rules._has(rules.MOMENTUM_WORDS, "il momentum del Redwick")  # still the wrong measure in a pressing story
+    assert "pases acertados" in au.CHECKIN["es"]["passes"][1] and "alto" in pb.OVER_ES[1]
+    speed_only = {"facts": [{"kind": "shot_speed", "value": 92.1}]}  # no distance fact, as in the DEMO fixture
+    assert au._metrics(speed_only, "es") == "Disparo a 92,1 km/h" and au._metrics({"facts": []}, "es") is None
 
 
 def test_the_line_on_air_falls_back_to_casual_then_to_the_writers_text():

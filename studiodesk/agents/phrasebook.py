@@ -227,7 +227,7 @@ OUTCOME = {"en": {"saved": ", but the keeper keeps it out", "wide": ", but it go
 SAVED = {"en": (", but the keeper keeps it out", ", but it's saved", ", but the keeper is equal to it"),
          "it": ("para il portiere", "il portiere ci arriva", "risponde il portiere"),
          "es": ("lo para el portero", "responde el portero", "se la saca el portero")}
-OVER_ES = ("se va por encima del larguero", "se le va alta")
+OVER_ES = ("se va por encima del larguero", "se le va alto")  # "alto": the shot (el disparo)
 WITH_SHOT = ("with a shot at {} km/h", "con un tiro a {} km/h", "con un disparo a {} km/h")
 
 
@@ -335,9 +335,10 @@ def momentum_line(m, story, lang, tone, focus, opener, form=0):  # noqa: ARG001
         return f"{head} {a} to {b}" + (f", then{it} {'drops' if fall else 'eases'} to {c}." if c else ".")
     if lang == "it":
         of = team(m, tid, "it", "di")
-        head = (f"L'inerzia {of} {'schizza' if rise else 'sale'} da", f"Cresce l'inerzia {of}: da",
-                f"{team(m, tid, 'it', start=True)} prende slancio: inerzia da", f"Sale l'inerzia {of}: da", None,
-                f"Inerzia in crescita {team(m, tid, 'it', 'per')}: da")[form]
+        # "il momentum" of a team, as Italian broadcasters say it; "l'inerzia del Redwick" is a calque
+        head = (f"Il momentum {of} {'schizza' if rise else 'sale'} da", f"Cresce il momentum {of}: da",
+                f"{team(m, tid, 'it', start=True)} prende slancio: momentum da", f"Sale il momentum {of}: da", None,
+                f"Momentum in crescita {team(m, tid, 'it', 'per')}: da")[form]
         return f"{head} {a} a {b}" + (f", poi {'scende' if fall else 'cala'} a {c}." if c else ".")
     of = team(m, tid, "es", "de")  # "empuje": "inercia" is a calque of momentum
     head = (f"El empuje {of} {'se dispara' if rise else 'sube'} de", f"Crece el empuje {of}: de",
@@ -357,7 +358,7 @@ def _momentum_between(m, tid, tf, lang, rise, fall, c):
             (f", then {'drops' if fall else 'eases'} to {c}." if c else ".")
     if lang == "it":
         art = [("l'" if when(m, f["ts"], "it").startswith("all'") else "il ") for f in tf[:2]]
-        return (f"Tra {art[0]}{ma}' e {art[1]}{mb}' l'inerzia {team(m, tid, 'it', 'di')} "
+        return (f"Tra {art[0]}{ma}' e {art[1]}{mb}' il momentum {team(m, tid, 'it', 'di')} "
                 f"{'schizza' if rise else 'sale'} da {va} fino a {vb}") + \
             (f", poi {'scende' if fall else 'cala'} a {c}." if c else ".")
     return (f"Entre el minuto {ma} y el {mb}, el empuje {team(m, tid, 'es', 'de')} "

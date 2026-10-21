@@ -1068,7 +1068,7 @@ TAKES_LEAD = {"en": r"tak\w* the lead|took the lead|puts? (?:\w+ ){1,4}(?:ahead|
               "es": r"(?:se )?pone por delante|adelant\w*"}
 POSSESSION = r"possession|bossed|kept the ball|possesso|posesión|domina(?:n|ba)? el balón|dominio del balón"
 DOMINATION = (r"domin\w*|control of (?:play|the game|the match|the ball)|controllo del gioco|controllo della partita|"
-              r"control del juego|control del partido")  # no fact measures domination; momentum is "inerzia"
+              r"control del juego|control del partido")  # no fact measures domination; momentum is its own fact
 RISING = {"en": r"rose|rising|rises|climb\w*|surg\w*|grew|growing|cranked up|ramped up|built up|kept up|maintain\w*|"
                 r"sustained|held up|on the rise",
           "it": r"sale|salit[oa]|cresc\w*|aument\w*|in crescendo|progress\w*|mantenut[oa]|mantiene|sostenut[oa]|costante|"
@@ -1492,14 +1492,15 @@ def jargon(text):
 
 # English football words copied into an Italian or Spanish line ("pressing" is Italian too)
 ENGLISH = (r"close[- ]range|six[- ]yard|edge of the box|from distance|wide|header|keeper|the box|strike|shot|away|"
-           r"wins?|blocked|pass accuracy|momentum")
+           r"wins?|blocked|pass accuracy")
 
 
 def english_words(text, lang):
-    """English words in an Italian or Spanish line: a style issue first, a fallback to the template in the last round."""
+    """English words in an Italian or Spanish line: a style issue first, a fallback to the template in the last round.
+    "momentum" is Italian broadcast language ("il momentum del Redwick"); Spanish says "empuje"."""
     if lang == "en":
         return []
-    hit = _has(ENGLISH + ("|pressing" if lang == "es" else ""), text)
+    hit = _has(ENGLISH + ("|pressing|momentum" if lang == "es" else ""), text)
     return [f"English word: '{hit.group(0)}', say it in your language"] if hit else []
 
 
