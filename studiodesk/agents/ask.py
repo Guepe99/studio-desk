@@ -14,6 +14,7 @@ import time
 from contextlib import closing
 
 from agent_framework import Agent, chat_middleware, tool
+from opentelemetry import trace
 
 from .. import config, db, mcp_server
 from . import rules
@@ -233,13 +234,21 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
 async def answer_within(endpoint, match_id, ts, question, lang, p1, timeout=None):
     """`answer` under `timeout` seconds (config.ASK_TIMEOUT_S by default), never raising: once a question is
     counted, any error or the time limit becomes the declined result, with the usage spent so far, so the
-    audit and the cost are kept."""
+    audit and the cost are kept.
+    One OpenTelemetry span per question, parent of the agent's spans, with the verdict as an event; the
+    question's text never goes in it (a no-op without studiodesk/telemetry.py's exporter)."""
     usage = new_usage()
-    try:
-        return await asyncio.wait_for(answer(client(endpoint), match_id, ts, question, lang, p1, usage),
-                                      config.ASK_TIMEOUT_S if timeout is None else max(0.0, timeout))
-    except Exception as e:  # noqa: BLE001 - the answer may fail anywhere: database, names list, client
-        if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
-            _charge_cut(usage)
-        usage.pop("pending_chars", None)
-        return declined(lang, rules.brief_error(e), usage)
+    with trace.get_tracer("studiodesk").start_as_current_span(
+            "ask_studio", attributes={"studiodesk.match_id": match_id, "studiodesk.ts": ts, "studiodesk.lang": lang}) as span:
+        try:
+            out = await asyncio.wait_for(answer(client(endpoint), match_id, ts, question, lang, p1, usage),
+                                         config.ASK_TIMEOUT_S if timeout is None else max(0.0, timeout))
+        except Exception as e:  # noqa: BLE001 - the answer may fail anywhere: database, names list, client
+            if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
+                _charge_cut(usage)
+            usage.pop("pending_chars", None)
+            out = declined(lang, rules.brief_error(e), usage)
+        span.add_event("studiodesk.verdict", {"studiodesk.accepted": out["status"] == "answered",
+                                              "studiodesk.status": out["status"], "studiodesk.reason": out["reason"],
+                                              "studiodesk.fact_ids": out["fact_ids"]})
+        return out

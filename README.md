@@ -68,6 +68,8 @@ Tests run offline and never call a paid service: `.venv/bin/pytest -q` and `node
 
 One container on Azure Container Apps (consumption plan, one replica), with its image on GitHub Container Registry. The container reaches Foundry through a managed identity. Visitors cannot start live agent runs; the replays show agent output recorded on Azure. Desk decisions are stored per session inside the container (`runtime.sqlite`), so deploying a new revision resets them.
 
+Besides the Traces tab, the agents send OpenTelemetry traces to Azure Application Insights (`studiodesk-insights`, on the Log Analytics workspace `log-studiodesk`, both capped at 0.1 GB a day) when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, in the Container App or for a local `python -m studiodesk.agents run` (`studiodesk/telemetry.py`). Microsoft Agent Framework's own spans carry the GenAI attributes: `invoke_agent <agent>`, `chat <model>` with token usage, `execute_tool` and the MCP `tools/call`. Each Ask the studio question is an `ask_studio` span, and each verifier verdict a `studiodesk.verdict` event with its short reason. Message content, the visitor's question and client addresses stay out. The infrastructure is in `infra/` (Bicep): `monitoring.bicep` for the workspace and Application Insights, `main.bicep` for the Container App with the connection string as a secret.
+
 ## How it was built
 
 Written with Claude Code (Anthropic). Third-party material is listed with its licence in [THIRD_PARTY.md](THIRD_PARTY.md).

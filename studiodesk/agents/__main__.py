@@ -13,7 +13,7 @@ import json
 import logging
 from pathlib import Path
 
-from .. import config, db
+from .. import config, db, telemetry
 from . import safety
 from .llm import FakeChatClient, azure_client
 from .workflow import run_match
@@ -35,6 +35,7 @@ def main(argv=None):
     check.add_argument("--runtime", type=Path, default=config.RUNTIME_DB)
     args = ap.parse_args(argv)
     logging.disable(logging.INFO)  # framework, MCP and HTTP chatter; warnings still show
+    telemetry.setup()  # spans to Application Insights when APPLICATIONINSIGHTS_CONNECTION_STRING is set
 
     rt = db.connect(args.runtime)
     try:

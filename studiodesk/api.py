@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
-from . import __version__, config, db
+from . import __version__, config, db, telemetry
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.openai.azure.com
@@ -39,6 +39,7 @@ async def _startup(app):
     # the agents' imports take seconds on half a CPU: done now, the page's 4 s Ask probe finds them ready
     async def ready():
         try:
+            await asyncio.to_thread(telemetry.setup)  # Application Insights, only with its connection string
             await asyncio.to_thread(_ask_ready)
         except HTTPException:
             pass  # no model: the probe gets its 503 as before
@@ -49,8 +50,10 @@ async def _startup(app):
 
 
 # No /docs or /openapi.json in public: they would advertise the admin route and its header.
+# FastAPI's own OpenTelemetry spans (only once studiodesk/telemetry.py set an exporter) for /api/ only: the
+# page's files would fill the Application Insights cap. They carry no client address.
 app = FastAPI(title="Studio Desk", version=__version__, docs_url=None, redoc_url=None, openapi_url=None,
-              lifespan=_startup)
+              lifespan=_startup, telemetry={"exclude": lambda scope: not scope.get("path", "").startswith("/api/")})
 MAX_BODY_BYTES = 16384
 
 
