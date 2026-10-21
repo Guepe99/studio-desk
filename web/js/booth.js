@@ -504,7 +504,7 @@ export class Booth {
       const h = p.t + p.dur + RULES.handover[0] + (RULES.handover[1] - RULES.handover[0]) * this.rand();
       this.say("co", [ck], { facts }, h, "A", { at: h });
       return p;
-    }, true);
+    }); // a studio clip in the hold drops it: the clip already told the scorer, the speed and the score
   }
 
   foul(e, slots, at) {

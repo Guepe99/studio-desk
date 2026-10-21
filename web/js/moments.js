@@ -1,22 +1,22 @@
 // "Next key moment" (docs/CONTRACT.md, Page additions): seeks to LEAD_S before the next story graphic
-// on the sheet of the audience on screen. Template cues (story_id null) are not key moments. With the AI
+// on the sheet of the audience on screen, or before the play it is about (a shot's card comes up to 5 s after it). Template cues (story_id null) are not key moments. With the AI
 // graphics off there are no story graphics: the button goes from goal to goal (score facts are not AI) and says so.
 
 import { inScope } from "./keys.js";
 
-export const LEAD_S = 3;
+export const LEAD_S = 6; // a tight highlight starts at the final pass, about 3 to 5 s before the shot
 const AFTER_S = 0.5; // a press right after landing moves on instead of landing on the same moment again
 const KEY = "n";
 
 /** Seek targets, ascending. A story graphic that starts while (or right as) an earlier story graphic is
  *  on air, whatever its story, is the same moment: one stop per goal, not one per card. */
-export function momentTargets(sheet) {
+export function momentTargets(sheet, start = (c) => c.ts) {
   const cues = sheet.filter((c) => c.story_id).sort((a, b) => a.ts - b.ts);
   return cues.filter((c, i) => !cues.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1))
-    .map((c) => Math.max(0, c.ts - LEAD_S));
+    .map((c) => Math.max(0, Math.min(c.ts, start(c)) - LEAD_S)).sort((a, b) => a - b);
 }
 
-/** With the AI off: LEAD_S before each goal, ascending. */
+/** With the AI off: LEAD_S before each goal (its shot, when the caller knows it), ascending. */
 export const goalTargets = (goalTs) => [...goalTs].sort((a, b) => a - b).map((ts) => Math.max(0, ts - LEAD_S));
 
 // the button's words for the same key when it goes from goal to goal
@@ -58,10 +58,11 @@ export class Moments {
   }
 
   /** @param {boolean} loaded  the stories are in: before that the sheet has templates only
-   *  @param {number[]|null} goals  the goal times when the AI graphics are off, else null */
-  setSheet(sheet, loaded, goals = null) {
+   *  @param {number[]|null} goals  the goal times when the AI graphics are off, else null
+   *  @param {(cue) => number} start  when the play a story graphic is about began on the pitch */
+  setSheet(sheet, loaded, goals = null, start = undefined) {
     this.goals = !!goals;
-    this.targets = goals ? goalTargets(goals) : momentTargets(sheet);
+    this.targets = goals ? goalTargets(goals) : momentTargets(sheet, start);
     this.loaded = loaded || this.goals; // the goals are in the replay from the start
   }
 

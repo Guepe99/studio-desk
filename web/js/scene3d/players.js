@@ -130,6 +130,42 @@ export function actionDriver(match, schedule) {
   };
 }
 
+// Throw-ins: the thrower picks the ball up, lifts it over his head with both hands and throws it
+// (Laws of the Game, Law 15: both hands, from behind and over the head, facing the field). The arms
+// borrow the raise of THROW.clip, held at THROW.up; the scene puts the ball between the hands
+// (throwBall). Times are seconds from the throw: [start, release, end].
+export const THROW = { clip: "M_celeb_arms_up", up: 1.1, start: -1.6, raise: 0.7, end: 0.45 };
+
+// Per player id, [{ts, yaw}] of his throw-ins, yaw towards where the ball goes.
+export function scheduleThrows(events) {
+  const out = {};
+  for (const e of events) {
+    if (e.type_name !== "throw_in" || !e.player_id) continue;
+    (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y) });
+  }
+  return out;
+}
+
+// The throw holding ts and the time from its release (negative before), or null.
+export function throwAt(list, ts) {
+  for (const t of list ?? []) if (ts >= t.ts + THROW.start && ts < t.ts + THROW.end) return { t, u: ts - t.ts };
+  return null;
+}
+
+// The throw-ins as a driver (priority 30): arms up over the head, facing the throw.
+export function throwDriver(match, schedule) {
+  return {
+    priority: 30,
+    pose(i, ts) {
+      const a = throwAt(schedule[match.meta.entities[i]], ts);
+      if (!a) return null;
+      const { u } = a, w = Math.max(0, Math.min(1, (u - THROW.start) / 0.25, (THROW.end - u) / THROW.end));
+      const t = Math.min(THROW.up, ((u - THROW.start) / THROW.raise) * THROW.up);
+      return { yaw: a.t.yaw, yawW: w, emotion: { kind: "throw", clip: THROW.clip, t, weight: w, upper: true } };
+    },
+  };
+}
+
 // Combine the drivers' answers for player i at ts (drivers sorted by priority). The facing
 // overrides come back as turns, applied over the scene's own facing with facing().
 export function resolve(drivers, i, ts) {

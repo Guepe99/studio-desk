@@ -171,9 +171,19 @@ def match_texts(lines, lang, meta):
     return out
 
 
-def clip_file(lang, k, voice_name, gain_db, sub):
-    """The name holds what makes the clip: a new voice or gain is a new file, so a resumed build never keeps a stale one."""
-    return f"{sub}{lang}/{hashlib.sha1(f'{k}|{voice_name}|{gain_db}'.encode('utf-8')).hexdigest()[:12]}.mp3"
+# A play-by-play line that ends in "!" (a goal, a save, a miss) is said higher, louder and drawn out, as commentators do
+# at a goal (Trouvain 2011: the goal roar at 400 Hz and above, with lengthening); Kokoro has no emotion control
+HYPE_AF = "rubberband=pitch=1.19:tempo=0.94:formant=preserved,volume=3dB"
+
+
+def hype(role, text):
+    return HYPE_AF if role == "pbp" and "!" in text else ""
+
+
+def clip_file(lang, k, voice_name, gain_db, sub, hype_af=""):
+    """The name holds what makes the clip: a new voice, gain or hype is a new file, so a resumed build never keeps a stale one."""
+    made = f"{k}|{voice_name}|{gain_db}" + (f"|{hype_af}" if hype_af else "")
+    return f"{sub}{lang}/{hashlib.sha1(made.encode('utf-8')).hexdigest()[:12]}.mp3"
 
 
 def row(job, lang):
@@ -207,10 +217,10 @@ def build(texts, lang, out, lines, render=None, dry_run=False, log=print, names_
         hit = names.find_forbidden(text)
         if hit:
             raise ValueError(f"forbidden name {hit!r} in booth line {text!r}")
-        gain = cfg["gain_db"][role]
-        file = clip_file(lang, k, cfg[role], gain, sub)
+        gain, af = cfg["gain_db"][role], hype(role, text)
+        file = clip_file(lang, k, cfg[role], gain, sub, af)
         job = {"key": k, "role": role, "text": text, "say": voice.spoken(text, lang), "voice": cfg[role],
-               "gain_db": gain, "file": file, "path": out / file}
+               "gain_db": gain, "hype": af, "file": file, "path": out / file}
         if (out / file).exists():  # the file name holds key and voice: on disk means done, even after a crash
             keep[(lang, k)] = row(job, lang)
         else:

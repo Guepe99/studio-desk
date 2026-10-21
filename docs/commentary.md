@@ -133,8 +133,8 @@ The rules, from the research below:
   possession [GT] is dropped.
 - A7. The studio voice first. When a studio clip starts, the booth's lines stop (30 ms fade), the queue is
   cleared, nothing starts until 1.5 s after the clip, and the crowd ducks. The booth resumes on a fresh
-  shot, save, foul or set piece, on any event 8 s after that, or with a fill-in line (A6). Only the goal follow-up survives
-  a studio clip. The planner leaves room for each on-air studio clip, and the player enforces it again
+  shot, save, foul or set piece, on any event 8 s after that, or with a fill-in line (A6). Only the break exchange survives
+  a studio clip; the goal follow-up gives way to it, since the clip already tells the scorer, the speed and the score. The planner leaves room for each on-air studio clip, and the player enforces it again
   from `voice.current` [VG, CT].
 - B. Crowd. A bed loops all match. The anticipation sound rises when a team strings passes in the final
   third. An "ooh" follows a shot from 18 m or less that misses (after 0.3 s) or is saved (after 1 s), and the

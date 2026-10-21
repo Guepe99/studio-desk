@@ -323,8 +323,15 @@ function refreshCues() {
   });
   host.setCues(held, state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
-  moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => f.ts) : null);
+  moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
+    (c) => playStart(c.ts, desk.byId.get(c.story_id)?.evidence_event_ids));
   ask?.render();
+}
+
+// when the play behind a graphic or a goal began: its last evidence event up to 10 s before, else the time itself
+function playStart(ts, ids = []) {
+  const evs = match.events.filter((e) => ids?.includes(e.event_id) && e.ts <= ts && e.ts >= ts - 10);
+  return evs.length ? Math.max(...evs.map((e) => e.ts)) : ts;
 }
 
 let lastBug = "";
@@ -378,7 +385,7 @@ function buildSeekMarks() {
   const range = $("#seek-range");
   range.max = String(end);
   // one button per goal above the bar: the scoring team's code and the minute on its colour; a press lands LEAD_S
-  // before it. Team data goes through the DOM, never into markup; a goal of an unknown team gets no colour.
+  // before its shot. Team data goes through the DOM, never into markup; a goal of an unknown team gets no colour.
   $("#goals").replaceChildren(...[...match.goals].sort((p, q) => p.ts - q.ts).map((f) => {
     const b = document.createElement("button"), team = match.teams[f.team_id];
     b.type = "button";
@@ -391,7 +398,7 @@ function buildSeekMarks() {
     minute.textContent = `${b.dataset.code ? " " : ""}${match.clock(f.ts).label}'`;
     b.replaceChildren(b.dataset.code, minute);
     if (team) Object.assign(b.style, { background: team.color_primary, color: textOn(team.color_primary) });
-    b.addEventListener("click", () => seek(Math.max(0, f.ts - LEAD_S)));
+    b.addEventListener("click", () => seek(Math.max(0, playStart(f.ts, f.source_event_ids) - LEAD_S)));
     return b;
   }));
   // arrows, Home and End move between the goals shown

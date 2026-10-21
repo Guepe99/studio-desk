@@ -1753,11 +1753,16 @@ def analysis_issues(text):
 
 # --- risk ----------------------------------------------------------------------------------------
 
+# a reading of the game, not a fact: a chance that should have been a goal, a change of shape, who is on top
+JUDGEMENT_KINDS = frozenset({"big_chance", "tactical_shift", "momentum_swing", "pressing_spell"})
+
+
 def risk(story):
     """0..1: how much a person should look before this goes on air. A story whose claims the AI judge
     did not check always goes to review."""
     r = 0.05
     if story["verifier"].get("on_air") == "phrasebook":  # every claim on air comes with its fact condition
+        r += config.AUTO_APPROVE_RISK if story.get("kind") in JUDGEMENT_KINDS else 0.0  # facts air, readings wait
         return round(r + (0.3 if not story["fact_ids"] else 0.0), 2)
     if story.get("kind") == "recap" and story["verifier"]["status"] == "template":
         return r  # the score and pass accuracy written by code: the half-time and full-time card always airs

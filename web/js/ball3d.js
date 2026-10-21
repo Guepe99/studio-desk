@@ -122,7 +122,8 @@ export class BallPlan {
         const i = this._who(e.player_id);
         if (i !== null) this._action(i, e.ts, TOUCHES[e.type_name], this._foot(e.player_id), null);
       }
-      if (!next || next.period !== e.period || HANDS.has(e.type_name) || tEnd - a < 0.3 || tEnd - a > 10) continue;
+      // a ball in a keeper's hands, or a dead ball the next player throws in, is not dribbled
+      if (!next || next.period !== e.period || HANDS.has(e.type_name) || next.type_name === "throw_in" || tEnd - a < 0.3 || tEnd - a > 10) continue;
       this._dribble(a, tEnd, this._who(next.player_id), next.player_id);
     }
   }

@@ -108,3 +108,11 @@ def test_committed_clips_match_their_manifest(root):
     on_disk = {*root.glob("[a-z][a-z]/*.mp3"), *root.glob("booth/[a-z][a-z]/*.mp3")}  # not the studio voice/
     assert {p.resolve() for p in on_disk} <= listed and len(on_disk) == len(rows)  # no stale clip left behind
     assert not any(names.is_forbidden(r["text"]) for r in rows)
+
+
+def test_only_excited_play_by_play_lines_are_hyped_and_named_apart():
+    assert booth.hype("pbp", "Goal!") and booth.hype("pbp", "Okafor!")
+    assert not booth.hype("pbp", "Okafor.") and not booth.hype("co", "What a goal!")
+    plain = booth.clip_file("en", "pbp|Goal!", "am_michael", 4.0, "")
+    assert booth.clip_file("en", "pbp|Goal!", "am_michael", 4.0, "", booth.HYPE_AF) != plain
+    assert plain == "en/bc0ab09696e5.mp3"  # a clip without hype keeps its committed name: no re-render

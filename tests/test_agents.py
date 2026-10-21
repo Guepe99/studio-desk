@@ -79,6 +79,12 @@ def test_risk_maps_to_default_status():
     assert rules.default_status(rules.risk({**clean, "kind": "recap", "verifier": {"status": "template"}})) == "auto_approved"
     assert rules.default_status(rules.risk({**clean, "fact_ids": []})) == "needs_review"
     assert 0 <= rules.risk({**clean, "verifier": {"status": "template"}, "fact_ids": [], "confidence": 0}) <= 1
+    # phrasebook text on air: a fact airs by itself, a reading of the game waits for a person
+    phrase = {**clean, "verifier": {"status": "pass", "on_air": "phrasebook"}, "player_id": "T01-9"}
+    assert rules.default_status(rules.risk({**phrase, "kind": "goal"})) == "auto_approved"
+    assert rules.default_status(rules.risk({**phrase, "kind": "big_chance"})) == "needs_review"
+    assert rules.default_status(rules.risk({**phrase, "kind": "tactical_shift", "player_id": None})) == "needs_review"
+    assert rules.default_status(rules.risk({**phrase, "kind": "goal", "fact_ids": []})) == "needs_review"
 
 
 def test_cost_from_tokens():

@@ -602,6 +602,14 @@ try {
       const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
       return story.filter((c, i) => !story.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1));
     };
+    // web/js/moments.js: 6 s before the play the story is about (its last evidence event up to 10 s before the cue)
+    const { evidence, evTs } = await page.evaluate(() => ({
+      evidence: Object.fromEntries([...window.studioDesk.desk.byId.values()].map((s) => [s.story_id, s.evidence_event_ids ?? []])),
+      evTs: Object.fromEntries(window.studioDesk.match.events.map((e) => [e.event_id, e.ts])) }));
+    const target = (c) => {
+      const t = (evidence[c.story_id] ?? []).map((i) => evTs[i]).filter((x) => x !== undefined && x <= c.ts && x >= c.ts - 10);
+      return Math.max(0, (t.length ? Math.max(...t) : c.ts) - 6);
+    };
     // M001's comeback, found by kind: its id moves when a regeneration tells one more story before it
     const comeback = MATCH === "M001" && (await page.evaluate(() => fetch("data/M001/stories.json").then((r) => r.json())))
       .find((s) => s.kind === "comeback")?.story_id;
@@ -620,7 +628,7 @@ try {
         else if (i % 2) { await page.focus("#frame"); await page.keyboard.press("n"); }
         else await page.click("#next-moment");
         await nextFrame(page);
-        const ts = await clock(), want = Math.max(0, c.ts - 3);
+        const ts = await clock(), want = target(c);
         if (Math.abs(ts - want) > 0.01) { fail(`next ${aud}: landed at ${ts.toFixed(2)} s, wanted ${want.toFixed(2)} s for ${c.cue_id}`); break; }
       }
       const at = await clock();
@@ -656,7 +664,7 @@ try {
     }
     // N is ignored in the desk, with Shift and on the page body; at 64x a jump comes back to 1x
     await seekTo(page, 0);
-    const first = stopsFor("analyst").map((c) => Math.max(0, c.ts - 3))[0];
+    const first = stopsFor("analyst").map(target)[0];
     await page.focus('#desk [role="tab"]');
     await page.keyboard.press("n");
     await nextFrame(page);

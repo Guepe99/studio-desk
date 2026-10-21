@@ -15,7 +15,7 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, actionDriver, resolve, facing, offset, applyUpper, settleFeet } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, offset, applyUpper, settleFeet } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
@@ -217,7 +217,9 @@ export class Scene3D {
     this.drivers = [];
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
-    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p); } });
+    this.throws = scheduleThrows(match.events);
+    this.addDriver(throwDriver(match, this.throws));
+    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p); } this.throwBall(); });
 
     // contact darkening under every player, and blob shadows for the lights without a shadow map
     this.grounding = new Grounding(scene, this.players.length, this.light);
@@ -293,6 +295,31 @@ export class Scene3D {
     this.cams.update(view, ts, dt);
     this.post.update(this.cams);
     this.debug.camera = this.cams.mode;
+  }
+
+  // A throw-in: the ball goes from the grass to the thrower's hands as he picks it up, stays between
+  // them over his head, and after the release eases back onto the drawn flight (players.js THROW).
+  throwBall() {
+    const ts = this.ts;
+    for (const p of this.players) {
+      const a = ts === undefined ? null : throwAt(this.throws[p.pid], ts);
+      if (!a || !p.holder.isEnabled() || !this.ball.isEnabled()) continue;
+      const hands = ["hand_l", "hand_r"].map((name) => {
+        const c = [];
+        for (let n = p.anim.node(name); n; n = n.parent) c.unshift(n);
+        c.forEach((n) => n.computeWorldMatrix(true));
+        return c.at(-1)?.getAbsolutePosition();
+      });
+      if (!hands[0] || !hands[1]) return;
+      const grip = hands[0].add(hands[1]).scaleInPlace(0.5);
+      grip.y += BALL_R * 0.6;   // the hand bones are the wrists: the ball sits in the palms, above them
+      const k = a.u < 0 ? (a.u - THROW.start) / 0.4 : 1 - a.u / THROW.end, u = Math.min(1, Math.max(0, k));
+      B.Vector3.LerpToRef(this.ball.position, grip, u * u * (3 - 2 * u), this.ball.position);
+      this.ballShadow.position.x = this.ball.position.x;
+      this.ballShadow.position.z = this.ball.position.z;
+      this.ballShadow.material.alpha = 1 / (1 + (this.ball.position.y - BALL_R) * 0.6);
+      return;
+    }
   }
 
   // Plans the ball, the awareness layer and the keepers for another stretch of match time: the

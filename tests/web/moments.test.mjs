@@ -11,21 +11,29 @@ import { Match } from "../../web/js/match.js";
 
 const cue = (ts, story_id, duration_s = 6) => ({ ts, story_id, duration_s });
 
-test("a moment is 3 s before a story cue; templates and a story's follow-up graphic are not moments", () => {
+test("a moment is 6 s before a story cue; templates and a story's follow-up graphic are not moments", () => {
   const sheet = [cue(476.6, "S-2", 12), cue(300, null), cue(470.6, "S-2"), cue(1.5, "S-1"), cue(595.7, "S-3"), cue(900, "S-2")];
-  assert.deepEqual(momentTargets(sheet), [0, 467.6, 592.7, 897]);
+  assert.deepEqual(momentTargets(sheet), [0, 464.6, 589.7, 894]);
+});
+
+test("a shot's card comes up after the shot: the moment is 6 s before the shot, and the stops stay in time order", () => {
+  // M001: the big chance's shot at 470.1, its card at 475.1
+  const shots = { "S-1": 470.1, "S-2": 595.02 };
+  assert.deepEqual(momentTargets([cue(475.1, "S-1"), cue(596.02, "S-2")], (c) => shots[c.story_id]), [464.1, 589.02]);
+  // a start after the cue is ignored: never later than 6 s before the card
+  assert.deepEqual(momentTargets([cue(100, "S-1")], () => 120), [94]);
 });
 
 test("a story graphic that starts while another story's graphic is on air is the same moment", () => {
   // M001: the goal (S-000012) and the comeback it makes (S-000013) share one event
   const goal = [cue(4908.1, "S-000012"), cue(4914.1, "S-000012", 12), cue(4914.1, "S-000013", 12)];
-  assert.deepEqual(momentTargets(goal), [4905.1]);
+  assert.deepEqual(momentTargets(goal), [4902.1]);
   // up to 1 s after the cue before it ends still counts; later is a moment of its own
-  assert.deepEqual(momentTargets([cue(100, "S-1"), cue(107, "S-2"), cue(120, "S-3"), cue(127.1, "S-4")]), [97, 117, 124.1]);
+  assert.deepEqual(momentTargets([cue(100, "S-1"), cue(107, "S-2"), cue(120, "S-3"), cue(127.1, "S-4")]), [94, 114, 121.1]);
 });
 
-test("with the AI graphics off a moment is 3 s before each goal, in time order, never before kick-off", () => {
-  assert.deepEqual(goalTargets([4908.1, 595.7, 1.2]), [0, 592.7, 4905.1]);
+test("with the AI graphics off a moment is 6 s before each goal, in time order, never before kick-off", () => {
+  assert.deepEqual(goalTargets([4908.1, 595.7, 1.2]), [0, 589.7, 4902.1]);
   assert.deepEqual(goalTargets([]), []);
 });
 

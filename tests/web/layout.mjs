@@ -36,7 +36,7 @@ const MATCH = process.env.MATCH ?? "M001";
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 const SIZES = [[1280, 720], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
-const LEAD_S = 3;
+const LEAD_S = 6; // web/js/moments.js: before the goal's shot
 
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
@@ -148,7 +148,8 @@ try {
     const page = await open(browser, size, phone);
     const { goals, cues, hasVoice } = await page.evaluate(() => {
       const m = window.studioDesk.match;
-      return { goals: m.goals.map((f) => ({ ts: f.ts, code: m.teams[f.team_id]?.short_name, label: m.clock(f.ts).label })).sort((a, b) => a.ts - b.ts),
+      const shot = (f) => m.events.find((e) => e.event_id === f.source_event_ids?.[0] && e.ts <= f.ts && e.ts >= f.ts - 10)?.ts ?? f.ts;
+      return { goals: m.goals.map((f) => ({ ts: f.ts, shot: shot(f), code: m.teams[f.team_id]?.short_name, label: m.clock(f.ts).label })).sort((a, b) => a.ts - b.ts),
         hasVoice: !document.querySelector("#voice").hidden,
         cues: m.cues.filter((c) => c.lang === "en" && c.audience === "analyst").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })) };
     });
@@ -359,7 +360,7 @@ try {
         await page.locator("#goals button").nth(i).click();
         at.push(await page.evaluate(() => window.studioDesk.state.ts));
       }
-      for (const [i, ts] of at.entries()) if (Math.abs(ts - (goals[i].ts - LEAD_S)) > 0.2) fail(`${tag}: goal ${goals[i].ts} button seeks to ${ts.toFixed(1)}`);
+      for (const [i, ts] of at.entries()) if (Math.abs(ts - Math.max(0, goals[i].shot - LEAD_S)) > 0.2) fail(`${tag}: goal ${goals[i].ts} button seeks to ${ts.toFixed(1)}`);
       if (w !== 1280 || bs.length < 2) return;
       // N18: Tab goes seek bar, one goal, Play; the arrows move between the goals and do not seek
       await page.focus("#seek-range");
@@ -441,11 +442,12 @@ try {
   }
 
   const page = await open(browser, [1280, 720]);
-  const { goals, moms, hasVoice } = await page.evaluate(async () => {
+  const { goals, shots, moms, hasVoice } = await page.evaluate(async () => {
     const m = window.studioDesk.match, reps = (await import("./js/view3d.js")).replays(m);
     // a card due during a goal replay goes on air at its end (app.js refreshCues)
     const due = (c) => reps.find((r) => c.ts < r.to && c.ts + c.duration_s > r.from)?.to ?? c.ts;
-    return { goals: m.goals.map((f) => f.ts).sort((a, b) => a - b), hasVoice: !document.querySelector("#voice").hidden,
+    const shot = (f) => m.events.find((e) => e.event_id === f.source_event_ids?.[0] && e.ts <= f.ts && e.ts >= f.ts - 10)?.ts ?? f.ts;
+    return { goals: m.goals.map((f) => f.ts).sort((a, b) => a - b), shots: m.goals.map(shot).sort((a, b) => a - b), hasVoice: !document.querySelector("#voice").hidden,
       moms: m.cues.filter((c) => c.lang === "en" && c.graphic === "momentum").map((c) => ({ ts: due(c), audience: c.audience })) };
   });
 
@@ -474,7 +476,7 @@ try {
     await seekTo(page, 0);
     const label = await page.textContent("#next-moment");
     if (label.trim() !== "Next goal") fail(`AI off: the button reads "${label.trim()}", wanted "Next goal"`);
-    for (const g of goals) {
+    for (const g of shots) {
       // a script click: a pill that is wrongly disabled must fail the check, not stall it
       await page.evaluate(() => document.querySelector("#next-moment").click());
       await page.waitForTimeout(100);
