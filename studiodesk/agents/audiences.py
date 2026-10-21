@@ -30,6 +30,7 @@ CHECKIN_KINDS = ("checkin_touches", "checkin_passes", "checkin_distance", "check
 CHECKIN_S = 8.0       # how long a check-in card stays up
 CHECKIN_WAIT_S = 30.0  # how late after its minute a check-in may air
 CHECKIN_STEP_S = 0.5
+CLOSE_M = 6.0          # a chance from closer than this is told by its distance: "a huge chance, from 2.6 metres"
 
 
 def _of(m, tid, lang):
@@ -57,16 +58,25 @@ def _focus(s):
 
 
 def _metrics(s, lang):
-    """"Shot speed 92.1 km/h, distance 17.5 m", the analyst's opening, from the shot facts."""
+    """"Shot speed 92.1 km/h, distance 17.5 m", the analyst's opening, from the shot facts; in Spanish
+    "Disparo a 92,1 km/h desde 17,5 m"."""
     info, v, d = rules.shot_info(s) or {}, value(s, "shot_speed"), value(s, "shot_distance")
     head = info.get("header")
+    if lang == "es":
+        parts = ([f"a {rules.fmt(v, lang)} km/h"] if v else []) + ([f"desde {rules.fmt(d, lang)} m"] if d else [])
+        return " ".join(["Cabezazo" if head else "Disparo", *parts]) if parts else None
     names = {"en": ("Header speed" if head else "Shot speed", "distance"),
-             "it": ("Velocità del colpo di testa" if head else "Velocità del tiro", "distanza"),
-             "es": ("Velocidad del cabezazo" if head else "Velocidad del disparo", "a")}[lang]
-    # "distancia" would meet "recorta distancias" in the score clause: "a 17,5 m de la portería"
-    far = d and (f"a {rules.fmt(d, lang)} m de la portería" if lang == "es" else f"{names[1]} {rules.fmt(d, lang)} m")
-    parts = ([f"{names[0]} {rules.fmt(v, lang)} km/h"] if v else []) + ([far] if far else [])
+             "it": ("Velocità del colpo di testa" if head else "Velocità del tiro", "distanza")}[lang]
+    parts = ([f"{names[0]} {rules.fmt(v, lang)} km/h"] if v else []) + ([f"{names[1]} {rules.fmt(d, lang)} m"] if d else [])
     return cap(", ".join(parts)) if parts else None
+
+
+def _then(end):
+    """A Spanish outcome after the shot: the ball is the subject of a miss, never the player ("..., pero el
+    balón se marcha desviado"); the keeper or a defender name themselves ("y lo para el portero")."""
+    if end.startswith("se marcha"):
+        return f", pero el balón {end}"
+    return f" y el balón {end}" if end.startswith("se va ") else f" y {end}"
 
 
 def _end(m, s, lang):
@@ -96,29 +106,41 @@ def goal(m, s, role, lang):
         return [{"en": f"Goal! {P} scores, and {sc}.", "it": f"Gol di {P}! {cap(sc)}.", "es": f"¡Gol de {P}! {cap(sc)}."}[lang]]
     if role == "kids":
         return [{"en": {"up": f"Goal! {P} scores, and now {T} are winning {sx}.", "more": f"Goal! {P} scores, and {T} are winning {sx}.",
-                        "level": f"Goal! {P} scores, and it's {sx} now.", "behind": f"Goal! {P} scores, but {L} are still winning {sx}."},
+                        "level": f"Goal! {P} scores, and it's {sx} now.", "behind": f"Goal! {P} scores and {T} are back in it, {sx}."},
                  "it": {"up": f"Gol di {P}! Adesso {T} sta vincendo, {sx}.", "more": f"Gol di {P}! {cap(T)} sta vincendo, {sx}.",
-                        "level": f"Gol di {P}! Adesso è pari, {sx}.", "behind": f"Gol di {P}! {cap(L)} sta ancora vincendo, {sx}."},
+                        "level": f"Gol di {P}! Adesso è pari, {sx}.", "behind": f"Gol di {P}! {cap(T)} accorcia, {sx}."},
                  "es": {"up": f"¡Gol de {P}! Ahora {T} va ganando, {sx}.", "more": f"¡Gol de {P}! {cap(T)} sigue ganando, {sx}.",
-                        "level": f"¡Gol de {P}! Ahora van empatados, {sx}.", "behind": f"¡Gol de {P}! {cap(L)} sigue ganando, {sx}."}}[lang][key]]
+                        "level": f"¡Gol de {P}! Ahora van empatados, {sx}.", "behind": f"¡Gol de {P}! {cap(T)} se acerca, {sx}."}}[lang][key],
+                # an away leader must stand next to the score: the scorer's team closes in, the leader still leads
+                {"en": f"Goal! {P} scores and {T} are back in it, but {L} still lead {sx}.",
+                 "it": f"Gol di {P}! {cap(T)} accorcia, ma {L} è ancora avanti, {sx}.",
+                 "es": f"¡Gol de {P}! {cap(T)} se acerca, pero {L} sigue ganando, {sx}."}[lang] if key == "behind" else None]
     if role == "own":
         return [{"en": f"Get in! {P} scores {at}: {sc}.", "it": f"Che gioia! {cap(at)} segna {P}: {sc}.",
                  "es": f"¡Vamos! Marca {P} {at}: {sc}."}[lang]]
     if role == "other":
+        fan = _other(m, s["team_id"])
         lead_in = {"en": {"up": "Bad news", "more": "It gets worse", "level": "Pegged back", "behind": "Nervy now"},
-                   "it": {"up": "Brutta notizia", "more": "Si fa dura", "level": "Pareggio subito", "behind": "Ora si soffre"},
-                   "es": {"up": "Mala noticia", "more": "Se complica", "level": "Llega el empate", "behind": "Toca sufrir"}}[lang][key]
-        return [{"en": f"{lead_in}: {P} scores {at}, and {sc}.", "it": f"{lead_in}: {P} segna {at}, {sc}.",
+                   "it": {"up": "Brutta notizia", "more": "Si fa dura", "level": "Che beffa", "behind": "Ora si soffre"},
+                   "es": {"up": f"Malas noticias {_for(m, fan, lang)}", "more": f"Se le complica el partido {team(m, fan, lang, 'a')}",
+                          "level": "Llega el empate", "behind": "Toca sufrir"}}[lang][key]
+        if lang == "es" and key == "level":  # "y el Ostwick empata" after "Llega el empate" says it twice
+            return [f"{lead_in}: {P} marca {at}, {sx}."]
+        return [{"en": f"{lead_in}: {P} scores {at}, and {sc}.", "it": f"{lead_in}: {P} segna {at} e {sc}.",
                  "es": f"{lead_in}: {P} marca {at} y {sc}."}[lang]]
     # the player's follower
     again = bool(pb.earlier_goals(m, s))
     w = w or ""
     w = f"{ {'en': 'with a header', 'it': 'di testa', 'es': 'de cabeza'}[lang]} {w}".strip() if head else w
-    if lang != "en" and w:
+    lead = {"en": (f"Another goal for {P},", f"{P} gets off the mark"),
+            # "Doppietta di X" would fit a second goal, but the number check rejects number words
+            "it": (f"Ancora lui, {P},", f"{P} trova la via del gol"),
+            "es": (f"Otro gol de {P},", f"Primer gol de {P} en el partido,")}[lang][not again]
+    if lang == "es":
+        w = f"{w}," if w else w  # "Primer gol de X en el partido, desde ..., en el minuto 10"
+    elif lang == "it" and w:
         w = closed(w, lang)
-    lead = {"en": (f"Another goal for {P},", f"{P} gets off the mark"), "it": (f"Un altro gol per {P},", f"{P} trova la via del gol"),
-            "es": (f"Otro gol de {P},", f"Se estrena {P}")}[lang][not again]
-    if not w:
+    if not w and not (lang == "es" and not again):
         lead = lead.rstrip(",")
     return [" ".join(x for x in (lead, w, f"{at}: {sc}.") if x)]
 
@@ -132,14 +154,19 @@ def chance(m, s, role, lang):
     w = where(s, lang, f) if f else ""
     i = rules.LANGS.index(lang)
     verb = (("heads", "colpisce di testa", "remata de cabeza") if head else ("shoots", "calcia", "dispara"))[i]
-    sep = {"en": "", "it": ",", "es": " y"}[lang]  # "..., but it goes wide" / "..., a lato" / "... y se marcha desviado"
+    tail = {"en": end, "it": f", {end}", "es": _then(end)}[lang]  # ", but it goes wide" / ", a lato" / ", pero el balón se marcha desviado"
     if role == "analyst":
         mt = _metrics(s, lang)
-        verb = "conclude" if head and lang == "it" else verb  # "colpo di testa" is in the metric already
-        return [mt and {"en": f"{mt}: {P} {verb} {at}{end}.", "it": f"{mt}: {P} {verb} {at}, {end}.",
-                        "es": f"{mt}: {P} {verb} {at} y {end}."}[lang]]
+        # "colpo di testa", "Cabezazo" and "Disparo" are in the metric already
+        verb = "conclude" if head and lang == "it" else "remata" if lang == "es" else verb
+        return [mt and f"{mt}: {P} {verb} {at}{tail}."]
     if role == "casual":
         v, d = value(s, "shot_speed"), info["dist"]
+        if d is not None and d < CLOSE_M:  # from this close the distance is the story, not the speed
+            one = (f"{'with a header ' if head else ''}from {pb.metres(d, 'en')} out", f"{'di testa ' if head else ''}da {pb.metres(d, 'it')}",
+                   f"{'de cabeza ' if head else ''}desde {pb.metres(d, 'es')}")[i]
+            return [{"en": f"A huge chance for {P}, {one}{end}.", "it": f"Occasione enorme per {P}, {one}: {end}.",
+                     "es": f"Ocasión clarísima para {P}, {one}: {end}."}[lang]]
         if v and not head:
             one = pb.WITH_SHOT[i].format(whole(v))
         elif d is not None:
@@ -150,12 +177,13 @@ def chance(m, s, role, lang):
         return [{"en": f"A chance for {P}, {one}{end}.", "it": f"Occasione per {P}, {one}: {end}.",
                  "es": f"Ocasión para {P}, {one}: {end}."}[lang]]
     if role == "kids":
-        return [{"en": f"Good try from {P}{end}.", "it": f"Bel tentativo di {P}: {end}.", "es": f"Buen intento de {P}: {end}."}[lang]]
+        # a miss from two metres is no "good try": a line that fits any distance
+        return [{"en": f"{P} has a go{end}.", "it": f"Ci prova {P}: {end}.", "es": f"Lo intenta {P}: {end}."}[lang]]
     if role in ("own", "other"):
         T = team(m, s["team_id"] if role == "own" else _other(m, s["team_id"]), lang)
         return [{"en": f"{'Unlucky for' if role == 'own' else 'Let off for'} {T}: {P} {verb} {w} {at}{end}.",
-                 "it": f"{'Peccato per' if role == 'own' else 'Pericolo scampato per'} {T}: {P} {verb} {closed(w, lang)} {at}{sep} {end}.",
-                 "es": f"{'¡Qué pena para' if role == 'own' else '¡Se salva'} {T}! {P} {verb} {closed(w, lang)} {at}{sep} {end}."}[lang]]
+                 "it": f"{'Peccato per' if role == 'own' else 'Pericolo scampato per'} {T}: {P} {verb} {closed(w, lang)} {at}{tail}.",
+                 "es": f"{'¡Qué pena para' if role == 'own' else '¡Se salva'} {T}! {P} {verb} {closed(w, lang)} {at}{tail}."}[lang]]
     hw = {"en": f"with a header {w}", "it": f"di testa {w}", "es": f"de cabeza {w}"}[lang].strip() if head else w
     return [{"en": f"{P} has a go {hw} {at}{end}.", "it": f"{P} cerca il gol {closed(hw, lang)} {at}: {end}.",
              "es": f"{P} busca el gol {closed(hw, lang)} {at}: {end}."}[lang]]
@@ -167,13 +195,14 @@ def sprint(m, s, role, lang):
     v, P, at = value(s, "sprint_speed"), pb.player(m, s), when(m, s["ts"], lang)
     if v is None:
         return []
-    kmh, T, per = f"{rules.fmt(v, lang)} km/h", team(m, s["team_id"], lang), _for(m, s["team_id"], lang)
-    return [{"analyst": {"en": f"Sprint speed for {P}: {kmh} {at}.", "it": f"Velocità nello scatto di {P}: {kmh} {at}.",
+    kmh, T, per, of = f"{rules.fmt(v, lang)} km/h", team(m, s["team_id"], lang), _for(m, s["team_id"], lang), _of(m, s["team_id"], lang)
+    # "35,6 km/h per il Redwick" reads as the team's speed: the club goes with the player or with the cheer
+    return [{"analyst": {"en": f"Sprint speed for {P}: {kmh} {at}.", "it": f"Velocità massima di {P}: {kmh} {at}.",
                          "es": f"Velocidad punta de {P}: {kmh} {at}."},
              "casual": {"en": f"{P} sprints at {kmh}.", "it": f"{P} scatta a {kmh}.", "es": f"{P} corre a {kmh}."},
              "kids": {"en": f"Zoom! {P} runs at {kmh}.", "it": f"Che corsa! {P} va a {kmh}.", "es": f"¡Qué carrera! {P} corre a {kmh}."},
-             "own": {"en": f"Look at {P} fly: {kmh} for {T}.", "it": f"Vola {P}: {kmh} {per}.", "es": f"¡Vuela {P}! Llega a {kmh} {per}."},
-             "other": {"en": f"Watch {P}: {kmh} for {T}.", "it": f"Occhio a {P}: {kmh} {per}.", "es": f"Ojo con {P}: {kmh} {per}."},
+             "own": {"en": f"Look at {P} fly: {kmh} for {T}.", "it": f"Vola {P}: {kmh}, che spinta {per}!", "es": f"¡Vuela {P}! Alcanza los {kmh}."},
+             "other": {"en": f"Watch {P}: {kmh} for {T}.", "it": f"Occhio a {P} {of}: {kmh}.", "es": f"Ojo con {P}, {of}: {kmh}."},
              "player": {"en": f"{P} at full speed: {kmh} {at}.", "it": f"{P} a tutta velocità: {kmh} {at}.",
                         "es": f"{P} a toda velocidad: {kmh} {at}."}}[role][lang]]
 
@@ -189,16 +218,20 @@ def momentum(m, s, role, lang):
     T, of, per = team(m, tid, lang), _of(m, tid, lang), _for(m, tid, lang)
     a, b = (f"{pb._ten(f, lang)} {when(m, f['ts'], lang, i == 0)}" for i, f in enumerate(tf[:2]))
     c = f"{pb._ten(tf[2], lang)} {when(m, tf[2]['ts'], lang, False)}" if len(tf) > 2 else None
+    down = bool(c) and tf[2]["value"] < tf[1]["value"]  # a third value is there because it fell back
     vb = pb._ten(tf[1], lang)
-    return [{"analyst": {"en": f"{T}'s momentum index goes from {a} to {b}" + (f", then {c}." if c else "."),
-                         "it": f"Indice di inerzia {of}: da {a} a {b}" + (f", poi {c}." if c else "."),
-                         "es": f"Índice de empuje {of}: de {a} a {b}" + (f" y luego {c}." if c else ".")},
-             "casual": {"en": f"{T}'s momentum reaches {vb}.", "it": f"L'inerzia {of} arriva a {vb}.", "es": f"El empuje {of} llega a {vb}."},
-             "kids": {"en": f"A great spell for {T}!", "it": f"Che bel momento {per}!", "es": f"¡Qué buen momento {per}!"},
-             "own": {"en": f"Come on, {T}! Their momentum reaches {vb}.", "it": f"Bel momento {per}: l'inerzia arriva a {vb}.",
-                     "es": f"¡Buen momento {per}! El empuje llega a {vb}."},
-             "other": {"en": f"Hold firm: {T}'s momentum reaches {vb}.", "it": f"Bisogna resistere: l'inerzia {of} arriva a {vb}.",
-                       "es": f"Toca aguantar: el empuje {of} llega a {vb}."}}[role][lang]]
+    # Italian broadcasters say "il momentum" of a team; "l'inerzia del Wrenmouth" is a calque
+    line = {"analyst": {"en": f"{T}'s momentum index goes from {a} to {b}" + (f", then {'drops to ' * down}{c}." if c else "."),
+                        "it": f"Momentum {of}: da {a} a {b}" + (f", poi {'scende a ' * down}{c}." if c else "."),
+                        "es": f"Índice de empuje {of}: de {a} a {b}" + (f", y luego {'baja a ' * down}{c}." if c else ".")},
+            "casual": {"en": f"{T}'s momentum reaches {vb}.", "it": f"Il momentum {of} sale a {vb}.", "es": f"El empuje {of} llega a {vb}."},
+            "kids": {"en": f"A great spell for {T}!", "it": f"Che bel momento {per}!", "es": f"¡Qué buen momento {of}!"},
+            "own": {"en": f"Come on, {T}! Their momentum reaches {vb}.", "it": f"Bel momento {per}: il momentum sale a {vb}.",
+                    "es": f"¡Buen momento {of}! El empuje llega a {vb}."},
+            "other": {"en": f"Hold firm: {T}'s momentum reaches {vb}.", "it": f"Bisogna resistere: il momentum {of} sale a {vb}.",
+                      "es": f"Toca aguantar: el empuje {of} llega a {vb}."}}[role][lang]
+    # "sale" to a peak that fell back is a trend word against the facts: then the momentum "arriva a" the peak
+    return [line, line.replace(" sale a ", " arriva a ")] if " sale a " in line else [line]
 
 
 def pressing(m, s, role, lang):
@@ -221,7 +254,7 @@ def pressing(m, s, role, lang):
                       "es": f"{Ts} se toma un respiro." if fall else f"{Ts} va a por el balón."},
              "own": {"en": f"{Ts} catch their breath: the press {goes} {v}." if fall else f"Great work from {T}: the press {goes} {v}.",
                      "it": f"{Ts} tira il fiato: il pressing {goes} {v}." if fall else f"Che lavoro {of}: il pressing {goes} {v}.",
-                     "es": f"{Ts} toma aire: la presión {goes} {v}." if fall else f"¡Qué trabajo {of}! La presión {goes} {v}."},
+                     "es": f"{Ts} toma aire: la presión {goes} {v}." if fall else f"¡Cómo aprieta {T}! La presión {goes} {v}."},
              "other": {"en": f"{Ts} ease off: their press {goes} {v}." if fall else f"{Ts} won't let up: their press {goes} {v}.",
                        "it": f"{Ts} rallenta: il pressing {goes} {v}." if fall else f"{Ts} non molla: il pressing {goes} {v}.",
                        "es": f"{Ts} afloja: la presión {goes} {v}." if fall else f"{Ts} no afloja: la presión {goes} {v}."}}[role][lang]]
@@ -241,19 +274,22 @@ def shift(m, s, role, lang):
                          "it": f"Altezza della linea difensiva {of}: da {a} a {b}.",
                          "es": f"Altura de la línea defensiva {of}: de {a} a {b}."},
              "casual": {"en": (f"{Ts} move their defence higher, up to {bm}.", f"{Ts} drop their defence deeper, back to {bm}.")[k],
-                        "it": (f"{Ts} alza la difesa fino a {bm}.", f"{Ts} abbassa la difesa fino a {bm}.")[k],
+                        "it": (f"{Ts} alza la difesa fino a {bm} dalla propria porta.",
+                               f"{Ts} abbassa la difesa fino a {bm} dalla propria porta.")[k],
                         "es": (f"{Ts} adelanta la defensa hasta {bm}.", f"{Ts} retrasa la defensa hasta {bm}.")[k]},
              "kids": {"en": (f"{Ts} move their players further forward.", f"{Ts} move their players further back.")[k],
                       "it": (f"{Ts} fa salire i suoi giocatori.", f"{Ts} fa arretrare i suoi giocatori.")[k],
-                      "es": (f"{Ts} adelanta a sus jugadores.", f"{Ts} echa atrás a sus jugadores.")[k]},
+                      "es": (f"{Ts} adelanta sus líneas.", f"{Ts} retrasa sus líneas.")[k]},
              "own": {"en": (f"{Ts} get brave: their defensive line moves up to {bm}.",
                             f"{Ts} sit tight: their defensive line drops back to {bm}.")[k],
-                     "it": (f"{Ts} alza il baricentro: linea difensiva fino a {bm}.", f"{Ts} si compatta: linea difensiva a {bm}.")[k],
+                     "it": (f"{Ts} alza il baricentro: linea difensiva fino a {bm} dalla propria porta.",
+                            f"{Ts} si compatta: linea difensiva a {bm} dalla propria porta.")[k],
                      "es": (f"{Ts} da un paso adelante: su línea defensiva sube hasta {bm}.",
                             f"{Ts} se repliega: su línea defensiva baja hasta {bm}.")[k]},
              "other": {"en": (f"{Ts} come higher: their defensive line is up to {bm}.",
                               f"{Ts} sit back: their defensive line is down to {bm}.")[k],
-                       "it": (f"{Ts} si alza: la sua linea difensiva arriva a {bm}.", f"{Ts} si abbassa: la sua linea difensiva arretra a {bm}.")[k],
+                       "it": (f"{Ts} si alza: la sua linea difensiva arriva a {bm} dalla propria porta.",
+                              f"{Ts} si abbassa: la sua linea difensiva arretra a {bm} dalla propria porta.")[k],
                        "es": (f"{Ts} adelanta líneas: su defensa llega a {bm}.", f"{Ts} se encierra: su defensa baja hasta {bm}.")[k]}}[role][lang]]
 
 
@@ -265,10 +301,10 @@ def comeback(m, s, role, lang):
     return [{"analyst": {"en": f"{Ts} equalise {at}: it's {sx}.", "it": f"{cap(at)} {T} pareggia i conti: {sx}.", "es": f"{Ts} empata {at}: {sx}."},
              "casual": {"en": f"{Ts} are back on level terms at {sx}.", "it": f"{Ts} torna in parità: {sx}.", "es": f"{Ts} iguala el partido: {sx}."},
              "kids": {"en": f"{Ts} never give up, and now it's {sx}!", "it": f"{Ts} ce la fa: adesso è {sx}!",
-                      "es": f"¡{Ts} nunca se rinde! Ahora es {sx}."},
+                      "es": f"¡{Ts} nunca se rinde! ¡Ya es {sx}!"},
              "own": {"en": f"{Ts} fight back to {sx}!", "it": f"{Ts} non si arrende: {sx}!", "es": f"¡{Ts} no se rinde y empata, {sx}!"},
              "other": {"en": f"The lead is gone: {T} level at {sx}.", "it": f"Vantaggio sfumato: {T} pareggia, {sx}.",
-                       "es": f"Se escapa la ventaja: {T} empata, {sx}."}}[role][lang]]
+                       "es": f"Se esfuma la ventaja {_of(m, _other(m, tid), lang)}: {T} empata, {sx}."}}[role][lang]]
 
 
 def recap(m, s, role, lang, fan=None):
@@ -288,7 +324,7 @@ def recap(m, s, role, lang, fan=None):
                         "ht_win": f"Half-time! {L} lead {sx}. Time for a rest.", "ht_level": f"Half-time! It's {sx}. Time for a rest."},
                  "it": {"ft_win": f"È finita! Vince {L}, {sx}. Bravi tutti!", "ft_level": f"È finita {sx}. Bravi tutti!",
                         "ht_win": f"Intervallo! {Ls} è avanti, {sx}. Ora si riposa.", "ht_level": f"Intervallo! È {sx}. Ora si riposa."},
-                 "es": {"ft_win": f"¡Se acabó! Gana {L}, {sx}. ¡Bien jugado!", "ft_level": f"¡Se acabó! Empate, {sx}. ¡Bien jugado!",
+                 "es": {"ft_win": f"¡Se acabó! Gana {L}, {sx}. ¡Buen partido!", "ft_level": f"¡Se acabó! Empate, {sx}. ¡Buen partido!",
                         "ht_win": f"¡Descanso! {Ls} va ganando, {sx}. Ahora toca reponer fuerzas.",
                         "ht_level": f"¡Descanso! Van empatados, {sx}. Ahora toca reponer fuerzas."}}[lang][r]]
     T, Ts, per = team(m, fan, lang, full=True), team(m, fan, lang, full=True, start=True), _for(m, fan, lang)
@@ -302,7 +338,7 @@ def recap(m, s, role, lang, fan=None):
                     "ht_draw": f"Fine primo tempo: {sx}. Per {T} è tutto aperto."},
              "es": {"ft_win": f"Final del partido: {T} gana {sx}. ¡Qué alegría!", "ft_loss": f"Final del partido: {L} gana {sx}. Día duro {per}.",
                     "ft_draw": f"Final del partido: empate, {sx}. Un punto {per}.", "ht_win": f"Descanso: {T} gana {sx}. ¡A seguir así!",
-                    "ht_loss": f"Descanso: {L} gana {sx}. Queda la segunda parte {per}.", "ht_draw": f"Descanso: empate, {sx}. Todo abierto {per}."}}[lang][r]]
+                    "ht_loss": f"Descanso: {L} gana {sx}. {team(m, fan, lang, 'a', start=True)} le queda la segunda parte para remontar.", "ht_draw": f"Descanso: empate, {sx}. Todo abierto {per}."}}[lang][r]]
 
 
 LINES = {"goal": goal, "big_chance": chance, "top_sprint": sprint, "momentum_swing": momentum,
@@ -363,7 +399,7 @@ CHECKIN = {  # (one, many) per line; a count of 0 sprints is said in words
     "it": {"touches": ("{} tocco", "{} tocchi"), "passes": ("{} passaggio riuscito", "{} passaggi riusciti"),
            "distance": "{} km percorsi", "sprints": ("{} scatto", "{} scatti"), "none": "Ancora nessuno scatto",
            "top": "Velocità massima {} km/h", "title": "{} al {}'"},
-    "es": {"touches": ("{} toque", "{} toques"), "passes": ("{} pase completado", "{} pases completados"),
+    "es": {"touches": ("{} toque", "{} toques"), "passes": ("{} pase acertado", "{} pases acertados"),
            "distance": "{} km recorridos", "sprints": ("{} sprint", "{} sprints"), "none": "Todavía sin sprints",
            "top": "Velocidad máxima {} km/h", "title": "{}, minuto {}"},
 }
