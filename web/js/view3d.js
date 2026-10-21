@@ -115,6 +115,21 @@ export class View3D {
     this.tag = Object.assign(document.createElement("div"), { id: "carrier", hidden: true });
     this.tag.setAttribute("aria-hidden", "true");   // the commentary says who has it
     els.stage.insertBefore(this.tag, els.stage.querySelector("#overlay"));
+    this.cited = [];      // the entities an open proof panel cites (proof.js), a tag each in the carrier's look
+    this.citeTags = [];
+  }
+
+  // The players an open proof cites (player ids): their tags show from the next frame, paused or not.
+  setCited(ids) {
+    this.cited = [...ids].map((pid) => this.match.index[pid]).filter((i) => i !== undefined);
+    while (this.citeTags.length < this.cited.length) {
+      const tag = Object.assign(document.createElement("div"), { className: "cited-tag", hidden: true });
+      tag.setAttribute("aria-hidden", "true");   // the proof panel names them
+      this.els.stage.insertBefore(tag, this.els.stage.querySelector("#overlay"));
+      this.citeTags.push(tag);
+    }
+    for (const tag of this.citeTags.slice(this.cited.length)) tag.hidden = true;
+    this.last = null;
   }
 
   // The visitor's choice (the minimap item of the settings): kept even when it is slow.
@@ -258,10 +273,17 @@ export class View3D {
 
   // The shirt and surname over the player on the ball, as a football game shows them: in open play
   // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
+  // The players an open proof cites get the same tag; the carrier's own tag goes when he is one of them.
   _carrier(v) {
-    const tag = this.tag, i = v && !v.replay && this.main === "3d" ? this._holder(v.ts) : -1;
-    if (i < 0 || i !== this._holder(v.ts - CARRIER.hold)) { tag.hidden = true; return; }
-    const p = this.scene.project(i, v.ts, CARRIER.above);
+    const on = v && !v.replay && this.main === "3d";
+    this.citeTags.forEach((tag, k) => (on && k < this.cited.length ? this._place(tag, this.cited[k], v.ts) : (tag.hidden = true)));
+    const tag = this.tag, i = on ? this._holder(v.ts) : -1;
+    if (i < 0 || i !== this._holder(v.ts - CARRIER.hold) || this.cited.includes(i)) { tag.hidden = true; return; }
+    this._place(tag, i, v.ts);
+  }
+
+  _place(tag, i, ts) {
+    const p = this.scene.project(i, ts, CARRIER.above);
     tag.hidden = !p.visible;
     const pl = this.match.players[this.match.meta.entities[i]], text = `${pl.shirt} ${pl.name.split(" ").at(-1)}`;
     if (tag.textContent !== text) tag.textContent = text;

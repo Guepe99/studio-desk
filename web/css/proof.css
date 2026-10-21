@@ -1,0 +1,50 @@
+/* Show proof (web/js/proof.js). The buttons sit in the controls row, in the room it has left, so they
+   never add a row or move the picture: a narrow room drops the moment, then the word (the button's name
+   keeps both). The panel is placed as the Ask panel (ask.css): under the controls, beside the frame
+   (.deck-side), or over the docked desk column, never over the picture. */
+/* min-width: below room for two 27 px buttons the bar wraps to a row of its own (320 px phones)
+   shortcut: that row appears with the first graphic on air and moves the page under it, reserve it if that bothers */
+#proof-bar { flex: 1 1 0; min-width: 64px; display: flex; gap: 6px; overflow: hidden; padding: 2px; margin: -2px; container-type: inline-size; }
+.proof-chip { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px 0 8px; font-size: 14px; }
+.proof-chip svg { flex: none; width: 18px; height: 18px; fill: currentColor; }
+.proof-chip .pf-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.proof-chip[aria-expanded="true"] { background: var(--purple); color: var(--page); }
+.proof-chip[aria-expanded="true"]:hover { background: var(--purple-500); }
+/* widths for two buttons (at most two graphics are on air together), "Pruebas" the longest word */
+@container (max-width: 300px) { .proof-chip .pf-what { display: none; } }
+@container (max-width: 210px) { .proof-chip .pf-word { display: none; } .proof-chip { padding: 0 8px; } }
+
+#proof { flex: none; width: min(560px, 100%); max-height: min(40vh, 360px); overflow: auto; padding: 14px 16px;
+  background: var(--page); color: var(--purple); border: 1px solid var(--lilac-100); border-radius: var(--r-card);
+  box-shadow: var(--shadow); font-size: 15px; line-height: 1.35; }
+#proof[hidden] { display: none; }
+/* with the desk docked, over the head of its column (the Ask panel takes the foot) */
+@media (min-width: 1100px) {
+  #app > #proof { position: fixed; right: 0; top: 0; z-index: 6; width: clamp(360px, 30vw, 460px); max-height: 100vh; max-height: 100dvh;
+    border-radius: 0 0 0 var(--r-card); }
+}
+.proof-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#proof h2 { margin: 0; font-size: 20px; font-weight: 800; }
+#proof h2:focus { outline: none; }
+#proof h2:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+#proof h3 { margin: 12px 0 4px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--purple-400); }
+#proof ul { list-style: none; margin: 0; padding: 0; }
+#proof li { padding: 3px 0; overflow-wrap: anywhere; }
+#proof li b { font-variant-numeric: tabular-nums; }
+.proof-nums b { display: inline-block; min-width: 3.2em; padding: 0 6px; border-radius: var(--r-chip); background: var(--lilac-50); }
+.proof-nums li.bad b { background: var(--error); color: var(--page); }
+.proof-nums li.bad { font-weight: 700; }
+.proof-off { margin: 6px 0 0; font-weight: 700; color: var(--purple-400); }
+.proof-note { margin: 2px 0 0; color: var(--purple-400); }
+.proof-facts { width: 100%; border-collapse: collapse; font-size: 14px; }
+.proof-facts th { text-align: left; font-size: 12px; font-weight: 700; color: var(--purple-400); padding: 2px 6px 2px 0; }
+.proof-facts td { padding: 4px 6px 4px 0; border-top: 1px solid var(--lilac-100); vertical-align: top; overflow-wrap: anywhere; }
+.proof-facts .num { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+.proof-facts th:not(:first-child), .proof-facts .num { text-align: right; }
+.proof-facts tr.missing td { color: var(--error); font-weight: 700; }
+.proof-checks { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 14px; }
+.proof-checks div { display: contents; }
+.proof-checks dt { font-weight: 700; color: var(--purple-400); }
+.proof-checks dd { margin: 0; font-weight: 600; }
+@media (max-width: 420px) { .proof-checks { grid-template-columns: 1fr; } .proof-checks dd { margin-bottom: 4px; } }
+@media (max-height: 500px) { #proof { padding: 8px 12px; font-size: 14px; } }
