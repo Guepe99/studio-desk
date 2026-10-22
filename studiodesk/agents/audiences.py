@@ -12,13 +12,15 @@ meets (phrasebook.problems). When one language has none, the audience gets no va
 (text_for): a player or team follower and kids to the casual line, everyone to `texts`.
 
 `apply` adds `texts_by_audience` to the stories, writes each audience's line into its why_card cues,
-adds the kids cue sheet (a copy of the casual one) and the player check-in cards:
+adds the kids cue sheet (a copy of the casual one), the player check-in cards and the analyst's team shape
+panels:
 
     python -m studiodesk.agents.audiences M001 --pack replays/M001   # rewrites a replay pack in place
 """
 import argparse
 import json
 import math
+import re
 from contextlib import closing
 from pathlib import Path
 
@@ -451,16 +453,79 @@ def checkin_cues(m, meta, facts, cues):
     return out
 
 
+STATS_KINDS = ("formation", "line_height", "team_length", "team_width", "press_intensity")  # the rows, in order
+STATS_S = 10.0        # how long the team shape panel stays up
+STATS_WAIT_S = 60.0   # how late after its window it may air
+# The window of the facts as the panel's header says it; display_label gives "min 6-10" or a stoppage time.
+WINDOW = {"en": ("Min {}", "First-half stoppage time", "Second-half stoppage time"),
+          "it": ("Minuti {}", "Recupero del primo tempo", "Recupero del secondo tempo"),
+          "es": ("Minutos {}", "Descuento de la primera parte", "Descuento de la segunda parte")}
+
+
+def _window_text(f, lang):
+    label, w = rules.display_label(f), WINDOW.get(lang, WINDOW["en"])
+    if "stoppage time" in label:
+        return w[1] if label.endswith("first-half stoppage time") else w[2]
+    return w[0].format(re.search(r"\bmin (\S+)$", label).group(1))
+
+
+def _stat_text(f, lang):
+    """A team fact as the panel shows it: "4-3-3", "30,8 m", "4,2/10"."""
+    if f["unit"] == "formation":
+        return "-".join(str(round(f["value"])))
+    return rules.fmt(f["value"], lang) + (" m" if f["unit"] == "m" else f["unit"])
+
+
+def stats_payload(m, group, lang):
+    """The team shape panel for one window from its team facts ((team_id, kind) -> fact)."""
+    home, away = m.home["team_id"], m.away["team_id"]
+    rows = [{"stat": k, "home": _stat_text(group[home, k], lang), "away": _stat_text(group[away, k], lang),
+             "home_v": None if k == "formation" else group[home, k]["value"],
+             "away_v": None if k == "formation" else group[away, k]["value"]} for k in STATS_KINDS]
+    return {"when": _window_text(group[home, STATS_KINDS[1]], lang), "rows": rows,
+            "fact_ids": [group[t, k]["fact_id"] for k in STATS_KINDS for t in (home, away)]}
+
+
+def stats_cues(m, meta, facts, cues):
+    """The analyst's team shape panel at the end of every 5-minute window with all five measures for both
+    teams: the first slot of the next 60 s where no other analyst cue is on screen (timed on the English
+    sheet) and the panel ends before the period does, else dropped. One cue per analyst language."""
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    teams = (m.home["team_id"], m.away["team_id"])
+    by = {}
+    for f in facts:
+        if f["kind"] in STATS_KINDS and f["player_id"] is None:
+            by.setdefault(f["ts"], {})[f["team_id"], f["kind"]] = f
+    analyst = [c for c in cues if c["audience"] == "analyst"]
+    timing = [c for c in analyst if c["lang"] == "en"]
+    langs = sorted({c["lang"] for c in analyst})
+    out = []
+    for ts, group in sorted(by.items()):
+        if not all((t, k) in group for t in teams for k in STATS_KINDS):
+            continue
+        stop = p1 if ts <= p1 else end
+        t = next((t for k in range(int(STATS_WAIT_S / CHECKIN_STEP_S) + 1)
+                  if (t := round(ts + k * CHECKIN_STEP_S, 1)) + STATS_S <= stop
+                  and not any(c["ts"] < t + STATS_S and t < c["ts"] + c["duration_s"] for c in timing)), None)
+        if t is None:
+            continue  # no free slot: the panel is dropped, never stacked
+        cue = {"match_id": meta["match_id"], "cue_id": "", "story_id": None, "ts": t, "duration_s": STATS_S,
+               "graphic": "team_stats", "audience": "analyst"}
+        out += [{**cue, "lang": lang, "payload": stats_payload(m, group, lang)} for lang in langs]
+        timing.append(cue)
+    return out
+
+
 # --- applying it to a replay -------------------------------------------------------------------------
 
 def _generated(c):
-    return c["audience"] == "kids" or c["payload"].get("kind") == "checkin"
+    return c["audience"] == "kids" or c["payload"].get("kind") == "checkin" or c["graphic"] == "team_stats"
 
 
 def apply(meta, facts, events, stories, cues):
     """Stories with `texts_by_audience`, and the cue sheet with each audience's line in its why_card
-    cues, a kids sheet copied from the casual one, and the player check-ins. Idempotent: the kids and
-    check-in cues of an earlier run are rebuilt, the other cue ids are kept."""
+    cues, a kids sheet copied from the casual one, the player check-ins and the analyst's team shape panels.
+    Idempotent: the kids, check-in and team shape cues of an earlier run are rebuilt, the other cue ids are kept."""
     m = rules.Match(meta)
     m.facts = {f["fact_id"]: f for f in facts}
     ev = {e["event_id"]: e for e in events}
@@ -481,6 +546,7 @@ def apply(meta, facts, events, stories, cues):
     base = [worded(c, c["audience"]) for c in sorted(base, key=lambda c: c["cue_id"])]  # same ids on a rerun
     extra = [worded(c, "kids") for c in base if c["audience"] == "casual"]
     extra += checkin_cues(m, meta, facts, base)
+    extra += stats_cues(m, meta, facts, base)
     n = max((int(c["cue_id"][2:]) for c in base if c["cue_id"].startswith("C-")), default=0)
     for i, c in enumerate(extra, n + 1):
         c["cue_id"] = f"C-{i:06d}"

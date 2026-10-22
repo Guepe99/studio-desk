@@ -121,6 +121,20 @@ test("a template graphic is written by code and needs no approval; a producer's 
   assert.equal(ew.checks.at(-1)[1], "Edited and approved by the producer");
 });
 
+test("M001 team shape: the ten values on screen, each found in the panel's own facts, in Italian with a decimal comma", () => {
+  const P = PACKS.M001, cue = P.match.cues.find((c) => c.graphic === "team_stats" && c.lang === "it");
+  const pr = proofOf(cue, P.ctx(cue));
+  assert.equal(pr.numbers.length, 10);
+  assert.deepEqual(pr.numbers.map((x) => x.kind), ["formation", "formation", ...Array(8).fill("value")]);
+  assert.ok(pr.numbers.some((x) => /^\d+,\d$/.test(x.text)), onAirText(cue));
+  assert.equal(pr.numbersOk, true);
+  assert.deepEqual(pr.facts.map((f) => f.fact_id), cue.payload.fact_ids);
+  // each value on screen cites its own fact, home then away, even when the two read the same
+  assert.deepEqual(pr.numbers.map((x) => x.src.fact.fact_id), cue.payload.fact_ids);
+  // the press values are read on their /10 scale, the distances in metres
+  assert.deepEqual([...new Set(pr.numbers.slice(2).map((x) => x.unit))].sort(), ["/10", "m"]);
+});
+
 test("the numbers in a line: minutes, a /10 scale, a formation, a score and a unit", () => {
   const got = numbersIn("Al 45+2' 8,5/10, the 8th minute, en el minuto 10: 4-3-3 al 4-4-2, 2-1, 1.9 km, 83%, (10', 13')")
     .map(({ text, kind, unit, m }) => [text, kind, unit ?? m ?? ""]);

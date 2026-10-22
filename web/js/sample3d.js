@@ -14,7 +14,7 @@ const REPLAY_MIN_S = 5.5;   // replay length when the goal sits at the default p
 const AFTER_GOAL_S = 2.5;   // live seconds after the goal before cutting to the replay
 const REPLAY_END_S = 1.6;   // the shot flies for about 0.8 s, then a beat in the net
 const WIPE_S = 0.45;        // half-length of the wipe around each cut
-const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
+const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "why_card"];
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);

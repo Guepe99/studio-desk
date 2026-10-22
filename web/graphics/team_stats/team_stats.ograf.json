@@ -1,0 +1,48 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-team-stats",
+  "version": "1.0.0",
+  "name": "Studio Desk team shape",
+  "description": "The two teams compared over one 5-minute window: one row per measure with each team's value and a split bar (home share against away share), the formation as text. Vendor load() params: v_showFactIds (boolean), v_teams ({home: {short, color}, away: {short, color}}), v_compact (boolean), v_side (\"left\" or \"right\").",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["when", "rows", "fact_ids"],
+    "properties": {
+      "when": { "type": "string", "title": "Window", "default": "Min 6-10" },
+      "rows": {
+        "type": "array",
+        "title": "Rows",
+        "items": {
+          "type": "object",
+          "required": ["stat", "home", "away"],
+          "properties": {
+            "stat": { "type": "string", "enum": ["formation", "line_height", "team_length", "team_width", "press_intensity"] },
+            "home": { "type": "string", "title": "Home value as shown" },
+            "away": { "type": "string", "title": "Away value as shown" },
+            "home_v": { "type": ["number", "null"], "title": "Home value for the bar" },
+            "away_v": { "type": ["number", "null"], "title": "Away value for the bar" }
+          }
+        },
+        "default": [
+          { "stat": "formation", "home": "4-3-3", "away": "4-4-2", "home_v": null, "away_v": null },
+          { "stat": "line_height", "home": "30.8 m", "away": "24.6 m", "home_v": 30.8, "away_v": 24.6 },
+          { "stat": "team_length", "home": "36.4 m", "away": "35.3 m", "home_v": 36.4, "away_v": 35.3 },
+          { "stat": "team_width", "home": "38.4 m", "away": "36.8 m", "home_v": 38.4, "away_v": 36.8 },
+          { "stat": "press_intensity", "home": "4.2/10", "away": "4/10", "home_v": 4.2, "away_v": 4.0 }
+        ]
+      },
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+    }
+  },
+  "actionDurations": [
+    { "type": "playAction", "duration": -1 },
+    { "type": "stopAction", "duration": 260 },
+    { "type": "updateAction", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}

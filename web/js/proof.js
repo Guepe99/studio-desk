@@ -116,6 +116,8 @@ export function onAirText(cue) {
     return `${big} ${p.unit ?? ""}\n${typeof p.quality === "string" ? p.quality : ""}`.trim();
   }
   if (cue.graphic === "nameplate") return Number.isFinite(p.speed_kmh) ? `${p.speed_kmh.toFixed(1)} km/h` : "";
+  // team shape: each team's value as shown; the window in the header ("Min 6-10") is the facts' minutes, not a stat
+  if (cue.graphic === "team_stats") return list(p.rows).flatMap((r) => [r.home, r.away]).join("\n");
   return ""; // momentum: bars, no numbers
 }
 
@@ -152,9 +154,12 @@ export function factValue(f, match, lang) {
 const near = (v, n, d) => Math.abs(v - n) <= 0.5 * 10 ** -d + 1e-9;
 const sameScore = (p, [a, b]) => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a);
 
-// Where one number on screen comes from: {fact} | {event} | {story} | {zero} | null (not in the story's facts)
-function sourceOf(tok, { facts, events, story, match, minute }) {
+// Where one number on screen comes from: {fact} | {event} | {story} | {zero} | null (not in the story's facts).
+// A value or formation takes a fact no earlier number of the cue took, when one fits: "4-3-3 | 4-3-3" or
+// "4.2/10 | 4/10" cite the home and the away fact, not the home one twice.
+function sourceOf(tok, { facts, events, story, match, minute }, used = new Set()) {
   const known = facts.filter((f) => !f.missing);
+  const pick = (ok) => known.find((x) => !used.has(x) && ok(x)) ?? known.find(ok);
   if (tok.kind === "minute") {
     const f = known.find((x) => minute(x.ts) === tok.m);
     if (f) return { fact: f };
@@ -167,10 +172,10 @@ function sourceOf(tok, { facts, events, story, match, minute }) {
     return f ? { fact: f } : tok.pair[0] === 0 && tok.pair[1] === 0 ? { zero: true } : null;
   }
   if (tok.kind === "formation") {
-    const f = known.find((x) => x.unit === "formation" && String(Math.round(x.value)) === tok.digits);
+    const f = pick((x) => x.unit === "formation" && String(Math.round(x.value)) === tok.digits);
     return f ? { fact: f } : null;
   }
-  const f = known.find((x) => {
+  const f = pick((x) => {
     const v = Number(x.value);
     if (tok.unit === "km") return (x.unit === "m" && near(v / 1000, tok.n, tok.d)) || (x.unit === "km" && near(v, tok.n, tok.d));
     if (!near(v, tok.n, tok.d)) return false;
@@ -196,7 +201,12 @@ export function proofOf(cue, { story, factIndex, eventIndex, match, minute, stat
     shown = allEvents.filter((e) => short.has(e.event_id)).slice(0, MAX_EVENTS);
   }
   shown = [...shown].sort((a, b) => a.ts - b.ts);
-  const numbers = numbersIn(onAirText(cue)).map((tok) => ({ ...tok, src: sourceOf(tok, { facts, events: allEvents, story, match, minute }) }));
+  const used = new Set();
+  const numbers = numbersIn(onAirText(cue)).map((tok) => {
+    const src = sourceOf(tok, { facts, events: allEvents, story, match, minute }, used);
+    if (src?.fact) used.add(src.fact);
+    return { ...tok, src };
+  });
   const players = new Set([story?.player_id, p.player_id, ...known.map((f) => f.player_id), ...shown.map((e) => e.player_id)]
     .filter((id) => id && match.players[id]));
   const v = story?.verifier ?? {};

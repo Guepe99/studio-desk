@@ -322,7 +322,7 @@ try {
 
     // 4: every graphic's text at least 11 px on screen
     await check(`${tag} graphic text`, async () => {
-      for (const graphic of ["pass_shot", "why_card", "momentum", "nameplate"]) {
+      for (const graphic of ["pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
         const c = cues.find((x) => x.graphic === graphic);
         if (!c) continue;
         await seekTo(page, c.ts + Math.min(2, c.d / 2));
@@ -330,7 +330,7 @@ try {
         if (!Number.isFinite(t.min)) fail(`${tag} ${graphic}: not on screen`);
         else if (t.min < 11) fail(`${tag} ${graphic}: text at ${t.min.toFixed(1)} px (${t.what})`);
         if ((await sideScroll(page)) > 0) fail(`${tag} ${graphic}: horizontal scroll`);
-        if (graphic === "pass_shot" || graphic === "why_card") await page.screenshot({ path: `${shots}/layout-${graphic}-${tag}.png`, fullPage: true });
+        if (graphic === "pass_shot" || graphic === "why_card" || graphic === "team_stats") await page.screenshot({ path: `${shots}/layout-${graphic}-${tag}.png`, fullPage: true });
       }
     });
     if (w === 390 || w === 844 || w === 1280 || w === 1920) {
@@ -545,13 +545,13 @@ try {
     if (r.apart < 8) fail(`momentum axis: the kick-off and now labels are ${r.apart.toFixed(0)} px apart`);
   });
 
-  // N11: no momentum card during a goal replay (in 3D its card sat over the net), at any speed the replay plays at
+  // N11: no momentum or team shape card during a goal replay (in 3D its card sat over the net), at any speed the replay plays at
   await check("momentum in replays", async () => {
     const reps = await page.evaluate(async () => (await import("./js/view3d.js")).replays(window.studioDesk.match));
     for (const rep of reps) for (const t of [rep.from + 0.3, (rep.from + rep.to) / 2, rep.to - 0.3]) {
       await seekTo(page, t);
-      const on = await page.evaluate(() => [...window.studioDesk.host.live.values()].some((i) => i.cue.graphic === "momentum"));
-      if (on) fail(`momentum in replays: a momentum card on air at ${t.toFixed(1)}, in the replay ${rep.from.toFixed(1)} to ${rep.to.toFixed(1)}`);
+      const on = await page.evaluate(() => [...window.studioDesk.host.live.values()].some((i) => ["momentum", "team_stats"].includes(i.cue.graphic)));
+      if (on) fail(`momentum in replays: a momentum or team shape card on air at ${t.toFixed(1)}, in the replay ${rep.from.toFixed(1)} to ${rep.to.toFixed(1)}`);
     }
     console.log(`momentum in replays: ${reps.length} replays checked`);
   });

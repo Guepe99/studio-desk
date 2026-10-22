@@ -237,9 +237,12 @@ try {
   const page = await open(browser, { viewport: { width: 1280, height: 720 } });
   page.on("requestfailed", (r) => fail(`request failed: ${r.url()}`));
   const cues = (await page.evaluate(() => window.studioDesk.match.cues)).filter(onAir);
-  // a momentum card due during a goal replay goes on air at the replay's end (app.js refreshCues)
-  const reps = await page.evaluate(async () => (await import("./js/view3d.js")).replays(window.studioDesk.match));
-  const due = (c) => (c.graphic === "momentum" && reps.find((r) => c.ts < r.to && c.ts + c.duration_s > r.from)?.to) || c.ts;
+  // a momentum or team shape card due during a goal replay goes on air at the replay's end (app.js refreshCues)
+  const dueTs = new Map(await page.evaluate(async (cs) => {
+    const v = await import("./js/view3d.js"), reps = v.replays(window.studioDesk.match);
+    return [...new Set(cs.map((c) => c.audience))].flatMap((a) => v.holdForReplays(cs.filter((c) => c.audience === a), reps).map((c) => [c.cue_id, c.ts]));
+  }, cues));
+  const due = (c) => dueTs.get(c.cue_id) ?? c.ts;
   // the broadcast has the focus once loaded, so Space and N work at once
   if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("focus: the broadcast frame does not have the focus after loading");
 
@@ -1023,7 +1026,7 @@ try {
       });
       if (strip.h > 24 || strip.bottom > h || strip.items > 1) fail(`${w}x${h}: agent strip ${JSON.stringify(strip)}, wanted one line on screen`);
       if (h > w) {
-        for (const graphic of ["pass_shot", "why_card", "momentum", "nameplate"]) {
+        for (const graphic of ["pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
           const c = cues.find((x) => x.audience === "analyst" && x.graphic === graphic);
           if (!c) continue;
           await seekTo(phone, c.ts + Math.min(2, c.duration_s / 2));

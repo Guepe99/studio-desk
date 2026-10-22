@@ -52,6 +52,21 @@ export function probe() {
 // start in 2D (a software renderer draws the scene at 3 to 6 fps on this server).
 export const defaultView = (env) => (env.webgl2 && !env.phone && !env.software ? "split" : "2d");
 
+// The cards at the foot of the picture (momentum, team shape) due during a goal replay wait for its end:
+// the 3D replay's goal camera has the net there. Two held to the same spot go on one after the other.
+const FOOT = new Set(["momentum", "team_stats"]);
+export function holdForReplays(cues, reps) {
+  const moved = new Map();
+  let free = -Infinity;
+  for (const c of cues.filter((x) => FOOT.has(x.graphic)).sort((a, b) => a.ts - b.ts)) {
+    const r = reps.find((x) => c.ts < x.to && c.ts + c.duration_s > x.from);
+    const ts = Math.max(r ? r.to : c.ts, free);
+    free = ts + c.duration_s;
+    if (ts !== c.ts) moved.set(c, { ...c, ts });
+  }
+  return cues.map((c) => moved.get(c) ?? c);
+}
+
 // The goal replays that fit before the restart: [{from, to, src, end}] in page time; src is the
 // match time the replay starts from, end the goal it goes in (-1 at x = 0, 1 at x = 105).
 export function replays(match) {
