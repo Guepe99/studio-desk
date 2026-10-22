@@ -135,38 +135,95 @@ export function actionDriver(match, schedule) {
   };
 }
 
-// Throw-ins: the thrower picks the ball up, lifts it over his head with both hands and throws it
-// (Laws of the Game, Law 15: both hands, from behind and over the head, facing the field). The arms
-// borrow the raise of THROW.clip, held at THROW.up; the scene puts the ball between the hands
-// (throwBall). Times are seconds from the throw: [start, release, end].
-export const THROW = { clip: "M_celeb_arms_up", up: 1.1, start: -1.6, raise: 0.7, end: 0.45 };
+// Throw-ins (Laws of the Game, Law 15: both hands, from behind and over the head, facing the
+// field). The taker picks the ball up as soon as he reaches it (a crouch, THROW.crouch, with the
+// body drawn to the ball), carries it at his chest (THROW.carry held at carryT) while the
+// tracking walks him to the spot, then raises it over his head (THROW.clip, from lift to up) and
+// throws on the event time. A Premier League throw-in waits 15 to 18 s on average
+// (docs/flow3d.md, section 5): the wait is the tracking's, the ball is in his hands for it. The
+// scene puts the ball between the hands (throwBall). Times: start, raise, end are seconds from
+// the throw; down, grab, rise from the pick-up.
+export const THROW = {
+  clip: "M_celeb_arms_up", lift: 0.55, up: 1.1, start: -1.6, raise: 0.7, end: 0.45,
+  carry: "GK_Catch", carryT: 1.6, crouch: "M_crouch_head_down", crouchT: 0.5,
+  down: 0.45, grab: 0.15, rise: 0.45,
+  near: 1.2,     // m: the taker has reached the ball
+  after: 0.35,   // s from reaching the ball to the bottom of the crouch
+  look: 30,      // s: how far back the reach is looked for
+  reach: 0.35,   // m in front of the body where the hands meet the ball on the grass
+};
+const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 
-// Per player id, [{ts, yaw}] of his throw-ins, yaw towards where the ball goes.
-export function scheduleThrows(events) {
+// Per player id, [{ts, yaw, pick, ball}] of his throw-ins: yaw towards where the ball goes, pick
+// the time his hands close on the ball, ball where it lies then ([x, y], null without positions).
+// match: positions (match.at, match.index) to find when the taker reaches the ball standing at the
+// line; without them, or when he never does, the pick-up comes just before the raise.
+export function scheduleThrows(events, match = null) {
   const out = {};
   for (const e of events) {
     if (e.type_name !== "throw_in" || !e.player_id) continue;
-    (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y) });
+    const latest = e.ts + THROW.start - THROW.rise - 0.1;
+    let pick = latest, ball = null;
+    const i = match?.index?.[e.player_id];
+    if (i !== undefined) {
+      const at = (t) => {
+        const p = match.at(i, t), b = match.at(0, t), b2 = match.at(0, t + 0.1);
+        if (!p || !b || !b2) return false;
+        // the ball lies still at the line and he stands at it
+        return Math.hypot(b[0] - e.start_x, b[1] - e.start_y) < 1.5 && Math.hypot(b2[0] - b[0], b2[1] - b[1]) < 0.05 && Math.hypot(p[0] - b[0], p[1] - b[1]) < THROW.near;
+      };
+      let first = null;
+      for (let t = latest; t > e.ts - THROW.look && at(t); t -= 0.1) first = t;
+      if (first !== null) pick = Math.min(latest, first + THROW.after);
+      const b = match.at(0, pick);
+      if (b) ball = [b[0], b[1]];
+    }
+    (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y), pick, ball });
   }
   return out;
 }
 
-// The throw holding ts and the time from its release (negative before), or null.
+// The throw holding ts: {t, u: seconds from the release (negative before), p: seconds from the
+// pick-up}, or null.
 export function throwAt(list, ts) {
-  for (const t of list ?? []) if (ts >= t.ts + THROW.start && ts < t.ts + THROW.end) return { t, u: ts - t.ts };
+  for (const t of list ?? []) if (ts >= t.pick - THROW.down && ts < t.ts + THROW.end) return { t, u: ts - t.ts, p: ts - t.pick };
   return null;
 }
 
-// The throw-ins as a driver (priority 30): arms up over the head, facing the throw.
+// The throw-ins as a driver (priority 30): down to the ball, up with it at the chest, arms over
+// the head facing the throw.
 export function throwDriver(match, schedule) {
   return {
     priority: 30,
     pose(i, ts) {
       const a = throwAt(schedule[match.meta.entities[i]], ts);
       if (!a) return null;
-      const { u } = a, w = Math.max(0, Math.min(1, (u - THROW.start) / 0.25, (THROW.end - u) / THROW.end));
-      const t = Math.min(THROW.up, ((u - THROW.start) / THROW.raise) * THROW.up);
-      return { yaw: a.t.yaw, yawW: w, emotion: { kind: "throw", clip: THROW.clip, t, weight: w, upper: true } };
+      const { t: T, u, p } = a, out = { leg: null };
+      // the arms: the carry from the pick-up, crossfaded into the raise, which fades after the release
+      const carry = { clip: THROW.carry, t: THROW.carryT, weight: smooth01((p + THROW.grab) / 0.4) };
+      if (u < THROW.start) out.emotion = { kind: "throw", ...carry, upper: true };
+      else {
+        const t = THROW.lift + Math.min(1, (u - THROW.start) / THROW.raise) * (THROW.up - THROW.lift);
+        const w = Math.max(0, Math.min(1, (THROW.end - u) / THROW.end));
+        out.emotion = { kind: "throw", clip: THROW.clip, t, weight: w * smooth01((u - THROW.start) / 0.3), upper: true, under: { ...carry, weight: carry.weight * w } };
+      }
+      // the crouch: full body while he picks the ball up, eased in and out
+      const wc = smooth01((p + THROW.down) / 0.3) * (1 - smooth01((p - THROW.rise + 0.3) / 0.3));
+      if (wc > 0) out.emotion = { kind: "throw", clip: THROW.crouch, t: THROW.crouchT, weight: wc, full: true, under: carry };
+      // drawn to the ball so his hands meet it, facing it; then the facing of the throw
+      const here = match.at?.(i, ts);
+      const wb = smooth01((p + 0.6) / 0.45) * (1 - smooth01((p - 0.1) / 0.6));
+      if (T.ball && here && wb > 0) {
+        const dx = T.ball[0] - here[0], dy = T.ball[1] - here[1], d = Math.hypot(dx, dy);
+        if (d > 1e-3) {
+          const k = (Math.max(0, d - THROW.reach) / d) * wb;
+          out.dx = dx * k; out.dy = dy * k;
+          out.yaw = Math.atan2(dx, dy); out.yawW = wb;
+        }
+      }
+      const wy = smooth01((u - THROW.start + 0.5) / 0.4) * Math.max(0, Math.min(1, (THROW.end - u) / THROW.end));
+      if (wy > (out.yawW ?? 0)) { out.yaw = T.yaw; out.yawW = wy; }
+      return out;
     },
   };
 }
@@ -270,16 +327,19 @@ function upperTracks(container, name) {
   return { from: g.from, list: list.map((t) => [t.target.name, t.animation]) };
 }
 
-// After the animation step: the upper-body emotion of player p at its full weight.
+// After the animation step: the upper-body emotion of player p at its full weight, over the one
+// it fades from (e.under: the throw-in's carry under the raise).
 export function applyUpper(p) {
   const e = p.upper;
   if (!e || !p.holder.isEnabled()) return;
-  const T = p.anim.upper(e.clip);
-  if (!T) return;
-  const f = T.from + Math.max(0, e.t) * p.anim.fps;
-  for (const [bone, a] of T.list) {
-    const n = p.anim.node(bone);
-    if (n?.rotationQuaternion) B.Quaternion.SlerpToRef(n.rotationQuaternion, a.evaluate(f), e.weight, n.rotationQuaternion);
+  for (const x of e.under?.weight > 0 ? [e.under, e] : [e]) {
+    const T = p.anim.upper(x.clip);
+    if (!T) continue;
+    const f = T.from + Math.max(0, x.t) * p.anim.fps;
+    for (const [bone, a] of T.list) {
+      const n = p.anim.node(bone);
+      if (n?.rotationQuaternion) B.Quaternion.SlerpToRef(n.rotationQuaternion, a.evaluate(f), x.weight, n.rotationQuaternion);
+    }
   }
 }
 
@@ -352,7 +412,9 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   // an upper-body emotion waits for applyUpper; a full-body one is a clip like the actions (a
   // full-body motion clip only while nearly still, eFull; otherwise its upper body)
   const up = !!e?.upper && !eFull;
-  p.upper = up && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)) } : null;
+  p.upper = up && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)), under: e.under } : null;
+  // the arms' pose under a full-body emotion or a raise not yet started (the throw-in's carry)
+  if (!p.upper && e?.under?.weight > 0) p.upper = { clip: e.under.clip, t: e.under.t, weight: Math.min(1, e.under.weight) };
   if (e && !up && p.anim.get(e.clip)) want.set(e.clip, [e.t, eFull ? e.weight : e.weight * (1 - full)]);
   if (r.action) p.anim.get(r.action.clip);
   for (const [key, g] of Object.entries(p.anim.cache)) {

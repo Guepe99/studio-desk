@@ -219,7 +219,7 @@ export class Scene3D {
     this.drivers = [];
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
-    this.throws = scheduleThrows(match.events);
+    this.throws = scheduleThrows(match.events, match);
     this.addDriver(throwDriver(match, this.throws));
     scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p, this.rig.players.get(p.i)?.sole); } this.throwBall(); });
 
@@ -315,8 +315,10 @@ export class Scene3D {
       });
       if (!hands[0] || !hands[1]) return;
       const grip = hands[0].add(hands[1]).scaleInPlace(0.5);
-      grip.y += BALL_R * 0.6;   // the hand bones are the wrists: the ball sits in the palms, above them
-      const k = a.u < 0 ? (a.u - THROW.start) / 0.4 : 1 - a.u / THROW.end, u = Math.min(1, Math.max(0, k));
+      // the hand bones are the wrists: over the head the ball sits in the palms, above them
+      grip.y += BALL_R * 0.6 * Math.min(1, Math.max(0, (a.u - THROW.start) / 0.3));
+      // into the hands as they close on it at the pick-up, out of them after the release
+      const k = a.u >= 0 ? 1 - a.u / THROW.end : (a.p + THROW.grab) / 0.4, u = Math.min(1, Math.max(0, k));
       B.Vector3.LerpToRef(this.ball.position, grip, u * u * (3 - 2 * u), this.ball.position);
       this.ballShadow.position.x = this.ball.position.x;
       this.ballShadow.position.z = this.ball.position.z;

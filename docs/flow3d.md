@@ -254,3 +254,115 @@ median rose from -0.8 to -0.6 cm on DEMO default and from -0.7 to -0.6 cm on M00
 grounding, `settleFeet`, the other layers) costs 2.6 ms per frame for 22 players before and after,
 inside the run-to-run spread. The flight dip of T01-9 at 7.86 s is 10.7 cm instead of 16.8 cm.
 Stills, a boot seen from the grass: `tests/web/run-smoke.sh feet3d-stills.mjs DEMO T01-9 7.62 7.98`.
+
+## 5. Throw-ins and players keeping the ball
+
+Two complaints from watching M001: at a throw-in the taker took far too long to pick the ball
+up, and a player standing with the ball at his feet stood like a statue. Overall the motion read
+as mechanical.
+
+### Research
+
+- **How long a throw-in takes.** In the 2025-26 Premier League a throw-in followed an average
+  stoppage of 17.9 s, 15.4 s once stoppages of 55 s or more are left out (Opta Analyst,
+  theanalyst.com/articles/premier-league-football-time-throw-ins-goal-kicks-substitutions-stats);
+  15.6 s in 2024-25 (theanalyst.com/?p=212962). Taken: the 13 to 15 s wait in our tracking is
+  realistic, so the fix is when the ball is in the taker's hands, not when he throws.
+- **How a throw-in is taken.** Law 15 of the Laws of the Game (theifab.com/laws/latest/the-throw-in):
+  both hands, from behind and over the head, facing the field. Taken: the raise and release
+  already in `players.js`, and a carry at the chest in between.
+- **Blending.** Holden, "Dead Blending" (theorangeduck.com/page/dead-blending): a blend of about
+  0.2 s is normal and a pose should blend from where it is, not snap. Bollo, "Inertialization",
+  GDC 2018 (gdcvault.com/play/1025165): transitions decay the old pose's offset instead of
+  crossfading two live clips. Holden, "Spring-It-On" (theorangeduck.com/page/spring-roll-call):
+  critically damped springs and half-lives. Taken: every new weight in this section eases in and
+  out over 0.3 to 0.4 s with smoothstep (crouch, carry, raise, skills), and the carry stays under
+  the raise as it fades in, so the arms never pass through the idle pose.
+- **Stride and cadence.** Unreal's pose warping (dev.epicgames.com/documentation/unreal-engine/pose-warping-in-unreal-engine):
+  stride warping scales the stride to the ground speed, distance matching plays the cycle by
+  distance. Human cadence: 172.6 steps per minute at 2.9 m/s (PMC3022995); 2.88, 3.04 and 3.6
+  steps/s at 4.15, 5.07 and 7.32 m/s (jssm.org/tablejssm-22-790.xml/table002.xml). Taken: the
+  numbers below, to say how far our run cycle is from a real one. Not changed (see the end).
+- **Moves with a still ball.** Games show the holder with skill moves rather than an idle loop
+  (EA FC guides: insider-gaming.com/all-new-skill-moves-in-ea-fc-26-simplified-skills-explained,
+  games.gg/ea-sports-fc-27/guides/ea-fc-27-skill-moves-complete-guide). No public source gives
+  their timings, so the four moves here (sole roll, drag-back, step-over, shoulder feint) were
+  keyed by hand on the leg rig that the kicks already use.
+
+### Measured causes (before)
+
+`tests/web/motion-flow-measure.mjs` steps the 3D sample at 60 Hz on M001 and reports what makes
+motion look mechanical. Windows of 20 s from 0, 120, 280, 512, 530 (minute 8) and 560 s.
+
+- **Throw-ins.** The taker stood within 1 m of the ball 14.8 s before the throw at 529.03 s, and
+  9.5 to 13.6 s after reaching it the ball was still on the grass: it rose to his hands 1.26 s
+  before the release, from the grass to the hands with no bend of the body (`scheduleThrows`
+  started the throw 1.6 s before the event, whatever the tracking did before).
+- **Still holder.** In open play a player kept a still ball for up to 3.4 to 4.15 s at a time
+  (T02-9 from 535.95 to 540.51 s). His feet were on the ball 12 to 69% of that time (35% in
+  minute 8, 12% from 560 s), the rest was the idle loop: `BallPlan._dribble` returned with no
+  action when the ball moved under 1 m/s.
+- **Not the cause.** Root jerk p95 30 to 68 m/s³ comes from the simulator's bang-bang
+  acceleration (p95 exactly 5.0 m/s²), not from the path: a quintic Hermite through the same
+  samples, tried here, raised the jerk p95 on 600 s of M001 from 36.5 to 46.0 m/s³, so the cubic
+  stays. Players stepping in lockstep: 4.4 to 9.6% of pairs. The walk, jog and sprint loops plant
+  the left foot at 0 to 0.025 and the right at 0.5 of the cycle, so their blends match in phase.
+- **Cadence, found and left.** Forward runs step 22 to 28% slower than people: 2.18 to 2.24
+  steps/s at a 3.4 to 4.0 m/s jog (people about 2.85), 2.37 to 2.40 at 5.9 m/s (about 3.3).
+
+### What changed
+
+- **Throw-in** (`players.js` `THROW`, `scheduleThrows`, `throwDriver`; `scene3d.js`
+  `throwBall`). `scheduleThrows(events, match)` finds the first moment of the unbroken stretch,
+  up to 30 s back, in which the ball lies still within 1.5 m of the throw point and the taker
+  stands within 1.2 m of it; the pick-up is 0.35 s later. Without positions, or when he never
+  stands at the ball, it falls back to just before the raise. The driver then plays a crouch
+  (`M_crouch_head_down`, full body while he stands) eased in over 0.3 s, draws the body to
+  0.35 m from the ball and turns him to it, closes the hands on the ball (`throwBall` lerps the
+  ball into the hands from 0.15 s before the pick-up), carries it at the chest (`GK_Catch` held at
+  1.6 s, upper body), then raises it over the carry (`applyUpper` now applies an `under` pose
+  first) and releases on the event time as before. No new clip: all three are in
+  `web/vendor/motion/clips.glb` already.
+- **Ball at the feet** (`ball3d.js` `SKILLS`, `_skills`, `_moved`; `ball3d-rig.js`). Where the
+  holder keeps a still ball before his own kick, the plan fills the gap with moves drawn from a
+  generator seeded by player and moment: a sole roll (0.12 m out and back under the sole), a
+  drag-back and a touch that returns it (0.26 m), a step-over and a shoulder feint, 0.15 to
+  0.5 s apart. Never before a free kick, corner, penalty, goal kick or throw-in, never within
+  0.55 s of the kick, and only while he is within 1.5 m of the ball. The ball's offset eases
+  with smoothstep and always ends at 0, so the tracking position is unchanged at the kick. On
+  M001's first 1500 s: 503 moves (108 rolls, 218 feints, 104 step-overs, 73 drags), 181 of them
+  moving the ball, the ball plan's worst miss of the tracking 1.20 m (limit 1.5).
+
+### Numbers on M001 (high profile, WebGL 2)
+
+| What | Before | After |
+|---|---|---|
+| Throw at 529.03 s: ball in hands after the taker reaches it | 13.55 s | 0.72 s |
+| Throw at 529.03 s: ball in hands before the release | 1.26 s | 14.33 s |
+| Minute 8 (530 s): holder's feet on a still ball, share of the time | 0.35 | 0.73 |
+| Minute 8: holder's foot speed in the body frame, p50 | 0.46 m/s | 1.34 m/s |
+| Minute 8: ball to nearest foot, p50 | 0.22 m | 0.16 m |
+| Minute 8: held ball jumps (over 0.25 m in a frame) | 0 | 0 |
+| Throw-ins, M001 / M002 / M003 / M004 (44 / 43 / 43 / 43): ball in hands before the release, median | about 1.2 s, every one | 14.8 / 13.6 / 14.6 / 13.5 s |
+| Frame cost from 530 s (`frame-cost.mjs`, WebGL 2 high): draw calls | 376 | 376 |
+| Frame cost: render CPU per frame, three pairs of 12 frames (the third run new first) | 46.4 / 49.3 / 53.5 ms | 55.4 / 61.6 / 53.5 ms |
+| Frame cost: scene update per frame, same pairs | 13.6 / 15.6 / 15.0 ms | 13.5 / 16.5 / 11.8 ms |
+| Update and animation per 60 Hz step, 1193 steps, p50 / p95 (530 s, two runs) | 22.0 / 41.8, 15.8 / 23.1 ms | 17.8 / 24.4, 17.9 / 25.7 ms |
+| Same at 512 s (two runs) | 17.6 / 26.4, 17.9 / 29.0 ms | 16.6 / 23.5, 20.0 / 29.3 ms |
+
+The renderer is software (SwiftShader) and the machine is shared, so single runs move by up to
+12 ms; the third frame-cost pair, taken in the other order, ties. The changes add no mesh,
+material or draw call, and the per-step CPU, which is where they run, is the same within noise.
+The skills' ball offset is found by binary search (`_moved`), not by a scan from the kick-off.
+
+Checks: `node --test tests/web/throw.test.mjs tests/web/skills.test.mjs` (both fail on the old
+code: "pick-up at undefined", "only 0 moves in 1500 s"), and in the browser
+`CHECK=1 WEBGL=2 scripts/with-lock.sh chromium tests/web/run-smoke.sh motion-flow-measure.mjs M001 512 20`
+(and `530`), which fails on a pick-up slower than 2 s after reaching the ball, a holder with his
+feet on a still ball less than half the time, or a held ball that jumps. Old code: FAIL on both
+windows (13.55 s; 0.35). New code: PASS on both.
+
+Not changed: the cadence. Matching it needs stride warping (a shorter stride per cycle with the
+leg swing scaled down to keep the feet planted); a faster cycle on its own would slide the feet,
+and the jog stride was calibrated against foot slide on 22/10 (section 3). It is the next step
+for a less floaty run.
