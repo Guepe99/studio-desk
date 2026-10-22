@@ -291,6 +291,18 @@ await p3.waitForFunction(() => document.querySelector("#voice").getAttribute("ar
 expect((await p3.getAttribute("#voice", "aria-pressed")) === "false", "NotAllowedError sets the button back to off");
 await strict.close();
 
+// the voice remembered on (this context's localStorage): a new visit sounds after its first click, Play, with no
+// second press of the voice button
+const p4 = await ctx.newPage();
+await p4.goto(url);
+await p4.waitForFunction(() => window.studioDesk?.booth, null, { timeout: 15000 });
+expect((await p4.getAttribute("#voice", "aria-pressed")) === "true", "remembered on: the button starts on");
+await p4.click("#play");
+await p4.waitForFunction(() => window.studioDesk.booth.ctx?.state === "running", null, { timeout: 3000 }).catch(() => {});
+const woke = await p4.evaluate(() => ({ booth: window.studioDesk.booth.ctx?.state ?? null, clip: Boolean(window.studioDesk.voice.audio) }));
+expect(woke.booth === "running" && woke.clip, `remembered on: Play alone unlocks the booth and the clips (${JSON.stringify(woke)})`);
+await p4.close();
+
 const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
 const p2 = await phone.newPage();
 await p2.goto(url);

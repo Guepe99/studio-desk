@@ -774,6 +774,15 @@ async function main() {
     $("#voice").addEventListener("click", () => b.unlock());
     booth = b;
   }
+  // the voice remembered on from a past visit: browsers let sound start only after a gesture on this page,
+  // so the first click or key anywhere (Play, most likely) unlocks the clips and the booth
+  const wake = () => {
+    for (const type of ["pointerup", "keydown"]) document.removeEventListener(type, wake, true);
+    if (!v.on) return;
+    if (!v.current) v.unlock();
+    booth?.unlock();
+  };
+  if (v.on) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, wake, true);
 }
 
 main();

@@ -8,7 +8,8 @@
 // desk.onAir / desk.status, so held, rejected and AI-off stories never speak. A story whose body was edited
 // in this language stays silent (the clip says the old text; a new headline alone keeps it), and so does a clip whose text_sha1 no longer matches the
 // story text. One clip at a time: a story that comes up while another speaks waits, and is dropped
-// if it would start more than QUEUE_MAX_S of match time after its cue. Seek, speed change, mute
+// if it would start more than QUEUE_MAX_S of match time after its cue. Two stories of one moment (a goal
+// that is also a comeback, both at the goal's time) speak once: the first to come on air, the other stays a card. Seek, speed change, mute
 // and anything that takes the story off air stop the clip; a pause pauses it. A story that
 // Content Safety flagged never speaks, even once a visitor approves it.
 //
@@ -31,6 +32,7 @@ export class Voice {
     Object.assign(this, opts);
     this.clips = new Map(); // `${story_id}|${lang}` -> url
     this.played = new Set(); // stories that already had their moment since the last seek
+    this.said = new Set();   // story times that already spoke since the last seek
     this.audio = null;       // the one element, made in the first click on the button
     this.current = null;     // {sid, lang}: the clip in the element now
     this.queued = null;      // {sid, ts}
@@ -98,6 +100,7 @@ export class Voice {
   reset() {
     this.stop();
     this.played.clear();
+    this.said.clear();
   }
 
   stop() {
@@ -156,6 +159,9 @@ export class Voice {
       if (!sid || !this.card(c) || this.played.has(sid) || now < c.ts) continue;
       this.played.add(sid);
       if (now - c.ts > START_WINDOW_S || !this.state.playing || !this.allowed(sid)) continue;
+      const at = this.desk.byId.get(sid).ts;
+      if (this.said.has(at)) continue;
+      this.said.add(at);
       if (this.current) this.queued = { sid, ts: c.ts };
       else this.start(sid);
     }
