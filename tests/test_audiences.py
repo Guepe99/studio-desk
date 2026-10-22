@@ -179,3 +179,73 @@ def test_apply_is_idempotent_on_a_committed_pack():
                                "source_event_ids", "source_frames")
     stories, cues = _pack("M001")
     assert au.apply(meta, facts, events, stories, cues) == (stories, cues)
+    assert any(c["graphic"] == "team_stats" for c in cues)  # the team shape panels are rebuilt, not doubled
+
+
+def _shown(f, lang):
+    """A team fact as the team shape panel must show it, written here apart from audiences._stat_text."""
+    if f["unit"] == "formation":
+        return "-".join(str(int(f["value"])))
+    return f"{f['value']:.1f}".rstrip("0").rstrip(".").replace(".", "," if lang != "en" else ".") + \
+        (" m" if f["unit"] == "m" else "/10")
+
+
+def test_team_stats_show_the_facts_of_one_window_alone_on_the_analyst_sheet():
+    _packs(REPLAYS)
+    srv.set_clock(None)
+    for mid in PACK_IDS:
+        _, cues = _pack(mid)
+        info = srv.get_match_info(mid)
+        facts = {f["fact_id"]: f for f in srv.get_facts(mid)}
+        home, away = (next(t["team_id"] for t in info["teams"] if t["side"] == s) for s in ("home", "away"))
+        p1, end = info["period1_s"], info["period1_s"] + info["period2_s"]
+        panels = [c for c in cues if c["graphic"] == "team_stats"]
+        assert len(panels) >= 3 * 15, mid  # a panel for most windows, in en, it and es
+        for c in panels:
+            p = c["payload"]
+            assert c["audience"] == "analyst" and c["story_id"] is None and c["duration_s"] == au.STATS_S
+            got = [facts[i] for i in p["fact_ids"]]
+            assert [f["kind"] for f in got] == [k for k in au.STATS_KINDS for _ in (0, 1)]
+            assert [f["team_id"] for f in got] == [home, away] * 5 and len({f["ts"] for f in got}) == 1
+            ts = got[0]["ts"]
+            assert ts <= c["ts"] <= ts + au.STATS_WAIT_S and c["ts"] + c["duration_s"] <= (p1 if ts <= p1 else end)
+            assert [r["stat"] for r in p["rows"]] == list(au.STATS_KINDS)
+            for r, h, a in zip(p["rows"], got[::2], got[1::2]):
+                assert (r["home"], r["away"]) == (_shown(h, c["lang"]), _shown(a, c["lang"])), (c["cue_id"], r)
+                if r["stat"] == "formation":
+                    assert r["home_v"] is r["away_v"] is None
+                else:
+                    assert (r["home_v"], r["away_v"]) == (h["value"], a["value"])
+            assert re.fullmatch({"en": r"Min \S+|(First|Second)-half stoppage time",
+                                 "it": r"Minuti \S+|Recupero del (primo|secondo) tempo",
+                                 "es": r"Minutos \S+|Descuento de la (primera|segunda) parte"}[c["lang"]], p["when"])
+            others = [o for o in cues if o["audience"] == "analyst" and o is not c and o["graphic"] != "team_stats"]
+            assert not [o for o in others if _overlap(o, c)], c["cue_id"]
+
+
+def test_team_stats_wait_for_a_free_slot_or_are_dropped():
+    m = rules.Match(SIDES)
+    meta = {"match_id": "M001", "period1_s": 2700.0, "period2_s": 2700.0}
+    values = {"formation": (433.0, 4231.0, "formation"), "line_height": (30.8, 24.0, "m"), "team_length": (36.4, 35.3, "m"),
+              "team_width": (38.0, 36.8, "m"), "press_intensity": (4.2, 0.0, "/10")}
+    facts = [{"fact_id": f"F-{k.upper()}-00000{i}", "kind": k, "ts": 600.0, "period": 1, "team_id": t, "player_id": None,
+              "value": v[j], "unit": v[2], "label_en": f"{k} {v[j]}, min 6-10"}
+             for i, (k, v) in enumerate(values.items(), 1) for j, t in enumerate(("T01", "T02"))]
+
+    def cue(ts, dur, lang="en", aud="analyst"):
+        return {"ts": ts, "duration_s": dur, "audience": aud, "lang": lang, "graphic": "momentum", "payload": {}}
+    sheet = [cue(600.0, 8.0), cue(600.0, 8.0, "it"), cue(600.0, 8.0, "es"), cue(560.0, 80.0, aud="casual")]
+    en, es, it = au.stats_cues(m, meta, facts, sheet)
+    assert {c["ts"] for c in (en, es, it)} == {608.0} and [c["lang"] for c in (en, es, it)] == ["en", "es", "it"]
+    assert en["graphic"] == "team_stats" and en["story_id"] is None and en["duration_s"] == 10.0
+    assert (en["payload"]["when"], it["payload"]["when"], es["payload"]["when"]) == ("Min 6-10", "Minuti 6-10", "Minutos 6-10")
+    assert [(r["home"], r["away"]) for r in it["payload"]["rows"]] == [
+        ("4-3-3", "4-2-3-1"), ("30,8 m", "24 m"), ("36,4 m", "35,3 m"), ("38 m", "36,8 m"), ("4,2/10", "0/10")]
+    assert [(r["home"], r["away"]) for r in en["payload"]["rows"]][1:3] == [("30.8 m", "24 m"), ("36.4 m", "35.3 m")]
+    assert es["payload"]["rows"][4] == {"stat": "press_intensity", "home": "4,2/10", "away": "0/10", "home_v": 4.2, "away_v": 0.0}
+    assert en["payload"]["fact_ids"] == [f["fact_id"] for f in facts]
+    # the English sheet times it: a story card from 605 to 617 pushes it to 617
+    assert [c["ts"] for c in au.stats_cues(m, meta, facts, [*sheet, cue(605.0, 12.0)])] == [617.0] * 3
+    assert not au.stats_cues(m, meta, facts, [cue(590.0, 80.0)])  # nothing free before 660: dropped
+    assert not au.stats_cues(m, meta, [{**f, "ts": 2695.0} for f in facts], sheet)  # would run past half-time
+    assert not au.stats_cues(m, meta, facts[:-1], sheet)  # a measure missing for one team: no panel

@@ -141,6 +141,7 @@ is the OGraf `data` for that graphic:
 | `pass_shot` | `{mode: "pass"\|"shot", player_id, value, unit, quality, fact_ids}` |
 | `momentum` | `{home: [..], away: [..], window: n, fact_ids}` |
 | `why_card` | `{kind: "why"\|"recap"\|"checkin", title, body, fact_ids}` |
+| `team_stats` | `{when, rows: [{stat, home, away, home_v, away_v}], fact_ids}` (feat/analyst-stats) |
 
 ## Replay export (static, no API needed)
 
@@ -395,6 +396,16 @@ Agents only learn about an event when the clock releases it, in replay generatio
   audience of the sheet in its languages, one fact per line in the body. A card starts within 30 s of its facts' `ts`, in a
   slot where it overlaps no other cue of that audience, ends before half-time or full time, and is
   dropped when no slot is free.
+- Team shape panels (feat/analyst-stats): a `team_stats` cue for the `analyst` audience, `story_id` null, 10 s,
+  at the end of every 5-minute window that has `formation`, `line_height`, `team_length`, `team_width` and
+  `press_intensity` for both teams, in each language of the analyst sheet. Payload: `when`, the window in
+  the cue's language ("Min 6-10", "Minuti 6-10", "Minutos 6-10", or the half's stoppage time); `rows`, one
+  per kind in that order, `stat` the kind, `home` and `away` the values as shown (`rules.fmt`, decimal comma
+  in it and es, `" m"` or `"/10"` after it, a formation as `4-3-3`), `home_v` and `away_v` the fact values
+  for the bars (null for the formation); `fact_ids` the ten facts, home then away per row. It starts in the
+  first 0.5 s step of the 60 s after the window where it overlaps no other analyst cue (timed on the English
+  sheet) and ends before half-time or full time, else it is dropped. On the page, a momentum or team shape
+  card due during a goal replay waits for its end, one after the other.
 - `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
   rewrites a pack offline; `export` and `export --pack` apply the same step.
 - Page: "Same moment, several audiences", a box under the controls (never on the 1920x1080 stage):

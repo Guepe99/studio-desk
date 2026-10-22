@@ -5,7 +5,7 @@ import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { BoothAudio } from "./booth-audio.js";
-import { View3D, probe, defaultView, warm3d, RADAR, replays } from "./view3d.js";
+import { View3D, probe, defaultView, warm3d, RADAR, replays, holdForReplays } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Proof } from "./proof.js";
 import { Moments, LEAD_S } from "./moments.js";
@@ -14,7 +14,7 @@ import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
 
-const GRAPHICS = ["nameplate", "pass_shot", "momentum", "why_card"];
+const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "why_card"];
 const STRINGS = {
   en: {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "Jump to 2nd half",
@@ -350,13 +350,9 @@ function cueSheet() {
 
 function refreshCues() {
   const sheet = cueSheet();
-  // a momentum card due during a goal replay waits for its end: the 3D replay's goal camera has the
-  // net across the foot of the picture, where the card sits
-  const reps = replays(match), held = sheet.map((c) => {
-    const r = c.graphic === "momentum" && reps.find((x) => c.ts < x.to && c.ts + c.duration_s > x.from);
-    return r ? { ...c, ts: r.to } : c;
-  });
-  host.setCues(held, state.ts);
+  // a momentum or team shape card due during a goal replay waits for its end: the 3D replay's goal camera
+  // has the net across the foot of the picture, where the card sits
+  host.setCues(holdForReplays(sheet, replays(match)), state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
   moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
     (c) => playStart(c.ts, desk.byId.get(c.story_id)?.evidence_event_ids));
@@ -705,7 +701,7 @@ async function main() {
     const [x, y] = toStage(p[0], p[1]);
     return { x, y, visible: true };
   };
-  // v_side: a card that can sit on either side (momentum) goes to the half of the frame away from the ball,
+  // v_side: a card that can sit on either side (momentum, team shape) goes to the half of the frame away from the ball,
   // unless the lower third has the bottom left
   const awayFromBall = () => {
     const ball = locate("ball", state.ts);
