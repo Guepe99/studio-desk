@@ -32,10 +32,12 @@ const B = window.BABYLON;
 // slide when the clip plays at 1x, and metres per cycle. Measured on the scaled player in the
 // scene, as the planted toe's travel per cycle (docs/flow3d.md): the root-motion figures (1.3,
 // 5.0, 5.5 m) were for the unscaled file and left the feet sliding about 10% of the speed.
+// The jog stride was measured again on the anime player (22/10, docs/flow3d.md): 5.0 m by the
+// median slide; its speed, which only places the blend between the loops, stays as measured.
 export const LOCO = [
   { name: "Idle_Loop", speed: 0, stride: 0, period: 2.5 },
   { name: "Walk_Loop", speed: 0.93, stride: 1.24 },
-  { name: "Jog_Fwd_Loop", speed: 5.9, stride: 5.5 },
+  { name: "Jog_Fwd_Loop", speed: 5.9, stride: 5.0 },
   { name: "Sprint_Loop", speed: 9.0, stride: 6.0 },
 ];
 const BLEND_S = 0.08;   // s, time constant of the locomotion weights: no one-frame pops

@@ -144,6 +144,10 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
 - **Stride**: the metres per cycle of the walk, jog and sprint loops were measured in the scene
   (planted toe's travel per cycle on the scaled player): 1.24, 5.5 and 6.0 m, against the 1.3,
   5.0 and 5.5 m the code had from the unscaled file. Speeds were rescaled to match.
+  With the anime footballers the jog's median slide on the DEMO window had crept back to 0.102 m.
+  A sweep of the jog stride (4.4, 4.7, 4.85, 5.0, 5.15, 5.5 and 6.0 m) gave medians of 0.115,
+  0.107, 0.096, 0.080, 0.098, 0.105 and 0.160 m; the jog is now 5.0 m. The p95 moved without a
+  trend (0.66 to 1.10 m): the starts and stops below.
 - **Clip blending**: the locomotion weights ease towards their target with a 0.08 s time
   constant instead of jumping when the speed or the mode changes.
 - **Camera**: the broadcast camera's safe-area limit counts a lofted ball at 3 m at most and
