@@ -15,12 +15,20 @@
 // later than that, and only up to 4x (at 16x it would last a third of a second). The page clock, the
 // score bug, the 2D pitch and the graphics stay live.
 //
-// The page falls back to 2D when the scene cannot start, or when it draws fewer than FPS_FLOOR
-// frames a second over FPS_WINDOW_S seconds of play (after FPS_GRACE_S for the shaders): 12 fps is
-// the "on twos" rate of TV animation, the slowest at which movement still reads as movement, and
-// the page clock stops keeping real time under 1 fps (app.js takes a longer gap as a pause). The 3D
-// quality itself never steps down (scene3d/quality.js).
-const FPS_FLOOR = 12, FPS_WINDOW_S = 5, FPS_GRACE_S = 3;
+// The page falls back to 2D only when the scene cannot start or the browser drops it. A slow 3D
+// view stays: the visitor chose it. When it runs under SLOW_FPS frames a second for a whole
+// FPS_WINDOW_S of play, after WARMUP_S of 3D play, a line under the controls suggests the 2D pitch
+// once, with a button for it and one to keep the 3D. 12 fps is the "on twos" rate of TV animation,
+// the slowest at which movement still reads as movement; the line comes only clearly under it, so a
+// machine that hovers around 12 to 15 fps is not nagged. 20 s of play covers what makes the first
+// seconds slow and later ones not (shader compiles on the first seeks and cameras, the motion clips,
+// the first replans of 0.1 to 0.3 s each); the old 3 s grace read those as a slow machine and took
+// the 3D away. 10 s keeps one heavy moment (a replay cut, a replan) from deciding. The 3D quality
+// itself never steps down (scene3d/quality.js).
+//
+// After BEACON_S of 3D play the page sends one anonymous line to api/perf (api.py): the median frame
+// rate, the GPU's name when the browser gives it, the screen size and pixel ratio, the match.
+const SLOW_FPS = 10, WARMUP_S = 20, FPS_WINDOW_S = 10, BEACON_S = 30;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
 // slow: angle B's page seconds, its speed, and the match seconds before the goal it starts (the shot is about 0.7 s before)
 const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4, slow: { len: 3, rate: 0.5, before: 1 } };
@@ -119,14 +127,17 @@ export class View3D {
     this.reps = replays(match);
     this.speed = 1;
     this.last = null;
-    this.floor = FPS_FLOOR;    // tests raise it to force the fallback
-    this.watch = true;         // off once the visitor picks 3D again after a slow fallback
+    // tests move these three to see the 2D suggestion and the beacon in seconds
+    Object.assign(this, { floor: SLOW_FPS, warmup: WARMUP_S, beaconAt: BEACON_S });
     this.fps = null;
     this.frames = [];
+    this.gaps = [];            // ms between 3D frames in play, until the beacon goes
+    this.played = 0;           // s of 3D play on this page
+    this.hint = this._hintBox(els.notice);
     this.swapped = false;      // the minimap swapped: the 2D pitch large and the 3D picture small
     this.home = els.canvas.parentElement;
     els.radar.addEventListener("click", () => { this.swapped = !this.swapped; this._apply(); });
-    document.addEventListener("visibilitychange", () => { this.since = null; });
+    document.addEventListener("visibilitychange", () => { this.prev = null; });
     this.tag = Object.assign(document.createElement("div"), { id: "carrier", hidden: true });
     this.tag.setAttribute("aria-hidden", "true");   // the commentary says who has it
     els.stage.insertBefore(this.tag, els.stage.querySelector("#overlay"));
@@ -147,10 +158,33 @@ export class View3D {
     this.last = null;
   }
 
-  // The visitor's choice (the minimap item of the settings): kept even when it is slow.
-  pick(mode) {
-    if (this.slow) this.watch = false;
-    this.set(mode);
+  // The visitor's choice (the minimap item of the settings, the suggestion's button).
+  pick(mode) { this.set(mode); }
+
+  // The suggestion line, after the notice in the controls: the words, "Switch to 2D", "Keep 3D".
+  _hintBox(after) {
+    const box = Object.assign(document.createElement("div"), { id: "slow-hint", hidden: true });
+    box.setAttribute("role", "status");
+    const text = document.createElement("span");
+    const go = Object.assign(document.createElement("button"), { type: "button", className: "ctl primary" });
+    const keep = Object.assign(document.createElement("button"), { type: "button", className: "ctl" });
+    go.addEventListener("click", () => { this._hint(false); this.pick("2d"); });
+    keep.addEventListener("click", () => this._hint(false));
+    box.append(text, go, keep);
+    after.after(box);
+    return { box, text, go, keep };
+  }
+
+  _hint(on) {
+    const h = this.hint;
+    if (on) {
+      const fps = this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      h.text.textContent = this.t("slow3d").replace("{fps}", fps);
+      h.go.textContent = this.t("slow3dGo");
+      h.keep.textContent = this.t("slow3dKeep");
+    }
+    h.box.hidden = !on;
+    this.onChange();
   }
 
   // The view on screen: the 2D pitch until the scene is ready.
@@ -161,6 +195,7 @@ export class View3D {
   set(mode) {
     this.mode = VIEWS.includes(mode) ? mode : "2d";
     if (this.notice) this._notice(null);
+    if (this.mode === "2d" && !this.hint.box.hidden) this._hint(false);
     if (this.mode !== "2d" && !this.scene && !this.loading) {
       this._status(this.t("load3d"));
       this.loading = this._load().then(() => this._status(""), (err) => {
@@ -221,6 +256,7 @@ export class View3D {
     radar.setAttribute("aria-label", this.t(radar.classList.contains("is-3d") ? "swap3d" : "swap2d"));
     if (badge.classList.contains("on")) badge.textContent = this.t("replay");
     if (this.notice) this.els.notice.textContent = this.say();
+    if (!this.hint.box.hidden) this._hint(true);
   }
 
   // The 3D view's own notice, made by `say` so it follows the page language; the page's notice
@@ -255,7 +291,7 @@ export class View3D {
   frame(ts, speed, seeked, playing) {
     this.clock = ts;
     const s = this.scene;
-    if (!s || this.mode === "2d" || this.lost) return this._carrier(null);
+    if (!s || this.mode === "2d" || this.lost) { this.prev = null; return this._carrier(null); }
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
     const [a, b] = s.span, end = this.match.duration;
@@ -322,25 +358,40 @@ export class View3D {
     return this.scene.project(i, viewAt(this.reps, now, this.speed).ts);
   }
 
-  // Frame rate while playing; under the floor for a whole window, back to 2D.
+  // Frame rate of the 3D view in play: the beacon once, and the 2D suggestion once, never a switch.
   _watch(playing) {
-    const now = performance.now();
-    if (!playing) { this.since = null; return; }
-    // a new run of play, or back from a hidden tab: start counting again (not on a slow frame:
-    // under 1 fps every frame is a long gap)
-    if (this.since == null) { this.since = now; this.frames = []; }
-    if (now - this.since < FPS_GRACE_S * 1000) return;
+    const now = performance.now(), prev = this.prev;
+    this.prev = playing ? now : null;
+    // a pause, a hidden tab or a spell in 2D ends a run of play (not a slow frame: under 1 fps every frame is a long gap)
+    if (prev == null) { this.frames = []; return; }
+    const gap = now - prev;
+    this.played += gap / 1000;
+    if (!this.beaconSent) {
+      this.gaps.push(gap);
+      if (this.played >= this.beaconAt) this._beacon();
+    }
+    if (this.suggested || this.played < this.warmup) return;
     this.frames.push(now);
     // keep one frame older than the window, or at a few fps the window never fills
     while (this.frames.length > 1 && now - this.frames[1] > FPS_WINDOW_S * 1000) this.frames.shift();
     const span = (now - this.frames[0]) / 1000;
     if (span < FPS_WINDOW_S - 0.5) return;
     this.fps = (this.frames.length - 1) / span;
-    if (this.watch && this.fps < this.floor) {
-      this.watch = false;
-      this.slow = true;
-      this.set("2d");
-      this._notice(() => this.t("slow3d").replace("{fps}", this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })));
-    }
+    if (this.fps < this.floor) { this.suggested = true; this._hint(true); }
+  }
+
+  // One anonymous line: no address or browser name is sent (api.py does not log the address either).
+  _beacon() {
+    this.beaconSent = true;
+    const g = this.gaps.sort((a, b) => a - b), mid = g[g.length >> 1] || 1;
+    this.gaps = [];
+    let renderer = null;
+    try {   // the GPU's name only where the browser exposes the extension; else none, not the masked "WebKit WebGL"
+      const c = this.els.canvas, gl = c.getContext("webgl2") ?? c.getContext("webgl"), ext = gl?.getExtension("WEBGL_debug_renderer_info");
+      if (ext) renderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)).slice(0, 120);
+    } catch { /* no name */ }
+    this.sent = { match_id: this.match.meta.match_id, fps_median: Math.round(10000 / mid) / 10, renderer,
+      screen_w: screen.width, screen_h: screen.height, dpr: Math.round(devicePixelRatio * 100) / 100 };
+    fetch("api/perf", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify(this.sent) }).catch(() => {});
   }
 }

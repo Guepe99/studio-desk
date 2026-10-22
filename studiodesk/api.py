@@ -555,6 +555,59 @@ async def post_ask(q: Question, request: Request, response: Response):
     return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"], "questions_left": left}
 
 
+# --- the 3D frame-rate beacon -------------------------------------------------------------------
+# After 30 s of 3D play the page sends one anonymous line: how fast the 3D view ran on that machine, so we
+# can tell which renderers need the 2D suggestion. No address, no user agent, no free text: the address
+# only counts the cap below, in memory, and is never logged.
+PERF_PER_CLIENT_PER_DAY = 20   # one per 3D page load: a visitor reloading all day, not a script
+PERF_PER_DAY = 5000            # bounds the lines the public link can write to Application Insights in a day
+PERF_RENDERER_CHARS = 120      # "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)" is 86
+# shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
+_perf_sent = {"day": "", "all": 0, "by_client": {}}
+# Application Insights takes the "studiodesk" logger tree (telemetry.py); INFO, as the root default is WARNING
+_perf_log = logging.getLogger("studiodesk.perf")
+_perf_log.setLevel(logging.INFO)
+
+
+class Perf(BaseModel):
+    """Types are strict (a string is no number); values out of range are clamped, never stored as sent."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    match_id: str = Field(pattern=MATCH_PATTERN)
+    fps_median: float = Field(allow_inf_nan=False)
+    renderer: str | None = Field(default=None, max_length=1000)  # longer is no renderer name: refused
+    screen_w: int
+    screen_h: int
+    dpr: float = Field(allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def _clamp(self):
+        self.fps_median = round(min(max(self.fps_median, 0.0), 1000.0), 1)
+        self.screen_w = min(max(self.screen_w, 0), 20000)
+        self.screen_h = min(max(self.screen_h, 0), 20000)
+        self.dpr = round(min(max(self.dpr, 0.25), 8.0), 2)
+        # a renderer name is printable ASCII: anything else goes, then the length is capped
+        name = re.sub(r"[^ -~]", "", self.renderer or "").strip()[:PERF_RENDERER_CHARS]
+        self.renderer = name or None
+        return self
+
+
+@app.post("/api/perf", status_code=204)
+def post_perf(p: Perf, request: Request):
+    day, client = _now()[:10], _client(request)
+    if _perf_sent["day"] != day:
+        _perf_sent.update(day=day, all=0, by_client={})
+    by_client = _perf_sent["by_client"]
+    if _perf_sent["all"] >= PERF_PER_DAY:
+        return _limit("the studio has all the frame-rate reports it needs today")
+    if by_client.get(client, 0) >= PERF_PER_CLIENT_PER_DAY:
+        return _limit(f"this address has sent its {PERF_PER_CLIENT_PER_DAY} frame-rate reports today")
+    by_client[client] = by_client.get(client, 0) + 1
+    _perf_sent["all"] += 1
+    fields = p.model_dump()
+    _perf_log.info("perf_3d %s", json.dumps(fields, sort_keys=True), extra={f"perf_{k}": v for k, v in fields.items()})
+    return Response(status_code=204)
+
+
 @app.post("/api/live")
 def post_live():
     raise HTTPException(501, "live runs are not available yet; the replay is")

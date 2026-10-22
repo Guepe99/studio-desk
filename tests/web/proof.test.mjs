@@ -112,6 +112,9 @@ test("a template graphic is written by code and needs no approval; a producer's 
   const P = PACKS.DEMO, tpl = P.match.cues.find((c) => c.story_id === null && c.graphic === "pass_shot");
   const w = proofWords(proofOf(tpl, P.ctx(tpl)), { match: P.match, minute: P.minute, lang: "es", what: "" });
   assert.deepEqual(w.checks.map(([, v]) => v), ["El código, directamente de los datos, sin IA", "Cada cifra coincide con el registro de datos", "Un gráfico estándar no necesita aprobación"]);
+  // in the page the desk gives a generated graphic its status, so the panel says who put it on air
+  const ok = proofWords(proofOf(tpl, { ...P.ctx(tpl), status: "auto_approved" }), { match: P.match, minute: P.minute, lang: "en", what: "" });
+  assert.equal(ok.checks.at(-1)[1], "Approved by the risk rule");
   const cue = P.match.cues.find((c) => c.story_id === "S-000002" && c.lang === "en");
   const edited = { ...cue, payload: { ...cue.payload, body: "Ivo Grieve hit 38 km/h on the way in." } };
   const pr = proofOf(edited, { ...P.ctx(edited), status: "edited" });

@@ -133,6 +133,8 @@ body {
 #controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; flex: none; font-size: 16px; }
 #notice, #view-status { flex: 1 0 100%; margin: 0; text-align: center; font-weight: 700; color: var(--error); }
 #view-status { color: var(--purple); }
+/* the 2D suggestion of a slow 3D view (view3d.js): the words and its two buttons on one centred line */
+#slow-hint:not([hidden]) { flex: 1 0 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; color: var(--purple); font-weight: 700; }
 #view-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } /* stays in the page as a live region */
 .ctl { font: 700 15px/1 var(--font); color: var(--purple); background: var(--page); border: 1.5px solid var(--purple); border-radius: var(--r-pill);
   height: 36px; padding: 0 14px; cursor: pointer; white-space: nowrap; transition: background-color .12s, color .12s; }
@@ -158,7 +160,7 @@ body {
 #voice[aria-pressed="true"] .i-on { display: inline; }
 /* One row as in a video player: play, voice and the next moment on the left; the settings, Ask and the desk on the right */
 #settings-wrap { position: relative; margin-left: auto; display: flex; align-items: center; gap: 6px; }
-#controls > :not(#seek-row, #notice, #view-status, #proof-bar) { flex: none; }
+#controls > :not(#seek-row, #notice, #view-status, #proof-bar, #slow-hint) { flex: none; }
 #settings .hole { fill: var(--page); }
 #settings:hover .hole { fill: var(--lilac-100); }
 #settings[aria-expanded="true"] { background: var(--purple); color: var(--page); }
@@ -183,6 +185,11 @@ body {
 .mg:not(.chips) button::before { content: "\2713\00a0" / ""; visibility: hidden; }
 .mg:not(.chips) button[aria-checked="true"]::before { visibility: visible; }
 .mg button[aria-disabled="true"] { color: var(--purple-400); cursor: not-allowed; background: none; }
+/* what a setting does, in one plain line: under the group, or under the item where the items differ
+   (docs/desk.md, "Settings explained"); secondary text, 12.2:1 on white, never wider than the column wants */
+.mg-why { flex: 1 0 100%; max-width: 30ch; margin: 0 0 4px; padding-left: 12px; font-size: 13px; line-height: 17px; font-weight: 600; color: var(--purple-400); }
+.mg-why.item { margin-top: -2px; padding-left: calc(12px + 1.15em); }   /* under the item's name, past the check */
+.mg.chips .mg-why { padding-left: 0; margin-top: 2px; }
 /* narrow or short screens: the labels give way to icons (each keeps its name), the menu is tighter, on a narrow one in two columns */
 @media (max-width: 699px), (max-height: 500px) {
   #voice span { display: none; }

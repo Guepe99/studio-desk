@@ -1,11 +1,10 @@
 // web/js/countdown.js: when the 3-2-1 shows, what it says when, when the clock starts, the full-time strap;
-// web/js/scene3d/screen.js: the big screen's text from match time, and that it changes only with the score or the minute.
+// web/js/scene3d/screen.js: the big screen's fixed wordmark.
 //   node --test tests/web/stadium.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { wantsCountdown, countLabel, fullTimeAt, Countdown, COUNT_S, KICKOFF_S, FULL_TIME, WORDS } from "../../web/js/countdown.js";
-import { screenText } from "../../web/js/scene3d/screen.js";
-import { Match } from "../../web/js/match.js";
+import { WORDMARK } from "../../web/js/scene3d/screen.js";
 
 test("the count shows only from the very start and up to 4x", () => {
   assert.equal(wantsCountdown(0, 1), true);
@@ -71,27 +70,7 @@ test("the clock starts on the frame of Kick off, once; a cancel stops the count"
   assert.equal(el.span.textContent, "Fine partita");
 });
 
-const meta = {
-  period1_s: 2700, period2_s: 2880, frames: 1, fps: 10, entities: ["ball"], players: [],
-  teams: [{ team_id: "T1", side: "home", short_name: "NBR" }, { team_id: "T2", side: "away", short_name: "EVA" }],
-};
-const goals = [{ kind: "score", team_id: "T1", ts: 630, value: 1 }, { kind: "score", team_id: "T2", ts: 3000, value: 1 }];
-const match = new Match(meta, [], goals, [], new Float32Array(3));
-
-test("the big screen shows the short names, the score facts and the broadcast minute", () => {
-  assert.deepEqual(screenText(match, 0), { home: "NBR", away: "EVA", score: [0, 0], clock: "1'", key: "NBR|0|0|EVA|1'" });
-  assert.deepEqual(screenText(match, 629).score, [0, 0]);
-  assert.deepEqual(screenText(match, 630).score, [1, 0]);
-  assert.equal(screenText(match, 2699).clock, "45'");
-  assert.equal(screenText(match, 2701).clock, "46'");
-  assert.deepEqual(screenText(match, 3000.5).score, [1, 1]);
-  assert.equal(screenText(match, 5410).clock, "90+1'");   // stoppage time as the score bug says it
-  assert.equal(screenText(match, 5580).clock, "90+3'");   // the final whistle: the clock stops in the 48th minute of the half
-});
-
-test("its text changes only when the score or the minute does: one redraw a minute at most", () => {
-  const keys = new Set();
-  for (let i = 0; i < 6600; i++) keys.add(screenText(match, i / 10).key);   // 0 to 659.9 s, ten frames a second
-  // minutes 1 to 11, and the goal at 630 s splits the 11th: 12 texts in 6600 frames
-  assert.equal(keys.size, 12);
+test("the big screen shows a fixed wordmark: no score and no clock, so it never reads as a second score bug", () => {
+  assert.equal(WORDMARK, "STUDIO DESK");
+  assert.doesNotMatch(WORDMARK, /\d/);
 });

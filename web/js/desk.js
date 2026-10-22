@@ -5,7 +5,9 @@
 // One rule decides what goes on air: a story below the risk threshold is auto-approved and plays
 // unless this visitor rejects it; a story that needs review, or that Content Safety flagged, is held
 // until this visitor approves it. Only auto_approved, approved and edited go on air: any other or
-// missing status is held. With the AI switched off only template graphics (story_id null) play.
+// missing status is held. With the AI switched off only the generated graphics (story_id null) play.
+// Generated graphics go through the same path as pseudo-stories (G-<cue_id>), decided in the tab only:
+// the API keeps decisions for S- ids. At most one waits at a time; one nobody decided on expires.
 // Decisions come from the API (per visitor, cookie sd_session); with static hosting, or when the API
 // does not answer within API_TIMEOUT_MS (CONNECT_TRIES times), they are kept in memory for the tab.
 // The desk's controls stay disabled until that is settled, and while a save is in flight: one request
@@ -86,8 +88,10 @@ export const TEXT = {
     airEmpty: "Nothing on screen right now.", doneEmpty: "Nothing decided yet.",
     needsEmpty: "Nothing waits for you. The agents write these graphics, and nothing they write goes on air until you or the risk rule approve it.",
     next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "its slot is now", toAirPast: "its slot was at {m}'", left: "{s} s left",
-    takeOut: "Take out", template: "template graphic", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_why_card: "Card",
-    done_takenOut: "{what} taken out", undone_template: "Undone: {what} can go on air again",
+    takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_why_card: "Card",
+    done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", k_checkin: "Player check-in",
+    line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
+    line_expired: "Off air, its moment passed while it waited", row_expired: "expired, its moment passed",
     row_rejected: "rejected by you", row_kill: "off air while AI graphics are off", info: "About your decisions",
     fHeadline: "Headline", fBody: "Text", emptyTitle: "The {name} headline cannot be empty.", factsLabel: "Facts: ",
     yourActions: "Your actions", colMinute: "Minute", costHead: "What the agents cost",
@@ -164,8 +168,10 @@ export const TEXT = {
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, e niente di ciò che scrivono va in onda finché non lo approvi tu o la regola del rischio.",
     next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: "doveva andare in onda al {m}'", left: "ancora {s} s",
-    takeOut: "Togli", template: "grafica standard", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_why_card: "Perché conta",
-    done_takenOut: "Fuori onda: {what}", undone_template: "Annullato: {what} può tornare in onda",
+    takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_why_card: "Perché conta",
+    done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
+    line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
+    line_expired: "Fuori onda, il suo momento è passato mentre aspettava", row_expired: "scaduta, il suo momento è passato",
     row_rejected: "respinta da te", row_kill: "fuori onda finché le grafiche IA sono spente", info: "Sulle tue decisioni",
     fHeadline: "Titolo", fBody: "Testo", emptyTitle: "Il titolo ({name}) non può essere vuoto.", factsLabel: "Fatti: ",
     yourActions: "Le tue azioni", colMinute: "Minuto", costHead: "Quanto sono costati gli agenti",
@@ -242,8 +248,10 @@ export const TEXT = {
     airEmpty: "Ahora no hay nada en antena.", doneEmpty: "Todavía no hay nada decidido.",
     needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, y nada de lo que escriben se emite hasta que lo apruebes tú o la regla de riesgo.",
     next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "su hueco es ahora", toAirPast: "su hueco era en el {m}'", left: "quedan {s} s",
-    takeOut: "Quitar", template: "gráfico estándar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_why_card: "Por qué importa",
-    done_takenOut: "Fuera de antena: {what}", undone_template: "Deshecho: {what} puede volver al aire",
+    takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_why_card: "Por qué importa",
+    done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", k_checkin: "Números del jugador",
+    line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
+    line_expired: "Fuera de antena, su momento pasó mientras esperaba", row_expired: "caducado, su momento pasó",
     row_rejected: "rechazada por ti", row_kill: "fuera de antena mientras los gráficos de IA están apagados", info: "Sobre tus decisiones",
     fHeadline: "Titular", fBody: "Texto", emptyTitle: "El titular ({name}) no puede quedar vacío.", factsLabel: "Datos: ",
     yourActions: "Tus acciones", colMinute: "Minuto", costHead: "Lo que costaron los agentes",
@@ -285,7 +293,7 @@ const RUN_MAX_FRAMES = 300; // a sprint run longer than 30 s is not a sprint: ne
 const SVGNS = "http://www.w3.org/2000/svg";
 const FACT_ID = /F-[A-Z0-9_]+-\d+/g;
 
-export const kindName = (k, lang) => TEXT[lang]?.[`k_${k}`] ?? TEXT.en[`k_${k}`] ?? String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+export const kindName = (k, lang) => TEXT[lang]?.[`k_${k}`] ?? TEXT[lang]?.[`g_${k}`] ?? TEXT.en[`k_${k}`] ?? TEXT.en[`g_${k}`] ?? String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const usd = (v, lang = "en") => {
   const d = v >= 0.1 ? 2 : 4;
   return new Intl.NumberFormat(lang, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -369,13 +377,12 @@ export class Desk {
     this.more = new Set(); // stories whose Details are open
     this.live = new Set(); // stories with a graphic on screen now (app.js)
     this.liveCues = [];    // the cues on screen now, templates included
-    this.hidden = new Set(); // template slots this visitor took off air, in this tab only (the API has no field for them)
     this.reasons = new Map(); // story_id -> Set of REASONS; the API has no field for them, so they stay in this tab
     this.note = "";
     this.info = false;   // the note about where decisions are kept, opened from the info button
     this.dismissed = false; // closed from the info button while it had opened by itself
-    this.lastAct = null; // {id, prev} or {cue}: the last decision, while its Undo is offered
-    this.done = null;    // {id | cue, key}: the outcome the status line says
+    this.lastAct = null; // {id, prev}: the last decision, while its Undo is offered
+    this.done = null;    // {id, key}: the outcome the status line says
     this.factIndex = new Map(this.match.facts.map((f) => [f.fact_id, f]));
     this.eventIndex = new Map(this.match.events.map((e) => [e.event_id, e]));
     // per story: when its first graphic airs, when its last one ends, and its why_card cues
@@ -389,6 +396,30 @@ export class Desk {
       this.slotEnd.set(id, Math.max(this.slotEnd.get(id) ?? -Infinity, c.ts + c.duration_s));
       if (c.graphic === "why_card") this.whyCues.set(id, [...(this.whyCues.get(id) ?? []), c]);
     }
+    // Generated graphics: each cue without a story (the code's panels and cards, built from the facts) is
+    // a pseudo-story, one per slot across its languages, and goes through the desk the stories' way.
+    this.gens = [];
+    this.genOf = new Map();   // slot(cue) -> its generated graphic
+    for (const c of this.match.cues) {
+      if (c.story_id) continue;
+      let g = this.genOf.get(slot(c));
+      if (!g) {
+        const p = c.payload ?? {}, aud = c.audience.split(":"), id = `G-${c.cue_id}`;
+        const factTs = [...list(p.fact_ids), p.fact_id].map((f) => this.factIndex.get(f)?.ts).filter((t) => t !== undefined);
+        g = { story_id: id, gen: c, kind: c.graphic === "why_card" ? p.kind ?? "why_card" : c.graphic, audience: c.audience,
+          // listed once its facts are in, as a story is
+          ts: Math.min(c.ts, factTs.length ? Math.max(...factTs) : c.ts),
+          player_id: p.player_id ?? (aud[0] === "player" ? aud[1] : null), team_id: aud[0] === "team" ? aud[1] : null,
+          default_status: GEN_WAITS(c) ? "needs_review" : "auto_approved" };
+        this.genOf.set(slot(c), g);
+        this.gens.push(g);
+        this.firstAt.set(id, c.ts);
+        this.slotEnd.set(id, c.ts + c.duration_s);
+      }
+      if (c.lang === "en") g.gen = c;
+      if (c.graphic === "why_card") this.whyCues.set(g.story_id, [...(this.whyCues.get(g.story_id) ?? []), c]);
+    }
+    this.byId = new Map(this.gens.map((g) => [g.story_id, g]));
     // Built once: the live regions stay in the page, so a render announces only a new message.
     this.headEl = h("header", { className: "desk-head" });
     this.infoEl = h("p", { className: "desk-note", id: "desk-note" });
@@ -414,7 +445,7 @@ export class Desk {
     const base = `data/${this.matchId}`;
     [this.stories, this.traces] = await Promise.all([optionalRows(`${base}/stories.json`, "story_id"), optionalRows(`${base}/traces.json`)]);
     this.stories.sort((a, b) => a.ts - b.ts);
-    this.byId = new Map(this.stories.map((s) => [s.story_id, s]));
+    this.byId = new Map([...this.gens, ...this.stories].map((s) => [s.story_id, s]));
     this.loaded = true;
     this.changed();
   }
@@ -472,16 +503,30 @@ export class Desk {
 
   // A story Content Safety flagged never goes on air by itself, whatever its risk.
   defaultStatus(s) { return s.safety === "flagged" ? "needs_review" : s.default_status; }
-  status(s) { return this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s); }
-  onAir(s) { return !this.kill && ON_AIR.includes(this.status(s)); }
+  // a generated graphic nobody decided on while it could air has expired: it never airs
+  status(s) {
+    const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s);
+    return s.gen && d === "needs_review" && this.state.ts >= this.slotEnd.get(s.story_id) ? "expired" : d;
+  }
+  // the AI switch holds the agents' stories; a generated graphic is code from the facts, as a template was
+  killed(s) { return this.kill && !s.gen; }
+  onAir(s) { return !this.killed(s) && ON_AIR.includes(this.status(s)); }
 
   // ---- the match so far -----------------------------------------------------------------------
 
+  /** The generated graphic a storyless cue belongs to, in any language. */
+  genFor(cue) { return this.genOf.get(slot(cue)); }
   firstOf(s) { return this.firstAt.get(s.story_id) ?? s.ts; }
   /** Listed: the match has reached its facts (live, it is written only then), and its first graphic has aired or airs within LOOKAHEAD_S. */
   visible(s, now = this.state.ts) { return s.ts <= now && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
-  shown() { return this.stories.filter((s) => this.visible(s)); }
+  /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
+   *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire). */
+  shown() {
+    const gens = this.gens.filter((g) => g.audience === this.state.audience && this.visible(g));
+    const wait = gens.filter((g) => this.status(g) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b))[0];
+    return [...this.stories.filter((s) => this.visible(s)), ...gens.filter((g) => g === wait || this.status(g) !== "needs_review")];
+  }
   /** The stories waiting for this visitor, oldest first. */
   queue() { return this.shown().filter((s) => this.status(s) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b)); }
   pending() { return this.queue().length; }
@@ -493,7 +538,7 @@ export class Desk {
     // template cues are written in English only until the agents translate them
     if (lang !== "en" && !own.some((c) => c.story_id === null)) own = own.concat(mine.filter((c) => c.lang === "en" && c.story_id === null));
     return own.flatMap((c) => {
-      if (c.story_id === null) return this.hidden.has(slot(c)) ? [] : [c];
+      if (c.story_id === null) { const g = this.genOf.get(slot(c)); return g && this.onAir(g) ? [c] : []; }
       const s = this.byId.get(c.story_id); // a cue of a story nobody can review is held
       if (!s || !this.onAir(s)) return [];
       const ed = this.decisions.get(s.story_id)?.edited_text, body = ed?.[c.lang], title = ed?.[`title_${c.lang}`];
@@ -551,7 +596,7 @@ export class Desk {
     if (!undoing) this.aimFocus(this.nextWaiting(id));
     this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at });
     this.note = "";
-    if (!this.online) {
+    if (!this.online || s.gen) {
       this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
         detail: { langs: [...new Set(Object.keys(editedText ?? {}).map((k) => k.replace(/^title_/, "")))] } });
       this.endEdit(id);
@@ -596,15 +641,8 @@ export class Desk {
     this.changed();
   }
 
-  /** A template graphic off air: kept in this tab, undone like a decision. */
-  takeOut(cue) {
-    if (this.locked()) return;
-    this.aimFocus(this.nextWaiting(null));
-    this.hidden.add(slot(cue));
-    this.note = "";
-    this.setDone({ cue, key: "done_takenOut" }, { cue });
-    this.changed();
-  }
+  /** A generated graphic off air, in every language: its pseudo-story rejected. */
+  takeOut(cue) { return this.decide(this.genOf.get(slot(cue)), "rejected"); }
 
   // The status line says what the decision did on air; its Undo stays until the next decision.
   announce(s, prev, wasStatus, undoing) {
@@ -612,8 +650,9 @@ export class Desk {
     let key;
     if (undoing) key = `undone_${this.tally(s)}`;
     else {
-      key = st === "rejected" ? "done_rejected" : st === "edited" ? "done_edited" : wasStatus === "auto_approved" ? "done_kept" : "done_approved";
-      if (this.kill && st !== "rejected") key += "Kill";
+      key = st === "rejected" ? (s.gen ? (wasStatus === "needs_review" ? "done_skipped" : "done_takenOut") : "done_rejected")
+        : st === "edited" ? "done_edited" : wasStatus === "auto_approved" ? "done_kept" : "done_approved";
+      if (this.killed(s) && st !== "rejected") key += "Kill";
     }
     this.setDone({ id, key }, undoing ? null : { id, prev });
   }
@@ -630,17 +669,10 @@ export class Desk {
   async undo() {
     const u = this.lastAct;
     if (!u || this.locked()) return;
-    if (u.cue) {
-      this.hidden.delete(slot(u.cue));
-      this.setDone({ cue: u.cue, key: "undone_template" }, null);
-      this.aimFocus("sec:air");
-      this.changed();
-      return;
-    }
     const s = this.byId.get(u.id);
     if (!s) return;
     this.aimFocus(`${u.id}:card`); // the Undo is gone: focus goes back to the story it changed
-    if (!this.online) {
+    if (!this.online || s.gen) {
       if (u.prev) this.decisions.set(u.id, u.prev); else this.decisions.delete(u.id);
       this.localAudit.unshift({ at: new Date().toISOString(), ts: this.state.ts, actor: "human", action: "undo", story_id: u.id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: {} });
       this.announce(s, null, null, true);
@@ -799,9 +831,9 @@ export class Desk {
 
   renderDone() {
     const d = this.done, s = d?.id && this.byId.get(d.id);
-    const what = s ? this.what(s) : d?.cue ? this.cueWhat(d.cue) : "";
+    const what = s ? this.what(s) : "";
     setText(this.doneMsg, what ? this.tx(d.key, { what }) : "");
-    const undo = Boolean(what && this.lastAct && (this.lastAct.id ? this.lastAct.id === d.id : this.lastAct.cue === d.cue));
+    const undo = Boolean(what && this.lastAct?.id === d.id);
     this.undoBtn.hidden = !undo;
     this.undoBtn.disabled = this.locked();
     this.undoBtn.replaceChildren(this.tx("undo"), kbd("u"));
@@ -829,13 +861,12 @@ export class Desk {
     const c = this.match.clock(ts), base = c.period === 1 ? 45 : 90;
     return c.minute > base ? `${base}+${c.minute - base}` : String(c.minute);
   }
-  minuteText(s) { return this.clockText(s.ts); }
+  minuteText(s) { return this.clockText(s.gen ? this.firstOf(s) : s.ts); }
 
   // "Goal 10'": a story as the status line and the buttons name it
   what(s) { return `${kindName(s.kind, this.state.lang)} ${this.minuteText(s)}'`; }
-  cueWhat(c) { return `${this.tx(`g_${c.graphic}`)} ${this.clockText(c.ts)}'`; }
 
-  tally(s) { return this.onAir(s) ? "onair" : this.status(s) === "needs_review" && !this.kill ? "held" : "off"; }
+  tally(s) { return this.onAir(s) ? "onair" : this.status(s) === "needs_review" && !this.killed(s) ? "held" : "off"; }
 
   // As the card shows it: a story cleared for air but not on screen now is "approved", not "On air"
   tallyOf(s) { const t = this.tally(s); return t === "onair" && !this.live.has(s.story_id) ? "approved" : t; }
@@ -843,8 +874,8 @@ export class Desk {
   // The card's one status line: on screen or not, and who decided
   stateLine(s) {
     const st = this.status(s), t = this.tallyOf(s), lang = this.state.lang;
-    if (t === "held") return this.tx("line_held", { why: s.safety === "flagged" ? this.tx("why_safety") : this.tx(`risk_${riskBand(Number(s.risk))}`).toLocaleLowerCase(lang) });
-    if (t === "off") return this.tx(st === "rejected" ? "line_rejected" : this.kill ? "line_kill" : "offair");
+    if (t === "held") return this.tx("line_held", { why: s.gen ? this.tx("why_gen") : s.safety === "flagged" ? this.tx("why_safety") : this.tx(`risk_${riskBand(Number(s.risk))}`).toLocaleLowerCase(lang) });
+    if (t === "off") return this.tx(st === "expired" ? "line_expired" : st === "rejected" ? (this.skipped(s) ? "line_skipped" : "line_rejected") : this.killed(s) ? "line_kill" : "offair");
     const by = this.tx(`by_${st}`);
     return t === "onair" ? this.tx("line_live", { by }) : cap(by, lang);
   }
@@ -852,14 +883,16 @@ export class Desk {
   // A Done row in a few words: who decided, or why it stays off air
   outcome(s) {
     const st = this.status(s);
-    return this.tx(st === "rejected" ? "row_rejected" : this.kill ? "row_kill" : `by_${st}`);
+    return this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
   }
+  // a generated graphic that waited for the visitor and was not put on air
+  skipped(s) { return Boolean(s.gen) && this.defaultStatus(s) === "needs_review"; }
 
   // Time words that change every second: how long to air, how long left on screen
   when(el) {
     const now = this.state.ts, [mode, id] = el.dataset.when.split("|");
     if (mode === "left") {
-      const end = Math.max(...this.liveCues.filter((c) => (c.story_id ?? c.cue_id) === id).map((c) => c.ts + c.duration_s));
+      const end = Math.max(...this.liveCues.filter((c) => (c.story_id ?? this.genOf.get(slot(c))?.story_id) === id).map((c) => c.ts + c.duration_s));
       return Number.isFinite(end) ? this.tx("left", { s: int(Math.max(0, Math.ceil(end - now)), this.state.lang) }) : "";
     }
     const s = this.byId.get(id), at = s ? this.firstOf(s) : now, sec = int(Math.ceil(at - now), this.state.lang);
@@ -873,8 +906,10 @@ export class Desk {
   setLive(cues) {
     const now = this.state.ts;
     this.liveCues = cues;
-    this.live = new Set(cues.map((c) => c.story_id).filter(Boolean));
-    const reach = this.stories.map((s) => (this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
+    this.live = new Set(cues.map((c) => c.story_id ?? this.genOf.get(slot(c))?.story_id).filter(Boolean));
+    // a generated graphic of the audience on screen also counts once it expires (3)
+    const reach = [...this.stories, ...this.gens.filter((g) => g.audience === this.state.audience)]
+      .map((s) => (s.gen && this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
     const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
     const a = document.activeElement, typing = this.root.contains(a) && a.matches("input, textarea");
     if (key !== this.liveKey && !typing) { this.liveKey = key; this.render(); return; }
@@ -935,6 +970,7 @@ export class Desk {
   // What will air, as the viewer reads it: the kicker, the headline, the body
   airText(s) {
     const lang = this.state.lang, c = this.whyCue(s, lang);
+    if (s.gen && !c) return null; // a panel: its name and subject in the heading say it all
     return [
       c ? h("p", { className: "kicker" }, (KICKER[lang] ?? KICKER.en)[c.payload?.kind] ?? "") : null,
       h("p", { className: "headline", lang: this.titleLang(s, lang) }, this.title(s, lang)),
@@ -942,16 +978,14 @@ export class Desk {
     ];
   }
 
-  // On air now: one row per story on screen, and one per template graphic
+  // On air now: one row per story or generated graphic on screen
   airRows() {
     const seen = new Set(), rows = [];
     for (const c of [...this.liveCues].sort((a, b) => a.ts - b.ts)) {
-      const s = c.story_id && this.byId.get(c.story_id);
-      if (s) {
-        if (seen.has(s.story_id)) continue;
-        seen.add(s.story_id);
-        rows.push(this.renderAir(s));
-      } else if (!c.story_id) rows.push(this.renderTemplate(c));
+      const s = c.story_id ? this.byId.get(c.story_id) : this.genOf.get(slot(c));
+      if (!s || seen.has(s.story_id)) continue;
+      seen.add(s.story_id);
+      rows.push(this.renderAir(s));
     }
     return rows;
   }
@@ -965,23 +999,8 @@ export class Desk {
       editing ? this.renderEditor(s) : this.airText(s),
       editing ? null : h("div", { className: "actions" },
         this.act(s, "rejected", tx("takeOut"), "ctl", "r"),
-        this.act(s, "edited", tx("edit"), "quiet", "e")),
-      this.renderDetails(s));
-  }
-
-  renderTemplate(c) {
-    const tx = (k, v) => this.tx(k, v), p = c.payload ?? {}, label = tx(`g_${c.graphic}`), m = this.clockText(c.ts);
-    const subject = p.name ?? (p.player_id ? this.match.players[p.player_id]?.name : null) ?? (c.graphic === "why_card" ? p.title : null);
-    return h("article", { className: "story air template", "data-tally": "onair", id: `cue-${c.cue_id}`, "aria-labelledby": `h-${c.cue_id}`,
-      "data-item": "", tabindex: -1, "data-focus": `cue:${c.cue_id}` },
-      h("div", { className: "story-head" },
-        h("span", { className: "minute static" }, `${m}'`),
-        h("h4", { id: `h-${c.cue_id}` }, label, subject ? h("span", { className: "who", lang: c.graphic === "why_card" ? "en" : null }, subject) : null),
-        this.whenSpan("left", c.cue_id)),
-      h("p", { className: "tally" }, tx("template")),
-      h("div", { className: "actions" },
-        h("button", { type: "button", className: "ctl act act-takeout", "data-focus": `cue:${c.cue_id}:out`, "data-key": "r", "aria-keyshortcuts": "R",
-          "aria-label": tx("actLabel", { label: tx("takeOut"), kind: label, m }), disabled: this.locked(), onclick: () => this.takeOut(c) }, tx("takeOut"), kbd("r"))));
+        s.gen ? null : this.act(s, "edited", tx("edit"), "quiet", "e")),
+      s.gen ? null : this.renderDetails(s));
   }
 
   storyHead(s, extra) {
@@ -1002,16 +1021,18 @@ export class Desk {
       editing ? this.renderEditor(s) : this.airText(s),
       // the actions come before Details, so they stay in view when it opens
       editing ? null : h("div", { className: "actions" },
-        this.act(s, "approved", tx(this.kill ? "approve" : "put"), "ctl primary", "a"),
-        this.act(s, "edited", tx("edit"), "ctl", "e"),
-        this.act(s, "rejected", tx("reject"), "quiet", "r")),
-      this.renderDetails(s));
+        this.act(s, "approved", tx(this.killed(s) ? "approve" : "put"), "ctl primary", "a"),
+        s.gen ? null : this.act(s, "edited", tx("edit"), "ctl", "e"),
+        this.act(s, "rejected", tx(s.gen ? "skip" : "reject"), "quiet", "r")),
+      s.gen ? null : this.renderDetails(s));
   }
 
   // Done: one line per story, its quiet actions at the end
   renderRow(s) {
     const id = s.story_id, tx = (k, v) => this.tx(k, v), editing = this.editing === id, lang = this.state.lang;
-    const rejected = this.status(s) === "rejected", next = this.isNext(s);
+    const st = this.status(s), rejected = st === "rejected", next = this.isNext(s);
+    // a generated graphic whose moment has passed can no longer change what airs
+    const over = s.gen && (st === "expired" || this.state.ts >= this.slotEnd.get(s.story_id));
     return h("div", { className: "row", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`, role: "group",
       "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
       h("div", { className: "row-line" },
@@ -1019,11 +1040,11 @@ export class Desk {
         h("b", { id: `h-${id}`, className: "kind" }, kindName(s.kind, lang)),
         h("span", { className: "outcome" }, this.outcome(s)),
         next ? [h("span", { className: "tag" }, tx("next")), this.whenSpan("in", id)] : null,
-        editing ? null : h("span", { className: "row-acts" },
-          rejected ? this.act(s, "approved", tx(this.kill ? "approve" : "put"), "quiet", "a") : this.act(s, "rejected", tx("reject"), "quiet", "r"),
-          this.act(s, "edited", tx("edit"), "quiet", "e"))),
+        editing || over ? null : h("span", { className: "row-acts" },
+          rejected ? this.act(s, "approved", tx(this.killed(s) ? "approve" : "put"), "quiet", "a") : this.act(s, "rejected", tx(s.gen ? "takeOut" : "reject"), "quiet", "r"),
+          s.gen ? null : this.act(s, "edited", tx("edit"), "quiet", "e"))),
       editing ? this.renderEditor(s) : null,
-      this.renderDetails(s));
+      s.gen ? null : this.renderDetails(s));
   }
 
   // Details, one level: why it waits, the checks, the earlier drafts, the evidence. Built once opened.
@@ -1202,7 +1223,8 @@ export class Desk {
     const auto = this.online ? this.auditRows.filter((r) => r.actor === "auto") : this.stories.filter((s) => this.defaultStatus(s) === "auto_approved")
       .map((s) => ({ at: directorAt.get(s.story_id) ?? "", actor: "auto", action: "auto_approved", story_id: s.story_id, model: null,
         tokens_in: 0, tokens_out: 0, cost_usd: 0, detail: { risk: s.risk } }));
-    const humans = this.online ? this.auditRows.filter((r) => r.actor === "human") : this.localAudit;
+    // online, the generated graphics' decisions are this tab's only (the API keeps S- ids)
+    const humans = [...(this.online ? this.auditRows.filter((r) => r.actor === "human") : []), ...this.localAudit];
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
     const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
     return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt) };
@@ -1346,6 +1368,10 @@ export class Desk {
 // A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 // a template graphic has one cue per language: taking it out takes it out in every language
 const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
+// The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
+// player check-ins, the analyst's team shape panels) wait for the visitor; the template graphics (momentum,
+// name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did.
+const GEN_WAITS = (c) => c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats";
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

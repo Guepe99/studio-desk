@@ -1,7 +1,7 @@
 // Quality profiles of the 3D scene, picked from what the browser offers (docs/scene3d-research.md,
 // "Test renderer"), overridable with ?quality=low|high. The profile holds for the whole replay: no optimizer
 // lowers it while playing (21/10/2026, a softer picture was what a viewer noticed); a machine that
-// cannot keep up gets the 2D pitch instead (view3d.js, FPS_FLOOR).
+// cannot keep up is offered the 2D pitch instead (view3d.js, SLOW_FPS).
 const B = window.BABYLON;
 
 export const PROFILES = {

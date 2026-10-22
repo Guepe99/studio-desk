@@ -19,11 +19,9 @@ desk that showed the 23' goal at 11' would spoil the replay and could never happ
 
 ## Three sections
 
-- **On air now**: every graphic on screen, template graphics included, each with its time left and
+- **On air now**: every graphic on screen, generated graphics included, each with its time left and
   a Take out button. Viz Mosart lists the overlays on air in one place, each with "Take out" and its
   remaining time ([Program Window](https://docs.vizrt.com/viz-mosart-users-guide/5.5/Program_Window.html)).
-  Taking out a template graphic is kept in the tab only: the API has no field for it (`hidden` in
-  `desk.js`), and Undo brings it back.
 - **Needs you**: the held stories, oldest first, each with the time to its slot. These are the only
   full cards.
 - **Done**: one line per story, "23' Goal · approved by the risk rule · Reject Edit". NN/g finds
@@ -33,6 +31,50 @@ desk that showed the 23' goal at 11' would spoil the replay and could never happ
 
 Each section says in one line when it is empty; the sentence that said what the desk is for is now
 the empty text of Needs you.
+
+## Generated graphics
+
+Every graphic that can go on air passes through the desk, not only the agents' stories. A cue with no
+story (the Momentum and Team shape panels, the name plates, pass and shot, the player check-ins, the
+recaps) is a generated graphic: built by code from the fact ledger, one per slot (graphic, time,
+audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the story path in
+`desk.js`: the same status, the same cards and rows, the same Undo and audit lines.
+
+- The risk rule applies as it does to stories. The template graphics, drawn from the facts alone,
+  are approved by the rule and sit in Done ("approved by the risk rule"). The graphics the code adds
+  per audience (`studiodesk/agents/audiences.py`, `_generated`: the kids sheet, the player check-ins,
+  the analyst's Team shape panels) wait in Needs you with Put on air and Skip.
+- At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
+  at a time, and the analyst sheet alone has 17 Team shape panels a match.
+- One nobody decided on before its slot ended has expired: it never airs, and Done says "expired,
+  its moment passed", with no action left. Done says what happened to each: approved by you, by the
+  risk rule, skipped by you, or expired.
+- The AI switch holds the agents' stories only: a generated graphic is code from the facts, so the
+  rule above still decides it when the AI is off.
+- Decisions on generated graphics stay in the tab, and in the tab's audit lines, even with the API:
+  the API keeps decisions for story ids (`S-` followed by six digits) only.
+
+## Settings explained
+
+Each group of the settings menu (the gear) has one plain line under it saying what changes, and the
+audience choices that differ (Analyst, Casual fan, Kids) have one each. The lines describe what the
+code does: the AI voice speaks only at 1x (`voice.js`, `booth-audio.js`), the analyst sheet adds the
+Momentum and Team shape panels, the agent notes in the desk stay in English. The patterns:
+
+- Short help in context, where the decision is made, not in a separate page
+  ([NN/g, Help and documentation](https://www.nngroup.com/articles/help-and-documentation/)).
+- Settings are changed rarely, so their options are explained inline rather than learned
+  ([IntelliJ Platform UI guidelines, Context help](https://plugins.jetbrains.com/docs/intellij/context-help.html)).
+- The text goes under the control, for a group at the bottom of the group, says what the setting
+  does without repeating its name, and stays under five lines of 70 characters
+  ([IntelliJ, Inline help text](https://plugins.jetbrains.com/docs/intellij/inline-help-text.html);
+  [Oracle Alta, Inline text](https://www.oracle.com/webfolder/ux/middleware/alta/patterns/InlineText.html)).
+- Help text says the outcome of the change
+  ([GitLab Pajamas, Toggle](https://design.gitlab.com/components/toggle)), and is tied to its
+  control with `aria-describedby`
+  ([Persona design system, Toggle](https://design.withpersona.com/components/toggle)).
+- The team and the player can be cleared: picking the selected one again, or the "Both teams" and
+  "Everyone" choices, goes back to the general view and clears the `audience` URL parameter.
 
 ## What a card shows
 

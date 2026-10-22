@@ -241,9 +241,12 @@ Tests: `tests/web/stadium.test.mjs` (node, the pure logic) and `tests/web/stadiu
 Two screens, one in each far corner, on legs just behind the boards at world (±58.4, 40.6): the
 corner of the pitch is at (±52.5, 34), so the screens stand beyond the corner flag and everything
 on the pitch is in front of them; they never hide play. Each is 6.4 x 3.2 m, from 1 m (just over
-the 0.9 m boards) to 4.2 m, turned to camera 1. They show the two short names with their colour
-chips, the score from the `score` facts and the minute from the match clock (`45+2'` in stoppage
-time), at the time the scene shows: a goal replay shows the screen as it was then.
+the 0.9 m boards) to 4.2 m, turned to camera 1. They show a fixed wordmark (STUDIO DESK) over the
+two club colours, drawn once. Until 22 Oct they showed the short names, the score and the minute in
+the score bug's look; in the wide shot the left screen sits just behind and above the score bug, and
+viewers read it as a second, smaller score bug ("WRE 0-0 BRI", or "0-0 8'" when half hidden). The
+score now has one place on screen. The cost notes below were measured with the old, redrawn text;
+a canvas drawn once costs less.
 
 Why that height: camera 1 at (0, 18, -68) on its long lens sees only the bottom of the stands. A
 first version was 7.5 x 3.75 m from 1.8 to 5.55 m; in a sweep of the wide shot over M001 (47

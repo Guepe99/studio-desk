@@ -41,7 +41,7 @@ The director puts a story on air as soon as the story finder has chosen it, with
 - **Voice.** Azure AI Speech records the verified stories ahead of time in English, Italian and Spanish. A clip plays only if its checksum matches the text on screen.
 - **Ask the studio.** A `studio_host` agent answers a visitor's question through the same MCP server, on a clock held at the replay time. Code checks the answer before it is shown: every number must be a cited fact with its unit, a score must be the score at that moment, the answer must contain no link and no real name and be in the visitor's language, and Content Safety must pass both the question and the answer.
 - **Graphics.** Broadcast graphics are HTML in the open EBU OGraf format (`web/graphics/`). On a small screen they switch to a compact layout, and the text is never smaller than 11 px.
-- **3D view.** Babylon.js draws the players from the tracking data and adds a broadcast camera, goal replays and celebrations. The view falls back to 2D on devices that are too slow. For visitors who ask for reduced motion, it keeps the wide broadcast camera and makes no cuts.
+- **3D view.** Babylon.js draws the players from the tracking data and adds a broadcast camera, goal replays and celebrations. On a device that is too slow it suggests the 2D pitch. For visitors who ask for reduced motion, it keeps the wide broadcast camera and makes no cuts.
 
 The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. Model calls for one match cost between $0.060 and $0.102 (236,000 to 430,000 tokens), taken from each run's audit. Stories found, numbers blocked, tokens, cost and timing for each match are in [docs/MEASURES.md](docs/MEASURES.md).
 
