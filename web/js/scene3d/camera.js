@@ -225,7 +225,8 @@ export class Cameras {
     const aim = new B.Vector3(now[0], TIGHT.aim, now[1]);
     cam.setTarget(aim);
     const dist = B.Vector3.Distance(cam.position, aim);
-    cam.fov = this._fovFor(cam, TIGHT.width, dist);   // no phone zoom: already knees up
+    // no phone zoom: already knees up; capped under 16 degrees across when the scorer runs at the camera
+    cam.fov = Math.min(this._fovFor(cam, TIGHT.width, dist), 2 * Math.atan(Math.tan(7.9 * DEG) / this._aspect(cam)));
     this.focus = dist;
     this.scene.activeCamera = cam;
     return true;

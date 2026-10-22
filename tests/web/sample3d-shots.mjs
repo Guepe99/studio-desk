@@ -133,7 +133,7 @@ try {
     fail(`drivers resolve to ${JSON.stringify(look.resolved)}`);
 
   // broadcast camera: fixed on the halfway line 18 m up, the ball always in the middle 90% of the
-  // frame through the live stretch, except the close shot of the scorer after the goal (centred
+  // frame through the live stretch (just in the frame during a punch-in), except the close shot of the scorer after the goal (centred
   // on him), then the replay camera after the cut
   // Broadcast rules (docs/broadcast3d.md): camera 1 on the halfway line 30 to 40 m back from the
   // near touchline, 12 to 16 degrees down to the centre spot and along its median line of sight; a
@@ -166,6 +166,12 @@ try {
       }
       const hfov = 2 * Math.atan(Math.tan(cam.fov / 2) * sc.engine.getAspectRatio(cam));
       const aim = cam.getTarget(), dist = window.BABYLON.Vector3.Distance(cam.position, aim);
+      // a punch-in (camera.js PUNCH, 1.6 s lead) closes the lens on purpose: there the ball only has to stay in the frame
+      if (sc.cams.punches.some((q) => ts > q.ts - 1.6 && ts < q.until + q.out)) {
+        const b = ndc(cam, sc.ball.getAbsolutePosition());
+        out.punchWorst = Math.max(out.punchWorst ?? 0, Math.abs(b.x), Math.abs(b.y));
+        continue;
+      }
       out.hfov.push(hfov * 180 / Math.PI);
       out.width.push(2 * dist * Math.tan(hfov / 2));
       out.pitch.push(Math.asin((cam.position.y - aim.y) / dist) * 180 / Math.PI);
@@ -185,6 +191,7 @@ try {
   console.log(`broadcast camera: ball within ${(tv.worst * 100).toFixed(0)}% of the half frame, cameras ${tv.cams}, scorer close-up ${tv.celebration.length} frames (off centre ${Math.max(...tv.celebration)}), then ${tv.after}`);
   if (tv.celebration.length < 5 || Math.max(...tv.celebration) > 0.35) fail(`no close shot of the scorer after the goal: ${JSON.stringify(tv.celebration)}`);
   if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on the gantry: ${JSON.stringify(tv)}`);
+  if (!(tv.punchWorst < 1)) fail(`the ball leaves the frame in a punch-in: ${tv.punchWorst}`);
   if (!(tv.worst < 0.9) || !tv.moved) fail(`broadcast camera loses the ball or never pans: ${JSON.stringify(tv)}`);
   if (tv.replay === "tv" || !/^replay/.test(tv.after)) fail(`no replay camera after the cut: ${JSON.stringify(tv)}`);
   const med = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
