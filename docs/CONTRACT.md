@@ -413,3 +413,13 @@ Agents only learn about an event when the clock releases it, in replay generatio
   on the menu sees it, side by side in the page language. Each card's button switches the broadcast
   to that audience (`aria-pressed` on the current one). This visitor's edited text replaces every
   audience's line, as on the cue sheet.
+
+## Viewing additions (feat/ui-viewing, additive)
+
+- `POST /api/perf` with `{match_id, fps_median, renderer|null, screen_w, screen_h, dpr}`: one anonymous
+  frame-rate beacon per visit, sent after 30 s of 3D play. Fields are validated and clamped; no IP, user
+  agent or free text is kept. Answers 204, 422 on bad input, 429 over 20 per client or 5000 per day.
+  One structured log line goes to the `studiodesk.perf` logger.
+- Generated graphics (cues from `studiodesk/agents/audiences.py`) appear on the desk as `G-<cue_id>`
+  pseudo-stories. They are decided in the browser tab only and never sent to `/api/decisions`, which
+  takes `S-` ids.
