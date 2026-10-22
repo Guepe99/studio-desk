@@ -130,13 +130,13 @@ const CONTROL_STRINGS = {
     keyFull: "Full screen on or off", keyList: "This list",
     bothTeams: "Both teams", everyone: "Everyone",
     whySpeed: "How fast the match clock runs. The AI voice speaks only at 1x.",
-    whyAnalyst: "Every graphic, with stat names and values, plus the Momentum and Team shape panels.",
+    whyAnalyst: "The most graphics, with stat names and values, plus the Momentum and Team shape panels.",
     whyCasual: "Fewer cards, plain words and the one number that matters.",
     whyKids: "The casual fan's graphics in short, simple words, often with no numbers.",
     whyTeam: "Graphics told by a fan of that club. Pick it again to go back.",
     whyPlayer: "Graphics about that player, with cards on his touches, passes and running. Pick him again to go back.",
     whyLang: "The page, the graphics and the AI voice. Agent notes in the control desk stay in English.",
-    whyMore: "Minimap: the 2D pitch in a corner of the 3D view. Click it to swap the two." },
+    whyMore: "Minimap: turns the 2D pitch on or off in a corner of the 3D view. Clicking that corner swaps the two." },
   it: { settings: "Impostazioni", more: "Altro", minimap: "Minimappa",
     voice: "Voce", voiceName: "Voce IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
@@ -146,13 +146,13 @@ const CONTROL_STRINGS = {
     keyFull: "Attiva o disattiva lo schermo intero", keyList: "Questo elenco",
     bothTeams: "Entrambe le squadre", everyone: "Tutti",
     whySpeed: "Quanto corre l'orologio della partita. La voce IA parla solo a 1x.",
-    whyAnalyst: "Tutte le grafiche, con nomi e valori delle statistiche, più i pannelli Inerzia e Assetto.",
+    whyAnalyst: "Il maggior numero di grafiche, con nomi e valori delle statistiche, più i pannelli Inerzia e Assetto.",
     whyCasual: "Meno schede, parole semplici e il solo numero che conta.",
     whyKids: "Le grafiche dello spettatore in frasi brevi e semplici, spesso senza numeri.",
     whyTeam: "Le grafiche raccontate da un tifoso di quella squadra. Sceglila di nuovo per tornare indietro.",
     whyPlayer: "Le grafiche su quel giocatore, con schede sui suoi tocchi, passaggi e corse. Sceglilo di nuovo per tornare indietro.",
     whyLang: "La pagina, le grafiche e la voce IA. Le note degli agenti nella regia restano in inglese.",
-    whyMore: "Minimappa: il campo 2D in un angolo della vista 3D. Un clic scambia le due viste." },
+    whyMore: "Minimappa: accende o spegne il campo 2D in un angolo della vista 3D. Un clic su quell'angolo scambia le due viste." },
   es: { settings: "Ajustes", more: "Más", minimap: "Minimapa",
     voice: "Voz", voiceName: "Voz de IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
@@ -162,13 +162,13 @@ const CONTROL_STRINGS = {
     keyFull: "Activar o desactivar la pantalla completa", keyList: "Esta lista",
     bothTeams: "Ambos equipos", everyone: "Todos",
     whySpeed: "La velocidad del reloj del partido. La voz de IA solo habla a 1x.",
-    whyAnalyst: "Todos los gráficos, con nombres y valores de las estadísticas, más los paneles Dominio y Estructura.",
+    whyAnalyst: "El mayor número de gráficos, con nombres y valores de las estadísticas, más los paneles Dominio y Estructura.",
     whyCasual: "Menos tarjetas, palabras sencillas y el único número que importa.",
     whyKids: "Los gráficos del espectador en frases cortas y sencillas, a menudo sin números.",
     whyTeam: "Los gráficos contados por un aficionado de ese club. Elígelo otra vez para volver.",
     whyPlayer: "Los gráficos sobre ese jugador, con tarjetas de sus toques, pases y carreras. Elígelo otra vez para volver.",
     whyLang: "La página, los gráficos y la voz de IA. Las notas de los agentes en la realización siguen en inglés.",
-    whyMore: "Minimapa: el campo 2D en una esquina de la vista 3D. Un clic intercambia las dos vistas." },
+    whyMore: "Minimapa: activa o desactiva el campo 2D en una esquina de la vista 3D. Un clic en esa esquina intercambia las dos vistas." },
 };
 for (const [lang, more] of Object.entries(CONTROL_STRINGS)) STRINGS[lang] = { ...more, ...STRINGS[lang] };
 // The page header: what the page is for a first-time visitor; the match line comes from meta.json
@@ -621,7 +621,7 @@ function wireControls() {
     if (!b || b.getAttribute("aria-disabled") === "true") return;
     if (b.dataset.speed) setSpeed(Number(b.dataset.speed));
     // the checked team or player picked again, or Both teams / Everyone: back to the general view
-    else if (b.dataset.clear) setAudience(state.base);
+    else if (b.dataset.clear) { if (state.audience.startsWith(`${b.dataset.clear}:`)) setAudience(state.base); }
     else if (b.dataset.audience) pickAudience(b.dataset.audience);
     else if (b.dataset.lang) setLang(b.dataset.lang);
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");

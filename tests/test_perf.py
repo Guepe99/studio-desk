@@ -24,7 +24,7 @@ def test_a_good_report_is_logged_once_without_address_or_agent(client, caplog):
     assert len(lines) == 1
     rec = lines[0]
     assert rec.perf_match_id == "M001" and rec.perf_fps_median == 41.4 and rec.perf_dpr == 1.5
-    assert rec.perf_screen_w == 1280 and rec.perf_renderer.startswith("ANGLE")
+    assert rec.perf_screen_w == 1280 and rec.perf_renderer == "intel"
     text = rec.getMessage() + repr(vars(rec))
     assert "203.0.113.9" not in text and "probe/1" not in text
 
@@ -54,7 +54,7 @@ def test_missing_renderer_is_fine_and_out_of_range_values_are_clamped(client, ca
     a, b = [x for x in caplog.records if x.name == "studiodesk.perf"]
     assert (a.perf_fps_median, a.perf_screen_w, a.perf_screen_h, a.perf_dpr, a.perf_renderer) == (1000.0, 0, 20000, 8.0, None)
     assert (b.perf_fps_median, b.perf_dpr) == (0.0, 0.25)
-    assert b.perf_renderer == "GPU" + "y" * (api.PERF_RENDERER_CHARS - 3)  # printable ASCII only, then cut
+    assert b.perf_renderer == "other"  # free text never reaches the log, only a family from the fixed list
 
 
 def test_each_address_and_the_whole_day_are_capped(client, monkeypatch):

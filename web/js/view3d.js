@@ -179,9 +179,11 @@ export class View3D {
     const h = this.hint;
     if (on) {
       const fps = this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-      h.text.textContent = this.t("slow3d").replace("{fps}", fps);
-      h.go.textContent = this.t("slow3dGo");
-      h.keep.textContent = this.t("slow3dKeep");
+      // a live region: rewriting the same words makes a screen reader say them again
+      const set = (el, s) => { if (el.textContent !== s) el.textContent = s; };
+      set(h.text, this.t("slow3d").replace("{fps}", fps));
+      set(h.go, this.t("slow3dGo"));
+      set(h.keep, this.t("slow3dKeep"));
     }
     h.box.hidden = !on;
     this.onChange();

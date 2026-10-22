@@ -594,7 +594,7 @@ export class Desk {
     if (this.locked()) return;
     const id = s.story_id, prev = this.decisions.get(id), wasStatus = this.status(s), at = new Date().toISOString();
     if (!undoing) this.aimFocus(this.nextWaiting(id));
-    this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at });
+    this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at, from: wasStatus }); // from: a generated graphic rejected while waiting was skipped, not taken out
     this.note = "";
     if (!this.online || s.gen) {
       this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
@@ -886,7 +886,7 @@ export class Desk {
     return this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
   }
   // a generated graphic that waited for the visitor and was not put on air
-  skipped(s) { return Boolean(s.gen) && this.defaultStatus(s) === "needs_review"; }
+  skipped(s) { return Boolean(s.gen) && this.decisions.get(s.story_id)?.from === "needs_review"; }
 
   // Time words that change every second: how long to air, how long left on screen
   when(el) {

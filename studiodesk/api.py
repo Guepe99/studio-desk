@@ -561,7 +561,10 @@ async def post_ask(q: Question, request: Request, response: Response):
 # only counts the cap below, in memory, and is never logged.
 PERF_PER_CLIENT_PER_DAY = 20   # one per 3D page load: a visitor reloading all day, not a script
 PERF_PER_DAY = 5000            # bounds the lines the public link can write to Application Insights in a day
-PERF_RENDERER_CHARS = 120      # "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)" is 86
+# the renderer string is visitor-controlled text: only its GPU family from this list is kept, first match wins
+PERF_GPU_FAMILIES = (("software", ("swiftshader", "llvmpipe", "software", "basic render")), ("nvidia", ("nvidia", "geforce", "quadro")),
+                     ("amd", ("amd", "radeon")), ("intel", ("intel",)), ("apple", ("apple",)), ("mali", ("mali",)),
+                     ("adreno", ("adreno",)), ("powervr", ("powervr",)))
 # shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
 _perf_sent = {"day": "", "all": 0, "by_client": {}}
 # Application Insights takes the "studiodesk" logger tree (telemetry.py); INFO, as the root default is WARNING
@@ -585,9 +588,9 @@ class Perf(BaseModel):
         self.screen_w = min(max(self.screen_w, 0), 20000)
         self.screen_h = min(max(self.screen_h, 0), 20000)
         self.dpr = round(min(max(self.dpr, 0.25), 8.0), 2)
-        # a renderer name is printable ASCII: anything else goes, then the length is capped
-        name = re.sub(r"[^ -~]", "", self.renderer or "").strip()[:PERF_RENDERER_CHARS]
-        self.renderer = name or None
+        name = (self.renderer or "").lower()
+        self.renderer = next((fam for fam, keys in PERF_GPU_FAMILIES if any(k in name for k in keys)),
+                             "other" if name.strip() else None)
         return self
 
 

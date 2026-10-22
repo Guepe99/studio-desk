@@ -35,15 +35,15 @@ the empty text of Needs you.
 ## Generated graphics
 
 Every graphic that can go on air passes through the desk, not only the agents' stories. A cue with no
-story (the Momentum and Team shape panels, the name plates, pass and shot, the player check-ins, the
-recaps) is a generated graphic: built by code from the fact ledger, one per slot (graphic, time,
+story (the Momentum and Team shape panels and the player check-ins) is a generated graphic: built by code from the fact ledger, one per slot (graphic, time,
 audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the story path in
 `desk.js`: the same status, the same cards and rows, the same Undo and audit lines.
 
-- The risk rule applies as it does to stories. The template graphics, drawn from the facts alone,
-  are approved by the rule and sit in Done ("approved by the risk rule"). The graphics the code adds
-  per audience (`studiodesk/agents/audiences.py`, `_generated`: the kids sheet, the player check-ins,
-  the analyst's Team shape panels) wait in Needs you with Put on air and Skip.
+- The risk rule applies as it does to stories. The Momentum panels, drawn from the facts alone, are
+  approved by the rule and sit in Done ("approved by the risk rule"). The graphics the code adds per
+  audience (`studiodesk/agents/audiences.py`, `_generated`: the player check-ins and the analyst's
+  Team shape panels) wait in Needs you with Put on air and Skip. The kids sheet keeps its story ids
+  and follows its stories.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
   at a time, and the analyst sheet alone has 17 Team shape panels a match.
 - One nobody decided on before its slot ended has expired: it never airs, and Done says "expired,
