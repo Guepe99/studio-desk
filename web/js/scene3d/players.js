@@ -285,10 +285,13 @@ export function applyUpper(p) {
 
 // After the animation step: a run loop's flight phase lifts both feet well clear of the grass
 // while the contact shadow stays on it, so the runner seemed to float. A player on the ground
-// (p.free: no action, no ball contact, no lift) drops until his lower ankle is FLIGHT_MAX up.
+// (p.free: no action, no ball contact, no lift) drops until his lower ankle is FLIGHT_MAX up, but
+// never further than his lowest sole point (sole, metres above the grass, from the ball rig's
+// grounding): at the jog's toe-off the foot points 77 to 89 degrees down and its tip is 0.23 m
+// below the ankle, so an ankle-only drop put the toes 3.3 cm into the grass (docs/flow3d.md).
 // shortcut: lowers the whole body instead of retiming the loops' flight, fine at broadcast range.
 const FLIGHT_MAX = 0.2;   // m: the ankle bone stands about 0.1 m up
-export function settleFeet(p) {
+export function settleFeet(p, sole = Infinity) {
   if (!p.free) return;
   let low = Infinity;
   for (const name of ["foot_l", "foot_r"]) {
@@ -298,7 +301,8 @@ export function settleFeet(p) {
     c.forEach((n) => n.computeWorldMatrix(true));
     low = Math.min(low, c.at(-1).getAbsolutePosition().y);
   }
-  if (low > FLIGHT_MAX) p.holder.position.y -= low - FLIGHT_MAX;
+  const drop = Math.min(low - FLIGHT_MAX, sole);
+  if (drop > 0) p.holder.position.y -= drop;
 }
 
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last

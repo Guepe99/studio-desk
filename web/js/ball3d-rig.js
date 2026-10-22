@@ -87,7 +87,9 @@ function legNodes(root) {
 
 // A few points on each sole, in the frame of the bone they move with (foot, or ball for the toes):
 // the boot vertices within 1 cm of the lowest one in the rest pose, the outermost in eight
-// directions. null when the player file has no boots part (the plain mannequin).
+// directions, plus the toe tip and the heel's back as the foot pitches (the lowest vertex with the
+// foot tilted 30, 60 and 85 degrees toe down or heel down: the tip curves up 1.2 cm off the flat
+// sole, out of the 1 cm band). null when the player file has no boots part (the plain mannequin).
 function solePoints(root, L) {
   const nodes = [root, ...root.getChildTransformNodes(false)];
   nodes.forEach((n) => n.computeWorldMatrix(true));
@@ -113,17 +115,26 @@ function solePoints(root, L) {
       const bone = B.Vector3.Dot(q, fwd) > toe ? "ball" : "foot";
       out[side].push({ bone, at: B.Vector3.TransformCoordinates(q, L[`${bone}_${side}`].getWorldMatrix().clone().invert()) });
     }
+    const low = mine.filter((q) => q.y < lo + 0.04);   // the boot below the ankle collar
+    for (const deg of [30, 60, 85]) for (const s of [1, -1]) {
+      const d = fwd.scale(s * Math.sin(deg * Math.PI / 180)).add(new B.Vector3(0, -Math.cos(deg * Math.PI / 180), 0));
+      const q = low.reduce((m, x) => (B.Vector3.Dot(x, d) > B.Vector3.Dot(m, d) ? x : m), low[0]);
+      const bone = B.Vector3.Dot(q, fwd) > toe ? "ball" : "foot";
+      out[side].push({ bone, at: B.Vector3.TransformCoordinates(q, L[`${bone}_${side}`].getWorldMatrix().clone().invert()) });
+    }
   }
   return out;
 }
 
 // Grounding: the clips, their blends and the leg poses can put a sole under the grass (a straight
 // support leg while the jog's pelvis is low, a keeper's dive). The root is lifted by that depth,
-// set afresh each frame, so a body above the grass is never moved.
+// set afresh each frame, so a body above the grass is never moved. p.sole: the lowest sole point's
+// height after the lift, which caps players.js settleFeet's drop.
 const sv = new B.Vector3();
 function ground(p, soles) {
   const { root, legs } = p;
   root.position.y = 0;
+  p.sole = Infinity;
   if (!root.parent?.isEnabled()) return;
   let low = Infinity;
   for (const side of ["l", "r"]) {
@@ -136,6 +147,7 @@ function ground(p, soles) {
     }
   }
   if (low < 0) root.position.y = -low;
+  p.sole = Math.max(low, 0);
 }
 
 const AX = new B.Vector3(1, 0, 0), AY = new B.Vector3(0, 1, 0);

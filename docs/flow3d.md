@@ -219,3 +219,38 @@ after (limit 16); jog slide median 0.111 before, 0.086 after (limit 0.1); facing
 before, 0 after (limit 0); ball radius 0.17 before, 0.11 after; keeper reactions 0 of 1 before,
 1 of 1 after; hands to ball at the DEMO save 0.85 m with the keeper layer off, 0.22 m with it on
 (limit 0.5).
+
+## 4. Toes in the grass at the jog's toe-off
+
+`tests/web/feet3d.mjs` failed on all four pages (DEMO and M001, default and anime footballers):
+the lowest boot outside keeper actions went 2.8 to 3.4 cm under the grass (limit 2 cm).
+
+Cause, measured on DEMO with the default footballers (every boot vertex, every 0.06 s): all of the
+40 deepest samples were a running player's boot with the lower ankle exactly 20 cm up and the
+foot pointing 77 to 89 degrees down, the toe-off of the jog loop. That is `settleFeet`
+(`players.js`): in a loop's flight phase it lowers the whole body (by 9 to 17 cm here) until the
+lower ankle is 0.2 m up, and with the foot nearly vertical the toe tip sits 0.23 m below the
+ankle bone, so the tip went 3.3 cm under. The ball bone was still 2.7 to 3.0 cm up, which is
+why a cap on the ball bones changed nothing: the tip reaches 6.2 cm past the ball bone. The ball
+rig's grounding, which runs before `settleFeet`, saw it too late and too short: its sole points
+were the vertices within 1 cm of the flat sole, and the toe tip curves up 1.2 cm, so its lowest
+point read -2.8 cm where the tip was at -3.3 cm. The clips, their blends and the per-player
+scale were not the cause (same depth at scale 1.0017 and on the anime heights).
+
+Fix: the rig's sole points add the toe tip and the heel's back (the lowest vertex with the foot
+tilted 30, 60 and 85 degrees either way), the grounding keeps the lowest sole point's height
+after its lift, and `settleFeet` never lowers the body further than that. No new per-frame
+pass: 12 more points per foot in a loop that was already there.
+
+| feet3d.mjs, lowest sole outside keeper actions | Before | After |
+|---|---|---|
+| DEMO default | -3.3 cm (T01-9, walk+jog, 2.8 m/s) | -0.9 cm |
+| DEMO anime | -2.8 cm (T02-11, jog+run) | -0.7 cm |
+| M001 default | -3.4 cm (T02-2, jog, 1.27 m/s) | -0.8 cm |
+| M001 anime | -3.0 cm (T02-11, walk+jog, 3.75 m/s) | -0.7 cm |
+
+The highest planted sole did not move (8.3, 1.3, 2.9 and 2.5 cm on the four pages); the planted
+median rose from -0.8 to -0.6 cm on DEMO default and from -0.7 to -0.6 cm on M001 default. The after-animation pass (ball rig,
+grounding, `settleFeet`, the other layers) costs 2.6 ms per frame for 22 players before and after,
+inside the run-to-run spread. The flight dip of T01-9 at 7.86 s is 10.7 cm instead of 16.8 cm.
+Stills, a boot seen from the grass: `tests/web/run-smoke.sh feet3d-stills.mjs DEMO T01-9 7.62 7.98`.
