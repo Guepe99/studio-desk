@@ -221,7 +221,7 @@ export class Scene3D {
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
     this.throws = scheduleThrows(match.events);
     this.addDriver(throwDriver(match, this.throws));
-    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p); } this.throwBall(); });
+    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p, this.rig.players.get(p.i)?.sole); } this.throwBall(); });
 
     // contact darkening under every player, and blob shadows for the lights without a shadow map
     this.grounding = new Grounding(scene, this.players.length, this.light);
