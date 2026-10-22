@@ -127,8 +127,8 @@ uses raw RGBA masks (`RawTexture`) on a Standard material. Neither bug shows on 
   tests. Blob shadows, no pipeline (materials tone-map themselves, one FXAA pass), one detail
   scale, 30% of the crowd, render width capped at 1100 px.
 - `?quality=low|high` forces one. No `SceneOptimizer` (removed 21/10/2026): it lowered the
-  picture while playing, and a softer picture was what a viewer noticed. A machine under 12 fps
-  gets the 2D pitch instead (view3d.js).
+  picture while playing, and a softer picture was what a viewer noticed. A machine under 10 fps
+  is offered the 2D pitch, never switched to it (view3d.js, 22/10/2026).
 
 ### Where the build departs from section D, and why
 
@@ -171,7 +171,7 @@ profile pays for everything at once in software. One earlier run that switched p
 (`scene3d-perf.mjs high all`, from 0.59 fps with everything on) gave 0.80 without sun shadows,
 1.08 without the crowd, 1.59 with post effects at their minimum and 1.65 with no pipeline. On a
 real GPU they should cost far less (shadow maps and MSAA are what GPUs are built for), but this was
-not measured: no GPU on this machine. The 2D fallback under 12 fps is the safety net.
+not measured: no GPU on this machine. The 2D suggestion under 10 fps and the frame-rate beacon (api/perf) are the safety net.
 
 On 21/10/2026 `tests/web/frame-cost.mjs` (M001 high profile, SwiftShader, from the goal at 10:00)
 counted 1,179 draw calls a frame. Four changes took out work that did not reach the picture:

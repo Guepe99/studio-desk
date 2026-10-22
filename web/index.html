@@ -73,29 +73,41 @@
         <span id="settings-state"></span>
         <!-- arrows move through the items, Escape closes it and the focus goes back to the gear (app.js) -->
         <div id="settings-menu" role="menu" aria-labelledby="settings" hidden>
-          <div class="mg chips" role="group" aria-labelledby="mg-speed"><p id="mg-speed" class="mh" aria-hidden="true" data-i18n="speed">Playback speed</p>
+          <div class="mg chips" role="group" aria-labelledby="mg-speed" aria-describedby="why-speed"><p id="mg-speed" class="mh" aria-hidden="true" data-i18n="speed">Playback speed</p>
             <button type="button" role="menuitemradio" tabindex="-1" data-speed="1" aria-checked="true">1x</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-speed="4" aria-checked="false">4x</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-speed="16" aria-checked="false">16x</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-speed="64" aria-checked="false">64x</button>
+            <p id="why-speed" class="mg-why" aria-hidden="true" data-i18n="whySpeed">How fast the match clock runs. The AI voice speaks only at 1x.</p>
           </div>
           <div class="mg" role="group" aria-labelledby="mg-audience"><p id="mg-audience" class="mh" aria-hidden="true" data-i18n="audience">Audience</p>
-            <button type="button" role="menuitemradio" tabindex="-1" data-audience="analyst" aria-checked="true" data-i18n="analyst">Analyst</button>
-            <button type="button" role="menuitemradio" tabindex="-1" data-audience="casual" aria-checked="false" data-i18n="casual">Casual fan</button>
-            <button type="button" role="menuitemradio" tabindex="-1" data-audience="kids" aria-checked="false" data-i18n="kids">Kids</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="analyst" aria-checked="true" data-i18n="analyst" aria-describedby="why-analyst">Analyst</button>
+            <p id="why-analyst" class="mg-why item" aria-hidden="true" data-i18n="whyAnalyst">Every graphic</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="casual" aria-checked="false" data-i18n="casual" aria-describedby="why-casual">Casual fan</button>
+            <p id="why-casual" class="mg-why item" aria-hidden="true" data-i18n="whyCasual">Fewer cards</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-audience="kids" aria-checked="false" data-i18n="kids" aria-describedby="why-kids">Kids</button>
+            <p id="why-kids" class="mg-why item" aria-hidden="true" data-i18n="whyKids">Short words</p>
           </div>
-          <!-- one item per team and per player the cue sheet has cues for (app.js) -->
-          <div class="mg" role="group" aria-labelledby="mg-team" hidden><p id="mg-team" class="mh" aria-hidden="true" data-i18n="myteam">My team</p></div>
-          <div class="mg" role="group" aria-labelledby="mg-player" hidden><p id="mg-player" class="mh" aria-hidden="true" data-i18n="player">Player</p></div>
-          <div class="mg chips" role="group" aria-labelledby="mg-lang"><p id="mg-lang" class="mh" aria-hidden="true" data-i18n="language">Language</p>
+          <!-- one item per team and per player the cue sheet has cues for (app.js), after the item that clears the choice -->
+          <div class="mg" role="group" aria-labelledby="mg-team" hidden><p id="mg-team" class="mh" aria-hidden="true" data-i18n="myteam">My team</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-clear="team" aria-checked="true" data-i18n="bothTeams" aria-describedby="why-team">Both teams</button>
+            <p id="why-team" class="mg-why" aria-hidden="true" data-i18n="whyTeam">A fan of that club</p>
+          </div>
+          <div class="mg" role="group" aria-labelledby="mg-player" hidden><p id="mg-player" class="mh" aria-hidden="true" data-i18n="player">Player</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-clear="player" aria-checked="true" data-i18n="everyone" aria-describedby="why-player">Everyone</button>
+            <p id="why-player" class="mg-why" aria-hidden="true" data-i18n="whyPlayer">One player</p>
+          </div>
+          <div class="mg chips" role="group" aria-labelledby="mg-lang" aria-describedby="why-lang"><p id="mg-lang" class="mh" aria-hidden="true" data-i18n="language">Language</p>
             <button type="button" role="menuitemradio" tabindex="-1" data-lang="en" lang="en" aria-label="English" aria-checked="true">EN</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-lang="it" lang="it" aria-label="Italiano" aria-checked="false">IT</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-lang="es" lang="es" aria-label="Español" aria-checked="false">ES</button>
+            <p id="why-lang" class="mg-why" aria-hidden="true" data-i18n="whyLang">The page, the graphics and the AI voice.</p>
           </div>
           <div class="mg" role="group" aria-labelledby="mg-more"><p id="mg-more" class="mh" aria-hidden="true" data-i18n="more">More</p>
-            <button id="minimap" type="button" role="menuitemcheckbox" tabindex="-1" aria-checked="false" data-i18n="minimap">Minimap</button>
+            <button id="minimap" type="button" role="menuitemcheckbox" tabindex="-1" aria-checked="false" data-i18n="minimap" aria-describedby="why-more">Minimap</button>
             <button id="half2" type="button" role="menuitem" tabindex="-1" data-i18n="half2">Jump to 2nd half</button>
             <button id="keys-open" type="button" role="menuitem" tabindex="-1" data-i18n="keysTitle">Keyboard shortcuts</button>
+            <p id="why-more" class="mg-why" aria-hidden="true" data-i18n="whyMore">Minimap: the 2D pitch in a corner of the 3D view.</p>
           </div>
         </div>
       </div>

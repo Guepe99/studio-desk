@@ -105,6 +105,13 @@ const seekTo = async (page, ts) => {
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 };
 // a settings item, as a visitor picks it: the gear opens the menu, a click picks, Escape closes the menu
+// the generated graphics that wait for the visitor (team shape, check-ins: docs/desk.md), put on air as a
+// producer would, so every cue can be checked on screen
+const approveWaiting = (page) => page.evaluate(() => {
+  const d = window.studioDesk.desk;
+  for (const g of d.gens) if (d.status(g) === "needs_review") d.decisions.set(g.story_id, { story_id: g.story_id, decision: "approved" });
+  d.changed();
+});
 const pick = async (page, sel) => {
   if (await page.$eval("#settings-menu", (m) => m.hidden)) await page.click("#settings");
   await page.click(`#settings-menu ${sel}`);
@@ -247,6 +254,7 @@ try {
   if (await page.evaluate(() => document.activeElement?.id) !== "frame") fail("focus: the broadcast frame does not have the focus after loading");
 
   await check("cues", async () => {
+    await approveWaiting(page);
     const shotFor = {};
     for (const audience of ["analyst", "casual"]) {
       await pick(page, `[data-audience="${audience}"]`);
@@ -275,6 +283,7 @@ try {
   // My team and Player: the picker offers exactly the audiences of cues.json, and for each one the
   // graphics on screen are that audience's cues and nobody else's.
   await check("modes", async () => {
+    await approveWaiting(page);
     const all = await page.evaluate(() => window.studioDesk.match.cues);
     for (const kind of ["team", "player"]) {
       const auds = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith(`${kind}:`)))].sort();
@@ -319,7 +328,30 @@ try {
     await page.keyboard.press("Enter");
     const after = await page.evaluate((a) => [window.studioDesk.state.audience, document.querySelector(`[data-audience="${a}"]`).getAttribute("aria-checked")], team);
     if (after[0] !== team || after[1] !== "true") fail(`keyboard: team ${team} -> ${after.join(" ")}`);
+    // the way back to the general view: Enter on the checked team again clears it, and Both teams is checked
+    if (await page.$eval("#settings-menu", (m) => m.hidden)) { await page.focus("#settings"); await page.keyboard.press("Enter"); }
+    await page.focus(`#settings-menu [data-audience="${team}"]`);
+    await page.keyboard.press("Enter");
+    const cleared = await page.evaluate(() => [window.studioDesk.state.audience === window.studioDesk.state.base, document.querySelector('[data-clear="team"]').getAttribute("aria-checked")]);
+    if (cleared.join() !== "true,true") fail(`keyboard: Enter on the checked team again -> ${cleared.join(" ")}`);
     await page.keyboard.press("Escape");
+    // Both teams and Everyone go back to the audience the pick was made from, and clear the link's ?audience=
+    const qs = () => page.evaluate(() => new URLSearchParams(location.search).get("audience"));
+    await pick(page, '[data-audience="casual"]');
+    await page.evaluate(() => { const p = new URLSearchParams(location.search); p.set("audience", "casual"); history.replaceState(null, "", `${location.pathname}?${p}`); });
+    await pick(page, `[data-audience="${team}"]`);
+    if (await qs() !== team) fail(`?audience= is ${await qs()} after picking ${team}`);
+    await pick(page, '[data-clear="team"]');
+    const both = await page.evaluate((a) => [window.studioDesk.state.audience, document.querySelector(`[data-audience="${a}"]`).getAttribute("aria-checked")], team);
+    if (both.join() !== "casual,false" || await qs() !== "casual") fail(`Both teams: ${both.join(" ")}, ?audience=${await qs()}`);
+    const player = await page.$eval('#settings-menu [data-audience^="player:"]', (b) => b.dataset.audience);
+    await pick(page, `[data-audience="${player}"]`);
+    await pick(page, '[data-clear="player"]');
+    const everyone = await page.evaluate(() => [window.studioDesk.state.audience, document.querySelector('[data-clear="player"]').getAttribute("aria-checked")]);
+    if (everyone.join() !== "casual,true") fail(`Everyone: ${everyone.join(" ")}`);
+    await pick(page, `[data-audience="${player}"]`);
+    await pick(page, `[data-audience="${player}"]`);
+    if (await page.evaluate(() => window.studioDesk.state.audience) !== "casual") fail("a click on the checked player again did not clear it");
     await pick(page, '[data-audience="analyst"]');
     if (!(await page.$eval("#settings-state", (el) => el.hidden))) fail("something beside the gear for the analyst audience at 1x");
   });

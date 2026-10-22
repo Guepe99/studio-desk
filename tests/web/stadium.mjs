@@ -1,7 +1,7 @@
 // The stadium's big screens (web/js/scene3d/screen.js) and the kick-off and full-time moments
 // (web/js/countdown.js) on the broadcast page.
-// Big screens, on index.html?match=$MATCH&view=3d: the text is the match's score and minute after seeks and
-// while playing, and the canvas is drawn again only when it changes; where each camera sees them (a sweep
+// Big screens, on index.html?match=$MATCH&view=3d: a fixed wordmark, never the score (it read as a second score
+// bug), drawn at load and not again after seeks across goals; where each camera sees them (a sweep
 // of the broadcast camera over the whole match, every replay angle on a goal replay), projected from the
 // camera matrices; the cost of a frame with and without them (the same frame drawn alternately, each
 // finished with a one-pixel readPixels) and the draw calls they add.
@@ -56,33 +56,16 @@ const frames = (page, n = 2) => page.evaluate((n) => new Promise((done) => { let
   const has3d = await page.evaluate(() => !!window.studioDesk.view3d.scene);
   check(has3d, "the 3D scene loads");
   if (has3d) {
-    // the text after seeks, and one draw per change
+    // a fixed wordmark, never the score or the clock: seeks across goals and minutes do not draw the canvas again
+    // (the score had a second place on screen, the left screen right behind the score bug)
+    const d0 = await page.evaluate(() => window.studioDesk.view3d.scene.screen.draws);
     for (const ts of [0, 1500, 2793, 4000, 5620]) {
       await page.evaluate((ts) => window.studioDesk.seek(ts), ts);
       await frames(page);
-      const r = await page.evaluate(() => {
-        const sd = window.studioDesk, s = sd.view3d.scene, ts = s.ts;
-        const [h, a] = sd.match.score(ts), want = `${sd.match.home.short_name}|${h}|${a}|${sd.match.away.short_name}|${sd.match.clock(ts).label}'`;
-        return { ts, key: s.screen.key, want };
-      });
-      check(r.key === r.want, `screen at ${r.ts.toFixed(1)} s says ${r.key} (match data: ${r.want})`);
     }
-    const play = await page.evaluate(async () => {
-      const sd = window.studioDesk, s = sd.view3d.scene, render = s.render;
-      s.render = () => {};   // not drawn: a software frame takes seconds, and the screen's text is set in update
-      sd.seek(1190); await new Promise((r) => requestAnimationFrame(r));
-      const d0 = s.screen.draws, t0 = s.ts;
-      sd.state.speed = 4; sd.setPlaying(true);
-      await new Promise((r) => { const f = () => (sd.state.ts >= 1390 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
-      sd.setPlaying(false); sd.state.speed = 1;
-      await new Promise((r) => requestAnimationFrame(r));
-      s.render = render;
-      const t1 = s.ts, minutes = Math.floor(t1 / 60) - Math.floor(t0 / 60);
-      const goals = sd.match.goals.filter((g) => g.ts > t0 && g.ts <= t1).length;
-      return { from: t0, to: t1, draws: s.screen.draws - d0, minutes, goals };
-    });
-    check(play.draws <= play.minutes + play.goals && (play.minutes === 0 || play.draws >= 1),
-      `playing ${play.from.toFixed(0)} to ${play.to.toFixed(0)} s: ${play.draws} canvas draws for ${play.minutes} minute changes and ${play.goals} goals`);
+    const scr = await page.evaluate(() => { const s = window.studioDesk.view3d.scene.screen; return { text: s.text, draws: s.draws }; });
+    check(scr.text === "STUDIO DESK" && !/\d/.test(scr.text), `the big screen says ${JSON.stringify(scr.text)}`);
+    check(scr.draws === d0 && d0 >= 1 && d0 <= 2, `the big screen drawn ${d0} times at load (twice at most: once more when the font arrives), ${scr.draws - d0} more over five seeks across goals`);
 
     // where the cameras see the screens: the share of the frame each covers, from the camera matrices
     // (the scene is not drawn meanwhile, so the sweep is quick on a software renderer)
@@ -211,15 +194,11 @@ const frames = (page, n = 2) => page.evaluate((n) => new Promise((done) => { let
         calls[on ? "on" : "off"] = inst.drawCallsCounter.current;
       }
       s.screen.meshes.forEach((m) => m.setEnabled(true));
-      // one canvas draw and upload, the work of a minute change
-      const t0 = performance.now(), n = 5;
-      for (let k = 0; k < n; k++) { s.screen.key = null; s.screen.update(s.ts); }
-      const redraw = (performance.now() - t0) / n;
       inst.dispose();
       const med = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
-      return { on: med(t.on), off: med(t.off), calls, redraw, profile: s.debug.profile, size: `${s.engine.getRenderWidth()}x${s.engine.getRenderHeight()}`, webgl: s.engine.webGLVersion };
+      return { on: med(t.on), off: med(t.off), calls, profile: s.debug.profile, size: `${s.engine.getRenderWidth()}x${s.engine.getRenderHeight()}`, webgl: s.engine.webGLVersion };
     });
-    console.log(`frame cost (profile ${cost.profile}, WebGL ${cost.webgl}, ${cost.size}): median ${cost.on.toFixed(1)} ms with the screens, ${cost.off.toFixed(1)} ms without (6 frames each, alternated); draw calls ${cost.calls.on} with, ${cost.calls.off} without; one canvas redraw and upload ${cost.redraw.toFixed(2)} ms`);
+    console.log(`frame cost (profile ${cost.profile}, WebGL ${cost.webgl}, ${cost.size}): median ${cost.on.toFixed(1)} ms with the screens, ${cost.off.toFixed(1)} ms without (6 frames each, alternated); draw calls ${cost.calls.on} with, ${cost.calls.off} without`);
     check(cost.calls.on - cost.calls.off <= 2, `the screens add ${cost.calls.on - cost.calls.off} draw calls`);
 
     // the count on the 3D page, for the eye: held at "3" (a software frame takes seconds, the count three)

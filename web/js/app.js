@@ -41,7 +41,7 @@ const STRINGS = {
     didCheck: "Checked the numbers", didCue: "Put it in the rundown", didFail: "Model call failed", didHand: "Passed its work on",
     replay: "Replay", swap3d: "Show the 3D view large", swap2d: "Show the 2D pitch large", load3d: "Loading the 3D view",
     fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
-    slow3d: "The 3D view ran at {fps} frames a second here, so the 2D pitch is back. Turn the minimap on in the settings to keep the 3D view anyway.",
+    slow3d: "The 3D view runs at {fps} frames a second on this device. The 2D pitch is lighter and shows the same match.", slow3dGo: "Switch to 2D", slow3dKeep: "Keep 3D",
     voiceOn: "AI voice-over on, with AI match commentary by fictional commentators and crowd sound: speaks the chosen language, plays at 1x", voiceOff: "AI voice-over and AI commentary off",
     aioff: "AI off", matchPick: "Choose a match", broadcast: "Match broadcast", activity: "Agent activity",
   },
@@ -72,7 +72,7 @@ const STRINGS = {
     didCheck: "Ha controllato i numeri", didCue: "L'ha messa in scaletta", didFail: "Errore del modello", didHand: "Ha passato le consegne",
     replay: "Replay", swap3d: "Mostra in grande la vista 3D", swap2d: "Mostra in grande il campo 2D", load3d: "Caricamento della vista 3D",
     fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
-    slow3d: "Qui la vista 3D andava a {fps} fotogrammi al secondo, così è tornato il campo 2D. Accendi la minimappa nelle impostazioni per tenerla comunque.",
+    slow3d: "Su questo dispositivo la vista 3D va a {fps} fotogrammi al secondo. Il campo 2D è più leggero e mostra la stessa partita.", slow3dGo: "Passa al 2D", slow3dKeep: "Tieni il 3D",
     voiceOn: "Voce IA accesa, con la telecronaca IA di due telecronisti inventati e il rumore del pubblico: parla nella lingua scelta, solo a velocità 1x", voiceOff: "Voce e telecronaca IA spente",
   },
   es: {
@@ -101,7 +101,7 @@ const STRINGS = {
     didCheck: "Comprobó los números", didCue: "La puso en la escaleta", didFail: "Error del modelo", didHand: "Pasó el relevo",
     replay: "Repetición", swap3d: "Mostrar en grande la vista 3D", swap2d: "Mostrar en grande el campo 2D", load3d: "Cargando la vista 3D",
     fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
-    slow3d: "Aquí la vista 3D iba a {fps} fotogramas por segundo, así que vuelve el campo 2D. Activa el minimapa en los ajustes para mantenerla de todos modos.",
+    slow3d: "En este dispositivo la vista 3D va a {fps} fotogramas por segundo. El campo 2D es más ligero y muestra el mismo partido.", slow3dGo: "Cambiar a 2D", slow3dKeep: "Seguir en 3D",
     voiceOn: "Voz de IA activada, con comentarios de IA de dos comentaristas inventados y el sonido de la grada: habla en el idioma elegido, solo a 1x", voiceOff: "Voz y comentarios de IA desactivados",
   },
 };
@@ -110,7 +110,7 @@ const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 // ?lang= keeps the language across a change of match (matchPicker)
-const state = { ts: 0, playing: false, speed: 1, audience: "analyst", lang: STRINGS[params.get("lang")] ? params.get("lang") : "en", seeked: true };
+const state = { ts: 0, playing: false, speed: 1, audience: "analyst", base: "analyst", lang: STRINGS[params.get("lang")] ? params.get("lang") : "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
@@ -127,21 +127,48 @@ const CONTROL_STRINGS = {
     goalsHint: "AI graphics are off: this jumps to the goals",
     keysTitle: "Keyboard shortcuts", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
     keyFive: "Back or forward 5 seconds", keyJump: "Jump to 0%, 10% … 90% of the match", keyVoice: "AI voice-over on or off",
-    keyFull: "Full screen on or off", keyList: "This list" },
+    keyFull: "Full screen on or off", keyList: "This list",
+    bothTeams: "Both teams", everyone: "Everyone",
+    whySpeed: "How fast the match clock runs. The AI voice speaks only at 1x.",
+    whyAnalyst: "Every graphic, with stat names and values, plus the Momentum and Team shape panels.",
+    whyCasual: "Fewer cards, plain words and the one number that matters.",
+    whyKids: "The casual fan's graphics in short, simple words, often with no numbers.",
+    whyTeam: "Graphics told by a fan of that club. Pick it again to go back.",
+    whyPlayer: "Graphics about that player, with cards on his touches, passes and running. Pick him again to go back.",
+    whyLang: "The page, the graphics and the AI voice. Agent notes in the control desk stay in English.",
+    whyMore: "Minimap: the 2D pitch in a corner of the 3D view. Click it to swap the two." },
   it: { settings: "Impostazioni", more: "Altro", minimap: "Minimappa",
     voice: "Voce", voiceName: "Voce IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
     goalsHint: "Grafiche IA spente: il pulsante salta ai gol",
     keysTitle: "Scorciatoie da tastiera", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
     keyFive: "Indietro o avanti di 5 secondi", keyJump: "Salta allo 0%, 10% … 90% della partita", keyVoice: "Accendi o spegni la voce IA",
-    keyFull: "Attiva o disattiva lo schermo intero", keyList: "Questo elenco" },
+    keyFull: "Attiva o disattiva lo schermo intero", keyList: "Questo elenco",
+    bothTeams: "Entrambe le squadre", everyone: "Tutti",
+    whySpeed: "Quanto corre l'orologio della partita. La voce IA parla solo a 1x.",
+    whyAnalyst: "Tutte le grafiche, con nomi e valori delle statistiche, più i pannelli Inerzia e Assetto.",
+    whyCasual: "Meno schede, parole semplici e il solo numero che conta.",
+    whyKids: "Le grafiche dello spettatore in frasi brevi e semplici, spesso senza numeri.",
+    whyTeam: "Le grafiche raccontate da un tifoso di quella squadra. Sceglila di nuovo per tornare indietro.",
+    whyPlayer: "Le grafiche su quel giocatore, con schede sui suoi tocchi, passaggi e corse. Sceglilo di nuovo per tornare indietro.",
+    whyLang: "La pagina, le grafiche e la voce IA. Le note degli agenti nella regia restano in inglese.",
+    whyMore: "Minimappa: il campo 2D in un angolo della vista 3D. Un clic scambia le due viste." },
   es: { settings: "Ajustes", more: "Más", minimap: "Minimapa",
     voice: "Voz", voiceName: "Voz de IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
     goalsHint: "Gráficos de IA apagados: el botón salta a los goles",
     keysTitle: "Atajos de teclado", keySpace: "Espacio", keyPlay: "Reproducir o pausar", keyTen: "Atrás o adelante 10 segundos",
     keyFive: "Atrás o adelante 5 segundos", keyJump: "Ir al 0%, 10% … 90% del partido", keyVoice: "Activar o desactivar la voz de IA",
-    keyFull: "Activar o desactivar la pantalla completa", keyList: "Esta lista" },
+    keyFull: "Activar o desactivar la pantalla completa", keyList: "Esta lista",
+    bothTeams: "Ambos equipos", everyone: "Todos",
+    whySpeed: "La velocidad del reloj del partido. La voz de IA solo habla a 1x.",
+    whyAnalyst: "Todos los gráficos, con nombres y valores de las estadísticas, más los paneles Dominio y Estructura.",
+    whyCasual: "Menos tarjetas, palabras sencillas y el único número que importa.",
+    whyKids: "Los gráficos del espectador en frases cortas y sencillas, a menudo sin números.",
+    whyTeam: "Los gráficos contados por un aficionado de ese club. Elígelo otra vez para volver.",
+    whyPlayer: "Los gráficos sobre ese jugador, con tarjetas de sus toques, pases y carreras. Elígelo otra vez para volver.",
+    whyLang: "La página, los gráficos y la voz de IA. Las notas de los agentes en la realización siguen en inglés.",
+    whyMore: "Minimapa: el campo 2D en una esquina de la vista 3D. Un clic intercambia las dos vistas." },
 };
 for (const [lang, more] of Object.entries(CONTROL_STRINGS)) STRINGS[lang] = { ...more, ...STRINGS[lang] };
 // The page header: what the page is for a first-time visitor; the match line comes from meta.json
@@ -197,6 +224,10 @@ function layout() {
   const fw = Math.round(STAGE_W * s), fh = Math.round(STAGE_H * s);
   frame.style.width = `${fw}px`;
   frame.style.height = `${fh}px`;
+  // the header starts at the frame's left edge at every width: the frame is centred in #app, so the header
+  // takes its width (beside the deck the grid already starts both at the frame's column). A header that
+  // wraps taller here is measured again by the ResizeObserver below and the frame gets what is left.
+  Object.assign($("#masthead").style, side ? { width: "", alignSelf: "" } : { width: `${fw}px`, alignSelf: "center" });
   stage.style.transform = `scale(${s})`;
   // the score bug is never drawn under MIN_PX either: magnified from its 38 px teams, minute and score;
   // the 30 px period label goes when it would be smaller (the minute says the half: 45+2', 46')
@@ -295,9 +326,22 @@ function setSpeed(x) {
   settingsState();
 }
 
+// The audience on screen. A team or a player is a focus on top of the general view (Analyst, Casual
+// fan or Kids, the last one picked): clearing it goes back there.
+// a team or a player picked again goes back to the general audience it was picked from
+function pickAudience(a) { setAudience(a.includes(":") && a === state.audience ? state.base : a); }
+
 function setAudience(a) {
+  if (!a.includes(":")) state.base = a;
   state.audience = a;
   checked("data-audience", a);
+  for (const b of document.querySelectorAll("[data-clear]")) b.setAttribute("aria-checked", String(!a.startsWith(`${b.dataset.clear}:`)));
+  // a link opened with &audience= must not bring back a choice the visitor has left
+  const p = new URLSearchParams(location.search);
+  if (p.has("audience")) {
+    if (a === "analyst") p.delete("audience"); else p.set("audience", a);
+    history.replaceState(history.state, "", `${location.pathname}${p.size ? `?${p}` : ""}${location.hash}`);
+  }
   settingsState();
   refreshCues();
 }
@@ -562,7 +606,7 @@ function wireControls() {
       b.setAttribute("role", "menuitemradio");
       b.setAttribute("aria-checked", "false");
       Object.assign(b.dataset, { audience: aud, short });
-      group.append(b);
+      group.querySelector(".mg-why").before(b);
     }
     group.hidden = !list.length;
   }
@@ -576,7 +620,9 @@ function wireControls() {
     const b = e.target.closest('[role^="menuitem"]');
     if (!b || b.getAttribute("aria-disabled") === "true") return;
     if (b.dataset.speed) setSpeed(Number(b.dataset.speed));
-    else if (b.dataset.audience) setAudience(b.dataset.audience);
+    // the checked team or player picked again, or Both teams / Everyone: back to the general view
+    else if (b.dataset.clear) setAudience(state.base);
+    else if (b.dataset.audience) pickAudience(b.dataset.audience);
     else if (b.dataset.lang) setLang(b.dataset.lang);
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
     else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
@@ -735,7 +781,7 @@ async function main() {
     const b = document.querySelector(`#settings-menu [data-audience="${CSS.escape(aud)}"]`);
     return !b ? null : aud.startsWith("player:") ? b.dataset.short || b.textContent : b.textContent;
   };
-  audBox = new AudienceBox($("#audiences"), desk, { label: audLabel, pick: setAudience });
+  audBox = new AudienceBox($("#audiences"), desk, { label: audLabel, pick: pickAudience });
   $("#status").textContent = "";
   buildSeekMarks();
   wireControls();

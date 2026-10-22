@@ -215,7 +215,7 @@ export function proofOf(cue, { story, factIndex, eventIndex, match, minute, stat
     writer: !story ? "code" : v.on_air ?? "ai",       // "phrasebook" | "template" | "ai" | "code" (a template graphic)
     verifier: story && !v.on_air ? v.status ?? null : null,   // the verifier passed the AI's own line; a phrasebook line is code
     safety: story?.safety ?? null,
-    approval: story ? status : "template",
+    approval: status ?? "template", // a generated graphic goes through the desk too (desk.js genFor)
     numbersOk: numbers.every((x) => x.src),
   };
 }
@@ -267,14 +267,15 @@ export class Proof {
   }
 
   ctx(cue) {
-    const story = cue.story_id ? this.desk.byId.get(cue.story_id) ?? null : null;
+    const story = cue.story_id ? this.desk.byId.get(cue.story_id) ?? null : null, s = story ?? this.desk.genFor(cue);
     return { story, factIndex: this.desk.factIndex, eventIndex: this.desk.eventIndex, match: this.match,
       // the verifier's minute (rules.py): a fact at 300.0 s closes minute 5
-      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: story ? this.desk.status(story) : null };
+      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: s ? this.desk.status(s) : null };
   }
   what(cue) {
     const s = cue.story_id && this.desk.byId.get(cue.story_id);
-    return s ? this.desk.what(s) : this.desk.cueWhat(cue);
+    const g = s || this.desk.genFor(cue);
+    return g ? this.desk.what(g) : "";
   }
 
   // The cues on air now (host.live): a new set or a new language redraws the bar

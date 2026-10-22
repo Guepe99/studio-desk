@@ -6,7 +6,7 @@
 // The design and its sources: docs/desk.md. Runs the same story twice, at 1440x900 (desk docked) and
 // 390x844 (a bottom sheet), each in a fresh browser context, so a fresh visitor session. Checks:
 // - the desk lists only what the match has reached plus the 60 s look-ahead, marked Next (and on M002:
-//   no 17' card at 11', then it appears); three sections, On air now (templates too, with Take out),
+//   no 17' card at 11', then it appears); three sections, On air now (generated graphics too, with Take out),
 //   Needs you and Done, whose counts match their items; at most one filled button per card, exactly
 //   one ("Put on air") on a held card, none on a Done row or an on-air row
 // - a card shows the kicker, headline and body that air, and an edit of the headline reaches the graphic
@@ -102,7 +102,10 @@ async function structure(page, all, storyIds, ts, tag) {
   // live, a story exists once the match has passed its facts (its ts): a goal is never listed before it is scored
   const tsOf = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.studioDesk.desk.byId.get(id)?.ts])), storyIds);
   const want = new Set(storyIds.filter((id) => tsOf[id] <= ts && firstCue(all, id) <= ts + LOOKAHEAD));
-  const listed = secs.flatMap((s) => s.items).filter((i) => i.id.startsWith("story-")).map((i) => i.id.slice(6));
+  const listed = secs.flatMap((s) => s.items).filter((i) => i.id.startsWith("story-S-")).map((i) => i.id.slice(6));
+  // generated graphics (G- ids) go through the desk too, and at most one waits at a time
+  const gensWaiting = secs.find((s) => s.id === "needs")?.items.filter((i) => i.id.startsWith("story-G-")).length ?? 0;
+  expect(gensWaiting <= 1, `${tag} @${ts}: ${gensWaiting} generated graphics waiting`);
   expect(listed.length === new Set(listed).size && listed.length === want.size && listed.every((id) => want.has(id)),
     `${tag} @${ts}: listed ${JSON.stringify(listed)}, reached ${JSON.stringify([...want])}`);
   for (const s of secs) {
@@ -113,11 +116,12 @@ async function structure(page, all, storyIds, ts, tag) {
       if (s.id === "needs") expect(i.filled.length === 1 && /^(Put on air|Approve)/.test(i.filled[0]), `${tag} @${ts}: waiting ${i.id} filled ${JSON.stringify(i.filled)}`);
       else expect(!i.filled.length, `${tag} @${ts}: ${s.id} ${i.id} has a filled button ${JSON.stringify(i.filled)}`);
       // Next: inside the look-ahead, its first graphic still to come
-      if (i.id.startsWith("story-")) expect(i.next === firstCue(all, i.id.slice(6)) > ts, `${tag} @${ts}: ${i.id} Next tag ${i.next}`);
+      if (i.id.startsWith("story-S-")) expect(i.next === firstCue(all, i.id.slice(6)) > ts, `${tag} @${ts}: ${i.id} Next tag ${i.next}`);
     }
   }
-  // On air now lists every graphic on screen: one row per story, one per template cue
-  const onScreen = await page.evaluate(() => [...window.studioDesk.host.live.values()].map((i) => (i.cue.story_id ? `story-${i.cue.story_id}` : `cue-${i.cue.cue_id}`)));
+  // On air now lists every graphic on screen: one row per story or generated graphic
+  const onScreen = await page.evaluate(() => [...window.studioDesk.host.live.values()].map(({ cue: c }) =>
+    `story-${c.story_id ?? window.studioDesk.desk.genOf.get(`${c.graphic}|${c.ts}|${c.audience}`)?.story_id}`));
   const air = secs[0]?.items.map((i) => i.id) ?? [];
   expect([...new Set(onScreen)].sort().join() === [...air].sort().join(), `${tag} @${ts}: on screen ${JSON.stringify(onScreen)}, On air now ${JSON.stringify(air)}`);
   return secs;
@@ -190,8 +194,8 @@ async function scenario(browser, w, h) {
   await structure(page, cues, ids, MOMENTUM.ts + 1.5, tag); // the momentum template on air, the key pass waiting, the goal done
   await openDesk();
   await shoot("sections", null);
-  // Take out a template graphic, and Undo brings it back
-  await page.click(`#cue-${MOMENTUM.cue_id} .act-takeout`);
+  // Take out a generated graphic, and Undo brings it back
+  await page.click(`#story-G-${MOMENTUM.cue_id} .act-rejected`);
   await seekTo(page, MOMENTUM.ts + 1.6);
   expect(!(await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Take out left the momentum card on air`);
   expect(/^Momentum \d+' taken out$/.test(await page.$eval("#desk .done-msg", (el) => el.textContent)), `${tag}: Take out status line`);
@@ -545,7 +549,8 @@ async function realReplay(browser, match) {
   const firsts = ss.map((s) => firstCue(all, s.story_id)).filter(Number.isFinite).sort((a, b) => a - b);
   for (const ts of [0, firsts[0] + 2, firsts[Math.floor(firsts.length / 2)] + 2, firsts.at(-1) + 2]) await structure(page, all, ss.map((s) => s.story_id), ts, match);
   await noFactIds(page, match);
-  // a template taken out in English stays out in Italian: the real replays have one cue per language
+  await generated(page, all, match);
+  // a generated graphic taken out in English stays out in Italian: the real replays have one cue per language
   const tpl = all.find((c) => c.story_id === null && c.lang === "en");
   const back = await page.evaluate((c) => {
     const { desk, match: m } = window.studioDesk;
@@ -554,8 +559,50 @@ async function realReplay(browser, match) {
     desk.undo();
     return [left, desk.sheet(m.cues, c.audience, "it").filter((x) => x.graphic === c.graphic && x.ts === c.ts).length];
   }, tpl);
-  expect(back[0] === 0 && back[1] > 0, `${match}: a template taken out in English, cues left in Italian then after Undo ${back}`);
+  expect(back[0] === 0 && back[1] > 0, `${match}: a generated graphic taken out in English, cues left in Italian then after Undo ${back}`);
   await page.context().close();
+}
+
+// The analyst's team shape panels wait for the visitor: approved one airs, a skipped one does not, and
+// one nobody decided on expires into Done once its moment has passed.
+async function generated(page, all, match) {
+  await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
+  const panels = all.filter((c) => c.story_id === null && c.graphic === "team_stats" && c.audience === "analyst" && c.lang === "en").sort((a, b) => a.ts - b.ts);
+  if (panels.length < 3) return fail(`${match}: ${panels.length} team shape panels, the check needs 3`);
+  const gid = (c) => page.evaluate((x) => window.studioDesk.desk.genOf.get(`${x.graphic}|${x.ts}|${x.audience}`).story_id, c);
+  const panelOn = (c) => live(page).then((l) => l.some((x) => x.story === null && x.cue && all.find((y) => y.cue_id === x.cue)?.graphic === "team_stats"
+    && all.find((y) => y.cue_id === x.cue).ts === c.ts));
+  const text = (sel) => page.$eval(sel, (el) => el.textContent).catch(() => null);
+  const [a, b, c] = panels, ga = await gid(a), gb = await gid(b), gc = await gid(c);
+  // waiting before its slot, held off air at its slot, on air once put on air
+  await seekTo(page, a.ts - 2);
+  const acts = await page.$$eval(`.sec-needs #story-${ga} .actions button`, (n) => n.map((x) => x.textContent.replace(/[A-Z]$/, "")));
+  expect(JSON.stringify(acts) === '["Put on air","Skip"]', `${match}: waiting panel actions ${JSON.stringify(acts)}`);
+  await seekTo(page, a.ts + 1);
+  expect(!(await panelOn(a)), `${match}: a waiting team shape panel is on air`);
+  await page.click(`#story-${ga} .act-approved`);
+  await seekTo(page, a.ts + 1.5);
+  expect(await panelOn(a), `${match}: an approved team shape panel is not on air`);
+  expect(/approved by you/.test(await text(`#story-${ga} .tally`)), `${match}: approved panel says ${await text(`#story-${ga} .tally`)}`);
+  // skipped: never on air, and Done says so
+  await seekTo(page, b.ts - 2);
+  await page.click(`#story-${gb} .act-rejected`);
+  expect(/skipped, off air$/.test(await text("#desk .done-msg")), `${match}: skip status line ${await text("#desk .done-msg")}`);
+  await seekTo(page, b.ts + 1);
+  expect(!(await panelOn(b)), `${match}: a skipped team shape panel is on air`);
+  expect(await text(`.sec-done #story-${gb} .outcome`) === "skipped by you", `${match}: skipped row ${await text(`#story-${gb} .outcome`)}`);
+  // nobody decided: off air, then expired into Done with no actions left
+  const end = await page.evaluate((id) => window.studioDesk.desk.slotEnd.get(id), gc);
+  await seekTo(page, c.ts + 1);
+  expect(!(await panelOn(c)), `${match}: an undecided team shape panel is on air`);
+  await seekTo(page, end + 1);
+  const row = await page.$eval(`.sec-done #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
+  expect(JSON.stringify(row) === '["expired, its moment passed",0]', `${match}: expired panel row ${JSON.stringify(row)}`);
+  // the risk rule's panel airs by itself and says who put it there
+  const mom = all.find((x) => x.story_id === null && x.graphic === "momentum" && x.audience === "analyst" && x.lang === "en");
+  await seekTo(page, mom.ts + 1);
+  const gm = await gid(mom);
+  expect(/approved by the risk rule/.test(await text(`#story-${gm} .tally`)), `${match}: momentum panel says ${await text(`#story-${gm} .tally`)}`);
 }
 
 // Edges at 1440: an API that hangs, a refused edit, a language switch while editing, the on-air
@@ -656,7 +703,7 @@ async function edges(browser) {
   await seekTo(page, ALL);
   await page.click("#tab-traces");
   await page.click("#tab-stories");
-  expect(await page.$$eval("#desk [data-item]", (n) => n.filter((x) => x.id.startsWith("story-")).length) === 1, "edges: malformed stories.json broke the list");
+  expect(await page.$$eval("#desk [data-item]", (n) => n.filter((x) => x.id.startsWith("story-S-")).length) === 1, "edges: malformed stories.json broke the list");
   await page.context().close();
 }
 

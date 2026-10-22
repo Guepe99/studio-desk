@@ -11,8 +11,9 @@
 // canvas, opaque lines, discs and ball, keylines at 3:1 on a white and a black frame; the 3D inset and the
 // large 2D pitch opaque), and the frame rate with the 3D large and with the 3D in the inset against the 3D
 // alone (the 3D in the inset draws fewer pixels). Then on the 3D page: the frame rate while playing, a
-// seek sweep over the whole match twice (the heap and the scene must not grow), and the fall back to
-// 2D under the frame-rate floor; on a page without WebGL: the fall back at load, the 2D default and no
+// seek sweep over the whole match twice (the heap and the scene must not grow), under the frame-rate
+// floor the 3D kept with a suggestion of the 2D pitch (never a switch by itself), and the one
+// frame-rate beacon to api/perf; on a page without WebGL: the fall back at load, the 2D default and no
 // inset. Screenshots of the three views go to out/shots/view3d-{2d,3d,split}.png, view3d-radar-swapped.png
 // and view3d-replay.png.
 //
@@ -306,18 +307,17 @@ try {
       // inside the window must not read as a slow frame rate)
       const pause = await page.evaluate(async (floor) => {
         const sd = window.studioDesk, v = sd.view3d, wait = (ms) => new Promise((r) => setTimeout(r, ms));
-        v.floor = floor;
-        sd.seek(1500); sd.setPlaying(true); await wait(4000);
-        sd.setPlaying(false); await wait(500);
-        await wait(2500);
-        sd.setPlaying(true); await wait(4000);
-        const out = { tab: document.querySelector("#view3d").tabIndex, shown: v.shown, notice: v.notice };
+        Object.assign(v, { floor, warmup: 0 });
+        sd.seek(1500); sd.setPlaying(true); await wait(6000);
+        sd.setPlaying(false); await wait(3000);
+        sd.setPlaying(true); await wait(6000);
+        const out = { tab: document.querySelector("#view3d").tabIndex, shown: v.shown, notice: v.notice, hint: !document.querySelector("#slow-hint").hidden };
         sd.setPlaying(false); v.floor = 0;
         return out;
       }, fps3d.fps * 0.6);
       console.log(`pause and resume: ${JSON.stringify(pause)}`);
       if (pause.tab !== -1) fail(`the 3D canvas is a tab stop (tabIndex ${pause.tab})`);
-      if (pause.shown !== "3d" || pause.notice) fail(`a 3 s pause sent the page back to 2D: ${JSON.stringify(pause)}`);
+      if (pause.shown !== "3d" || pause.notice || pause.hint) fail(`a 3 s pause read as a slow 3D view: ${JSON.stringify(pause)}`);
 
       // the 3D notice gives the page's own notice back when it clears
       const kept = await page.evaluate(() => {
@@ -370,24 +370,45 @@ try {
       console.log(`scene before ${JSON.stringify(c0)}, after one sweep ${JSON.stringify(c1)}`);
       if (JSON.stringify(c1) !== JSON.stringify(c2)) fail(`scene grew over the second sweep: ${JSON.stringify(c1)} -> ${JSON.stringify(c2)}`);
 
-      // under the frame-rate floor the page goes back to 2D with a notice; the minimap turned on again keeps the 3D
+      // under the frame-rate floor the 3D view stays and a line suggests the 2D pitch, once: "Keep 3D"
+      // hides it for good, "Switch to 2D" switches, the minimap item brings the 3D back. Meanwhile the
+      // beacon goes once, after its seconds of 3D play, with the fields api.py takes.
+      const perf = [];
+      await page.route("**/api/perf", (r) => { perf.push({ body: r.request().postDataJSON(), type: r.request().headers()["content-type"] }); r.fulfill({ status: 204 }); });
       const slow = await page.evaluate(async () => {
-        const sd = window.studioDesk, v = sd.view3d;
-        v.floor = 1000;
+        const sd = window.studioDesk, v = sd.view3d, hint = document.querySelector("#slow-hint"), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const until = async (ok, s) => { const t0 = performance.now(); while (!ok() && performance.now() - t0 < s * 1000) await wait(200); return (performance.now() - t0) / 1000; };
+        Object.assign(v, { floor: 1000, warmup: v.played + 2, beaconAt: v.played + 3, beaconSent: false, gaps: [] });
         sd.seek(1200); sd.setPlaying(true);
-        const t0 = performance.now();
-        while (v.shown !== "2d" && performance.now() - t0 < 30000) await new Promise((r) => setTimeout(r, 200));
-        const after = (performance.now() - t0) / 1000, notice = document.querySelector("#notice"), pitch = document.querySelector("#pitch");
-        const out = { shown: v.shown, after, notice: notice.hidden ? null : notice.textContent, pitch: !pitch.hidden && pitch.parentElement.id === "stage" };
+        const after = await until(() => !hint.hidden, 60);
+        const [go, keep] = hint.querySelectorAll("button");
+        const out = { after, shown: v.shown, notice: v.notice, text: hint.textContent, go: go.textContent, keep: keep.textContent };
+        keep.click();
+        await wait(12000);
+        Object.assign(out, { keptHidden: hint.hidden, keptShown: v.shown });
+        v.suggested = false;   // the line again, for its other button
+        await until(() => !hint.hidden, 60);
+        go.click();
+        await wait(500);
+        const pitch = document.querySelector("#pitch");
+        Object.assign(out, { switched: v.shown, hintAfterSwitch: !hint.hidden, pitch: !pitch.hidden && pitch.parentElement.id === "stage" });
         document.querySelector("#minimap").click();
-        await new Promise((r) => setTimeout(r, 12000));
+        await wait(12000);
         out.kept = v.shown;
         sd.setPlaying(false);
         return out;
       });
-      console.log(`floor at 1000 fps: back to ${slow.shown} after ${slow.after.toFixed(1)} s ("${slow.notice}"); minimap turned on again: ${slow.kept}`);
-      if (slow.shown !== "2d" || !slow.notice || !slow.pitch) fail(`no fall back under the frame-rate floor: ${JSON.stringify(slow)}`);
-      if (slow.kept !== "split") fail(`the minimap turned on by hand after the fall back did not stay (${slow.kept})`);
+      console.log(`floor at 1000 fps: the suggestion after ${slow.after.toFixed(1)} s ("${slow.text}"), the view ${slow.shown}; ${JSON.stringify(slow)}; beacon ${JSON.stringify(perf)}`);
+      if (slow.shown !== "3d" || slow.notice || !/frames a second/.test(slow.text)) fail(`under the floor the 3D view did not stay with the suggestion: ${JSON.stringify(slow)}`);
+      if (slow.go !== "Switch to 2D" || slow.keep !== "Keep 3D") fail(`the suggestion's buttons read ${slow.go} / ${slow.keep}`);
+      if (!slow.keptHidden || slow.keptShown !== "3d") fail(`"Keep 3D" did not keep the 3D without the line: ${JSON.stringify(slow)}`);
+      if (slow.switched !== "2d" || slow.hintAfterSwitch || !slow.pitch) fail(`"Switch to 2D" did not switch: ${JSON.stringify(slow)}`);
+      if (slow.kept !== "split") fail(`the minimap turned on by hand after the switch did not stay (${slow.kept})`);
+      const b = perf[0]?.body;
+      if (perf.length !== 1) fail(`the beacon went ${perf.length} times, not once`);
+      else if (perf[0].type !== "application/json" || Object.keys(b).sort().join() !== "dpr,fps_median,match_id,renderer,screen_h,screen_w"
+        || b.match_id !== MATCH || !(b.fps_median > 0) || !(b.screen_w > 0 && b.screen_h > 0 && b.dpr > 0) || !(b.renderer === null || typeof b.renderer === "string"))
+        fail(`the beacon is not what api/perf takes: ${JSON.stringify(perf[0])}`);
 
       // a lost WebGL context: back to the 2D pitch with a notice, the minimap item off
       page.lostOnPurpose = true;

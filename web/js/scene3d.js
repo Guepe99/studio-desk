@@ -294,7 +294,6 @@ export class Scene3D {
     gr.commit();
 
     this.crowd.update(ts);
-    this.screen.update(ts);
     this.cams.update(view, ts, dt);
     this.post.update(this.cams);
     this.debug.camera = this.cams.mode;

@@ -19,7 +19,7 @@ try {
   await page.waitForFunction(() => window.studioDesk?.view3d?.scene && window.studioDesk.view3d.ready, null, { timeout: 300000 });
   const out = await page.evaluate(async ([FROM, SECS]) => {
     const d = window.studioDesk, v = d.view3d, s = v.scene, sc = s.scene, B = window.BABYLON;
-    v.floor = 0;   // no fallback to 2D while measuring
+    v.floor = 0;   // no 2D suggestion while measuring
     const gl = s.engine._gl, px = new Uint8Array(4);
     const inst = new B.SceneInstrumentation(sc);
     for (const k of ["captureFrameTime", "captureActiveMeshesEvaluationTime", "captureRenderTargetsRenderTime", "captureRenderTime", "captureAnimationsTime", "captureCameraRenderTime"]) inst[k] = true;

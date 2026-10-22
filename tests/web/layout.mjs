@@ -17,7 +17,7 @@
 // solid edge; the empty agent strip one row high; the voice button saying Voice in each language; the
 // momentum card on the half away from the ball; the 3D canvas never focused and its loading line a
 // status, not an alert. The page header (name, what the page does, the match from meta.json) in one
-// band; the first screen holding the picture, the scorebug, play, the seek bar and every graphic on
+// band, starting at the picture's left edge; the first screen holding the picture, the scorebug, play, the seek bar and every graphic on
 // air at the busiest moment, the frame not moving from 0' to then, nor when Ask opens (also at
 // 1280x650, 1366x640, and in Italian); the momentum axis from kick-off to now; no momentum card in a
 // goal replay; on M001, no player name cut in any graphic of M001 to M004 at 1280x720, 1920x1080 and 390x844.
@@ -112,7 +112,15 @@ const busiest = (cues) => {
   }
   return best?.t ?? 60;
 };
+// every story and generated graphic waiting for the visitor (docs/desk.md) put on air, as a producer would:
+// these checks are about where the cards sit, and a card left waiting is never on screen
+const approveWaiting = (page) => page.evaluate(() => {
+  const d = window.studioDesk.desk;
+  for (const s of [...d.stories, ...d.gens]) if (d.status(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved" });
+  d.changed();
+});
 const showFirst = async (page, tag, cues) => {
+  await approveWaiting(page);   // the busiest screen
   await seekTo(page, 0);
   const quiet = await page.evaluate(() => document.querySelector("#frame").getBoundingClientRect().toJSON());
   await seekTo(page, busiest(cues));
@@ -240,6 +248,8 @@ try {
         const h = document.querySelector("#masthead"), m = window.studioDesk.match, b = h?.getBoundingClientRect();
         return h && { top: b.top + scrollY, h: b.height, title: h.querySelector("h1")?.textContent, text: h.innerText,
           names: [m.home.name, m.away.name, m.meta.venue_name], frameTop: document.querySelector("#frame").getBoundingClientRect().top + scrollY,
+          lefts: [...h.querySelectorAll("h1, .mh-match, .mh-sub")].filter((el) => el.getClientRects().length).map((el) => el.getBoundingClientRect().left),
+          frameLeft: document.querySelector("#frame").getBoundingClientRect().left,
           pick: (({ value, selectedOptions: [o] = [], offsetWidth }) => ({ value, label: o?.text, w: offsetWidth }))(h.querySelector("select#mh-teams") ?? {}), id: m.meta.match_id };
       });
       if (!r) { fail(`${tag}: no page header`); return; }
@@ -247,6 +257,10 @@ try {
       if (r.title !== "Studio Desk") fail(`${tag}: the header title is "${r.title}"`);
       if (r.top < 0 || r.h < 16 || r.h > most) fail(`${tag}: the header is ${r.h.toFixed(0)} px high at ${r.top.toFixed(0)}, wanted at most ${most}`);
       if (r.frameTop < r.top + r.h) fail(`${tag}: the picture starts at ${r.frameTop.toFixed(0)}, inside the header`);
+      // the name, the match line and the subtitle start at the frame's left edge (the match line sits beside
+      // the name on a wide screen: only the lines that start a row count)
+      const rowStarts = [r.lefts[0], ...r.lefts.slice(1).filter((x) => x < r.lefts[0] + 40)];
+      if (rowStarts.some((x) => Math.abs(x - r.frameLeft) > 1)) fail(`${tag}: the header starts at ${rowStarts.map((x) => x.toFixed(0)).join(", ")}, the picture at ${r.frameLeft.toFixed(0)}`);
       if (!short && !/football replay/.test(r.text)) fail(`${tag}: the header does not say what the page is: "${r.text}"`);
       if (!short && !narrow) for (const n of r.names) if (!r.text.includes(n)) fail(`${tag}: "${n}" missing from the header match line`);
       // the match picker: on this match, named by its teams, and on screen wherever the match line is
@@ -500,6 +514,7 @@ try {
   // 20: the momentum card on the half away from the ball
   await check("momentum side", async () => {
     let seen = 0, left = 0;
+    await approveWaiting(page);   // a momentum story that needs review (M002) is off air until approved
     for (const c of moms) {
       await page.evaluate((a) => document.querySelector(`[data-audience="${a}"]`).click(), c.audience);
       await seekTo(page, c.ts - 20);

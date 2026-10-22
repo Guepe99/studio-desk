@@ -1,6 +1,5 @@
-// The stadium's big screens (plan step p66): the two team short names, the score and the match minute,
-// on two screens in the far corners of the ground, both showing one texture (one draw call for the
-// faces, one for the housings).
+// The stadium's big screens (plan step p66): the show's wordmark on two screens in the far corners of the
+// ground, both showing one texture (one draw call for the faces, one for the housings).
 //
 // Where: on legs in the open corner between the far side stand and each end stand, just behind the
 // boards, bottom 1 m and top 4.2 m up, turned to the broadcast camera. That is the only height the
@@ -11,21 +10,15 @@
 // the pitch-level replay angle ("low", in line with the 18-yard line) looks straight at the screen of
 // its end. Beyond the corner flag, so everything on the pitch is in front of it: it never hides play.
 //
-// What: the numbers come from the match data only, the score facts (match.score) and the match clock
-// (match.clock), at the time the scene shows (a replay shows the screen as it was then). The canvas is
-// drawn again only when that text changes (once a minute, or at a goal), never per frame; a seek
-// draws it at once if the text differs.
+// What: a fixed wordmark, never the score or the clock. The screens used to show both in the score bug's
+// look, and in the wide shot the left one sits just behind and above the score bug: viewers read it as a
+// second, smaller score bug peeking out. The score has one place on screen, the score bug. The canvas is
+// drawn once, and again when the web font arrives.
 export const SIZE = [6.4, 3.2];            // metres, 2:1 like the 1024 x 512 texture (a power of two for WebGL 1)
 export const BOTTOM = 1;                   // metres from the ground to the bottom edge, just over the 0.9 m boards
 export const SPOT = [58.4, 40.6];          // world |x|, z of the screen centre (the corner at 52.5, 34)
+export const WORDMARK = "STUDIO DESK";
 const TEX = [1024, 512];
-
-// The screen's text at match time ts: {home, away, score, clock} and a key that changes when any does.
-export function screenText(match, ts) {
-  const [h, a] = match.score(ts), clock = `${match.clock(ts).label}'`;
-  const home = match.home.short_name, away = match.away.short_name;
-  return { home, away, score: [h, a], clock, key: `${home}|${h}|${a}|${away}|${clock}` };
-}
 
 export function buildScreens(scene, match, profile, camPos) {
   const B = window.BABYLON;
@@ -64,46 +57,25 @@ export function buildScreens(scene, match, profile, camPos) {
   const meshes = [merge(faces, m), merge(boxes, housing)];
   m.freeze(); housing.freeze();
 
-  const screen = {
-    key: null, draws: 0, meshes,
-    update(ts) {
-      const s = screenText(match, ts);
-      if (s.key === screen.key) return;
-      screen.key = s.key;
-      draw(tex, s, match);
-      screen.draws++;
-      // the first draw can come before the web font: draw again once it is in
-      if (!document.fonts?.check("800 100px Urbanist")) document.fonts?.ready.then(() => { screen.key = null; });
-    },
-  };
+  const screen = { draws: 0, meshes, text: WORDMARK };
+  const paint = () => { draw(tex, match); screen.draws++; };
+  paint();
+  // the first draw can come before the web font: draw again once it is in
+  if (!document.fonts?.check("800 100px Urbanist")) document.fonts?.ready.then(paint);
   return screen;
 }
 
-// The board look of the page (broadcast.css): purple, a green score box and edge, white names.
-function draw(tex, s, match) {
+// The board look of the page (broadcast.css): purple, a green edge, the two club colours on top, the white wordmark.
+function draw(tex, match) {
   const g = tex.getContext(), [w, h] = TEX;
   g.fillStyle = "#37003c"; g.fillRect(0, 0, w, h);
   g.fillStyle = "#00ff87"; g.fillRect(0, h - 16, w, 16);
+  g.fillStyle = match.home.color_primary; g.fillRect(0, 0, w / 2, 16);
+  g.fillStyle = match.away.color_primary; g.fillRect(w / 2, 0, w / 2, 16);
   g.textBaseline = "middle"; g.textAlign = "center";
   const font = (px) => `800 ${px}px 'Urbanist', Arial, sans-serif`;
-  // first row: chip, name, score box, name, chip; shrunk to fit the width
-  const score = `${s.score[0]}-${s.score[1]}`;
-  let px = 150;
-  const widths = () => { g.font = font(px); return [g.measureText(s.home).width, g.measureText(score).width + 60, g.measureText(s.away).width]; };
-  let [hw, sw, aw] = widths();
-  const room = w - 2 * (40 + 22 + 30);
-  if (hw + sw + aw + 60 > room) { px = Math.floor(px * room / (hw + sw + aw + 60)); [hw, sw, aw] = widths(); }
-  const row = 190, total = 22 + 30 + hw + 30 + sw + 30 + aw + 30 + 22;
-  let x = (w - total) / 2;
-  const chip = (color) => { g.fillStyle = color; g.fillRect(x, row - px * 0.42, 22, px * 0.84); x += 22 + 30; };
-  chip(match.home.color_primary);
-  g.fillStyle = "#ffffff"; g.fillText(s.home, x + hw / 2, row); x += hw + 30;
-  g.fillStyle = "#00ff87"; g.fillRect(x, row - px * 0.6, sw, px * 1.2);
-  g.fillStyle = "#37003c"; g.fillText(score, x + sw / 2, row + px * 0.04); x += sw + 30;
-  g.fillStyle = "#ffffff"; g.fillText(s.away, x + aw / 2, row); x += aw + 30;
-  chip(match.away.color_primary);
-  // second row: the minute
-  g.font = font(130); g.fillStyle = "#00ff87";
-  g.fillText(s.clock, w / 2, 395);
+  g.font = font(150);
+  g.font = font(Math.min(150, Math.floor(150 * (w - 120) / g.measureText(WORDMARK).width)));   // shrunk to fit the width
+  g.fillStyle = "#ffffff"; g.fillText(WORDMARK, w / 2, h / 2);
   tex.update(true);
 }
