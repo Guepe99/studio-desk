@@ -2,7 +2,7 @@
    never add a row or move the picture: a narrow room drops the moment, then the word (the button's name
    keeps both). The panel is placed as the Ask panel (ask.css): under the controls, beside the frame
    (.deck-side), or over the docked desk column, never over the picture. */
-/* min-width: below room for two 27 px buttons the bar wraps to a row of its own (320 px phones)
+/* On a phone the row of Play has no room to spare: the bar takes a row of its own under it.
    shortcut: that row appears with the first graphic on air and moves the page under it, reserve it if that bothers */
 #proof-bar { flex: 1 1 0; min-width: 64px; display: flex; gap: 6px; overflow: hidden; padding: 2px; margin: -2px; container-type: inline-size; }
 .proof-chip { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px 0 8px; font-size: 14px; }
@@ -11,6 +11,7 @@
 .proof-chip[aria-expanded="true"] { background: var(--purple); color: var(--page); }
 .proof-chip[aria-expanded="true"]:hover { background: var(--purple-500); }
 /* widths for two buttons (at most two graphics are on air together), "Pruebas" the longest word */
+@media (max-width: 699px) { #proof-bar { flex: 1 0 100%; order: 10; justify-content: center; } }
 @container (max-width: 300px) { .proof-chip .pf-what { display: none; } }
 @container (max-width: 210px) { .proof-chip .pf-word { display: none; } .proof-chip { padding: 0 8px; } }
 

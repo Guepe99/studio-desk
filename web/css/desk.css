@@ -211,6 +211,7 @@ body { display: flex; }
 .log .model { display: block; color: var(--purple-400); font-size: 12px; overflow-wrap: anywhere; }
 .log th:last-child { text-align: right; }
 .log td:nth-child(1) { white-space: nowrap; }
+.log th:nth-child(3) { min-width: 112px; } /* "What" keeps room for a few words a line, the other columns give way */
 .log tr.a-auto td:nth-child(2) { color: var(--purple-400); }
 
 
