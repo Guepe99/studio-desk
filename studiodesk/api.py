@@ -170,7 +170,9 @@ class PrecompressedStatic(StaticFiles):
     """Serves <file>.gz when the build left one: gzipping 25 MB of tracking per visit is too slow."""
 
     async def get_response(self, path, scope):
-        headers = {"Vary": "Accept-Encoding"}
+        # everything else is asked again each visit (a 304 when unchanged): without a header browsers kept
+        # yesterday's page and scripts for hours after a deploy
+        headers = {"Vary": "Accept-Encoding", "Cache-Control": "no-cache"}
         if VERSIONED.match(path.replace("\\", "/")):  # a returning visitor gets the 3D engine from its cache
             headers["Cache-Control"] = "public, max-age=31536000, immutable"
         if scope["method"] in ("GET", "HEAD") and accepts_gzip(dict(scope["headers"]).get(b"accept-encoding", b"").decode("latin-1")):

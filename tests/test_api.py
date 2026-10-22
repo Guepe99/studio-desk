@@ -45,7 +45,8 @@ def test_precompressed_file_is_served_when_present(tmp_path):
     assert client.get("/t.f32", headers={"accept-encoding": "gzip", "if-none-match": etag}).status_code == 304
     assert client.post("/t.f32", headers={"accept-encoding": "gzip"}).status_code == 405
     assert client.get("/t.f32").headers["vary"] == "Accept-Encoding"
-    assert "cache-control" not in client.get("/t.f32").headers  # data changes when a match is regenerated
+    for enc in ("gzip", "identity"):  # pages, scripts and data change with each deploy: always asked again
+        assert client.get("/t.f32", headers={"accept-encoding": enc}).headers["cache-control"] == "no-cache"
     (tmp_path / "vendor" / "lib" / "1.2.3").mkdir(parents=True)
     (tmp_path / "vendor" / "lib" / "1.2.3" / "lib.js").write_bytes(b"var x = 1;")
     (tmp_path / "vendor" / "lib" / "1.2.3" / "lib.js.gz").write_bytes(gzip.compress(b"var x = 1;"))
