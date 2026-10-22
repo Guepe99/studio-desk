@@ -157,7 +157,9 @@ async function scenario(browser, w, h) {
   await page.waitForFunction(() => window.studioDesk?.desk?.online, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
-  const frameBefore = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
+  // in page coordinates: the screenshots below scroll the window to a desk card when the page is taller than the screen
+  const frameAt = () => page.$eval("#frame", (el) => { const r = el.getBoundingClientRect(); return [r.left + scrollX, r.top + scrollY, r.width, r.height]; });
+  const frameBefore = await frameAt();
   const openDesk = async () => {
     if (!phone) return;
     if (!(await page.evaluate(() => document.body.classList.contains("desk-open")))) await page.click("#desk-open");
@@ -490,7 +492,7 @@ async function scenario(browser, w, h) {
 
   // 11. the broadcast never moved
   await closeDesk();
-  const frameAfter = await page.$eval("#frame", (el) => el.getBoundingClientRect().toJSON());
+  const frameAfter = await frameAt();
   expect(JSON.stringify(frameBefore) === JSON.stringify(frameAfter), `${tag}: the broadcast frame moved ${JSON.stringify([frameBefore, frameAfter])}`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: horizontal scroll`);
 
