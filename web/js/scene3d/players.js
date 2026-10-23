@@ -150,8 +150,8 @@ export function actionDriver(match, schedule) {
 }
 
 // Throw-ins (Laws of the Game, Law 15: both hands, from behind and over the head, facing the
-// field). The taker picks the ball up as soon as he reaches it (a crouch, THROW.crouch, with the
-// body drawn to the ball), carries it at his chest (THROW.carry held at carryT) while the
+// field). The taker picks the ball up once he reaches it and slows down (a crouch, THROW.crouch,
+// with the body drawn to the ball), carries it at his chest (THROW.carry held at carryT) while the
 // tracking walks him to the spot, then raises it over his head (THROW.clip, from lift to up) and
 // throws on the event time. A Premier League throw-in waits 15 to 18 s on average
 // (docs/flow3d.md, section 5): the wait is the tracking's, the ball is in his hands for it. The
@@ -162,16 +162,19 @@ export const THROW = {
   carry: "GK_Catch", carryT: 1.6, crouch: "M_crouch_head_down", crouchT: 0.5,
   down: 0.45, grab: 0.15, rise: 0.45,
   near: 1.2,     // m: the taker has reached the ball
+  walk: 2.4, still: 1.2,   // m/s: his tracking speed in the second before the pick-up, and through the crouch
   after: 0.35,   // s from reaching the ball to the bottom of the crouch
   look: 30,      // s: how far back the reach is looked for
   reach: 0.35,   // m in front of the body where the hands meet the ball on the grass
+  drawIn: 0.75, drawHold: 0.3, drawOut: 1.2,   // s: the draw to the ball eases in from the window's start, holds, eases out
 };
 const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 
 // Per player id, [{ts, yaw, pick, ball}] of his throw-ins: yaw towards where the ball goes, pick
 // the time his hands close on the ball, ball where it lies then ([x, y], null without positions).
 // match: positions (match.at, match.index) to find when the taker reaches the ball standing at the
-// line; without them, or when he never does, the pick-up comes just before the raise.
+// line and has slowed down; without them, or when he never does, the pick-up comes just before
+// the raise, where he stands (ball null: no draw).
 export function scheduleThrows(events, match = null) {
   const out = {};
   for (const e of events) {
@@ -186,11 +189,18 @@ export function scheduleThrows(events, match = null) {
         // the ball lies still at the line and he stands at it
         return Math.hypot(b[0] - e.start_x, b[1] - e.start_y) < 1.5 && Math.hypot(b2[0] - b[0], b2[1] - b[1]) < 0.05 && Math.hypot(p[0] - b[0], p[1] - b[1]) < THROW.near;
       };
+      // and has slowed down: at most a walk for the second before the pick-up, nearly still through
+      // the crouch (so the crouch stays full body, and the body never moves 5 cm in a 60 Hz frame)
+      const speed = (t) => { const a = match.at(i, t - 0.05), c = match.at(i, t + 0.05); return a && c ? Math.hypot(c[0] - a[0], c[1] - a[1]) / 0.1 : Infinity; };
+      const calm = (t) => { for (let s = t - 1; s <= t + THROW.rise; s += 0.05) if (speed(s) > (s < t - THROW.down ? THROW.walk : THROW.still)) return false; return true; };
       let first = null;
       for (let t = latest; t > e.ts - THROW.look && at(t); t -= 0.1) first = t;
-      if (first !== null) pick = Math.min(latest, first + THROW.after);
-      const b = match.at(0, pick);
-      if (b) ball = [b[0], b[1]];
+      for (let t = first ?? Infinity; t <= latest; t += 0.05) {
+        if (t < first + THROW.after || !at(t) || !calm(t)) continue;
+        const b = match.at(0, t);
+        pick = t; ball = [b[0], b[1]];
+        break;
+      }
     }
     (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y), pick, ball });
   }
@@ -226,11 +236,13 @@ export function throwDriver(match, schedule) {
       if (wc > 0) out.emotion = { kind: "throw", clip: THROW.crouch, t: THROW.crouchT, weight: wc, full: true, under: carry };
       // drawn to the ball so his hands meet it, facing it; then the facing of the throw
       const here = match.at?.(i, ts);
-      const wb = smooth01((p + 0.6) / 0.45) * (1 - smooth01((p - 0.1) / 0.6));
+      // from the window's first frame (no jump), capped at THROW.near, and slow: from within
+      // THROW.near it adds under 3 cm a frame at 60 Hz to his own walk
+      const wb = smooth01((p + THROW.down) / THROW.drawIn) * (1 - smooth01((p - THROW.drawHold) / THROW.drawOut));
       if (T.ball && here && wb > 0) {
         const dx = T.ball[0] - here[0], dy = T.ball[1] - here[1], d = Math.hypot(dx, dy);
         if (d > 1e-3) {
-          const k = (Math.max(0, d - THROW.reach) / d) * wb;
+          const k = (Math.min(THROW.near, Math.max(0, d - THROW.reach)) / d) * wb;
           out.dx = dx * k; out.dy = dy * k;
           out.yaw = Math.atan2(dx, dy); out.yawW = wb;
         }
@@ -354,16 +366,16 @@ function upperTracks(container, name) {
 
 // Stride warping (Unreal's pose warping, docs/flow3d.md section 6): the leg bones of the forward
 // loops are pulled towards their mean pose over the cycle by the stride ratio s, so the swing
-// shrinks with the faster cycle. Hips and knees by s, the ankles left alone: on M001 that keeps the
-// jog's planted foot as still as the unwarped loop (knees by 0, 0.5 or 1.5 of it slid more,
-// docs/flow3d.md section 6). Runs after the animation step and before the ball rig's leg actions
-// and grounding (Scene3D adds it first).
+// shrinks with the faster cycle. Hips and knees by s, the ankles left alone: on M001 the jog's
+// planted foot then slides 0.059 m a step at the median, against 0.050 m unwarped (less at p95);
+// knees by 0, 0.5 or 1.5 of it slid 0.139, 0.094 and 0.109 m (docs/flow3d.md section 6). Runs
+// after the animation step and before the ball rig's leg actions and grounding (Scene3D adds it
+// first).
 const WARP_BONES = ["thigh_l", "thigh_r", "calf_l", "calf_r"];
 const WARP_N = 32;   // samples of the cycle for the mean pose
-const MEANS = new WeakMap();   // animation -> its mean quaternion over [from, to)
+const MEANS = new WeakMap();   // animation -> its mean quaternion over its group's [from, to)
 function cycleMean(a, from, to) {
-  const key = `${from}:${to}`;
-  const got = MEANS.get(a)?.[key];
+  const got = MEANS.get(a);
   if (got) return got;
   const m = new B.Quaternion(0, 0, 0, 0);
   let first = null;
@@ -374,7 +386,7 @@ function cycleMean(a, from, to) {
     m.x += sg * q.x; m.y += sg * q.y; m.z += sg * q.z; m.w += sg * q.w;
   }
   m.normalize();
-  MEANS.set(a, { ...MEANS.get(a), [key]: m });
+  MEANS.set(a, m);
   return m;
 }
 let qm = null;
@@ -438,7 +450,8 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   const e = r.emotion;
   // a full-body clip (crouch, knee slide) only while the player is nearly still; running, it is
   // upper body only so the legs keep the locomotion (the tracking owns the root)
-  const eFull = !!(e && e.full && !r.action && v < 1.5);
+  // (the tracking's speed, r.vTrack: a driver drawing him to the ball does not count)
+  const eFull = !!(e && e.full && !r.action && (r.vTrack ?? v) < 1.5);
   if (eFull) full = Math.max(full, e.weight);
   const loop = motionLoop(motion, r.mode, r.runL);
   const lm = loop && motion.clips[loop];
@@ -462,9 +475,13 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   const moving = w[1] + w[2] + w[3];
   const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
   // stride warping, forward runs only: the cycle runs at a person's cadence and warpStride swings
-  // the legs by the same ratio, so the planted foot still moves back at the ground speed
+  // the legs by the same ratio, so the planted foot still moves back at the ground speed. The
+  // forward share fw eases like the weights, so leaving or entering "forward" fades the warp
+  // (and the cadence with it) instead of dropping it in a frame; no leg bones, no warp.
   const human = r.mode === "forward" && moving > 0 ? humanStride(vv) : null;
-  const s = human ? Math.max(WARP_MIN, Math.min(1, human / stride)) : 1;
+  if (r.mode === "forward") p.warpS = human ? Math.max(WARP_MIN, Math.min(1, human / stride)) : 1;
+  const fw = p.fw = (p.fw ?? 0) + ((r.mode === "forward" ? 1 : 0) - (p.fw ?? 0)) * k;
+  const s = p.anim.legs?.length && p.warpS ? 1 - (1 - p.warpS) * fw : 1;
   p.phase = (((p.phase + dir * (vv / (stride * s)) * dt) % 1) + 1) % 1;
   p.warp = s < 1 ? { s, g: moving * (1 - full) * (1 - wl), w } : null;
   p.idle = (p.idle + dt / LOCO[0].period) % 1;

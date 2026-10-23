@@ -58,9 +58,14 @@ test("the ball rolls under the foot and comes back, never jumps", { skip: !m }, 
   assert.ok(plan.check(span[0] + 1, span[1] - 1).worst < 1.5);
 });
 
-test("the same moment gets the same moves, and the leg poses are within a joint's range", { skip: !m }, () => {
-  const again = new BallPlan(m, span, { ballR: 0.11 });
-  assert.deepEqual(again.moves, plan.moves);
+test("a replan over another window gives the same moves at the same moments, and the leg poses are within a joint's range", { skip: !m }, () => {
+  // the scene replans as the clock moves: a plan over a window inside the first one must agree
+  // with it away from both windows' edges
+  const [a, b] = [span[0] + 0.2 * (span[1] - span[0]), span[0] + 0.6 * (span[1] - span[0])];
+  const inner = new BallPlan(m, [a, b], { ballR: 0.11 });
+  const within = (p) => p.moves.filter((mv) => mv.t0 > a + 60 && mv.t1 < b - 60);
+  assert.ok(within(plan).length >= 3, `${within(plan).length} moves inside ${a} to ${b}`);
+  assert.deepEqual(within(inner), within(plan));
   for (const kind of SKILL) {
     const [pre, post] = LEG_WINDOW[kind];
     for (let t = -pre; t <= post; t += 0.02) {

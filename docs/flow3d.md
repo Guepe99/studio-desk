@@ -462,3 +462,66 @@ and quicker steps with the feet under the body. The minute-8 stills put every pl
 place, and the dribbler keeps the ball at his feet. A run of the same stills with the smoothing off
 (`root=0`) looks the same as with it on: the offset is about a centimetre. The stills show no
 lag, the measures show the jerk cut by more than half, so the smoothing stays.
+
+## 7. Review fixes: the throw-in taker's jump and the warp at a mode switch
+
+An independent review of sections 5 and 6 found the throw-in taker jumping when the draw to the
+ball began, the crouch snapping in, a fallback taker pulled 7.65 m, and the stride warp dropping
+to nothing in one frame when a player left a forward run.
+
+### Measured causes (before, the code of section 6)
+
+Every taker on M001 to M004, stepped at 60 Hz in node (the shown root, `rootAt`, plus the
+driver's offset; the animation weights from `animatePlayer`), from 1 s before the pick-up to the
+release:
+
+- The draw's ramp started 0.6 s before the pick-up, but the throw's window (and so the driver)
+  only 0.45 s before: the draw began at 30 % of its length in one frame, 0.17 to 0.27 m.
+- The draw's own speed (4.7 to 5.7 m/s shown, about 1.2 m/s in the tracking) counted as the
+  player's speed, so the crouch stayed out of full body (under 1.5 m/s) and then snapped in: the
+  locomotion's share dropped by 0.874 in one frame on every throw-in.
+- Takers could still be running in the second before the pick-up (T01-6 on M001 at 4.7 m/s,
+  0.078 m a frame), since it came 0.35 s after he first stood within 1.2 m of the ball whatever
+  his speed.
+- With no reach found the fallback still drew him to where the ball lay, from any distance.
+- The cadence and the warp were computed in forward runs only, so leaving "forward" set s to 1 in
+  one frame while the forward loops still had about 0.8 of the weight (pull 0.343 to 0 in a frame
+  in the node test).
+
+### What changed
+
+- **Pick-up** (`players.js` `scheduleThrows`). It comes at the first moment, from 0.35 s after he
+  reaches the ball, when he still stands at it and his tracking speed has stayed under 2.4 m/s
+  (`THROW.walk`) for the second before and under 1.2 m/s (`THROW.still`) through the crouch.
+  Without one, the fallback picks the ball up where he stands (`ball` null: no draw).
+- **Draw** (`throwDriver`). It starts at the window's first frame and eases in over 0.75 s, holds
+  0.3 s and eases out over 1.2 s (`THROW.drawIn`, `drawHold`, `drawOut`), capped at 1.2 m.
+- **Crouch** (`animatePlayer`, `scene3d.js`). The full-body test reads the tracking's speed
+  (`r.vTrack`, the path without the drivers' offsets), not the shown one.
+- **Warp** (`animatePlayer`). A forward share eases like the loop weights (0.08 s), and s is
+  1 - (1 - s_forward) times that share, with s_forward the last forward run's: leaving or entering
+  "forward" fades the warp and the cadence speed-up over frames. Without leg bones to warp, s is 1.
+- Small: `cycleMean` caches by animation alone; `SKILLS` is no longer exported.
+
+### Numbers (node, 60 Hz, every throw-in)
+
+| Match (throw-ins) | Worst move a frame, before | After | Median of the takers' worst, before | After | Crouch share, worst jump a frame, before | After |
+|---|---|---|---|---|---|---|
+| M001 (44) | 0.316 m | 0.041 m | 0.285 m | 0.039 m | 0.874 | 0.083 |
+| M002 (43) | 0.342 m | 0.040 m | 0.289 m | 0.038 m | 0.874 | 0.083 |
+| M003 (43) | 0.339 m | 0.041 m | 0.288 m | 0.038 m | 0.874 | 0.083 |
+| M004 (43) | 0.339 m | 0.040 m | 0.287 m | 0.038 m | 0.874 | 0.083 |
+
+Before, all 173 takers moved over 5 cm in a frame; after, none. The worst frames left are his
+own walk 1 s before the pick-up (2.4 m/s is 0.04 m a frame). Every throw-in still has its draw,
+the pick-up comes 0.35 s (median) to 0.8 s after he first stands within 1 m of the ball, and the
+ball is in his hands 9.0 to 17.4 s before the release.
+
+Checks, each shown failing on the code of section 6 first: `tests/web/throw.test.mjs` (the
+0.05 m and 0.1 bounds on a synthetic taker, on one who runs in, and on every throw-in of the
+exported matches: "M001 T01-5 throw at 69.21: moves 0.303 m in a frame"; the fallback without a
+draw), `tests/web/cadence.test.mjs` (the pull across a forward, backpedal, forward switch: "the
+warp's pull jumps 0.343 in a frame"; no leg bones, no warp; the stride against the cited cadence
+table, which fails when the table's 3.04 steps/s at 5.07 m/s is changed to 3.3) and
+`tests/web/skills.test.mjs` (a plan over a window inside the first gives the same moves, which
+fails when the seed takes the window's start).

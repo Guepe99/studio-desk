@@ -45,7 +45,7 @@ const SET_PIECES = new Set(["freekick_crossed", "freekick_short", "shot_freekick
 // ends where it started; len: seconds the move takes; p: how often it is picked. A sole roll (the
 // ball out and back under the sole), a drag-back then a touch that puts it back, a step-over, a
 // feint with the shoulders.
-export const SKILLS = {
+const SKILLS = {
   roll: { p: 0.3, len: 1.0, legs: [["roll", 0.3]], ball: [[0.3, 0.48, 0.12], [0.48, 0.66, -0.12]] },
   drag: { p: 0.25, len: 1.33, legs: [["drag", 0.3], ["touch", 1.05]], ball: [[0.3, 0.6, -0.26], [1.05, 1.3, 0.26]] },
   stepover: { p: 0.2, len: 0.8, legs: [["stepover", 0.35]], ball: [] },

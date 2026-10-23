@@ -262,6 +262,8 @@ export class Scene3D {
       // velocity of the shown point (the path is smooth, so a short window is enough)
       const a = at(Math.max(0, ts - VEL_H)) ?? shown, c = at(Math.min(match.duration, ts + VEL_H)) ?? shown;
       const vx = (c[0] - a[0]) / (2 * VEL_H), vy = (c[1] - a[1]) / (2 * VEL_H), v = Math.hypot(vx, vy);
+      const ra = match.at(p.i, Math.max(0, ts - VEL_H)), rc = match.at(p.i, Math.min(match.duration, ts + VEL_H));
+      if (ra && rc) r.vTrack = Math.hypot(rc[0] - ra[0], rc[1] - ra[1]) / (2 * VEL_H);   // without the drivers' offsets
       p.holder.position.copyFrom(P(shown[0], shown[1], r.dz));
       p.holder.rotation.z = r.roll;
       p.free = !r.action && !r.leg && Math.abs(r.dz) < 1e-3 && !r.emotion?.full;
