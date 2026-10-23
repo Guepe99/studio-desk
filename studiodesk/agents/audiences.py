@@ -516,16 +516,284 @@ def stats_cues(m, meta, facts, cues):
     return out
 
 
+# --- no empty minutes ---------------------------------------------------------------------------------
+
+LINEUP_S = 15.0       # the starting line-ups at kick-off
+MOMENTUM_S = 8.0      # as the template momentum cue (export.DURATION)
+PLATE_S = 6.0         # a name plate or a pass, as the template ones (export.DURATION)
+FILL_WAIT_S = 60.0    # how late after its facts a filler may air
+# The owner's rule (docs/desk.md, "No empty minutes"): no clock minute without a graphic on air, on every
+# sheet, for a visitor who never touches the desk. Two graphics under 60 s apart leave no minute empty.
+MAX_GAP_S = 55.0
+LINES_ORDER = ("GK", "DF", "MF", "FW")
+# the kids' words on a check-in card; the title is the grown-ups' one
+CHECKIN_KIDS = {
+    "en": {"touches": ("Touched the ball {} time", "Touched the ball {} times"), "passes": ("{} good pass", "{} good passes"),
+           "distance": "Ran {} km", "top": "Fastest run: {} km/h"},
+    "it": {"touches": ("Ha toccato il pallone {} volta", "Ha toccato il pallone {} volte"),
+           "passes": ("{} passaggio buono", "{} passaggi buoni"), "distance": "Ha corso {} km", "top": "Corsa più veloce: {} km/h"},
+    "es": {"touches": ("Ha tocado el balón {} vez", "Ha tocado el balón {} veces"), "passes": ("{} buen pase", "{} buenos pases"),
+           "distance": "Ha corrido {} km", "top": "Carrera más rápida: {} km/h"},
+}
+PASS_Q = {"en": "Difficulty {}/10", "it": "Difficoltà {}/10", "es": "Dificultad {}/10"}
+PASS_Q_KIDS = {"en": "How hard: {}/10", "it": "Quanto era difficile: {}/10", "es": "Qué difícil: {}/10"}
+
+
+def gaps(cues, meta, audience, lang="en"):
+    """[(from, to)]: the stretches of play, kick-off to half-time and the second half to full time, with no
+    cue of `audience` in `lang` on screen."""
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    iv = sorted((c["ts"], c["ts"] + c["duration_s"]) for c in cues if c["audience"] == audience and c["lang"] == lang)
+    out = []
+    for a, b in ((0.0, p1), (p1, end)):
+        t = a
+        for s, e in iv:
+            if e > t and s < b:
+                if s > t:
+                    out.append((t, s))
+                t = max(t, e)
+        if t < b:
+            out.append((t, b))
+    return out
+
+
+def empty_minutes(cues, meta, audience, lang="en"):
+    """The clock minutes (0 is 0:00-0:59, 45 the second half's first) with no cue of `audience` in `lang` on
+    screen at any moment; a half's last, shorter minute counts too."""
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    iv = [(c["ts"], c["ts"] + c["duration_s"]) for c in cues if c["audience"] == audience and c["lang"] == lang]
+    out = []
+    for a0, b0, base in ((0.0, p1, 0), (p1, end, 45)):
+        k = 0
+        while a0 + 60 * k < b0:
+            a, b = a0 + 60 * k, min(a0 + 60 * k + 60, b0)
+            if not any(s < b and e > a for s, e in iv):
+                out.append(base + k)
+            k += 1
+    return out
+
+
+def airs(c, aired):
+    """On air for a visitor who never touches the desk (desk.js): a story's cue when the story is in `aired`
+    (auto-approved, not flagged), a generated graphic unless it waits for the visitor (GEN_WAITS); a filler
+    never waits."""
+    if c["story_id"]:
+        return c["story_id"] in aired
+    p = c.get("payload") or {}
+    return bool(p.get("filler")) or not (c["audience"] == "kids" or p.get("kind") == "checkin" or c["graphic"] == "team_stats")
+
+
+def momentum_payload(momentum, ts, home, away):
+    """The momentum graphic at a window end: every window so far, home and away (the template cue's payload)."""
+    so_far = [f for f in momentum if f["ts"] <= ts]
+    return {"home": [f["value"] for f in so_far if f["team_id"] == home],
+            "away": [f["value"] for f in so_far if f["team_id"] == away],
+            "window": len({f["ts"] for f in so_far}), "fact_ids": [f["fact_id"] for f in so_far]}
+
+
+def lineup_payload(m, meta, facts):
+    """The starting line-ups: per team its team-sheet formation (the start_formation fact) and its starters
+    by line, keeper first, each line by shirt. None when a team has no start_formation fact."""
+    form = {f["team_id"]: f for f in facts if f["kind"] == "start_formation"}
+    starters = {x["player_id"] for x in meta["lineups"] if x["starter"]}
+    teams = []
+    for t in (m.home, m.away):
+        f = form.get(t["team_id"])
+        if not f:
+            return None
+        ps = sorted((p for p in meta["players"] if p["team_id"] == t["team_id"] and p["player_id"] in starters),
+                    key=lambda p: p["shirt"])
+        teams.append({"side": t["side"], "formation": _stat_text(f, "en"),
+                      "lines": [[{"player_id": p["player_id"], "shirt": p["shirt"], "name": m.required_name(p["player_id"])}
+                                 for p in ps if p["position"] == k] for k in LINES_ORDER]})
+    return {"teams": teams, "fact_ids": [form[m.home["team_id"]]["fact_id"], form[m.away["team_id"]]["fact_id"]]}
+
+
+def _kids_checkin(m, pid, facts, lang):
+    w = {**CHECKIN[lang], **CHECKIN_KIDS[lang]}
+    n = lambda k, v: w[k][v != 1].format(whole(v))  # noqa: E731
+    p = checkin_payload(m, pid, facts, lang)
+    lines = [n("touches", facts["checkin_touches"]["value"]), n("passes", facts["checkin_passes"]["value"]),
+             w["distance"].format(rules.fmt(facts["checkin_distance"]["value"], lang))]
+    sprints = facts["checkin_sprints"]["value"]
+    lines.append(n("sprints", sprints) if sprints else w["none"])
+    if "checkin_top_speed" in facts:
+        lines.append(w["top"].format(rules.fmt(facts["checkin_top_speed"]["value"], lang)))
+    return {**p, "body": "\n".join(lines)}
+
+
+def _fillers(m, meta, facts, events):
+    """What may fill a quiet spell, from the fact ledger alone, in time order: {ts (its facts'), graphic,
+    duration_s, payload(lang, kids), team_id, player_id, interest}. The momentum of every 5-minute window, at
+    every check-in the card of the player with the most touches, a name plate for every sprint, and a pass
+    for every completed pass with its length and difficulty."""
+    home, away = m.home["team_id"], m.away["team_id"]
+    short = {t["team_id"]: t["short_name"] for t in meta["teams"]}
+    shirt = {p["player_id"]: p["shirt"] for p in meta["players"]}
+    ok = {e["event_id"] for e in events if e.get("result_name") == "success"}
+    off = {x["player_id"]: x.get("off_ts") or math.inf for x in meta.get("lineups", [])}  # a plate needs its player on the pitch
+    out = []
+    momentum = sorted((f for f in facts if f["kind"] == "momentum"), key=lambda f: f["ts"])
+    for ts in sorted({f["ts"] for f in momentum}):
+        out.append({"ts": ts, "graphic": "momentum", "duration_s": MOMENTUM_S, "team_id": None, "player_id": None, "interest": 0.0,
+                    "payload": lambda lang, kids, ts=ts: momentum_payload(momentum, ts, home, away)})
+    by = {}
+    for f in facts:
+        if f["kind"] in CHECKIN_KINDS:
+            by.setdefault(f["ts"], {}).setdefault(f["player_id"], {})[f["kind"]] = f
+    for ts, players in sorted(by.items()):
+        full = {p: g for p, g in players.items() if all(k in g for k in CHECKIN_KINDS[:4])}
+        if full:  # most touches, then the lower player id: the same card on every run
+            pid = min(full, key=lambda p: (-full[p]["checkin_touches"]["value"], p))
+            out.append({"ts": ts, "graphic": "why_card", "duration_s": CHECKIN_S, "team_id": m.players[pid]["team_id"],
+                        "player_id": pid, "interest": 0.0, "kind": "checkin",
+                        "payload": lambda lang, kids, pid=pid, g=full[pid]: (_kids_checkin if kids else checkin_payload)(m, pid, g, lang)})
+    for f in facts:
+        if f["kind"] == "sprint_speed" and f["player_id"]:
+            out.append({"ts": f["ts"], "graphic": "nameplate", "duration_s": PLATE_S, "team_id": f["team_id"], "player_id": f["player_id"],
+                        "interest": f["value"], "until": off.get(f["player_id"], math.inf),
+                        "payload": lambda lang, kids, f=f: {"player_id": f["player_id"], "name": m.player_name(f["player_id"]),
+                                                            "shirt": shirt.get(f["player_id"]), "team_short": short.get(f["team_id"]),
+                                                            "speed_kmh": f["value"], "fact_id": f["fact_id"]}})
+    by_event = {}
+    for f in facts:
+        if f["kind"] in ("pass_distance", "pass_difficulty", "ball_speed") and len(f["source_event_ids"]) == 1:
+            by_event.setdefault(f["source_event_ids"][0], {})[f["kind"]] = f
+    for eid, g in by_event.items():
+        if eid not in ok or "pass_distance" not in g or "pass_difficulty" not in g:
+            continue
+        d, q = g["pass_distance"], g["pass_difficulty"]
+        ids = [d["fact_id"], q["fact_id"], *([g["ball_speed"]["fact_id"]] if "ball_speed" in g else [])]
+        out.append({"ts": max(d["ts"], q["ts"]), "graphic": "pass_shot", "duration_s": PLATE_S, "team_id": q["team_id"],
+                    "player_id": q["player_id"], "interest": q["value"], "until": off.get(q["player_id"], math.inf),
+                    "payload": lambda lang, kids, d=d, q=q, ids=ids: {
+                        "mode": "pass", "player_id": q["player_id"], "value": d["value"], "unit": d["unit"],
+                        "quality": (PASS_Q_KIDS if kids else PASS_Q)[lang].format(
+                            f"{q['value']:.1f}" if lang == "en" else f"{q['value']:.1f}".replace(".", ",")),
+                        "fact_ids": ids}})
+    return sorted(out, key=lambda f: (f["ts"], f["graphic"], f["player_id"] or "", f["interest"]))
+
+
+def fill_cues(m, meta, facts, events, cues, aired=None):
+    """Fillers on every sheet so that a visitor who never touches the desk always has a graphic on air within
+    MAX_GAP_S, and no clock minute without one (a name plate or a pass ends before its player leaves the
+    pitch): the line-ups at kick-off, then in each stretch longer than
+    that (counting only what `airs`) the filler that starts latest within MAX_GAP_S of the stretch's start.
+    A filler starts no earlier than its facts and at most FILL_WAIT_S after them, overlaps no cue of the
+    sheet (one that waits for the visitor included) and ends before its half does. It is never the graphic
+    shown just before it when another fits, then never the one just after, then the graphic the sheet has
+    gone longest without; a team or player sheet takes its team's or player's facts first; then the latest
+    start (by 10 s), then the most striking value (speed, pass difficulty). Each fact fills a sheet once. `aired`: the story ids that air untouched (None: all).
+    Every filler is marked `payload.filler`; one cue per language of the sheet, timed on the English one."""
+    import bisect
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    lineup, pool = lineup_payload(m, meta, facts), _fillers(m, meta, facts, events)
+    starts = [f["ts"] for f in pool]
+    on = (lambda c: airs(c, aired)) if aired is not None else (lambda c: airs(c, {c["story_id"]}))
+    out = []
+    for aud in sorted({c["audience"] for c in cues}):
+        mine = [c for c in cues if c["audience"] == aud]
+        langs, kids = sorted({c["lang"] for c in mine}), aud == "kids"
+        timing = sorted((c for c in mine if c["lang"] == "en"), key=lambda c: c["ts"])  # a filler overlaps none of these
+        shown = [c for c in timing if on(c)]                                             # what the visitor sees
+        who = aud.split(":", 1)[1] if ":" in aud else None
+        player = who if aud.startswith("player:") else None
+        team = m.players[who]["team_id"] if player and who in m.players else who if aud.startswith("team:") else None
+
+        def near(f):  # 0: the sheet's own player or team (or the match), 1: the team, 2: anyone
+            if player:
+                return 0 if f["player_id"] == player else 1 if f["team_id"] in (team, None) else 2
+            return 0 if not team or f["team_id"] in (team, None) else 1
+
+        def add(ts, f):
+            cue = {"match_id": meta["match_id"], "cue_id": "", "story_id": None, "ts": ts, "duration_s": f["duration_s"],
+                   "graphic": f["graphic"], "audience": aud}
+            out.extend({**cue, "lang": lang, "payload": {**f["payload"](lang, kids), "filler": True}} for lang in langs)
+            en = {**cue, "lang": "en", "payload": {"filler": True}}
+            bisect.insort(timing, en, key=lambda c: c["ts"])
+            bisect.insort(shown, en, key=lambda c: c["ts"])
+
+        def free(lo, hi, d, latest=True):  # the latest (or earliest) start in [lo, hi], on a 0.1 s grid, overlapping no cue of the sheet
+            lo, hi = math.ceil(lo * 10 - 1e-6) / 10, math.floor(hi * 10 + 1e-6) / 10
+            busy = [(c["ts"], c["ts"] + c["duration_s"]) for c in timing if c["ts"] < hi + d and c["ts"] + c["duration_s"] > lo]
+            t = hi if latest else lo
+            while lo <= t <= hi:
+                hit = [(s, e) for s, e in busy if s < t + d and t < e]
+                if not hit:
+                    return round(t, 1)
+                t = math.floor((min(s for s, _ in hit) - d) * 10 + 1e-6) / 10 if latest else math.ceil(max(e for _, e in hit) * 10 - 1e-6) / 10
+            return None
+
+        if lineup and not any(c["ts"] < LINEUP_S for c in timing):
+            add(0.0, {"graphic": "lineup", "duration_s": LINEUP_S, "payload": lambda lang, kids: lineup})
+        used = set()
+        for a0, b0 in ((0.0, p1), (p1, end)):
+            last_min = a0 + 60 * math.floor((b0 - a0 - 1e-6) / 60)  # the half's last clock minute starts here
+            s = a0
+            while s < b0:
+                for c in shown:  # the stretch starts where what is on screen ends
+                    if c["ts"] <= s < c["ts"] + c["duration_s"]:
+                        s = c["ts"] + c["duration_s"]
+                if s >= b0:
+                    break
+                after = next((c for c in shown if c["ts"] > s), None)
+                e = min(after["ts"], b0) if after else b0
+                # the half's last minute would go empty; only once the stretch is short, else that filler would come first
+                short = e - s <= MAX_GAP_S + 1e-6  # 490.2 to 545.2 is 55 s, not a hair more
+                tail = e >= b0 and s <= last_min and short
+                if short and not tail:
+                    s = e
+                    continue
+                before = next((c for c in reversed(shown) if c["ts"] + c["duration_s"] <= s), None)
+                prev = before["graphic"] if before else None
+                nxt = after["graphic"] if after and after["ts"] < b0 else None
+                seen = {c["graphic"]: c["ts"] for c in shown if c["ts"] < s}  # when each graphic was last on this sheet
+                pick = None
+                for latest in (True, False):  # within MAX_GAP_S; else the earliest that fits at all
+                    best = None
+                    for i in range(bisect.bisect_left(starts, s - FILL_WAIT_S), len(pool)):
+                        f = pool[i]
+                        if f["ts"] > (s + MAX_GAP_S if latest else b0):
+                            break
+                        if i in used or not a0 <= f["ts"] < b0 or (player and f.get("kind") == "checkin"):
+                            continue  # a player's sheet has its own check-ins
+                        if any(c["graphic"] == f["graphic"] and f["ts"] <= c["ts"] <= f["ts"] + FILL_WAIT_S and c["payload"].get("kind") == f.get("kind")
+                               for c in timing if f["graphic"] in ("momentum", "why_card")):
+                            continue  # that window's momentum, or that check-in, is on the sheet already
+                        d = f["duration_s"]
+                        lo = max(f["ts"], s, last_min - d + 0.1 if tail else s)
+                        hi = min(f["ts"] + FILL_WAIT_S, b0 - d, f.get("until", math.inf) - d, s + MAX_GAP_S if latest else b0)
+                        if lo > hi or (t := free(lo, hi, d, latest)) is None:
+                            continue
+                        g = f["graphic"]
+                        key = (0 if g not in (prev, nxt) else 1 if g != prev else 2, seen.get(g, -1.0), near(f),
+                               -math.floor(t / 10) if latest else t, -f["interest"], f["ts"], i)
+                        if best is None or key < best[0]:
+                            best = (key, t, i)
+                    if best:
+                        pick = best
+                        break
+                if not pick:
+                    s = e  # nothing fits: the stretch stays (the tests say where)
+                    continue
+                _, t, i = pick
+                used.add(i)
+                add(t, pool[i])
+    return out
+
+
 # --- applying it to a replay -------------------------------------------------------------------------
 
 def _generated(c):
-    return c["audience"] == "kids" or c["payload"].get("kind") == "checkin" or c["graphic"] == "team_stats"
+    p = c["payload"]
+    return c["audience"] == "kids" or p.get("kind") == "checkin" or c["graphic"] == "team_stats" or bool(p.get("filler"))
 
 
 def apply(meta, facts, events, stories, cues):
     """Stories with `texts_by_audience`, and the cue sheet with each audience's line in its why_card
-    cues, a kids sheet copied from the casual one, the player check-ins and the analyst's team shape panels.
-    Idempotent: the kids, check-in and team shape cues of an earlier run are rebuilt, the other cue ids are kept."""
+    cues, a kids sheet copied from the casual one, the player check-ins, the analyst's team shape panels and
+    the fillers. Idempotent: the kids, check-in, team shape and filler cues of an earlier run are rebuilt,
+    the other cue ids are kept."""
     m = rules.Match(meta)
     m.facts = {f["fact_id"]: f for f in facts}
     ev = {e["event_id"]: e for e in events}
@@ -547,6 +815,8 @@ def apply(meta, facts, events, stories, cues):
     extra = [worded(c, "kids") for c in base if c["audience"] == "casual"]
     extra += checkin_cues(m, meta, facts, base)
     extra += stats_cues(m, meta, facts, base)
+    aired = {s["story_id"] for s in stories if s.get("default_status") == "auto_approved" and s.get("safety") != "flagged"}
+    extra += fill_cues(m, meta, facts, events, base + extra, aired)
     n = max((int(c["cue_id"][2:]) for c in base if c["cue_id"].startswith("C-")), default=0)
     for i, c in enumerate(extra, n + 1):
         c["cue_id"] = f"C-{i:06d}"

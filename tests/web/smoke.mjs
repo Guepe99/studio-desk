@@ -358,7 +358,7 @@ try {
 
   await check("real-time path", async () => {
     await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
-    const first = cues.find((c) => c.audience === "analyst");
+    const first = cues.find((c) => c.audience === "analyst" && c.ts >= 1); // played into, so not the line-ups at 0'
     await page.evaluate((ts) => { window.studioDesk.seek(ts); window.studioDesk.state.speed = 1; window.studioDesk.setPlaying(true); }, first.ts - 1);
     await page.waitForTimeout(2600);
     const rt = (await onScreen(page)).live.find((x) => x.cue === first.cue_id);
@@ -1058,7 +1058,7 @@ try {
       });
       if (strip.h > 24 || strip.bottom > h || strip.items > 1) fail(`${w}x${h}: agent strip ${JSON.stringify(strip)}, wanted one line on screen`);
       if (h > w) {
-        for (const graphic of ["pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
+        for (const graphic of ["lineup", "pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
           const c = cues.find((x) => x.audience === "analyst" && x.graphic === graphic);
           if (!c) continue;
           await seekTo(phone, c.ts + Math.min(2, c.duration_s / 2));

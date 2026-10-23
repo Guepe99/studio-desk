@@ -91,7 +91,7 @@ def test_committed_packs_show_each_audience_its_line():
             s = by_id.get(c["story_id"])
             if c["graphic"] == "why_card" and s:
                 assert c["payload"]["body"] == au.text_for(s, c["audience"], c["lang"]), c["cue_id"]
-        shape = lambda c: (c["story_id"], c["ts"], c["graphic"], c["lang"])  # noqa: E731
+        shape = lambda c: (c["story_id"] or "", c["ts"], c["graphic"], c["lang"])  # noqa: E731  (fillers have no story)
         assert sorted(map(shape, (c for c in cues if c["audience"] == "kids"))) == \
             sorted(map(shape, (c for c in cues if c["audience"] == "casual")))
         assert len({c["cue_id"] for c in cues}) == len(cues)
@@ -138,10 +138,15 @@ def test_checkins_air_alone_with_the_numbers_of_their_facts():
         for c in cards:
             got = [facts[f] for f in c["payload"]["fact_ids"]]
             assert {f["kind"] for f in got} >= set(au.CHECKIN_KINDS) - {"checkin_top_speed"}, c["cue_id"]
-            assert {f["player_id"] for f in got} == {c["audience"].split(":", 1)[1]}
+            # a player's own sheet has its card; a filler (another sheet) is the card of one player, a minute late at most
+            filler = c["payload"].get("filler")
+            assert filler != c["audience"].startswith("player:"), c["cue_id"]
+            assert len({f["player_id"] for f in got}) == 1
+            assert filler or {f["player_id"] for f in got} == {c["audience"].split(":", 1)[1]}
             assert len({f["ts"] for f in got}) == 1
             ts = got[0]["ts"]
-            assert ts <= c["ts"] <= ts + au.CHECKIN_WAIT_S and c["ts"] + c["duration_s"] <= (p1 if ts <= p1 else end)
+            wait = au.FILL_WAIT_S if filler else au.CHECKIN_WAIT_S
+            assert ts <= c["ts"] <= ts + wait and c["ts"] + c["duration_s"] <= (p1 if ts <= p1 else end)
             body = c["payload"]["body"]
             for f in got:
                 said = au.CHECKIN[c["lang"]]["none"] if f["kind"] == "checkin_sprints" and not f["value"] else rules.fmt(f["value"], c["lang"])
@@ -249,3 +254,107 @@ def test_team_stats_wait_for_a_free_slot_or_are_dropped():
     assert not au.stats_cues(m, meta, facts, [cue(590.0, 80.0)])  # nothing free before 660: dropped
     assert not au.stats_cues(m, meta, [{**f, "ts": 2695.0} for f in facts], sheet)  # would run past half-time
     assert not au.stats_cues(m, meta, facts[:-1], sheet)  # a measure missing for one team: no panel
+
+
+def _meta(mid):
+    with closing(db.connect(srv.DB_PATH, readonly=True)) as conn:
+        return export.meta(conn, mid)
+
+
+def _aired(stories):
+    return {s["story_id"] for s in stories if s["default_status"] == "auto_approved" and s.get("safety") != "flagged"}
+
+
+def test_no_sheet_goes_a_minute_with_nothing_on_screen():
+    # what a visitor who never touches the desk sees: auto-approved stories, and the code's graphics that do not
+    # wait for the visitor (desk.js GEN_WAITS); on every sheet, in every language, from kick-off to full time
+    _packs(REPLAYS)
+    for mid in PACK_IDS:
+        stories, cues = _pack(mid)
+        meta = _meta(mid)
+        airs = [c for c in cues if au.airs(c, _aired(stories))]
+        sheets = sorted({c["audience"] for c in cues})
+        for aud in sheets:
+            for lang in ("en", "it", "es"):
+                long = [g for g in au.gaps(airs, meta, aud, lang) if g[1] - g[0] > au.MAX_GAP_S + 1e-6]
+                assert not long, (mid, aud, lang, long)
+                assert not au.empty_minutes(airs, meta, aud, lang), (mid, aud, lang)
+        # the control: without the fillers the same measure finds empty minutes on every sheet
+        bare = [c for c in airs if not c["payload"].get("filler")]
+        assert all(au.empty_minutes(bare, meta, aud) for aud in sheets), mid
+        # a filler's name plate or pass ends while its player is still on the pitch (the plate rings him)
+        off = {x["player_id"]: x["off_ts"] or float("inf") for x in meta["lineups"]}
+        late = [c["cue_id"] for c in cues if c["payload"].get("filler") and c["graphic"] in ("nameplate", "pass_shot")
+                and c["ts"] + c["duration_s"] > off[c["payload"]["player_id"]]]
+        assert not late, (mid, late[:5])
+
+
+def test_the_line_ups_open_every_sheet_with_the_starters_and_the_team_sheet_formation():
+    _packs(REPLAYS)
+    srv.set_clock(None)
+    for mid in PACK_IDS:
+        _, cues = _pack(mid)
+        meta = _meta(mid)
+        facts = {f["fact_id"]: f for f in srv.get_facts(mid)}
+        starters = {x["player_id"] for x in meta["lineups"] if x["starter"]}
+        pos = {p["player_id"]: p["position"] for p in meta["players"]}
+        cards = [c for c in cues if c["graphic"] == "lineup"]
+        assert sorted((c["audience"], c["lang"]) for c in cards) == sorted({(c["audience"], c["lang"]) for c in cues}), mid
+        for c in cards:
+            assert c["ts"] == 0.0 and c["duration_s"] == au.LINEUP_S and c["story_id"] is None and c["payload"]["filler"]
+            got = [facts[i] for i in c["payload"]["fact_ids"]]
+            assert [f["kind"] for f in got] == ["start_formation"] * 2
+            for t, f in zip(c["payload"]["teams"], got):
+                players = [p for line in t["lines"] for p in line]
+                assert {p["player_id"] for p in players} == {p for p in starters if p.startswith(f["team_id"] + "-")}
+                assert [len(line) for line in t["lines"][1:]] == [int(d) for d in str(int(f["value"]))]
+                assert t["formation"] == "-".join(str(int(f["value"])))
+                assert all(pos[p["player_id"]] == k for line, k in zip(t["lines"], au.LINES_ORDER) for p in line)
+
+
+def test_fillers_cover_every_minute_from_facts_take_turns_and_keep_clear_of_waiting_cards():
+    meta = {**SIDES, "players": [{**p, "shirt": n, "position": "FW"} for n, p in enumerate(SIDES["players"], 7)],
+            "match_id": "M001", "period1_s": 240.0, "period2_s": 130.0, "lineups": []}
+    m = rules.Match(meta)
+    facts, events = [], []
+
+    def f(kind, ts, value, unit, team, player, eid=None):
+        facts.append({"fact_id": f"F-{kind.upper()}-{len(facts) + 1:06d}", "kind": kind, "ts": ts, "period": 1 if ts < 240 else 2,
+                      "team_id": team, "player_id": player, "value": value, "unit": unit, "source_event_ids": [eid] if eid else []})
+    for ts in (10.0, 70.0, 130.0, 190.0, 250.0, 310.0):
+        f("sprint_speed", ts, 30.0, "km/h", "T01", "T01-9")
+        f("sprint_speed", ts, 29.0, "km/h", "T02", "T02-7")
+        events.append({"event_id": int(ts), "result_name": "success"})
+        f("pass_distance", ts + 10, 20.0, "m", "T02", "T02-9", int(ts))
+        f("pass_difficulty", ts + 10, 7.5, "/10", "T02", "T02-9", int(ts))
+    events.append({"event_id": 999, "result_name": "fail"})  # a pass that failed is never a filler
+    f("pass_distance", 15.0, 40.0, "m", "T01", "T01-9", 999)
+    f("pass_difficulty", 15.0, 9.9, "/10", "T01", "T01-9", 999)
+
+    def cue(ts, dur, aud="casual", story="S-1"):
+        return {"ts": ts, "duration_s": dur, "audience": aud, "lang": "en", "graphic": "why_card", "story_id": story, "payload": {}}
+    sheet = [cue(0.0, 5.0, a) for a in ("casual", "team:T02", "player:T01-9")] + [cue(60.0, 12.0, "casual", "S-2")]
+    got = au.fill_cues(m, meta, facts, events, sheet, {"S-1"})
+    assert got == au.fill_cues(m, meta, facts, events, sheet, {"S-1"})  # the same on every run
+    by = {f["fact_id"]: f for f in facts}
+    for aud in ("casual", "team:T02", "player:T01-9"):
+        mine = sorted([c for c in got if c["audience"] == aud], key=lambda c: c["ts"])
+        shown = [c for c in sheet if c["audience"] == aud and c["story_id"] == "S-1"] + mine
+        assert all(b - a <= au.MAX_GAP_S + 1e-6 for a, b in au.gaps(shown, meta, aud)) and not au.empty_minutes(shown, meta, aud), aud
+        for c in mine:
+            ids = c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]
+            assert c["payload"]["filler"] and c["story_id"] is None
+            assert all(by[i]["ts"] <= c["ts"] <= by[i]["ts"] + au.FILL_WAIT_S for i in ids)  # at most a minute after its facts
+            assert c["ts"] + c["duration_s"] <= (240.0 if c["ts"] < 240.0 else 370.0)  # ends before its half does
+            assert 999 not in {e for i in ids for e in by[i]["source_event_ids"]}
+        assert all(a["ts"] + a["duration_s"] <= b["ts"] for a, b in zip(mine, mine[1:]))
+        assert all(a["graphic"] != b["graphic"] for a, b in zip(mine, mine[1:])), aud  # a pass and a name plate take turns
+    # the waiting card S-2 (1:00 to 1:12) does not air untouched: the stretch stays open, and no filler covers it
+    assert not any(c["ts"] < 72.0 and 60.0 < c["ts"] + c["duration_s"] for c in got if c["audience"] == "casual")
+    # a team's sheet takes its own players' name plates, a player's sheet that player's
+    assert {c["payload"]["player_id"] for c in got if c["audience"] == "team:T02" and c["graphic"] == "nameplate"} == {"T02-7"}
+    assert {c["payload"]["player_id"] for c in got if c["audience"] == "player:T01-9" and c["graphic"] == "nameplate"} == {"T01-9"}
+    # the kids get their own words on a pass
+    kids = au.fill_cues(m, meta, facts, events, [cue(0.0, 5.0, "kids")], {"S-1"})
+    assert {c["payload"]["quality"] for c in kids if c["graphic"] == "pass_shot"} == {"How hard: 7.5/10"}
+    assert not au.fill_cues(m, meta, facts, events, sheet + got, {"S-1"})  # nothing to add twice

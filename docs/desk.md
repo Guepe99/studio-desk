@@ -43,7 +43,9 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   approved by the rule and sit in Done ("approved by the risk rule"). The graphics the code adds per
   audience (`studiodesk/agents/audiences.py`, `_generated`: the player check-ins and the analyst's
   Team shape panels) wait in Needs you with Put on air and Skip. The kids sheet keeps its story ids
-  and follows its stories.
+  and follows its stories. The fillers (`payload.filler`, see No empty minutes) never wait, on any
+  sheet the kids' one included: they exist so that a visitor who never opens the desk always has a
+  graphic on air, so the risk rule approves them and they sit in Done like the Momentum panels.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
   at a time, and the analyst sheet alone has 17 Team shape panels a match.
 - One nobody decided on before its slot ended has expired: it never airs, and Done says "expired,
@@ -150,3 +152,119 @@ number"), the UTC time in a tooltip; then the agents' log; the cost tiles come l
 Under 1100 px the desk is a bottom sheet of at most 60% of the height, so the broadcast stays in
 view above it, with a compact On air now strip pinned at the top of the sheet. Colour is never the
 only cue: every tally colour also says its state in words (WCAG 1.4.1).
+
+## No empty minutes
+
+The owner watched M001 and at 8' the desk had nothing on air and nothing waiting. Measured on the
+committed packs (English sheet, stretches of play with no cue of the audience on screen), before
+this change:
+
+| Match | Analyst | Casual and kids | First story |
+|---|---|---|---|
+| M001 | first graphic at 5'00, longest gap 5.0 min | first at 7'55; gaps of 18.0, 15.5 and 12.0 min | 7'50 |
+| M002 | first at 5'00, longest 5.0 min | first at 16'32; gaps of 16.5, 15.4 and 9.7 min | 10'00 |
+| M003 | first at 5'00, longest 5.0 min | first at 6'23; gaps of 15.4, 11.5 and 10.5 min | 6'18 |
+| M004 | first at 5'00, longest 5.0 min | first at 6'19; gaps of 17.1, 12.7 and 9.3 min | 5'00 |
+
+The stories come from the agents' run and stay as they are; the graphics fill the gaps.
+
+How the trade fills them (for the kinds of graphic, not the target):
+
+- A broadcast opens on the line-ups. Line-up graphics show the starters, and formation graphics
+  place them on the pitch and may come back later in the match
+  ([wTVision, Football Graphics Explained](https://www.wtvision.com/football-graphics-explained));
+  line-ups and formations are revealed before kick-off
+  ([wTVision, Portuguese League](https://www.wtvision.com/portuguese-league-with-a-new-graphic-concept)).
+  The team sheet is public before kick-off (75 minutes before in the English top flight since 2024/25,
+  [On Tour Football](https://ontourfootball.com/news/confirmed-lineups-when-team-news-actually-drops-and-how-to-get-it-in-time)),
+  so showing it at 0' gives nothing away.
+- In quiet spells, live stats chosen to explain the phase of play (wTVision, above) and
+  momentum and live data in the match apps and data feeds
+  ([a club app's Match Centre](https://www.manutd.com/en/news/detail/innovative-live-stats-now-available-in-new-official-manchester-united-app-match-centre),
+  [a league broadcaster's Data Zone](https://www.broadcastnow.co.uk/tech-innovation/premier-league-productions-trials-augmented-broadcasts/5181397.article)).
+- At the slow end, newspaper live blogs post about every 10 minutes on average
+  ([Thurman and Walters 2013](https://openaccess.city.ac.uk/id/eprint/4045/1/Chapter%208%20-%20Live%20Blogging%20-%20with%20discussion%20questions.pdf)),
+  and some match apps push only at kick-off, goals and full time
+  ([TOK.tv](https://blog.lightstreamer.com/2014/07/meet-our-customers-toktv.html)).
+
+The target is the owner's: no clock minute without a graphic on air, on every sheet (analyst, casual,
+kids, each team's and each player's), for a visitor who never touches the desk. A story listed under
+Needs you does not count: a viewer who never opens the desk does not see it. Two graphics less than a
+minute apart leave no minute empty, so the code aims at `MAX_GAP_S` = 55 s (in
+`studiodesk/agents/audiences.py`) between the end of one graphic and the start of the next, from 0:00 to
+half-time and from the second half's start to full time; the half's last, shorter minute counts too.
+
+What fills them, all from the fact ledger and written by code, each marked `payload.filler: true`:
+
+- `lineup` at 0', 15 s, on every sheet: each team's formation from its team sheet (the
+  `start_formation` fact) and its eleven by line, keeper first.
+- While a stretch with nothing on air is longer than 55 s, or would leave the half's last minute
+  empty, one more graphic: a `pass_shot` of a completed pass with its length and difficulty
+  (`pass_distance`, `pass_difficulty`, and `ball_speed` when there is one), a `nameplate` of a sprint
+  with its speed (`sprint_speed`), the `momentum` graphic of a 5-minute window (not on the analyst
+  sheet, which has its own every window), or at a check-in time (15', 30', 45' of each half) the
+  check-in card of the player with the most touches (not on a player's sheet, which has that
+  player's own card).
+- A filler starts no earlier than its facts and at most 60 s after them, a name plate or a pass ends
+  before its player is substituted (the plate rings him on the pitch), it overlaps nothing of that
+  sheet (a story waiting for the producer included, in case it is approved) and ends before half-time
+  or full time. Each fact fills a sheet once.
+- Which one: never the graphic shown just before when another fits, then not the one just after, then
+  the graphic the sheet has gone longest without; on a team's or a player's sheet that team's or that
+  player's facts first; then the latest start within the 55 s, then the fastest sprint or the hardest
+  pass.
+- The kids read their own words: "How hard: 8.1/10" on a pass, "Touched the ball 31 times" or
+  "Fastest run: 31.4 km/h" on a check-in (Italian and Spanish too).
+
+On the desk the fillers are generated graphics like the Momentum panels: approved by the risk rule,
+listed in Done once they have aired, and the producer can take one out. They never wait for a
+decision (`GEN_WAITS` in `web/js/desk.js` leaves them out), or the kids sheet, whose generated graphics
+all wait, would stay empty for a visitor who never opens the desk.
+
+Measured on the committed packs as a visitor who never touches the desk sees them (auto-approved
+stories that are not flagged, and the code graphics that do not wait): the longest stretch with
+nothing on air, and the clock minutes with nothing on air.
+
+| Match | Sheets | Before: longest gap | Before: empty minutes | After: longest gap | After: empty minutes |
+|---|---|---|---|---|---|
+| M001 | analyst | 300 s | 71 | 55 s | 0 |
+| M001 | casual, kids, team:T01, team:T02 | 2002 s | 87 | 55 s | 0 |
+| M001 | player:T01-9, player:T02-9 | 2002 s | 88 | 55 s | 0 |
+| M001 | player:T01-7 | 2793 s | 91 | 55 s | 0 |
+| M002 | analyst | 300 s | 70 | 55 s | 0 |
+| M002 | casual, kids, the two teams, player:T03-7 | 1324 s | 87 | 55 s | 0 |
+| M002 | player:T03-9, player:T04-9 | 1324 s | 88 | 55 s | 0 |
+| M002 | player:T04-7, player:T04-11 | 2792 s | 90 and 91 | 55 s | 0 |
+| M003 | analyst | 304 s | 72 | 55 s | 0 |
+| M003 | casual, kids, the two teams | 2174 s | 90 | 55 s | 0 |
+| M003 | player:T05-7, player:T06-9 | 2174 s | 91 | 55 s | 0 |
+| M003 | player:T05-11, player:T06-7, player:T06-19 | 2734 s | 92 to 93 | 55 s | 0 |
+| M004 | analyst | 301 s | 73 | 55 s | 0 |
+| M004 | casual, kids, the two teams | 2175 s | 90 | 55 s | 0 |
+| M004 | player:T08-7, player:T08-9 | 2175 s | 91 | 55 s | 0 |
+| M004 | the other four players | 2752 to 2872 s | 92 to 94 | 55 s | 0 |
+
+The same holds in Italian and Spanish. M001 minute by minute, English, before and after (`*` a story or
+a template graphic, the rest fillers, with their start):
+
+| Minute | Casual before | Casual after | Analyst before | Analyst after |
+|---|---|---|---|---|
+| 0 | nothing | lineup 0:00 | nothing | lineup 0:00 |
+| 1 | nothing | pass 1:10 | nothing | pass 1:10 |
+| 2 | nothing | name plate 2:11 | nothing | name plate 2:11 |
+| 3 | nothing | pass 3:12 | nothing | pass 3:12 |
+| 4 | nothing | name plate 4:13 | nothing | name plate 4:13 |
+| 5 | nothing | momentum 5:14 | momentum* 5:00 | momentum* 5:00 |
+| 6 | nothing | name plate 6:17 | nothing | pass 6:03 |
+| 7 | nothing | pass 7:17 | nothing | name plate 7:04, pass 7:49 |
+| 8 | nothing | name plate 8:18 | nothing | name plate 8:50 |
+| 9 | pass* 9:56 | pass 9:19, pass* 9:56 | pass* 9:56 | pass 9:50, pass* 9:56 |
+| 10 | pass* 9:56, why card* 10:02 | the same | pass* 9:56, why card* 10:02, momentum* 10:02 | the same |
+| 11 | nothing | momentum 11:00 | nothing | name plate 11:09 |
+| 12 | pass* 12:53, why card* 12:59 | name plate 12:03, then the same | pass* 12:53, why card* 12:59 | pass 12:10, then the same |
+
+Two graphics of the same kind in a row on a sheet happen only when no other kind fits that minute
+(checked on every pair of fillers of the four matches). `test_no_sheet_goes_a_minute_with_nothing_on_screen` and
+`test_fillers_cover_every_minute_from_facts_take_turns_and_keep_clear_of_waiting_cards` in
+`tests/test_audiences.py` keep it so; `test_apply_is_idempotent_on_a_committed_pack` reruns the step
+and gets the same cues.

@@ -66,19 +66,19 @@ export const FACT_KINDS = {
     press_intensity: "Pressing intensity", score: "Score", shot_distance: "Shot distance", shot_speed: "Shot speed", sprint_count: "Sprints",
     sprint_speed: "Sprint speed", team_length: "Team length", team_width: "Team width", xt_added: "Threat added (xT)",
     checkin_touches: "Touches so far", checkin_passes: "Passes completed so far", checkin_distance: "Distance covered so far",
-    checkin_sprints: "Sprints so far", checkin_top_speed: "Top speed so far" },
+    checkin_sprints: "Sprints so far", checkin_top_speed: "Top speed so far", start_formation: "Starting formation" },
   it: { ball_speed: "Velocità della palla", distance_covered: "Distanza percorsa", formation: "Modulo", line_height: "Altezza della linea difensiva",
     momentum: "Momentum", pass_accuracy: "Precisione nei passaggi", pass_difficulty: "Difficoltà del passaggio", pass_distance: "Lunghezza del passaggio",
     press_intensity: "Intensità del pressing", score: "Risultato", shot_distance: "Distanza del tiro", shot_speed: "Velocità del tiro", sprint_count: "Scatti",
     sprint_speed: "Velocità massima", team_length: "Lunghezza della squadra", team_width: "Ampiezza della squadra", xt_added: "Pericolosità aggiunta (xT)",
     checkin_touches: "Tocchi finora", checkin_passes: "Passaggi riusciti finora", checkin_distance: "Distanza percorsa finora",
-    checkin_sprints: "Scatti finora", checkin_top_speed: "Velocità massima finora" },
+    checkin_sprints: "Scatti finora", checkin_top_speed: "Velocità massima finora", start_formation: "Modulo iniziale" },
   es: { ball_speed: "Velocidad del balón", distance_covered: "Distancia recorrida", formation: "Sistema", line_height: "Altura de la línea defensiva",
     momentum: "Empuje", pass_accuracy: "Precisión en el pase", pass_difficulty: "Dificultad del pase", pass_distance: "Longitud del pase",
     press_intensity: "Intensidad de la presión", score: "Marcador", shot_distance: "Distancia del disparo", shot_speed: "Velocidad del disparo", sprint_count: "Sprints",
     sprint_speed: "Velocidad punta", team_length: "Longitud del equipo", team_width: "Anchura del equipo", xt_added: "Amenaza añadida (xT)",
     checkin_touches: "Toques hasta ahora", checkin_passes: "Pases acertados hasta ahora", checkin_distance: "Distancia recorrida hasta ahora",
-    checkin_sprints: "Sprints hasta ahora", checkin_top_speed: "Velocidad máxima hasta ahora" },
+    checkin_sprints: "Sprints hasta ahora", checkin_top_speed: "Velocidad máxima hasta ahora", start_formation: "Sistema inicial" },
 };
 export const EVENT_KINDS = {
   en: { clearance: "Clearance", corner_crossed: "Corner into the box", corner_short: "Short corner", cross: "Cross", dribble: "Run with the ball",
@@ -118,6 +118,8 @@ export function onAirText(cue) {
   if (cue.graphic === "nameplate") return Number.isFinite(p.speed_kmh) ? `${p.speed_kmh.toFixed(1)} km/h` : "";
   // team shape: each team's value as shown; the window in the header ("Min 6-10") is the facts' minutes, not a stat
   if (cue.graphic === "team_stats") return list(p.rows).flatMap((r) => [r.home, r.away]).join("\n");
+  // line-ups: each team's formation; the shirt numbers are not stats
+  if (cue.graphic === "lineup") return list(p.teams).map((t) => t.formation ?? "").join("\n");
   return ""; // momentum: bars, no numbers
 }
 

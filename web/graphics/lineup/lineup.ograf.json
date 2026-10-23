@@ -1,0 +1,249 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-lineup",
+  "version": "1.0.0",
+  "name": "Studio Desk starting line-ups",
+  "description": "The two starting elevens at kick-off: each team's team-sheet formation and its players by line, keeper first, shirt number and surname. Vendor load() params: v_showFactIds (boolean), v_teams ({home: {short, color}, away: {short, color}}), v_compact (boolean), v_side (\"left\" or \"right\").",
+  "author": {
+    "name": "Studio Desk",
+    "url": "https://github.com/Guepe99/studio-desk"
+  },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": [
+      "teams",
+      "fact_ids"
+    ],
+    "properties": {
+      "teams": {
+        "type": "array",
+        "title": "Teams, home first",
+        "items": {
+          "type": "object",
+          "required": [
+            "side",
+            "formation",
+            "lines"
+          ],
+          "properties": {
+            "side": {
+              "type": "string",
+              "enum": [
+                "home",
+                "away"
+              ]
+            },
+            "formation": {
+              "type": "string",
+              "title": "Team-sheet formation as shown"
+            },
+            "lines": {
+              "type": "array",
+              "title": "Keeper, defenders, midfielders, forwards",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "player_id",
+                    "shirt",
+                    "name"
+                  ],
+                  "properties": {
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "shirt": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "default": [
+          {
+            "side": "home",
+            "formation": "4-4-2",
+            "lines": [
+              [
+                {
+                  "player_id": "T03-1",
+                  "shirt": 1,
+                  "name": "Lindqvist"
+                }
+              ],
+              [
+                {
+                  "player_id": "T03-2",
+                  "shirt": 2,
+                  "name": "Nwosu"
+                },
+                {
+                  "player_id": "T03-3",
+                  "shirt": 3,
+                  "name": "Galvan"
+                },
+                {
+                  "player_id": "T03-4",
+                  "shirt": 4,
+                  "name": "Quintero"
+                },
+                {
+                  "player_id": "T03-5",
+                  "shirt": 5,
+                  "name": "Moreau"
+                }
+              ],
+              [
+                {
+                  "player_id": "T03-6",
+                  "shirt": 6,
+                  "name": "Yilmaz"
+                },
+                {
+                  "player_id": "T03-8",
+                  "shirt": 8,
+                  "name": "Dunsavel"
+                },
+                {
+                  "player_id": "T03-10",
+                  "shirt": 10,
+                  "name": "Oduya"
+                },
+                {
+                  "player_id": "T03-14",
+                  "shirt": 14,
+                  "name": "Holmberg"
+                }
+              ],
+              [
+                {
+                  "player_id": "T03-7",
+                  "shirt": 7,
+                  "name": "Haddad"
+                },
+                {
+                  "player_id": "T03-9",
+                  "shirt": 9,
+                  "name": "Mensah"
+                }
+              ]
+            ]
+          },
+          {
+            "side": "away",
+            "formation": "4-3-3",
+            "lines": [
+              [
+                {
+                  "player_id": "T04-1",
+                  "shirt": 1,
+                  "name": "Oyelaran"
+                }
+              ],
+              [
+                {
+                  "player_id": "T04-2",
+                  "shirt": 2,
+                  "name": "Duarte"
+                },
+                {
+                  "player_id": "T04-3",
+                  "shirt": 3,
+                  "name": "Fontaine"
+                },
+                {
+                  "player_id": "T04-4",
+                  "shirt": 4,
+                  "name": "Ekwueme"
+                },
+                {
+                  "player_id": "T04-5",
+                  "shirt": 5,
+                  "name": "Halvorsen"
+                }
+              ],
+              [
+                {
+                  "player_id": "T04-6",
+                  "shirt": 6,
+                  "name": "Strand"
+                },
+                {
+                  "player_id": "T04-8",
+                  "shirt": 8,
+                  "name": "Takeda"
+                },
+                {
+                  "player_id": "T04-10",
+                  "shirt": 10,
+                  "name": "Achterberg"
+                }
+              ],
+              [
+                {
+                  "player_id": "T04-7",
+                  "shirt": 7,
+                  "name": "Dunmarrow"
+                },
+                {
+                  "player_id": "T04-9",
+                  "shirt": 9,
+                  "name": "Pavic"
+                },
+                {
+                  "player_id": "T04-11",
+                  "shirt": 11,
+                  "name": "Vellacott"
+                }
+              ]
+            ]
+          }
+        ]
+      },
+      "fact_ids": {
+        "type": "array",
+        "title": "Fact ids",
+        "items": {
+          "type": "string"
+        },
+        "hidden": true
+      }
+    }
+  },
+  "actionDurations": [
+    {
+      "type": "playAction",
+      "duration": -1
+    },
+    {
+      "type": "stopAction",
+      "duration": 260
+    },
+    {
+      "type": "updateAction",
+      "duration": 0
+    }
+  ],
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ]
+}

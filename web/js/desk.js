@@ -88,7 +88,7 @@ export const TEXT = {
     airEmpty: "Nothing on screen right now.", doneEmpty: "Nothing decided yet.",
     needsEmpty: "Nothing waits for you. The agents write these graphics, and nothing they write goes on air until you or the risk rule approve it.",
     next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "its slot is now", toAirPast: "its slot was at {m}'", left: "{s} s left",
-    takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_why_card: "Card",
+    takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_lineup: "Line-ups", g_why_card: "Card",
     done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", k_checkin: "Player check-in",
     line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
     line_expired: "Off air, its moment passed while it waited", row_expired: "expired, its moment passed",
@@ -168,7 +168,7 @@ export const TEXT = {
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, e niente di ciò che scrivono va in onda finché non lo approvi tu o la regola del rischio.",
     next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: "doveva andare in onda al {m}'", left: "ancora {s} s",
-    takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_why_card: "Perché conta",
+    takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Perché conta",
     done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
     line_expired: "Fuori onda, il suo momento è passato mentre aspettava", row_expired: "scaduta, il suo momento è passato",
@@ -248,7 +248,7 @@ export const TEXT = {
     airEmpty: "Ahora no hay nada en antena.", doneEmpty: "Todavía no hay nada decidido.",
     needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, y nada de lo que escriben se emite hasta que lo apruebes tú o la regla de riesgo.",
     next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "su hueco es ahora", toAirPast: "su hueco era en el {m}'", left: "quedan {s} s",
-    takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_why_card: "Por qué importa",
+    takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_lineup: "Alineaciones", g_why_card: "Por qué importa",
     done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", k_checkin: "Números del jugador",
     line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
     line_expired: "Fuera de antena, su momento pasó mientras esperaba", row_expired: "caducado, su momento pasó",
@@ -1370,8 +1370,9 @@ export class Desk {
 const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
 // The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
 // player check-ins, the analyst's team shape panels) wait for the visitor; the template graphics (momentum,
-// name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did.
-const GEN_WAITS = (c) => c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats";
+// name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do
+// the fillers (payload.filler, audiences.py fill_cues): they keep every sheet from going a minute with nothing.
+const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

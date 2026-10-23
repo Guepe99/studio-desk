@@ -14,7 +14,7 @@ from studiodesk.facts.engine import formation_name, shot_detail
 
 KINDS = {"pass_distance", "pass_difficulty", "pass_accuracy", "ball_speed", "shot_speed", "sprint_speed",
          "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score",
-         "shot_distance", "team_width", "team_length", "formation"}
+         "shot_distance", "team_width", "team_length", "formation", "start_formation"}
 
 
 def facts(conn, kind=None):
