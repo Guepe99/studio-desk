@@ -4,7 +4,10 @@ their stories and why cards, a kids sheet and the player check-ins. Tests on the
 data/matches.sqlite is missing, as in test_replays."""
 import json
 import re
+import shutil
+import subprocess
 from contextlib import closing
+from pathlib import Path
 
 import pytest
 from test_agents import SIDES
@@ -289,6 +292,59 @@ def test_no_sheet_goes_a_minute_with_nothing_on_screen():
         assert not late, (mid, late[:5])
 
 
+def test_fillers_keep_off_goals_wait_for_their_facts_stay_in_their_half_and_say_each_fact_once():
+    _packs(REPLAYS)
+    srv.set_clock(None)
+    for mid in PACK_IDS:
+        _, cues = _pack(mid)
+        meta = _meta(mid)
+        facts = {f["fact_id"]: f for f in srv.get_facts(mid)}
+        goals = [f["ts"] for f in facts.values() if f["kind"] == "score"]
+        en = [c for c in cues if c["lang"] == "en"]
+        for aud in sorted({c["audience"] for c in en}):
+            mine = [c for c in en if c["audience"] == aud]
+            fill = [c for c in mine if c["payload"].get("filler")]
+            own = [c for c in mine if not c["payload"].get("filler")]
+            # no filler over a goal and its 3D replay, nor where the page holds a foot card to after it
+            busy = [(g, g + au.GOAL_BUSY_S) for g in goals] + au.held(own, goals)
+            over = [(c["cue_id"], c["ts"]) for c in fill if any(c["ts"] < e and s < c["ts"] + c["duration_s"] for s, e in busy)]
+            assert not over, (mid, aud, over[:5])
+            for c in fill:
+                cited = [facts[i] for i in c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]]
+                # on air once every fact it cites is in (a pass's ball speed comes a moment after its length)
+                assert all(f["ts"] <= c["ts"] for f in cited), (mid, aud, c["cue_id"])
+                # in the half of its latest fact: the window that ends at half-time stays in the first half
+                assert max(cited, key=lambda f: f["ts"])["period"] == (1 if c["ts"] < meta["period1_s"] else 2), (mid, aud, c["cue_id"])
+            # a fact the sheet shows already, in a story or a template graphic, fills nothing; nor does it twice
+            seen = set().union(*(au.shows(c, facts) for c in own))
+            for c in sorted(fill, key=lambda c: c["ts"]):
+                again = au.shows(c, facts) & seen
+                assert not again, (mid, aud, c["cue_id"], sorted(again))
+                seen |= au.shows(c, facts)
+
+
+def test_the_page_and_the_pack_step_agree_on_what_waits_for_the_visitor():
+    # au.airs (what the fillers count on) and desk.js GEN_WAITS (what the page holds) over every storyless cue
+    # of the packs and a cue of each kind; a story's cue airs by its story alone
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    _packs(REPLAYS)
+    kinds = [{"audience": a, "graphic": g, "payload": {**({"kind": k} if k else {}), **({"filler": True} if f else {})}}
+             for a in ("analyst", "kids", "player:T01-9") for g, k in (("why_card", "checkin"), ("why_card", None), ("team_stats", None),
+                                                                     ("momentum", None), ("nameplate", None))
+             for f in (False, True)]
+    cues = kinds + [{k: c[k] for k in ("audience", "graphic", "payload")} for mid in PACK_IDS for c in _pack(mid)[1] if not c["story_id"]]
+    desk = (Path(__file__).parent.parent / "web" / "js" / "desk.js").as_uri()
+    js = f'import {{ GEN_WAITS }} from "{desk}"; let s = ""; process.stdin.on("data", (d) => s += d);' \
+         'process.stdin.on("end", () => console.log(JSON.stringify(JSON.parse(s).map(GEN_WAITS))));'
+    out = subprocess.run([node, "--input-type=module", "-e", js], input=json.dumps(cues), capture_output=True, text=True, check=True)
+    waits = json.loads(out.stdout)
+    assert len(waits) == len(cues) and any(waits) and not all(waits)
+    for c, w in zip(cues, waits):
+        assert au.airs({**c, "story_id": None}, set()) is not w, c
+
+
 def test_the_line_ups_open_every_sheet_with_the_starters_and_the_team_sheet_formation():
     _packs(REPLAYS)
     srv.set_clock(None)
@@ -310,6 +366,45 @@ def test_the_line_ups_open_every_sheet_with_the_starters_and_the_team_sheet_form
                 assert [len(line) for line in t["lines"][1:]] == [int(d) for d in str(int(f["value"]))]
                 assert t["formation"] == "-".join(str(int(f["value"])))
                 assert all(pos[p["player_id"]] == k for line, k in zip(t["lines"], au.LINES_ORDER) for p in line)
+
+
+TINY_META = {**SIDES, "players": [{**p, "shirt": n, "position": "FW"} for n, p in enumerate(SIDES["players"], 7)],
+             "match_id": "M001", "period1_s": 240.0, "period2_s": 130.0, "lineups": []}
+TINY_STORY = {"ts": 0.0, "duration_s": 5.0, "audience": "casual", "lang": "en", "graphic": "why_card", "story_id": "S-1", "payload": {}}
+
+
+def _fact(kind, ts, value, unit, team, player=None, eid=None, period=1):
+    return {"fact_id": f"F-{kind.upper()}-{int(ts * 10):06d}{team}", "kind": kind, "ts": ts, "period": period, "team_id": team,
+            "player_id": player, "value": value, "unit": unit, "source_event_ids": [eid] if eid else []}
+
+
+def _fill(facts, sheet=(TINY_STORY,), events=()):
+    """The fillers of a 4 + 2 minute match whose casual sheet has one aired card at kick-off."""
+    return au.fill_cues(rules.Match(TINY_META), TINY_META, facts, list(events), list(sheet), {"S-1"})
+
+
+def test_a_pass_filler_waits_for_every_fact_it_cites():
+    # its ball speed is stamped a moment after its length and difficulty
+    passes = [_fact("pass_distance", 20.0, 20.0, "m", "T02", "T02-9", 1), _fact("pass_difficulty", 20.0, 7.5, "/10", "T02", "T02-9", 1),
+              _fact("ball_speed", 20.4, 61.0, "km/h", "T02", "T02-9", 1)]
+    pool = au._fillers(rules.Match(TINY_META), TINY_META, passes, [{"event_id": 1, "result_name": "success"}])
+    assert [(x["graphic"], x["ts"]) for x in pool] == [("pass_shot", 20.4)]
+
+
+def test_a_filler_keeps_off_a_goal_and_its_replay():
+    got = _fill([_fact("sprint_speed", 100.0, 30.0, "km/h", "T01", "T01-9"), _fact("score", 100.0, 1.0, "goals", "T01", "T01-9")])
+    assert [c["ts"] for c in got] == [100.0 + au.GOAL_BUSY_S]  # the sprint at the goal's moment waits for the replay's end
+
+
+def test_a_fact_the_sheet_shows_already_fills_nothing():
+    sprint = _fact("sprint_speed", 10.0, 30.0, "km/h", "T01", "T01-9")
+    plate = {**TINY_STORY, "ts": 12.0, "duration_s": 6.0, "graphic": "nameplate", "payload": {"fact_id": sprint["fact_id"]}}
+    assert _fill([sprint]) and not _fill([sprint], (TINY_STORY, plate))
+
+
+def test_the_window_that_ends_at_half_time_never_fills_the_second_half():
+    win = [_fact("momentum", 240.0, 0.6, "index", t) for t in ("T01", "T02")]
+    assert not _fill(win) and _fill([{**x, "ts": 250.0, "period": 2} for x in win])
 
 
 def test_fillers_cover_every_minute_from_facts_take_turns_and_keep_clear_of_waiting_cards():

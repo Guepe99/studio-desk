@@ -37,7 +37,7 @@ export const TEXT = {
     offair: "Off air", goMinute: "Go to minute {m}", goTitle: "Go to this moment",
     st_auto_approved: "Auto-approved", st_needs_review: "Needs review", st_approved: "Approved", st_edited: "Edited and approved", st_rejected: "Rejected",
     defaultWas: "default: {s}", heldSafety: "held: flagged by Content Safety",
-    line_live: "On air, {by}", by_auto_approved: "approved by the risk rule", by_approved: "approved by you", by_edited: "edited and approved by you",
+    line_live: "On air, {by}", by_auto_approved: "approved by the risk rule", by_approved: "approved by you", by_edited: "edited and approved by you", by_template: "template graphic, no approval needed",
     line_held: "Waiting for you, {why}", why_safety: "flagged by Content Safety", line_rejected: "Off air, rejected by you", line_kill: "Off air while AI graphics are off",
     details: "Details", whyReject: "What was wrong?", r_number: "A number", r_player: "A name", r_moment: "The moment", r_tone: "The tone",
     risk_low: "Low risk", risk_mid: "Medium risk", risk_high: "High risk", riskTitle: "Risk score {r}. Below {t} a story goes on air by itself.",
@@ -116,7 +116,7 @@ export const TEXT = {
     offair: "Fuori onda", goMinute: "Vai al minuto {m}", goTitle: "Vai a questo momento",
     st_auto_approved: "Approvata in automatico", st_needs_review: "Da rivedere", st_approved: "Approvata", st_edited: "Modificata e approvata", st_rejected: "Respinta",
     defaultWas: "stato iniziale: {s}", heldSafety: "in attesa: segnalata da Content Safety",
-    line_live: "In onda, {by}", by_auto_approved: "approvata dalla regola del rischio", by_approved: "approvata da te", by_edited: "modificata e approvata da te",
+    line_live: "In onda, {by}", by_auto_approved: "approvata dalla regola del rischio", by_approved: "approvata da te", by_edited: "modificata e approvata da te", by_template: "grafica standard, non serve approvazione",
     line_held: "Aspetta una tua decisione, {why}", why_safety: "segnalata da Content Safety", line_rejected: "Fuori onda, respinta da te", line_kill: "Fuori onda finché le grafiche IA sono spente",
     details: "Dettagli", whyReject: "Cosa non andava?", r_number: "Un numero", r_player: "Un nome", r_moment: "Il momento", r_tone: "Il tono",
     risk_low: "Rischio basso", risk_mid: "Rischio medio", risk_high: "Rischio alto", riskTitle: "Punteggio di rischio {r}. Sotto {t} una storia va in onda da sola.",
@@ -196,7 +196,7 @@ export const TEXT = {
     offair: "Fuera de antena", goMinute: "Ir al minuto {m}", goTitle: "Ir a este momento",
     st_auto_approved: "Aprobada automáticamente", st_needs_review: "Por revisar", st_approved: "Aprobada", st_edited: "Editada y aprobada", st_rejected: "Rechazada",
     defaultWas: "estado inicial: {s}", heldSafety: "en espera: marcada por Content Safety",
-    line_live: "En antena, {by}", by_auto_approved: "aprobada por la regla de riesgo", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti",
+    line_live: "En antena, {by}", by_auto_approved: "aprobada por la regla de riesgo", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti", by_template: "gráfico estándar, no necesita aprobación",
     line_held: "Espera tu decisión, {why}", why_safety: "marcada por Content Safety", line_rejected: "Fuera de antena, rechazada por ti", line_kill: "Fuera de antena mientras los gráficos de IA están apagados",
     details: "Detalles", whyReject: "¿Qué estaba mal?", r_number: "Un número", r_player: "Un nombre", r_moment: "El momento", r_tone: "El tono",
     risk_low: "Riesgo bajo", risk_mid: "Riesgo medio", risk_high: "Riesgo alto", riskTitle: "Puntuación de riesgo {r}. Por debajo de {t} una historia sale al aire sola.",
@@ -410,7 +410,7 @@ export class Desk {
           // listed once its facts are in, as a story is
           ts: Math.min(c.ts, factTs.length ? Math.max(...factTs) : c.ts),
           player_id: p.player_id ?? (aud[0] === "player" ? aud[1] : null), team_id: aud[0] === "team" ? aud[1] : null,
-          default_status: GEN_WAITS(c) ? "needs_review" : "auto_approved" };
+          default_status: GEN_WAITS(c) ? "needs_review" : "auto_approved", filler: !!p.filler };
         this.genOf.set(slot(c), g);
         this.gens.push(g);
         this.firstAt.set(id, c.ts);
@@ -521,9 +521,10 @@ export class Desk {
   visible(s, now = this.state.ts) { return s.ts <= now && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
   /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
-   *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire). */
+   *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire).
+   *  A filler is never listed: it shows in On air now only, while it is on screen (airRows). */
   shown() {
-    const gens = this.gens.filter((g) => g.audience === this.state.audience && this.visible(g));
+    const gens = this.gens.filter((g) => g.audience === this.state.audience && !g.filler && this.visible(g));
     const wait = gens.filter((g) => this.status(g) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b))[0];
     return [...this.stories.filter((s) => this.visible(s)), ...gens.filter((g) => g === wait || this.status(g) !== "needs_review")];
   }
@@ -876,7 +877,7 @@ export class Desk {
     const st = this.status(s), t = this.tallyOf(s), lang = this.state.lang;
     if (t === "held") return this.tx("line_held", { why: s.gen ? this.tx("why_gen") : s.safety === "flagged" ? this.tx("why_safety") : this.tx(`risk_${riskBand(Number(s.risk))}`).toLocaleLowerCase(lang) });
     if (t === "off") return this.tx(st === "expired" ? "line_expired" : st === "rejected" ? (this.skipped(s) ? "line_skipped" : "line_rejected") : this.killed(s) ? "line_kill" : "offair");
-    const by = this.tx(`by_${st}`);
+    const by = this.tx(s.filler && st === "auto_approved" ? "by_template" : `by_${st}`);  // as the proof panel says
     return t === "onair" ? this.tx("line_live", { by }) : cap(by, lang);
   }
 
@@ -1372,7 +1373,7 @@ const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
 // player check-ins, the analyst's team shape panels) wait for the visitor; the template graphics (momentum,
 // name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do
 // the fillers (payload.filler, audiences.py fill_cues): they keep every sheet from going a minute with nothing.
-const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
+export const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

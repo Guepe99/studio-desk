@@ -440,6 +440,11 @@ Agents only learn about an event when the clock releases it, in replay generatio
     60 s after them (a `nameplate` or `pass_shot` ends before its player's `off_ts`), overlaps no cue of the sheet (waiting stories included) and ends before half-time or
     full time; each fact fills a sheet once; it is written once per language of the sheet. Never the
     graphic of the cue just before it on the sheet when another fits.
+    Also (additive): its `ts` is no earlier than every fact in its `fact_ids` (a pass's `ball_speed`
+    included); it uses only facts of its own half (`period`); it overlaps no goal (`score` fact) to 11.5 s
+    after it (the 3D replay, `web/js/view3d.js` `REPLAY`) nor where the page holds a `momentum` or
+    `team_stats` cue due in that replay to its end; and it shows no fact the sheet's own cues show. The
+    desk lists no filler in Needs you or Done; in On air now it reads as a template graphic.
 - `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
   rewrites a pack offline; `export` and `export --pack` apply the same step.
 - Page: "Same moment, several audiences", a box under the controls (never on the 1920x1080 stage):

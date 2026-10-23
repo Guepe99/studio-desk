@@ -3,6 +3,7 @@ import json
 import numpy as np
 
 from studiodesk import db
+from studiodesk.agents import audiences as au
 from studiodesk.export import export
 
 PAYLOAD_KEYS = {"nameplate": {"player_id", "name", "shirt", "team_short", "speed_kmh", "fact_id"},
@@ -42,6 +43,17 @@ def test_template_export(match_db, tmp_path):
         assert c["payload"].get("filler", True) is True and (c["graphic"] != "lineup" or c["payload"]["filler"])
         used = c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]
         assert set(used) <= fact_ids
+    # the fillers are there, never repeat a fact their sheet shows, and for a visitor who never touches the desk
+    # fill every minute that has a fact to show: minute 2 has only the sprint already plated at 63.1 s, and the
+    # second half's last minute none before full time
+    fillers = [c for c in cues if c["payload"].get("filler")]
+    assert {c["graphic"] for c in fillers} >= {"lineup", "pass_shot"}  # the fixture match has no sprint to spare
+    by_id = {f["fact_id"]: f for f in data["facts"]}
+    for audience in ("analyst", "casual", "kids"):
+        sheet = [c for c in cues if c["audience"] == audience and au.airs(c, set())]
+        assert au.empty_minutes(sheet, meta, audience) == [2, 47]
+        for f in (c for c in sheet if c in fillers):
+            assert not au.shows(f, by_id) & set().union(*(au.shows(c, by_id) for c in sheet if c is not f))
     for audience in ("analyst", "casual", "kids"):
         mine = [c for c in cues if c["audience"] == audience]
         for c in mine:
