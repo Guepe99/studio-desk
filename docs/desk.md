@@ -45,7 +45,9 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   Team shape panels) wait in Needs you with Put on air and Skip. The kids sheet keeps its story ids
   and follows its stories. The fillers (`payload.filler`, see No empty minutes) never wait, on any
   sheet the kids' one included: they exist so that a visitor who never opens the desk always has a
-  graphic on air, so the risk rule approves them and they sit in Done like the Momentum panels.
+  graphic on air, so the risk rule approves them. They are not listed in Needs you or Done (a sheet has
+  90 to 130 of them, which would bury the decided stories): one shows in On air now while it is on
+  screen, labelled "template graphic, no approval needed", as the proof panel says.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
   at a time, and the analyst sheet alone has 17 Team shape panels a match.
 - One nobody decided on before its slot ended has expired: it never airs, and Done says "expired,
@@ -208,7 +210,15 @@ What fills them, all from the fact ledger and written by code, each marked `payl
 - A filler starts no earlier than its facts and at most 60 s after them, a name plate or a pass ends
   before its player is substituted (the plate rings him on the pitch), it overlaps nothing of that
   sheet (a story waiting for the producer included, in case it is approved) and ends before half-time
-  or full time. Each fact fills a sheet once.
+  or full time. It starts once every fact it cites is in: a pass's `ball_speed` is often stamped up to
+  0.5 s after its length.
+- A filler never airs over a goal and its 3D replay: from the goal to `GOAL_BUSY_S` = 11.5 s after it
+  (`REPLAY.after` + `REPLAY.len` in `web/js/view3d.js`), on every sheet, nor where the page holds a
+  Momentum or Team shape panel due in the replay to its end (`holdForReplays`), so the page never
+  moves a filler.
+- Each fact fills a sheet once, and never one the sheet already shows in its own stories and template
+  graphics. A half's fillers use that half's facts only (`period`): the momentum window that ends at
+  half-time stays in the first half.
 - Which one: never the graphic shown just before when another fits, then not the one just after, then
   the graphic the sheet has gone longest without; on a team's or a player's sheet that team's or that
   player's facts first; then the latest start within the 55 s, then the fastest sprint or the hardest
@@ -216,8 +226,9 @@ What fills them, all from the fact ledger and written by code, each marked `payl
 - The kids read their own words: "How hard: 8.1/10" on a pass, "Touched the ball 31 times" or
   "Fastest run: 31.4 km/h" on a check-in (Italian and Spanish too).
 
-On the desk the fillers are generated graphics like the Momentum panels: approved by the risk rule,
-listed in Done once they have aired, and the producer can take one out. They never wait for a
+On the desk the fillers are generated graphics approved by the risk rule, but they are kept out of
+Needs you and Done: one shows in On air now only while it is on screen, as a template graphic, and the
+producer can take it out from there. The audit is unchanged. They never wait for a
 decision (`GEN_WAITS` in `web/js/desk.js` leaves them out), or the kids sheet, whose generated graphics
 all wait, would stay empty for a visitor who never opens the desk.
 
@@ -256,9 +267,9 @@ a template graphic, the rest fillers, with their start):
 | 4 | nothing | name plate 4:13 | nothing | name plate 4:13 |
 | 5 | nothing | momentum 5:14 | momentum* 5:00 | momentum* 5:00 |
 | 6 | nothing | name plate 6:17 | nothing | pass 6:03 |
-| 7 | nothing | pass 7:17 | nothing | name plate 7:04, pass 7:49 |
-| 8 | nothing | name plate 8:18 | nothing | name plate 8:50 |
-| 9 | pass* 9:56 | pass 9:19, pass* 9:56 | pass* 9:56 | pass 9:50, pass* 9:56 |
+| 7 | nothing | pass 7:18 | nothing | name plate 7:04, pass 7:49 |
+| 8 | nothing | name plate 8:19 | nothing | name plate 8:50 |
+| 9 | pass* 9:56 | pass 9:20, pass* 9:56 | pass* 9:56 | pass 9:49, pass* 9:56 |
 | 10 | pass* 9:56, why card* 10:02 | the same | pass* 9:56, why card* 10:02, momentum* 10:02 | the same |
 | 11 | nothing | momentum 11:00 | nothing | name plate 11:09 |
 | 12 | pass* 12:53, why card* 12:59 | name plate 12:03, then the same | pass* 12:53, why card* 12:59 | pass 12:10, then the same |

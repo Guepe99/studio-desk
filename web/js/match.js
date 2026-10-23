@@ -62,3 +62,11 @@ export class Match {
     return [p[o0] + (p[o1] - p[o0]) * a, p[o0 + 1] + (p[o1 + 1] - p[o0 + 1]) * a, p[o0 + 2] + (p[o1 + 2] - p[o0 + 2]) * a];
   }
 }
+
+// When each sheet first has something of its own: {audience: ts}, the fillers left out (audiences.py
+// fill_cues opens every sheet with the line-ups at 0'), so a late substitute's sheet says when he comes on.
+export function firstCues(cues) {
+  const first = {};
+  for (const c of cues) if (!c.payload?.filler) first[c.audience] = Math.min(first[c.audience] ?? Infinity, c.ts);
+  return first;
+}

@@ -290,9 +290,9 @@ try {
       if (!auds.length) { fail(`modes: ${MATCH} has no ${kind} cues`); continue; }
       const offered = (await page.$$eval(`#settings-menu [data-audience^="${kind}:"]`, (os) => os.map((o) => o.dataset.audience))).sort();
       if (offered.join() !== auds.join()) fail(`${kind}: the menu offers ${offered.join()}, cues.json has ${auds.join()}`);
-      if (kind === "player") { // each entry ends with the minute of the player's first graphic (late substitutes)
+      if (kind === "player") { // each entry ends with the minute of the player's first graphic of his own, not a filler (late substitutes)
         const wrong = await page.evaluate(() => [...document.querySelectorAll('#settings-menu [data-audience^="player:"]')].filter((o) => {
-          const sd = window.studioDesk, ts = Math.min(...sd.match.cues.filter((c) => c.audience === o.dataset.audience).map((c) => c.ts));
+          const sd = window.studioDesk, ts = Math.min(...sd.match.cues.filter((c) => c.audience === o.dataset.audience && !c.payload?.filler).map((c) => c.ts));
           return !o.textContent.endsWith(`, ${sd.match.clock(ts).label}'`);
         }).map((o) => o.textContent));
         if (wrong.length) fail(`player picker without the first minute: ${wrong.slice(0, 3).join(" | ")}`);

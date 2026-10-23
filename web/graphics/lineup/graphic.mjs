@@ -7,7 +7,8 @@ const WORDS = { en: "STARTING LINE-UPS", it: "FORMAZIONI INIZIALI", es: "ALINEAC
 export default class Lineup extends SdGraphic {
   css() {
     return `
-.box { position: absolute; right: 96px; bottom: 84px; width: 780px; }
+/* as wide as its longest line (a back four of long names on one line), up to 1180 px */
+.box { position: absolute; right: 96px; bottom: 84px; width: max-content; min-width: 780px; max-width: 1180px; }
 .box.left { right: auto; left: 96px; }  /* v_side "left": the ball is on the right half */
 .card { padding: 18px 28px 20px; }
 .team + .team { margin-top: 14px; padding-top: 14px; border-top: 3px solid var(--purple-400); }
@@ -18,7 +19,10 @@ export default class Lineup extends SdGraphic {
 .p { display: inline-flex; align-items: baseline; gap: 8px; font-weight: 600; font-size: 24px; white-space: nowrap; }
 .n { min-width: 28px; text-align: right; font-weight: 800; font-size: 20px; color: var(--green); font-variant-numeric: tabular-nums; }
 /* compact: every type at least 30 px (a 264 px deck draws it at 11 px) */
-.compact .box { width: 720px; }
+.compact .box { min-width: 720px; }
+/* in the deck the box is scaled to the deck's width: it stays 720 px, and a line of four or more goes on two even rows */
+.deck .box { width: 720px; min-width: 0; }
+.deck .line.wide { display: grid; grid-template-columns: repeat(var(--cols), max-content); }
 .compact .head, .compact .form, .compact .p, .compact .n { font-size: 30px; }
 .compact .n { min-width: 40px; }`;
   }
@@ -36,10 +40,11 @@ export default class Lineup extends SdGraphic {
   render() {
     const d = this.data, $ = (s) => this.stage.querySelector(s);
     $(".box").classList.toggle("left", this.side === "left");
+    this.stage.classList.toggle("deck", !!this.closest(".deck-item"));  // ograf-host.js: below or beside the picture
     const color = (side) => this.teams[side]?.color ?? (side === "home" ? "#ffffff" : "#05f0ff");
     $(".teams").innerHTML = (Array.isArray(d.teams) ? d.teams : []).map((t) => `<div class="team">
       <div class="head"><span class="chip" style="background:${esc(color(t.side))}"></span>${esc(this.teams[t.side]?.short ?? String(t.side ?? "").toUpperCase())}<span class="form">${esc(t.formation)}</span></div>
-      ${(Array.isArray(t.lines) ? t.lines : []).filter((l) => l?.length).map((l) => `<div class="line">${l.map((p) =>
+      ${(Array.isArray(t.lines) ? t.lines : []).filter((l) => l?.length).map((l) => `<div class="line${l.length >= 4 ? " wide" : ""}" style="--cols:${Math.ceil(l.length / 2)}">${l.map((p) =>
         `<span class="p"><span class="n">${esc(p.shirt)}</span>${esc(p.name)}</span>`).join("")}</div>`).join("")}</div>`).join("");
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
   }

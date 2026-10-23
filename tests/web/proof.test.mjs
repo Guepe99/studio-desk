@@ -151,20 +151,42 @@ test("M001 line-ups: the two formations on screen, each found in its team's star
   assert.equal(P.match.cues.filter((c) => c.graphic === "lineup").length, 24);
 });
 
-test("M001 fillers: a pass gives its length and difficulty, a name plate its speed, each from its own fact; the kids read their words", () => {
-  const P = PACKS.M001, fill = P.match.cues.filter((c) => c.payload.filler);
-  const pass = fill.find((c) => c.graphic === "pass_shot" && c.lang === "it" && c.audience === "casual");
-  const pr = proofOf(pass, P.ctx(pass));
-  assert.equal(pr.numbersOk, true);
-  assert.deepEqual(pr.numbers.map((x) => x.src.fact.kind), ["pass_distance", "pass_difficulty"], onAirText(pass));
-  assert.match(onAirText(pass), /Difficoltà \d+,\d\/10/);
-  const plate = fill.find((c) => c.graphic === "nameplate" && c.lang === "en");
-  assert.deepEqual(proofOf(plate, P.ctx(plate)).numbers.map((x) => x.src.fact.kind), ["sprint_speed"]);
-  const kids = fill.find((c) => c.graphic === "pass_shot" && c.lang === "en" && c.audience === "kids");
-  assert.match(kids.payload.quality, /^How hard: \d+\.\d\/10$/);
-  // the momentum of a window and a check-in fill too, and every filler is a code graphic
-  assert.ok(fill.some((c) => c.graphic === "momentum") && fill.some((c) => c.payload.kind === "checkin" && !c.audience.startsWith("player:")));
-  assert.ok(fill.every((c) => c.story_id === null));
+test("M001 fillers, every one: each number on screen comes from its own fact, in the words of its audience and language", () => {
+  const P = PACKS.M001, fill = P.match.cues.filter((c) => c.payload.filler), facts = new Map(P.match.facts.map((f) => [f.fact_id, f]));
+  const home = P.match.meta.teams[0].team_id, dec = (v, lang) => (lang === "en" ? v.toFixed(1) : v.toFixed(1).replace(".", ","));
+  const Q = { en: "Difficulty {}/10", it: "Difficoltà {}/10", es: "Dificultad {}/10" }, QK = { en: "How hard: {}/10", it: "Quanto era difficile: {}/10", es: "Qué difícil: {}/10" };
+  const TOUCH = { en: /^Touched the ball \d+ times?$/, it: /^Ha toccato il pallone \d+ volt[ae]$/, es: /^Ha tocado el balón \d+ ve(z|ces)$/ };
+  const kinds = new Set();
+  for (const c of fill) {
+    const p = c.payload, pr = proofOf(c, P.ctx(c)), at = `${c.cue_id} ${c.audience} ${c.lang}: ${onAirText(c)}`, kids = c.audience === "kids";
+    const src = pr.numbers.map((x) => x.src.fact.kind);
+    assert.equal(c.story_id, null, at);
+    assert.equal(pr.numbersOk, true, at);
+    assert.ok(pr.facts.length && pr.facts.every((f) => !f.missing), at);
+    kinds.add(`${c.graphic}${kids ? " kids" : ""}`);
+    if (c.graphic === "pass_shot") {
+      const [d, q] = p.fact_ids.map((id) => facts.get(id));
+      assert.deepEqual(src, ["pass_distance", "pass_difficulty"], at);
+      assert.deepEqual([d.kind, q.kind, p.mode, p.value], ["pass_distance", "pass_difficulty", "pass", d.value], at);
+      assert.equal(p.quality, (kids ? QK : Q)[c.lang].replace("{}", dec(q.value, c.lang)), at);
+    } else if (c.graphic === "nameplate") {
+      assert.deepEqual(src, ["sprint_speed"], at);
+      assert.equal(p.speed_kmh, facts.get(p.fact_id).value, at);
+    } else if (c.graphic === "momentum") {
+      const win = p.fact_ids.map((id) => facts.get(id));
+      assert.ok(win.every((f) => f.kind === "momentum"), at);
+      assert.deepEqual([p.home, p.away], [win.filter((f) => f.team_id === home).map((f) => f.value), win.filter((f) => f.team_id !== home).map((f) => f.value)], at);
+    } else if (c.graphic === "why_card") {
+      assert.equal(p.kind, "checkin", at);
+      assert.ok(p.fact_ids.every((id) => facts.get(id).kind.startsWith("checkin_")), at);
+      assert.equal(TOUCH[c.lang].test(p.body.split("\n")[0]), kids, at);
+    } else {
+      assert.equal(c.graphic, "lineup", at);
+      assert.deepEqual(src, ["start_formation", "start_formation"], at);
+    }
+  }
+  assert.deepEqual([...kinds].sort(), ["lineup", "lineup kids", "momentum", "momentum kids", "nameplate", "nameplate kids",
+    "pass_shot", "pass_shot kids", "why_card", "why_card kids"]);
 });
 
 test("the numbers in a line: minutes, a /10 scale, a formation, a score and a unit", () => {

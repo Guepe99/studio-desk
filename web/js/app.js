@@ -1,5 +1,5 @@
 // Studio Desk 2D broadcast page: replay, score bug, controls and the OGraf overlay.
-import { loadMatch } from "./match.js";
+import { loadMatch, firstCues } from "./match.js";
 import { Pitch, SEE_THROUGH, STAGE_W, STAGE_H, toStage, textOn } from "./pitch.js";
 import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
@@ -589,9 +589,8 @@ function placeMoment() {
 function wireControls() {
   $("#play").addEventListener("click", pressPlay);
   // My team and Player: one item per team and per player the cue sheet has cues for; a player's item
-  // says when he first appears (a late substitute)
-  const first = {};
-  for (const c of match.cues) first[c.audience] = Math.min(first[c.audience] ?? Infinity, c.ts);
+  // says when he first appears (a late substitute): the fillers, the line-ups at 0' first, say nothing of him
+  const first = firstCues(match.cues);
   const has = (aud) => first[aud] !== undefined;
   const choices = {
     team: [match.home, match.away].filter((tm) => has(`team:${tm.team_id}`)).map((tm) => [`team:${tm.team_id}`, tm.name, tm.short_name]),

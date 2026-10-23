@@ -535,6 +535,10 @@ CHECKIN_KIDS = {
     "es": {"touches": ("Ha tocado el balón {} vez", "Ha tocado el balón {} veces"), "passes": ("{} buen pase", "{} buenos pases"),
            "distance": "Ha corrido {} km", "top": "Carrera más rápida: {} km/h"},
 }
+# web/js/view3d.js: after a goal the 3D view replays it from REPLAY.after s for REPLAY.len s, and holds the
+# cards at the foot of the picture (FOOT) due then until the replay ends; no filler airs over the goal or its replay
+REPLAY_AFTER_S, REPLAY_LEN_S, FOOT = 6.0, 5.5, ("momentum", "team_stats")
+GOAL_BUSY_S = REPLAY_AFTER_S + REPLAY_LEN_S
 PASS_Q = {"en": "Difficulty {}/10", "it": "Difficoltà {}/10", "es": "Dificultad {}/10"}
 PASS_Q_KIDS = {"en": "How hard: {}/10", "it": "Quanto era difficile: {}/10", "es": "Qué difícil: {}/10"}
 
@@ -583,6 +587,30 @@ def airs(c, aired):
     return bool(p.get("filler")) or not (c["audience"] == "kids" or p.get("kind") == "checkin" or c["graphic"] == "team_stats")
 
 
+def held(cues, goals):
+    """[(from, to)]: where view3d.js holdForReplays puts the FOOT cues of a sheet it moves, with a replay after
+    every goal in `goals` (the page skips one that does not fit before the restart: this errs on the busy side)."""
+    reps = [(g + REPLAY_AFTER_S, g + GOAL_BUSY_S) for g in goals]
+    out, free = [], -math.inf
+    for c in sorted((c for c in cues if c["graphic"] in FOOT), key=lambda c: c["ts"]):
+        r = next((b for a, b in reps if c["ts"] < b and c["ts"] + c["duration_s"] > a), None)
+        ts = max(c["ts"] if r is None else r, free)
+        free = ts + c["duration_s"]
+        if ts != c["ts"]:
+            out.append((ts, free))
+    return out
+
+
+def shows(c, facts):
+    """The fact ids a cue puts on screen: all it cites, for a momentum graphic only its latest window."""
+    p = c.get("payload") or {}
+    ids = [*p.get("fact_ids", []), *([p["fact_id"]] if p.get("fact_id") else [])]
+    if c["graphic"] == "momentum" and ids:
+        last = max(facts[i]["ts"] for i in ids if i in facts)
+        ids = [i for i in ids if i in facts and facts[i]["ts"] == last]
+    return set(ids)
+
+
 def momentum_payload(momentum, ts, home, away):
     """The momentum graphic at a window end: every window so far, home and away (the template cue's payload)."""
     so_far = [f for f in momentum if f["ts"] <= ts]
@@ -624,7 +652,7 @@ def _kids_checkin(m, pid, facts, lang):
 
 def _fillers(m, meta, facts, events):
     """What may fill a quiet spell, from the fact ledger alone, in time order: {ts (its facts'), graphic,
-    duration_s, payload(lang, kids), team_id, player_id, interest}. The momentum of every 5-minute window, at
+    duration_s, payload(lang, kids), team_id, player_id, interest, period, facts (the ids it shows)}. The momentum of every 5-minute window, at
     every check-in the card of the player with the most touches, a name plate for every sprint, and a pass
     for every completed pass with its length and difficulty."""
     home, away = m.home["team_id"], m.away["team_id"]
@@ -635,7 +663,9 @@ def _fillers(m, meta, facts, events):
     out = []
     momentum = sorted((f for f in facts if f["kind"] == "momentum"), key=lambda f: f["ts"])
     for ts in sorted({f["ts"] for f in momentum}):
+        win = [f for f in momentum if f["ts"] == ts]
         out.append({"ts": ts, "graphic": "momentum", "duration_s": MOMENTUM_S, "team_id": None, "player_id": None, "interest": 0.0,
+                    "period": win[0]["period"], "facts": {f["fact_id"] for f in win},
                     "payload": lambda lang, kids, ts=ts: momentum_payload(momentum, ts, home, away)})
     by = {}
     for f in facts:
@@ -646,12 +676,13 @@ def _fillers(m, meta, facts, events):
         if full:  # most touches, then the lower player id: the same card on every run
             pid = min(full, key=lambda p: (-full[p]["checkin_touches"]["value"], p))
             out.append({"ts": ts, "graphic": "why_card", "duration_s": CHECKIN_S, "team_id": m.players[pid]["team_id"],
-                        "player_id": pid, "interest": 0.0, "kind": "checkin",
+                        "player_id": pid, "interest": 0.0, "kind": "checkin", "period": full[pid]["checkin_touches"]["period"],
+                        "facts": {g["fact_id"] for g in full[pid].values()},
                         "payload": lambda lang, kids, pid=pid, g=full[pid]: (_kids_checkin if kids else checkin_payload)(m, pid, g, lang)})
     for f in facts:
         if f["kind"] == "sprint_speed" and f["player_id"]:
             out.append({"ts": f["ts"], "graphic": "nameplate", "duration_s": PLATE_S, "team_id": f["team_id"], "player_id": f["player_id"],
-                        "interest": f["value"], "until": off.get(f["player_id"], math.inf),
+                        "interest": f["value"], "until": off.get(f["player_id"], math.inf), "period": f["period"], "facts": {f["fact_id"]},
                         "payload": lambda lang, kids, f=f: {"player_id": f["player_id"], "name": m.player_name(f["player_id"]),
                                                             "shirt": shirt.get(f["player_id"]), "team_short": short.get(f["team_id"]),
                                                             "speed_kmh": f["value"], "fact_id": f["fact_id"]}})
@@ -663,9 +694,11 @@ def _fillers(m, meta, facts, events):
         if eid not in ok or "pass_distance" not in g or "pass_difficulty" not in g:
             continue
         d, q = g["pass_distance"], g["pass_difficulty"]
-        ids = [d["fact_id"], q["fact_id"], *([g["ball_speed"]["fact_id"]] if "ball_speed" in g else [])]
-        out.append({"ts": max(d["ts"], q["ts"]), "graphic": "pass_shot", "duration_s": PLATE_S, "team_id": q["team_id"],
+        cited = [d, q, *([g["ball_speed"]] if "ball_speed" in g else [])]
+        ids = [f["fact_id"] for f in cited]
+        out.append({"ts": max(f["ts"] for f in cited), "graphic": "pass_shot", "duration_s": PLATE_S, "team_id": q["team_id"],
                     "player_id": q["player_id"], "interest": q["value"], "until": off.get(q["player_id"], math.inf),
+                    "period": q["period"], "facts": set(ids),
                     "payload": lambda lang, kids, d=d, q=q, ids=ids: {
                         "mode": "pass", "player_id": q["player_id"], "value": d["value"], "unit": d["unit"],
                         "quality": (PASS_Q_KIDS if kids else PASS_Q)[lang].format(
@@ -683,12 +716,17 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
     sheet (one that waits for the visitor included) and ends before its half does. It is never the graphic
     shown just before it when another fits, then never the one just after, then the graphic the sheet has
     gone longest without; a team or player sheet takes its team's or player's facts first; then the latest
-    start (by 10 s), then the most striking value (speed, pass difficulty). Each fact fills a sheet once. `aired`: the story ids that air untouched (None: all).
+    start (by 10 s), then the most striking value (speed, pass difficulty). A fact the sheet shows already
+    fills nothing, and each fact fills a sheet once; a half's fillers show that half's facts; none airs over a
+    goal and its 3D replay, or where the page holds a foot card to after it (`held`). `aired`: the story ids
+    that air untouched (None: all).
     Every filler is marked `payload.filler`; one cue per language of the sheet, timed on the English one."""
     import bisect
     p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
     lineup, pool = lineup_payload(m, meta, facts), _fillers(m, meta, facts, events)
     starts = [f["ts"] for f in pool]
+    by_id = {f["fact_id"]: f for f in facts}
+    goals = sorted(f["ts"] for f in facts if f["kind"] == "score")
     on = (lambda c: airs(c, aired)) if aired is not None else (lambda c: airs(c, {c["story_id"]}))
     out = []
     for aud in sorted({c["audience"] for c in cues}):
@@ -713,9 +751,12 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
             bisect.insort(timing, en, key=lambda c: c["ts"])
             bisect.insort(shown, en, key=lambda c: c["ts"])
 
+        # the goals and their replays, and where the page holds the sheet's foot cards to after a replay
+        blocked = [(g, g + GOAL_BUSY_S) for g in goals] + held(timing, goals)
+
         def free(lo, hi, d, latest=True):  # the latest (or earliest) start in [lo, hi], on a 0.1 s grid, overlapping no cue of the sheet
             lo, hi = math.ceil(lo * 10 - 1e-6) / 10, math.floor(hi * 10 + 1e-6) / 10
-            busy = [(c["ts"], c["ts"] + c["duration_s"]) for c in timing if c["ts"] < hi + d and c["ts"] + c["duration_s"] > lo]
+            busy = [(s, e) for s, e in [(c["ts"], c["ts"] + c["duration_s"]) for c in timing] + blocked if s < hi + d and e > lo]
             t = hi if latest else lo
             while lo <= t <= hi:
                 hit = [(s, e) for s, e in busy if s < t + d and t < e]
@@ -726,8 +767,8 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
 
         if lineup and not any(c["ts"] < LINEUP_S for c in timing):
             add(0.0, {"graphic": "lineup", "duration_s": LINEUP_S, "payload": lambda lang, kids: lineup})
-        used = set()
-        for a0, b0 in ((0.0, p1), (p1, end)):
+        used = set().union(*(shows(c, by_id) for c in timing))  # a fact the sheet shows already fills nothing
+        for half, (a0, b0) in enumerate(((0.0, p1), (p1, end)), 1):
             last_min = a0 + 60 * math.floor((b0 - a0 - 1e-6) / 60)  # the half's last clock minute starts here
             s = a0
             while s < b0:
@@ -755,8 +796,8 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
                         f = pool[i]
                         if f["ts"] > (s + MAX_GAP_S if latest else b0):
                             break
-                        if i in used or not a0 <= f["ts"] < b0 or (player and f.get("kind") == "checkin"):
-                            continue  # a player's sheet has its own check-ins
+                        if f["facts"] & used or f["period"] != half or (player and f.get("kind") == "checkin"):
+                            continue  # a half's fillers show that half's facts; a player's sheet has its own check-ins
                         if any(c["graphic"] == f["graphic"] and f["ts"] <= c["ts"] <= f["ts"] + FILL_WAIT_S and c["payload"].get("kind") == f.get("kind")
                                for c in timing if f["graphic"] in ("momentum", "why_card")):
                             continue  # that window's momentum, or that check-in, is on the sheet already
@@ -777,7 +818,7 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
                     s = e  # nothing fits: the stretch stays (the tests say where)
                     continue
                 _, t, i = pick
-                used.add(i)
+                used |= pool[i]["facts"]
                 add(t, pool[i])
     return out
 
