@@ -443,7 +443,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
     Also (additive): its `ts` is no earlier than every fact in its `fact_ids` (a pass's `ball_speed`
     included); it uses only facts of its own half (`period`); it overlaps no goal (`score` fact) to 11.5 s
     after it (the 3D replay, `web/js/view3d.js` `REPLAY`) nor where the page holds a `momentum` or
-    `team_stats` cue due in that replay to its end; and it shows no fact the sheet's own cues show. The
+    `team_stats` cue due in that replay to its end; and it shows no fact the sheet's own cues show (of a `momentum` cue, its latest window). The
     desk lists no filler in Needs you or Done; in On air now it reads as a template graphic.
 - `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
   rewrites a pack offline; `export` and `export --pack` apply the same step.

@@ -45,7 +45,7 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   Team shape panels) wait in Needs you with Put on air and Skip. The kids sheet keeps its story ids
   and follows its stories. The fillers (`payload.filler`, see No empty minutes) never wait, on any
   sheet the kids' one included: they exist so that a visitor who never opens the desk always has a
-  graphic on air, so the risk rule approves them. They are not listed in Needs you or Done (a sheet has
+  graphic on air. They are not listed in Needs you or Done (a sheet has
   90 to 130 of them, which would bury the decided stories): one shows in On air now while it is on
   screen, labelled "template graphic, no approval needed", as the proof panel says.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision

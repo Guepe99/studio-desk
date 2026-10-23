@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { Match, firstCues } from "../../web/js/match.js";
 import { holdForReplays, replays } from "../../web/js/view3d.js";
 import { Desk, TEXT } from "../../web/js/desk.js";
+import { Proof, proofOf } from "../../web/js/proof.js";
 
 const root = new URL("../../", import.meta.url);
 const read = (m, f) => JSON.parse(readFileSync(new URL(`web/data/${m}/${f}.json`, root), "utf8"));
@@ -36,6 +37,9 @@ test("the desk lists no filler, in Needs you or Done; on air one says it is a te
       assert.deepEqual(d.shown().filter((s) => s.filler).map((s) => s.story_id), [], `${m} ${audience}`);
       assert.equal(d.queue().filter((s) => s.filler).length, 0);
     }
+    // the proof panel, with the context the page gives it
+    const cue = mt.cues.find((c) => c.payload.filler && c.audience === fillers[0].audience);
+    assert.equal(proofOf(cue, Proof.prototype.ctx.call({ desk: d, match: mt }, cue)).approval, "template", m);
     const g = fillers[0];
     d.live = new Set([g.story_id]);
     for (const lang of ["en", "it", "es"]) {

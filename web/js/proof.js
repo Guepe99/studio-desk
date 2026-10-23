@@ -272,7 +272,7 @@ export class Proof {
     const story = cue.story_id ? this.desk.byId.get(cue.story_id) ?? null : null, s = story ?? this.desk.genFor(cue);
     return { story, factIndex: this.desk.factIndex, eventIndex: this.desk.eventIndex, match: this.match,
       // the verifier's minute (rules.py): a fact at 300.0 s closes minute 5
-      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: s ? this.desk.status(s) : null };
+      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: s && !cue.payload?.filler ? this.desk.status(s) : null };   // a filler is a template graphic
   }
   what(cue) {
     const s = cue.story_id && this.desk.byId.get(cue.story_id);

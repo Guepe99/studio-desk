@@ -396,6 +396,13 @@ def test_a_filler_keeps_off_a_goal_and_its_replay():
     assert [c["ts"] for c in got] == [100.0 + au.GOAL_BUSY_S]  # the sprint at the goal's moment waits for the replay's end
 
 
+def test_a_filler_keeps_off_where_the_page_holds_a_card_after_a_replay():
+    # a momentum card due in the goal's replay is held to its end, 111.5 to 119.5 s: the sprint waits for that too
+    card = {**TINY_STORY, "ts": 104.0, "duration_s": 8.0, "graphic": "momentum"}
+    got = _fill([_fact("sprint_speed", 108.0, 30.0, "km/h", "T01", "T01-9"), _fact("score", 100.0, 1.0, "goals", "T01", "T01-9")], (TINY_STORY, card))
+    assert [c["ts"] for c in got] == [119.5]
+
+
 def test_a_fact_the_sheet_shows_already_fills_nothing():
     sprint = _fact("sprint_speed", 10.0, 30.0, "km/h", "T01", "T01-9")
     plate = {**TINY_STORY, "ts": 12.0, "duration_s": 6.0, "graphic": "nameplate", "payload": {"fact_id": sprint["fact_id"]}}

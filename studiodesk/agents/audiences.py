@@ -606,7 +606,7 @@ def shows(c, facts):
     p = c.get("payload") or {}
     ids = [*p.get("fact_ids", []), *([p["fact_id"]] if p.get("fact_id") else [])]
     if c["graphic"] == "momentum" and ids:
-        last = max(facts[i]["ts"] for i in ids if i in facts)
+        last = max((facts[i]["ts"] for i in ids if i in facts), default=None)
         ids = [i for i in ids if i in facts and facts[i]["ts"] == last]
     return set(ids)
 
@@ -798,9 +798,6 @@ def fill_cues(m, meta, facts, events, cues, aired=None):
                             break
                         if f["facts"] & used or f["period"] != half or (player and f.get("kind") == "checkin"):
                             continue  # a half's fillers show that half's facts; a player's sheet has its own check-ins
-                        if any(c["graphic"] == f["graphic"] and f["ts"] <= c["ts"] <= f["ts"] + FILL_WAIT_S and c["payload"].get("kind") == f.get("kind")
-                               for c in timing if f["graphic"] in ("momentum", "why_card")):
-                            continue  # that window's momentum, or that check-in, is on the sheet already
                         d = f["duration_s"]
                         lo = max(f["ts"], s, last_min - d + 0.1 if tail else s)
                         hi = min(f["ts"] + FILL_WAIT_S, b0 - d, f.get("until", math.inf) - d, s + MAX_GAP_S if latest else b0)
