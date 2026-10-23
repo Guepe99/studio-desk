@@ -41,6 +41,20 @@ export const LOCO = [
   { name: "Sprint_Loop", speed: 9.0, stride: 6.0 },
 ];
 const BLEND_S = 0.08;   // s, time constant of the locomotion weights: no one-frame pops
+
+// People step faster than the loops: [ground speed m/s, steps per second] (docs/flow3d.md section
+// 6: PMC3756042, PMC3022995, jssm.org table 2, PMC12047830). The first point is the walk loop at
+// its own stride, so slow walks keep the clip as it is.
+const CADENCE = [[0.93, 1.5], [1.51, 1.91], [2.9, 2.88], [4.15, 2.88], [5.07, 3.04], [7.32, 3.6], [8.8, 4.58]];
+const WARP_MIN = 0.6;   // the leg swing is never cut below 60% of the clip's
+// Metres per cycle (two steps) a person runs at ground speed v; null below the table (clip stride).
+export function humanStride(v) {
+  if (v <= CADENCE[0][0]) return null;
+  let k = 0;
+  while (k < CADENCE.length - 2 && v > CADENCE[k + 1][0]) k++;
+  const [[a, fa], [b, fb]] = [CADENCE[k], CADENCE[k + 1]];
+  return (2 * v) / (fa + (fb - fa) * Math.min(1, (v - a) / (b - a)));
+}
 export const MODES = ["forward", "backpedal", "strafe", "jockey"];
 
 // Weights of the four clips for a ground speed (two neighbours at a time, summing to 1).
@@ -272,8 +286,19 @@ export function setupAnimations(inst, container, prefix) {
   const fps = loco[0].targetedAnimations[0].animation.framePerSecond;
   if (!TRACKS.has(container)) TRACKS.set(container, {});
   const tracks = TRACKS.get(container);
+  // the legs of the walk, jog and sprint loops: each bone's node and its mean pose over the cycle
+  const legs = [];
+  for (const name of WARP_BONES) {
+    const node = nodes.get(`${prefix}${name}`);
+    if (!node?.rotationQuaternion) continue;
+    const means = loco.slice(1).map((g) => {
+      const ta = g.targetedAnimations.find((t) => t.target === node && t.animation.targetProperty === "rotationQuaternion");
+      return ta ? cycleMean(ta.animation, g.from, g.to) : null;
+    });
+    if (means.every(Boolean)) legs.push({ node, means });
+  }
   return {
-    loco, fps, cache,
+    loco, fps, cache, legs,
     node: (name) => nodes.get(`${prefix}${name}`),
     // the group for clip `name`, or null when the file lacks it
     get(name) {
@@ -325,6 +350,46 @@ function upperTracks(container, name) {
   if (!g) return null;
   const list = g.targetedAnimations.filter((t) => t.animation.targetProperty === "rotationQuaternion" && UPPER.test(t.target.name));
   return { from: g.from, list: list.map((t) => [t.target.name, t.animation]) };
+}
+
+// Stride warping (Unreal's pose warping, docs/flow3d.md section 6): the leg bones of the forward
+// loops are pulled towards their mean pose over the cycle by the stride ratio s, so the swing
+// shrinks with the faster cycle. Hips and knees by s, the ankles left alone: on M001 that keeps the
+// jog's planted foot as still as the unwarped loop (knees by 0, 0.5 or 1.5 of it slid more,
+// docs/flow3d.md section 6). Runs after the animation step and before the ball rig's leg actions
+// and grounding (Scene3D adds it first).
+const WARP_BONES = ["thigh_l", "thigh_r", "calf_l", "calf_r"];
+const WARP_N = 32;   // samples of the cycle for the mean pose
+const MEANS = new WeakMap();   // animation -> its mean quaternion over [from, to)
+function cycleMean(a, from, to) {
+  const key = `${from}:${to}`;
+  const got = MEANS.get(a)?.[key];
+  if (got) return got;
+  const m = new B.Quaternion(0, 0, 0, 0);
+  let first = null;
+  for (let j = 0; j < WARP_N; j++) {
+    const q = a.evaluate(from + ((to - from) * j) / WARP_N);
+    first ??= q.clone();
+    const sg = B.Quaternion.Dot(first, q) < 0 ? -1 : 1;
+    m.x += sg * q.x; m.y += sg * q.y; m.z += sg * q.z; m.w += sg * q.w;
+  }
+  m.normalize();
+  MEANS.set(a, { ...MEANS.get(a), [key]: m });
+  return m;
+}
+let qm = null;
+export function warpStride(p) {
+  const W = p.warp;
+  if (!W || !p.holder.isEnabled()) return;
+  qm ??= new B.Quaternion();
+  const [, w1, w2, w3] = W.w, n = w1 + w2 + w3;
+  for (const { node, means: [a, b, c] } of p.anim.legs) {
+    // the loops' means blended by their weights (they lie a few degrees apart)
+    const sb = B.Quaternion.Dot(a, b) < 0 ? -1 : 1, sc = B.Quaternion.Dot(a, c) < 0 ? -1 : 1;
+    qm.set((w1 * a.x + sb * w2 * b.x + sc * w3 * c.x) / n, (w1 * a.y + sb * w2 * b.y + sc * w3 * c.y) / n,
+      (w1 * a.z + sb * w2 * b.z + sc * w3 * c.z) / n, (w1 * a.w + sb * w2 * b.w + sc * w3 * c.w) / n).normalize();
+    B.Quaternion.SlerpToRef(qm, node.rotationQuaternion, 1 - (1 - W.s) * W.g, node.rotationQuaternion);
+  }
 }
 
 // After the animation step: the upper-body emotion of player p at its full weight, over the one
@@ -396,7 +461,12 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   wl = p.wl = p.wl === undefined || k === 1 ? wl : p.wl + (wl - p.wl) * k;
   const moving = w[1] + w[2] + w[3];
   const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
-  p.phase = (((p.phase + dir * (vv / stride) * dt) % 1) + 1) % 1;
+  // stride warping, forward runs only: the cycle runs at a person's cadence and warpStride swings
+  // the legs by the same ratio, so the planted foot still moves back at the ground speed
+  const human = r.mode === "forward" && moving > 0 ? humanStride(vv) : null;
+  const s = human ? Math.max(WARP_MIN, Math.min(1, human / stride)) : 1;
+  p.phase = (((p.phase + dir * (vv / (stride * s)) * dt) % 1) + 1) % 1;
+  p.warp = s < 1 ? { s, g: moving * (1 - full) * (1 - wl), w } : null;
   p.idle = (p.idle + dt / LOCO[0].period) % 1;
   p.anim.loco.forEach((g, j) => {
     const wj = w[j] * (1 - full);

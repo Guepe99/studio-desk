@@ -15,11 +15,11 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, offset, applyUpper, settleFeet } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, offset, applyUpper, settleFeet, warpStride } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
-import { smoothMatch } from "./scene3d/track.js";
+import { smoothMatch, rootAt } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
 import { buildScreens } from "./scene3d/screen.js";
 
@@ -32,6 +32,7 @@ export const BALL_R = 0.11; // real size: a size 5 ball is 68-70 cm round (docs/
 const YAW_OMEGA = 12;       // rad/s, the facing spring: critically damped, half a step in 0.14 s
 const YAW_RATE_MAX = 8;     // rad/s, cap on the target's own turn rate fed forward to the spring
 const VEL_H = 0.05;         // s, half-window of the speed estimate on the smooth path
+const ROOT_OMEGA = 20;      // rad/s, the shown root's lag-free critically damped smoothing (track.js rootAt)
 
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
@@ -217,10 +218,13 @@ export class Scene3D {
     // the container is not disposed: the clones share its geometry and lazy clips come from it
     this.container = container;
     this.drivers = [];
+    this.rootOmega = ROOT_OMEGA;   // 0: the path as it is (tests compare)
     this.addDriver({ priority: 20, pose: (i, ts) => this.rig.pose(i, ts) });
     this.addDriver(actionDriver(match, scheduleActions(match.events)));
     this.throws = scheduleThrows(match.events, match);
     this.addDriver(throwDriver(match, this.throws));
+    // the stride warp first: the ball rig's leg actions and grounding (added earlier) go on top of it
+    scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) warpStride(p); }, -1, true);
     scene.onAfterAnimationsObservable.add(() => { for (const p of this.players) { applyUpper(p); settleFeet(p, this.rig.players.get(p.i)?.sole); } this.throwBall(); });
 
     // contact darkening under every player, and blob shadows for the lights without a shadow map
@@ -248,7 +252,7 @@ export class Scene3D {
     const gr = this.grounding;
     gr.frame();
     this.players.forEach((p, k) => {
-      const now = match.at(p.i, ts);
+      const now = rootAt(match, p.i, ts, this.rootOmega);
       if (!now) { p.holder.setEnabled(false); gr.set(k, 0, 0, false); return; }
       p.holder.setEnabled(true);
       // shown position: tracking plus the drivers' offsets (the ball rig puts the foot on the ball)

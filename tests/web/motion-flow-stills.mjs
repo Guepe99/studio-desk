@@ -30,7 +30,12 @@ try {
   page.on("pageerror", (e) => console.log("pageerror", e.message));
   await page.goto(new URL(`sample3d.html?match=${match}&capture=1&view=3d&from=${from}${query ? `&${query}` : ""}`, base).href);
   await page.waitForFunction(() => window.sample3d?.ready, null, { timeout: 600000 });
-  await page.evaluate(() => { document.querySelector("#stage").style.visibility = "hidden"; });
+  await page.evaluate(() => {
+    document.querySelector("#stage").style.visibility = "hidden";
+    // query "root=<omega>": the shown root's smoothing (Scene3D.rootOmega), 0 for the path as it is
+    const ro = new URLSearchParams(location.search).get("root");
+    if (ro !== null && window.sample3d.scene) window.sample3d.scene.rootOmega = Number(ro);
+  });
   let n = 0, next = +c0;
   for (let c = Math.max(0, +c0 - 2); c <= +c1 + 1e-9; c += 1 / 30) {
     const shoot = c >= next - 1e-6;

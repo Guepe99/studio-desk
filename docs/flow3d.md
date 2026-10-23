@@ -282,7 +282,7 @@ as mechanical.
   stride warping scales the stride to the ground speed, distance matching plays the cycle by
   distance. Human cadence: 172.6 steps per minute at 2.9 m/s (PMC3022995); 2.88, 3.04 and 3.6
   steps/s at 4.15, 5.07 and 7.32 m/s (jssm.org/tablejssm-22-790.xml/table002.xml). Taken: the
-  numbers below, to say how far our run cycle is from a real one. Not changed (see the end).
+  numbers below, to say how far our run cycle is from a real one. Changed in section 6.
 - **Moves with a still ball.** Games show the holder with skill moves rather than an idle loop
   (EA FC guides: insider-gaming.com/all-new-skill-moves-in-ea-fc-26-simplified-skills-explained,
   games.gg/ea-sports-fc-27/guides/ea-fc-27-skill-moves-complete-guide). No public source gives
@@ -362,7 +362,103 @@ code: "pick-up at undefined", "only 0 moves in 1500 s"), and in the browser
 feet on a still ball less than half the time, or a held ball that jumps. Old code: FAIL on both
 windows (13.55 s; 0.35). New code: PASS on both.
 
-Not changed: the cadence. Matching it needs stride warping (a shorter stride per cycle with the
-leg swing scaled down to keep the feet planted); a faster cycle on its own would slide the feet,
-and the jog stride was calibrated against foot slide on 22/10 (section 3). It is the next step
-for a less floaty run.
+The cadence was left for a second round: section 6.
+
+## 6. Cadence and the simulator's jerk
+
+The remaining complaint after section 5 was general: movements mechanical, with no flow. Two
+causes were measured: legs that step too slowly for the ground speed, so the runners seem to
+glide, and the jerk of the simulator's acceleration steps.
+
+### Research
+
+- **Stride warping.** Unreal's pose warping (dev.epicgames.com/documentation/unreal-engine/pose-warping-in-unreal-engine):
+  a locomotion loop is played at a rate set by the ground speed and its leg swing is scaled so the
+  stance foot keeps to the ground, instead of speeding up the clip alone (which slides the feet).
+  Taken: cycle rate = v / (stride * s) and the hip and knee rotations pulled towards their mean
+  pose over the cycle by the same s. The swing amplitude times s and the rate divided by s cancel,
+  so the planted foot still moves back at the ground speed.
+- **Human cadence.** 1.91 steps/s at 1.51 m/s walking (PMC3756042); 2.88 steps/s at 2.9 m/s
+  (PMC3022995); 2.88, 3.04 and 3.6 steps/s at 4.15, 5.07 and 7.32 m/s
+  (jssm.org/tablejssm-22-790.xml/table002.xml); about 4.58 steps/s at 8.8 m/s sprinting
+  (PMC12047830). Taken: the `CADENCE` table in `players.js`, interpolated linearly. Below
+  0.93 m/s the walk loop keeps its own stride.
+- **Critically damped smoothing.** Holden, "Spring-It-On" (theorangeduck.com/page/spring-roll-call):
+  a critically damped spring follows a target without overshoot, its impulse response is
+  omega^2 u e^(-omega u) and its mean delay 2 / omega. Taken: the shown root is that response
+  applied to the known track, read ahead by 2 / omega, so a constant velocity passes with no lag.
+
+### Measured causes (before)
+
+- **Cadence.** On M001 from 530 s the forward loops stepped at 1.73 steps/s at a 1.43 m/s walk,
+  2.20 at a 3.66 m/s jog and 2.39 at a 5.99 m/s run. People: 1.86, 2.88 and 3.27.
+- **Jerk.** The simulator accelerates bang-bang (accel p95 exactly 5.0 m/s^2), so the cubic path
+  still has jerk spikes when the acceleration switches: p95 52.7 and p99 147.9 m/s^3 from 530 s,
+  17.5 and 87.6 from 512 s.
+- **Heading.** Already smooth: the facing goes through a critically damped spring (omega 12,
+  section 3), with no snaps on any window. Not changed.
+
+### What changed
+
+- **Stride warping** (`players.js` `humanStride`, `animatePlayer`, `warpStride`). In forward
+  runs above 0.93 m/s the cycle advances by v / (stride * s), with s = human stride / clip stride,
+  between 0.6 and 1. `warpStride`, added by `Scene3D` before the ball rig in the after-animation
+  step, slerps the thigh and calf rotations towards the loops' mean pose (32 samples a cycle,
+  blended by the loop weights) by 1 - s. Backpedal, strafe and jockey keep the clip's cadence.
+  Knee factors were measured on M001 from 583.7 s (jog slide median, the hips at 1): knees at 0,
+  0.5, 1 and 1.5 gave 0.139, 0.094, 0.059 and 0.109 m; hips at 1.2 gave 0.066 m. Taken: 1 for both.
+- **Root smoothing** (`track.js` `rootAt`, `scene3d.js`). The shown root of each player is the
+  spring's response (omega 20, 9 samples over 6 / omega) read 0.1 s ahead, so the offset under an
+  acceleration a is about a / omega^2: 1.25 cm at 5 m/s^2, 1.3 cm at most on M001. A soft cap
+  (5 cm, tanh) holds the root to the path where the DEMO fixture reverses 12 m/s in 0.1 s. Only
+  the tracking base point is smoothed: the drivers' offsets (kicks, the ball rig's foot on the
+  ball), the facing and the gait speed read the path as before, and the ball plan and the data
+  are unchanged. `Scene3D.rootOmega = 0` shows the path as it is.
+
+### Numbers on M001 (WebGL 2 high for the motion measures)
+
+| What | Before | After |
+|---|---|---|
+| Cadence from 530 s, walk 1.43 m/s / jog 3.66 m/s / run 5.99 m/s (people 1.86 / 2.88 / 3.27) | 1.73 / 2.20 / 2.39 steps/s | 1.86 / 2.88 / 3.27 steps/s |
+| Planted foot slide per step from 583.7 s, median walk / jog / sprint | 0.286 / 0.050 / 0.075 m | 0.294 / 0.059 / 0.076 m |
+| Same, p95 | 0.631 / 0.604 / 0.829 m | 0.650 / 0.485 / 0.735 m |
+| Jog steps counted in that window | 296 | 384 |
+| Root jerk from 530 s, p95 / p99 (root smoothing off: same as before) | 52.7 / 147.9 m/s^3 | 23.1 / 58.0 m/s^3 |
+| Root jerk from 512 s, p95 / p99 (smoothing off against on, both with the warp) | 17.5 / 87.6 m/s^3 | 7.0 / 33.1 m/s^3 |
+| Root acceleration from 530 s, p99 | 6.38 m/s^2 | 5.18 m/s^2 |
+| Root off the path, M001 480 to 540 s (node test) | 0 | 1.3 cm at most |
+| Throw-in at 529.03 s, ball in hands after the taker reaches it | 0.72 s | 0.70 s |
+| Frame cost from 530 s (`frame-cost.mjs`, WebGL 2 high): draw calls | 376 | 376 |
+| `rootAt` for 22 players a frame, node on M001 (3600 frames, three runs) | 0.001 ms | 0.03 ms |
+| Update and animation per 60 Hz step, p50 / p95, from 512 s (old, smoothing off, new) | 23.3 / 96.6 ms | 24.2 / 94.6, 19.3 / 93.4 ms |
+
+The frame-cost runs of this round got 3 or 4 frames each with 7 to 12 s of GPU wait a frame (the
+machine was shared and loaded), so their CPU times (render 188 to 502 ms a frame, either code)
+say nothing. The added work is a few quaternion slerps and nine path reads per player a frame:
+0.03 ms a frame for the reads in node, and the per-step time in the browser is the same within
+its noise. No mesh, material or draw call was added.
+
+The jog's planted foot slides about 1 cm more per step at the median (and less at p95): the
+warped swing is a rotation towards the mean pose, which follows the clip's foot path only
+roughly. The per-step limit of `sample3d-shots.mjs` (0.1 m) still holds: 0.07 m there.
+
+Checks: `node --test tests/web/cadence.test.mjs tests/web/root.test.mjs` (on the round-1 code
+they fail: "3.66 m/s: 2.21 steps/s, want 2.8 to 2.96"; "T.rootAt is not a function").
+`CHECK=1 ... motion-flow-measure.mjs` now also fails on a jog under 2.6 steps/s: on the round-1
+code from 530 s "FAIL jogging at 3.663 m/s with 2.204 steps/s", on the new code PASS on M001 512
+and 530 (both bodies), M002 518, M003 455 and M004 583.
+Kick and touch checks after the change: `kick3d-shots.mjs` (default and anime), `feet3d.mjs`
+(DEMO and M001, both bodies), `feet3d-stills.mjs`, `sample3d-shots.mjs` (WebGL 1 and 2) and
+`view3d.mjs` on M001 to M004: all pass, positions within the view's tolerance on every match. The
+one exception is the frame-rate fallback check of `view3d.mjs` on M001, at 0.1 to 0.2 fps on a
+loaded machine: it failed on both runs of the new code and on the round-1 code too (which also
+failed two more checks), so it is the load and not this change.
+
+Stills (camera following the player from the broadcast side): `out/motion-flow/r2-before-run.png`,
+`r2-after-run.png` (T02-11 from 530 s + 11.0 to 14.4 s, a jog and a turn),
+`r2-before-broadcast.png` and `r2-after-broadcast.png` (minute 8, the page's own camera).
+The jog start shows the change: before, long strides that glide over the grass; after, shorter
+and quicker steps with the feet under the body. The minute-8 stills put every player in the same
+place, and the dribbler keeps the ball at his feet. A run of the same stills with the smoothing off
+(`root=0`) looks the same as with it on: the offset is about a centimetre. The stills show no
+lag, the measures show the jerk cut by more than half, so the smoothing stays.

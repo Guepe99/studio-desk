@@ -6,7 +6,8 @@
 // between loops can be checked for matching phase. Prints one JSON object.
 //
 //   [CHECK=1] scripts/with-lock.sh chromium tests/web/run-smoke.sh motion-flow-measure.mjs [match] [from] [seconds] [query]
-//   CHECK=1 fails on a slow throw-in pick-up, a still holder or a jumping ball (M001 512 and 530).
+//   CHECK=1 fails on a slow throw-in pick-up, a still holder, a jumping ball (M001 512 and 530) or a
+//   jog under 2.6 steps/s.
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -34,6 +35,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const h = out.holdStill;
       if (h.seconds >= 2 && h.legActionShare < 0.5) bad.push(`holding a still ball ${h.seconds} s, feet on it ${h.legActionShare} of the time`);
       if (h.ballJumps) bad.push(`the held ball jumps ${h.ballJumps} times`);
+      // a jog steps at a person's cadence: about 2.9 steps/s at 2.9 to 4.2 m/s (docs/flow3d.md section 6)
+      const jog = out.cadence.jog;
+      if (jog && jog.n >= 60 && jog.stepsPerS < 2.6) bad.push(`jogging at ${jog.speed} m/s with ${jog.stepsPerS} steps/s`);
       if (!out.throws.length && h.seconds < 2) bad.push("nothing to check in this window");
       console.log(bad.length ? `FAIL\n${bad.join("\n")}` : "PASS");
       if (bad.length) process.exitCode = 1;
@@ -71,6 +75,9 @@ export async function probeLoops() {
 export async function motionFlow(seconds) {
   const s = window.sample3d, sc = s.scene, B = window.BABYLON;
   const { resolve, throwAt } = await import("./js/scene3d/players.js");
+  // ?root=<omega>: the shown root's smoothing (Scene3D.rootOmega), 0 for the path as it is
+  const ro = new URLSearchParams(location.search).get("root");
+  if (ro !== null) sc.rootOmega = Number(ro);
   const HZ = 60, dt = 1 / HZ;
   const stop = Math.min(seconds, (s.tl.cuts[1] ?? 20) - 0.1);
   const q = (arr, p) => { if (!arr.length) return null; const a = [...arr].sort((x, y) => x - y); return +a[Math.min(a.length - 1, Math.floor(p * a.length))].toFixed(3); };
