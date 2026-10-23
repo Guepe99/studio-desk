@@ -93,8 +93,11 @@ https://www.ea.com/ea-studios/ea-sports/news/visuals-audio-deep-dive .
 What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
 
 - **Which stoppages:** the dead ball before a throw-in, a goal kick, a corner or a free kick. The
-  cut comes 1.5 s after the ball leaves the pitch (the first tracking sample outside the lines), or
-  for a foul right after camera 2's tight shot of the fouler, cutting straight from it. A stoppage
+  cut comes 1.5 s after the ball is dead: the first tracking sample with the ball on the ground
+  (under 0.5 m) and on or over a line, or at rest (the simulator parks a ball that goes out on the
+  line itself, so a ball still in the air never counts). After a foul it comes right after camera
+  2's tight shot of the fouler, cutting straight from it. No cutaway above 4x, the fastest speed
+  the goal replays play at: at 16x a 4 s shot would only flash by. A stoppage
   with a goal is left to the celebration and the goal replay. The match data has no substitutions
   and no half-time break (the second half starts 1.3 s after the first ends), so neither gets one.
 - **Which shot**, by restart and never the same kind twice in a row (a hash of the match id and the

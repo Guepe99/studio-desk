@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Match } from "../../web/js/match.js";
 import { cutawayPlan, cutawayShot, tightStops, CUTAWAY, RESTARTS } from "../../web/js/scene3d/cutaway.js";
-import { replays } from "../../web/js/view3d.js";
+import { replays, viewAt } from "../../web/js/view3d.js";
 
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/data");
 function load(id) {
@@ -18,9 +18,10 @@ function load(id) {
   return new Match(j("meta.json"), j("events.json"), j("facts.json"), j("cues.json"), new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4));
 }
 
-const m = load("M001");
-test("M001: cutaways only in dead time, never over a tight shot or a replay, back before the restart", { skip: !m && "no web/data/M001" }, () => {
-  const plan = cutawayPlan(m), again = cutawayPlan(load("M001"));
+for (const id of ["M001", "M002", "M003", "M004"]) {
+const m = load(id);
+test(`${id}: cutaways only in dead time, never over a tight shot or a replay, back before the restart`, { skip: !m && `no web/data/${id}` }, () => {
+  const plan = cutawayPlan(m), again = cutawayPlan(load(id));
   assert.deepEqual(plan, again, "the same match gives the same plan");
   const half = m.meta.period1_s, per = [plan.filter((c) => c.from < half).length, plan.filter((c) => c.from >= half).length];
   // regularly, not once a half, and not at every stoppage
@@ -37,10 +38,13 @@ test("M001: cutaways only in dead time, never over a tight shot or a replay, bac
     // the numbers of docs/broadcast3d.md, not the module's own: 4 s before a throw-in, 3 s before the rest
     assert.ok(next.ts - c.to >= (next.type_name === "throw_in" ? 4 : 3) - 1e-9,
       `back ${(next.ts - c.to).toFixed(2)} s before the ${next.type_name}`);
-    // the ball is off the pitch or a foul was whistled before the cut
-    const prev = m.events.filter((e) => e.ts < c.from).at(-1);
-    const b = m.at(0, c.from), off = b[0] < 0 || b[0] > 105 || b[1] < 0 || b[1] > 68;
-    assert.ok(off || ["foul", "keeper_save"].includes(prev.type_name) || c.from - prev.ts >= 2 + CUTAWAY.after - 1e-9, `ball in play at ${c.from}`);
+    // the ball is dead throughout: on the ground and no faster than a ball rolled or picked up
+    for (let t = c.from, last = null; t <= c.to; t += 0.1) {
+      const b = m.at(0, t);
+      if (!b) continue;
+      assert.ok(b[2] < 0.5 && (!last || Math.hypot(b[0] - last[0], b[1] - last[1]) < 0.5), `ball in play at ${t.toFixed(1)}`);
+      last = b;
+    }
     for (const [a, z] of busy) assert.ok(c.to <= a || c.from >= z, `cutaway ${c.from}-${c.to} overlaps ${a}-${z}`);
     // the stadium shot never comes straight from a depth-of-field shot (its sky flashes green)
     if (c.kind === "stadium") assert.ok(!busy.some(([, z]) => Math.abs(z - c.from) < 1e-6), `stadium straight from a tight shot at ${c.from}`);
@@ -51,6 +55,7 @@ test("M001: cutaways only in dead time, never over a tight shot or a replay, bac
     assert.ok(Math.hypot(...s1.pos.map((v, i) => v - s0.pos[i])) < 3, "the camera stays nearly put");
   }
 });
+}
 
 test("a throw-in too soon after the ball goes out gets no cutaway", () => {
   // the ball goes out at 10.6 s and the throw comes at 18: 18 - 4 - (10.6 + 1.5) = 1.9 s, shorter
@@ -66,4 +71,9 @@ test("a throw-in too soon after the ball goes out gets no cutaway", () => {
   const plan = cutawayPlan(fake(ev), []);
   assert.equal(plan.length, 1);
   assert.ok(plan[0].from > 100 && plan[0].to <= 130 - CUTAWAY.before.throw_in);
+});
+
+test("no cutaway above 4x, where it would only flash by", () => {
+  assert.equal(viewAt([], 100, 4).cuts, true);
+  assert.equal(viewAt([], 100, 16).cuts, false);
 });

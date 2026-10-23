@@ -175,7 +175,7 @@ export class Cameras {
       this.mode = `replay-${angle}`;
       return;
     }
-    const cut = this.cutaways.find((c) => ts >= c.from && ts < c.to);
+    const cut = view.cuts !== false && this.cutaways.find((c) => ts >= c.from && ts < c.to);
     if (cut) {
       this._cutaway(ts, cut);
       this.state = null;

@@ -95,7 +95,7 @@ export function viewAt(reps, ts, speed) {
     if (ts < r.cut) return { ts: r.src + (ts - r.from), replay: true, end: r.end, angle: "goal" };
     return { ts: r.slow + (ts - r.cut) * REPLAY.slow.rate, replay: true, end: r.end, angle: "low" };
   }
-  return { ts, replay: false };
+  return { ts, replay: false, cuts: speed <= REPLAY.maxSpeed };   // a crowd cutaway would only flash by at 16x
 }
 
 const script = (src) => new Promise((ok, ko) => {

@@ -11,6 +11,7 @@
 // behind that goal) without repeating the previous one.
 
 const HALF_L = 52.5, HALF_W = 34;
+const LINE = 0.05;   // metres: a ball this close to a line is on it
 export const RESTARTS = new Set(["throw_in", "goalkick", "corner_crossed", "corner_short", "freekick_short", "freekick_crossed", "shot_freekick", "shot_penalty"]);
 export const STOP_EVENTS = new Set(["foul", "keeper_save"]);
 export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
@@ -58,15 +59,22 @@ export function tightStops(match, goals = scorers(match)) {
   return stops;
 }
 
-// When the ball leaves the pitch after event p (the restart r follows): the first tracking sample
-// outside the lines, or p itself for a foul (the whistle). Contract metres, 0.1 s steps.
+// When the ball is dead after event p (the restart r follows): p itself for a foul or a save (the
+// whistle), else the first tracking sample with the ball on the ground and on or over a line, or at
+// rest. The simulator parks a ball that goes out on the line itself, so the bounds are inclusive.
+// Contract metres, 0.1 s steps. Never dead before r: r.ts, which leaves no room for a cutaway.
 function outAt(match, p, r) {
   if (STOP_EVENTS.has(p.type_name)) return p.ts;
+  let last = null;
   for (let t = p.ts; t < r.ts; t += 0.1) {
     const b = match.at(0, t);
-    if (b && (b[0] < 0 || b[0] > 2 * HALF_L || b[1] < 0 || b[1] > 2 * HALF_W)) return t;
+    if (!b) continue;
+    const line = b[0] <= LINE || b[0] >= 2 * HALF_L - LINE || b[1] <= LINE || b[1] >= 2 * HALF_W - LINE;
+    const still = last && Math.hypot(b[0] - last[0], b[1] - last[1]) < 0.05;
+    if (b[2] < 0.5 && (line || still)) return t;
+    last = b;
   }
-  return p.ts + 2;   // no sample outside: the ball stopped on the line
+  return r.ts;
 }
 
 // The cutaways of a match: [{from, to, kind, x, end, side, restart}] in match seconds, sorted.
