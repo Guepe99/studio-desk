@@ -516,10 +516,139 @@ def stats_cues(m, meta, facts, cues):
     return out
 
 
+# --- no empty minutes ---------------------------------------------------------------------------------
+
+LINEUP_S = 15.0       # the starting line-ups at kick-off
+MOMENTUM_S = 8.0      # as the template momentum cue (export.DURATION)
+FILL_WAIT_S = 60.0    # how late after its facts a filler may air
+# The longest stretch of play an audience may go with nothing on screen (docs/desk.md, "No empty minutes"):
+# the analyst gets the team measures of every 5-minute window, the casual and kids sheets one window plus a
+# minute for a free slot.
+MAX_GAP_S = {"analyst": 300.0, "casual": 360.0, "kids": 360.0}
+LINES_ORDER = ("GK", "DF", "MF", "FW")
+
+
+def gaps(cues, meta, audience, lang="en"):
+    """[(from, to)]: the stretches of play, kick-off to half-time and the second half to full time, with no
+    cue of `audience` in `lang` on screen."""
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    iv = sorted((c["ts"], c["ts"] + c["duration_s"]) for c in cues if c["audience"] == audience and c["lang"] == lang)
+    out = []
+    for a, b in ((0.0, p1), (p1, end)):
+        t = a
+        for s, e in iv:
+            if e > t and s < b:
+                if s > t:
+                    out.append((t, s))
+                t = max(t, e)
+        if t < b:
+            out.append((t, b))
+    return out
+
+
+def momentum_payload(momentum, ts, home, away):
+    """The momentum graphic at a window end: every window so far, home and away (the template cue's payload)."""
+    so_far = [f for f in momentum if f["ts"] <= ts]
+    return {"home": [f["value"] for f in so_far if f["team_id"] == home],
+            "away": [f["value"] for f in so_far if f["team_id"] == away],
+            "window": len({f["ts"] for f in so_far}), "fact_ids": [f["fact_id"] for f in so_far]}
+
+
+def lineup_payload(m, meta, facts):
+    """The starting line-ups: per team its team-sheet formation (the start_formation fact) and its starters
+    by line, keeper first, each line by shirt. None when a team has no start_formation fact."""
+    form = {f["team_id"]: f for f in facts if f["kind"] == "start_formation"}
+    starters = {x["player_id"] for x in meta["lineups"] if x["starter"]}
+    teams = []
+    for t in (m.home, m.away):
+        f = form.get(t["team_id"])
+        if not f:
+            return None
+        ps = sorted((p for p in meta["players"] if p["team_id"] == t["team_id"] and p["player_id"] in starters),
+                    key=lambda p: p["shirt"])
+        teams.append({"side": t["side"], "formation": _stat_text(f, "en"),
+                      "lines": [[{"player_id": p["player_id"], "shirt": p["shirt"], "name": m.required_name(p["player_id"])}
+                                 for p in ps if p["position"] == k] for k in LINES_ORDER]})
+    return {"teams": teams, "fact_ids": [form[m.home["team_id"]]["fact_id"], form[m.away["team_id"]]["fact_id"]]}
+
+
+def _fillers(m, meta, facts):
+    """(ts, graphic, duration, payload by lang) that may fill a quiet spell, in time order: the momentum of every
+    5-minute window, and at every check-in the card of the player with the most touches so far."""
+    home, away = m.home["team_id"], m.away["team_id"]
+    momentum = sorted((f for f in facts if f["kind"] == "momentum"), key=lambda f: f["ts"])
+    out = [(ts, "momentum", MOMENTUM_S, lambda lang, ts=ts: momentum_payload(momentum, ts, home, away))
+           for ts in sorted({f["ts"] for f in momentum})]
+    by = {}
+    for f in facts:
+        if f["kind"] in CHECKIN_KINDS:
+            by.setdefault(f["ts"], {}).setdefault(f["player_id"], {})[f["kind"]] = f
+    for ts, players in sorted(by.items()):
+        full = {p: g for p, g in players.items() if all(k in g for k in CHECKIN_KINDS[:4])}
+        if full:  # most touches, then the lower player id: the same card on every run
+            pid = min(full, key=lambda p: (-full[p]["checkin_touches"]["value"], p))
+            out.append((ts, "why_card", CHECKIN_S, lambda lang, pid=pid, g=full[pid]: checkin_payload(m, pid, g, lang)))
+    return sorted(out, key=lambda x: (x[0], x[1]))
+
+
+def fill_cues(m, meta, facts, cues, held=()):
+    """The starting line-ups at kick-off for the analyst, casual and kids sheets, then, while a stretch of play
+    longer than MAX_GAP_S has nothing of that audience on screen, the filler that starts latest within MAX_GAP_S
+    of the stretch's start (no earlier than its facts, at most FILL_WAIT_S after them), in the first slot that
+    overlaps no cue of the audience and ends before the period's end. The stretches count only what airs
+    untouched: the cues of `held` stories (waiting for the producer) may never air, so they leave a stretch
+    open, yet a filler keeps clear of them. One cue per language of the audience's sheet, timed on the
+    English one."""
+    p1, end = meta["period1_s"], meta["period1_s"] + meta["period2_s"]
+    lineup, fillers = lineup_payload(m, meta, facts), _fillers(m, meta, facts)
+    out = []
+    for aud, most in MAX_GAP_S.items():
+        mine = [c for c in cues if c["audience"] == aud]
+        if not mine:
+            continue
+        langs = sorted({c["lang"] for c in mine})
+        timing = [c for c in mine if c["lang"] == "en"]
+        aired = {(c["graphic"], c["ts"]) for c in timing}
+
+        def add(ts, graphic, dur, payload):
+            cue = {"match_id": meta["match_id"], "cue_id": "", "story_id": None, "ts": ts, "duration_s": dur,
+                   "graphic": graphic, "audience": aud}
+            out.extend({**cue, "lang": lang, "payload": payload(lang)} for lang in langs)
+            timing.append({**cue, "lang": "en"})
+
+        def slot(f, a):  # the first free start for filler f in the stretch from a, or None
+            t, last, stop = max(f[0], a), min(a + most, f[0] + FILL_WAIT_S), p1 if f[0] < p1 else end
+            while t <= last and t + f[2] <= stop:
+                if not any(c["ts"] < t + f[2] and t < c["ts"] + c["duration_s"] for c in timing):
+                    return round(t, 1)
+                t += CHECKIN_STEP_S
+            return None
+
+        if lineup and not any(c["ts"] < LINEUP_S for c in timing):
+            add(0.0, "lineup", LINEUP_S, lambda lang: lineup)
+        left = [f for f in fillers if (f[1], f[0]) not in aired]
+        while True:
+            pick = None
+            for a, b in gaps([c for c in timing if c["story_id"] not in held], meta, aud):
+                if b - a <= most:
+                    continue
+                ok = [(t, f) for f in left if (f[0] < p1) == (a < p1) and (t := slot(f, a)) is not None]
+                if ok:
+                    pick = max(ok, key=lambda x: x[0])
+                    break
+            if not pick:
+                break
+            t, f = pick
+            left.remove(f)
+            add(t, f[1], f[2], f[3])
+    return out
+
+
 # --- applying it to a replay -------------------------------------------------------------------------
 
 def _generated(c):
-    return c["audience"] == "kids" or c["payload"].get("kind") == "checkin" or c["graphic"] == "team_stats"
+    return (c["audience"] == "kids" or c["payload"].get("kind") == "checkin" or c["graphic"] in ("team_stats", "lineup")
+            or (c["graphic"] == "momentum" and c["story_id"] is None and c["audience"] != "analyst"))
 
 
 def apply(meta, facts, events, stories, cues):
@@ -547,6 +676,8 @@ def apply(meta, facts, events, stories, cues):
     extra = [worded(c, "kids") for c in base if c["audience"] == "casual"]
     extra += checkin_cues(m, meta, facts, base)
     extra += stats_cues(m, meta, facts, base)
+    held = {s["story_id"] for s in stories if s.get("default_status") != "auto_approved"}  # may never air
+    extra += fill_cues(m, meta, facts, base + extra, held)
     n = max((int(c["cue_id"][2:]) for c in base if c["cue_id"].startswith("C-")), default=0)
     for i, c in enumerate(extra, n + 1):
         c["cue_id"] = f"C-{i:06d}"

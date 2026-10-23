@@ -89,7 +89,8 @@ Every number that can reach the screen is a row in `facts`, with:
 Kinds produced by B: `pass_distance`, `pass_difficulty`, `pass_accuracy`, `ball_speed`,
 `shot_speed`, `sprint_speed`, `sprint_count`, `distance_covered`, `momentum`, `xt_added`,
 `press_intensity`, `line_height`, `score`; since feat/audiences also `checkin_touches`,
-`checkin_passes`, `checkin_distance`, `checkin_sprints`, `checkin_top_speed` (see Audiences additions).
+`checkin_passes`, `checkin_distance`, `checkin_sprints`, `checkin_top_speed` (see Audiences additions);
+since feat/no-empty-minutes also `start_formation` (see Audiences additions).
 
 `momentum` is one fact per team per 5-minute window. The value runs 0..10 and `ts` is the end of
 the window. Window labels name display minutes that never overlap (`min 66-70`, `min 71-75`);
@@ -142,6 +143,7 @@ is the OGraf `data` for that graphic:
 | `momentum` | `{home: [..], away: [..], window: n, fact_ids}` |
 | `why_card` | `{kind: "why"\|"recap"\|"checkin", title, body, fact_ids}` |
 | `team_stats` | `{when, rows: [{stat, home, away, home_v, away_v}], fact_ids}` (feat/analyst-stats) |
+| `lineup` | `{teams: [{side, formation, lines: [[{player_id, shirt, name}]]}], fact_ids}` (feat/no-empty-minutes) |
 
 ## Replay export (static, no API needed)
 
@@ -406,6 +408,22 @@ Agents only learn about an event when the clock releases it, in replay generatio
   first 0.5 s step of the 60 s after the window where it overlaps no other analyst cue (timed on the English
   sheet) and ends before half-time or full time, else it is dropped. On the page, a momentum or team shape
   card due during a goal replay waits for its end, one after the other.
+- No empty minutes (feat/no-empty-minutes, `docs/desk.md`):
+  - `start_formation`: one fact per team at `ts` 0, period 1, `unit` `formation`, `value` the team
+    sheet's lines as digits from the starters' positions (`433.0` is 4-3-3), label
+    `Starting formation 4-3-3, team sheet`. Written only for 11 starters with one keeper and three lines.
+  - `lineup` cue at `ts` 0, 15 s, `story_id` null, for `analyst`, `casual` and `kids` in each language of
+    the sheet, unless a cue of that audience starts in the first 15 s. Payload: `teams`, home then away,
+    `side`, `formation` as shown (`4-3-3`), `lines` the starters as GK, DF, MF, FW, each line by shirt,
+    `name` the surname (the full name when two players of the match share it); `fact_ids` the two
+    `start_formation` facts, home then away.
+  - Then, while a stretch of play with no cue of the audience on screen (counting template cues and
+    stories whose `default_status` is `auto_approved`; a waiting story's cues may never air) is longer than `MAX_GAP_S`
+    (analyst 300 s, casual and kids 360 s, on the English sheet, each half apart), the filler that starts
+    latest within that limit of the stretch's start: a `momentum` cue of a window end (payload as the
+    template one, 8 s) or the `checkin` `why_card` of the player with the most touches at a check-in `ts`
+    (8 s). A filler starts no earlier than its facts and at most 60 s after them, overlaps no cue of the
+    audience (waiting stories included) and ends before half-time or full time; it is written once per language of the sheet.
 - `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
   rewrites a pack offline; `export` and `export --pack` apply the same step.
 - Page: "Same moment, several audiences", a box under the controls (never on the 1920x1080 stage):

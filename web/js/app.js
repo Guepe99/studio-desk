@@ -14,7 +14,7 @@ import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
 
-const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "why_card"];
+const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card"];
 const STRINGS = {
   en: {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "Jump to 2nd half",

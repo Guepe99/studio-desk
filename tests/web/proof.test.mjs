@@ -138,6 +138,18 @@ test("M001 team shape: the ten values on screen, each found in the panel's own f
   assert.deepEqual([...new Set(pr.numbers.slice(2).map((x) => x.unit))].sort(), ["/10", "m"]);
 });
 
+test("M001 line-ups: the two formations on screen, each found in its team's start_formation fact; shirt numbers are not numbers", () => {
+  const P = PACKS.M001;
+  for (const cue of P.match.cues.filter((c) => c.graphic === "lineup")) {
+    const pr = proofOf(cue, P.ctx(cue));
+    assert.deepEqual(pr.numbers.map((x) => x.kind), ["formation", "formation"], cue.cue_id);
+    assert.equal(pr.numbersOk, true, cue.cue_id);
+    assert.deepEqual(pr.numbers.map((x) => x.src.fact.kind), ["start_formation", "start_formation"]);
+    assert.deepEqual(pr.facts.map((f) => f.fact_id), cue.payload.fact_ids);
+  }
+  assert.equal(P.match.cues.filter((c) => c.graphic === "lineup").length, 9);  // analyst, casual and kids in en, it and es
+});
+
 test("the numbers in a line: minutes, a /10 scale, a formation, a score and a unit", () => {
   const got = numbersIn("Al 45+2' 8,5/10, the 8th minute, en el minuto 10: 4-3-3 al 4-4-2, 2-1, 1.9 km, 83%, (10', 13')")
     .map(({ text, kind, unit, m }) => [text, kind, unit ?? m ?? ""]);

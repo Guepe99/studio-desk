@@ -150,3 +150,69 @@ number"), the UTC time in a tooltip; then the agents' log; the cost tiles come l
 Under 1100 px the desk is a bottom sheet of at most 60% of the height, so the broadcast stays in
 view above it, with a compact On air now strip pinned at the top of the sheet. Colour is never the
 only cue: every tally colour also says its state in words (WCAG 1.4.1).
+
+## No empty minutes
+
+The owner watched M001 and at 8' the desk had nothing on air and nothing waiting. Measured on the
+committed packs (English sheet, stretches of play with no cue of the audience on screen), before
+this change:
+
+| Match | Analyst | Casual and kids | First story |
+|---|---|---|---|
+| M001 | first graphic at 5'00, longest gap 5.0 min | first at 7'55; gaps of 18.0, 15.5 and 12.0 min | 7'50 |
+| M002 | first at 5'00, longest 5.0 min | first at 16'32; gaps of 16.5, 15.4 and 9.7 min | 10'00 |
+| M003 | first at 5'00, longest 5.0 min | first at 6'23; gaps of 15.4, 11.5 and 10.5 min | 6'18 |
+| M004 | first at 5'00, longest 5.0 min | first at 6'19; gaps of 17.1, 12.7 and 9.3 min | 5'00 |
+
+The stories come from the agents' run and stay as they are; the graphics fill the gaps.
+
+How the trade fills them:
+
+- A broadcast opens on the line-ups. Line-up graphics show the starters, and formation graphics
+  place them on the pitch and may come back later in the match
+  ([wTVision, Football Graphics Explained](https://www.wtvision.com/football-graphics-explained));
+  line-ups and formations are revealed before kick-off
+  ([wTVision, Portuguese League](https://www.wtvision.com/portuguese-league-with-a-new-graphic-concept)).
+  The team sheet is public before kick-off (75 minutes before in the English top flight since 2024/25,
+  [On Tour Football](https://ontourfootball.com/news/confirmed-lineups-when-team-news-actually-drops-and-how-to-get-it-in-time)),
+  so showing it at 0' gives nothing away.
+- In quiet spells, live stats chosen to explain the phase of play (wTVision, above) and
+  momentum and live data in the match apps and data feeds
+  ([a club app's Match Centre](https://www.manutd.com/en/news/detail/innovative-live-stats-now-available-in-new-official-manchester-united-app-match-centre),
+  [a league broadcaster's Data Zone](https://www.broadcastnow.co.uk/tech-innovation/premier-league-productions-trials-augmented-broadcasts/5181397.article)).
+- At the slow end, newspaper live blogs post about every 10 minutes on average
+  ([Thurman and Walters 2013](https://openaccess.city.ac.uk/id/eprint/4045/1/Chapter%208%20-%20Live%20Blogging%20-%20with%20discussion%20questions.pdf)),
+  and some match apps push only at kick-off, goals and full time
+  ([TOK.tv](https://blog.lightstreamer.com/2014/07/meet-our-customers-toktv.html)).
+
+No published standard sets a longest gap, so the targets are ours (`MAX_GAP_S` in
+`studiodesk/agents/audiences.py`): 5 minutes for the analyst, the cadence at which the ledger renews
+the team measures; 6 minutes for the casual and kids sheets, one 5-minute window plus a minute to
+find a free slot, well under a live blog's 10.
+
+What fills them, all from the fact ledger and written by code:
+
+- `lineup` at 0', 15 s, on the analyst, casual and kids sheets: each team's formation from its team
+  sheet (the `start_formation` fact) and its eleven by line, keeper first.
+- While a stretch is longer than the target, the filler that starts latest within the target from
+  the stretch's start: the momentum graphic of a 5-minute window, or at a check-in time (15', 30',
+  45' of each half) the check-in card of the player with the most touches. A filler airs at most
+  60 s after its facts, overlaps nothing of that audience and ends before half-time or full time.
+
+A story waiting for the producer (`needs_review`) may never air, so a stretch counts only what airs
+for a visitor who never touches the desk: template and filler graphics and auto-approved stories. A
+filler still keeps clear of a waiting story's slot, in case the producer approves it. Counted that
+way, the longest stretch with nothing on screen, before and after:
+
+| Match | Analyst before | Analyst after | Casual and kids before | Casual and kids after |
+|---|---|---|---|---|
+| M001 | 5.0 min | 4.9 min | 33.4 min | 5.4 min |
+| M002 | 5.0 min | 4.8 min | 22.1 min | 5.9 min |
+| M003 | 5.0 min | 4.9 min | 36.2 min | 5.4 min |
+| M004 | 5.0 min | 4.8 min | 36.3 min | 5.5 min |
+
+`test_no_audience_goes_longer_than_its_target_with_nothing_on_screen` in `tests/test_audiences.py`
+keeps it so. The desk's story list is unchanged. Once the first story is listed (7'50 in M001, under
+Needs you) the desk always has a graphic on air or a story listed. Before it, minutes 1 to 4 and 6 of
+M001 still have neither: the line-ups end at 0'15 and the first momentum graphic needs the first
+5-minute window. That is under the 5-minute target, and it is where a denser filler would go.

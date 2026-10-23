@@ -91,7 +91,7 @@ def test_committed_packs_show_each_audience_its_line():
             s = by_id.get(c["story_id"])
             if c["graphic"] == "why_card" and s:
                 assert c["payload"]["body"] == au.text_for(s, c["audience"], c["lang"]), c["cue_id"]
-        shape = lambda c: (c["story_id"], c["ts"], c["graphic"], c["lang"])  # noqa: E731
+        shape = lambda c: (c["story_id"] or "", c["ts"], c["graphic"], c["lang"])  # noqa: E731  (fillers have no story)
         assert sorted(map(shape, (c for c in cues if c["audience"] == "kids"))) == \
             sorted(map(shape, (c for c in cues if c["audience"] == "casual")))
         assert len({c["cue_id"] for c in cues}) == len(cues)
@@ -249,3 +249,66 @@ def test_team_stats_wait_for_a_free_slot_or_are_dropped():
     assert not au.stats_cues(m, meta, facts, [cue(590.0, 80.0)])  # nothing free before 660: dropped
     assert not au.stats_cues(m, meta, [{**f, "ts": 2695.0} for f in facts], sheet)  # would run past half-time
     assert not au.stats_cues(m, meta, facts[:-1], sheet)  # a measure missing for one team: no panel
+
+
+def _meta(mid):
+    with closing(db.connect(srv.DB_PATH, readonly=True)) as conn:
+        return export.meta(conn, mid)
+
+
+def test_no_audience_goes_longer_than_its_target_with_nothing_on_screen():
+    # counting only what airs when nobody touches the desk: code cues and auto-approved stories
+    _packs(REPLAYS)
+    for mid in PACK_IDS:
+        stories, cues = _pack(mid)
+        meta = _meta(mid)
+        auto = {s["story_id"] for s in stories if s["default_status"] == "auto_approved"}
+        airs = [c for c in cues if c["story_id"] is None or c["story_id"] in auto]
+        for aud, most in au.MAX_GAP_S.items():
+            for lang in ("en", "it", "es"):
+                long = [g for g in au.gaps(airs, meta, aud, lang) if g[1] - g[0] > most]
+                assert not long, (mid, aud, lang, long)
+
+
+def test_the_line_ups_open_every_sheet_with_the_starters_and_the_team_sheet_formation():
+    _packs(REPLAYS)
+    srv.set_clock(None)
+    for mid in PACK_IDS:
+        _, cues = _pack(mid)
+        meta = _meta(mid)
+        facts = {f["fact_id"]: f for f in srv.get_facts(mid)}
+        starters = {x["player_id"] for x in meta["lineups"] if x["starter"]}
+        pos = {p["player_id"]: p["position"] for p in meta["players"]}
+        cards = [c for c in cues if c["graphic"] == "lineup"]
+        assert {(c["audience"], c["lang"]) for c in cards} == {(a, lang) for a in au.MAX_GAP_S for lang in ("en", "it", "es")}, mid
+        for c in cards:
+            assert c["ts"] == 0.0 and c["duration_s"] == au.LINEUP_S and c["story_id"] is None
+            got = [facts[i] for i in c["payload"]["fact_ids"]]
+            assert [f["kind"] for f in got] == ["start_formation"] * 2
+            for t, f in zip(c["payload"]["teams"], got):
+                players = [p for line in t["lines"] for p in line]
+                assert {p["player_id"] for p in players} == {p for p in starters if p.startswith(f["team_id"] + "-")}
+                assert [len(line) for line in t["lines"][1:]] == [int(d) for d in str(int(f["value"]))]
+                assert t["formation"] == "-".join(str(int(f["value"])))
+                assert all(pos[p["player_id"]] == k for line, k in zip(t["lines"], au.LINES_ORDER) for p in line)
+
+
+def test_a_filler_starts_as_late_as_the_target_allows_and_never_twice():
+    m = rules.Match(SIDES)
+    meta = {"match_id": "M001", "period1_s": 2700.0, "period2_s": 2700.0, "lineups": [], "players": []}
+    facts = [{"fact_id": f"F-MOMENTUM-{i:06d}", "kind": "momentum", "ts": ts, "period": 1, "team_id": t, "value": 5.0}
+             for i, (ts, t) in enumerate(((ts, t) for ts in (300.0, 600.0, 900.0) for t in ("T01", "T02")), 1)]
+
+    def cue(ts, dur, story=None):
+        return {"ts": ts, "duration_s": dur, "audience": "casual", "lang": "en", "graphic": "why_card", "story_id": story, "payload": {}}
+    got = au.fill_cues(m, meta, facts, [cue(0.0, 20.0), cue(1000.0, 1700.0)])
+    # no line-up facts, so no line-up; the stretch from 0:20 to 16:40 gets the momentum of minute 5, 10 and 15,
+    # each the latest that starts within six minutes of the last thing on screen
+    assert [(c["ts"], c["graphic"]) for c in got] == [(300.0, "momentum"), (600.0, "momentum"), (900.0, "momentum")]
+    assert got[1]["payload"]["window"] == 2 and len(got[1]["payload"]["fact_ids"]) == 4
+    assert not au.fill_cues(m, meta, facts, [cue(0.0, 20.0), *got, cue(1000.0, 1700.0)])  # nothing to add twice
+    # a story card from 5:00 to 5:12: when it airs untouched the stretch starts after it and minute 5 is not
+    # needed; when it waits for the producer the stretch stays open and minute 5 airs after it, not over it
+    story = [cue(0.0, 20.0), cue(300.0, 12.0, "S-000001"), cue(1000.0, 1700.0)]
+    assert [c["ts"] for c in au.fill_cues(m, meta, facts, story)] == [600.0, 900.0]
+    assert [c["ts"] for c in au.fill_cues(m, meta, facts, story, {"S-000001"})] == [312.0, 600.0, 900.0]

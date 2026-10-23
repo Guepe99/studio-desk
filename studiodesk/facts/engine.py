@@ -31,6 +31,8 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   for each player on the pitch at that moment: touches (the player's events, fouls excluded),
   passes completed, distance covered (km), sprints and top speed (the fastest sprint so far,
   written only after a first sprint), all counted from kick-off to the check-in.
+- start_formation: the team sheet's shape at kick-off (ts 0), from the starters' positions: defenders,
+  midfielders and forwards, stored as the value 433 for 4-3-3. Known before kick-off, so no events.
 """
 import json
 import math
@@ -126,8 +128,10 @@ class Match:
                             (self.home, self.away)).fetchall()
         self.team_of = {r["player_id"]: r["team_id"] for r in rows}
         self.gk = {r["player_id"] for r in rows if r["position"] == "GK"}
-        self.lineups = {r["player_id"]: (r["on_ts"], r["off_ts"]) for r in conn.execute(
-            "SELECT player_id, on_ts, off_ts FROM lineups WHERE match_id = ?", (match_id,))}
+        self.position = {r["player_id"]: r["position"] for r in rows}
+        lineups = conn.execute("SELECT player_id, starter, on_ts, off_ts FROM lineups WHERE match_id = ?", (match_id,)).fetchall()
+        self.lineups = {r["player_id"]: (r["on_ts"], r["off_ts"]) for r in lineups}
+        self.starters = [r["player_id"] for r in lineups if r["starter"]]
         self.grid = None
         if xt_grid and Path(xt_grid).exists():
             self.grid = np.array(json.loads(Path(xt_grid).read_text())["grid"], dtype=float)
@@ -184,6 +188,7 @@ class Match:
 
     # facts -------------------------------------------------------------------
     def build(self):
+        self.start_formation()
         self.passes_and_shots()
         self.pass_accuracy()
         self.score()
@@ -282,6 +287,18 @@ class Match:
                 pct = 100 * ok / len(es)
                 self.add("pass_accuracy", cp, round(pct, 1), "%", f"Pass accuracy {pct:.0f}% ({ok}/{len(es)}) {when}",
                          team, pid, [e["event_id"] for e in es], period=period)
+
+    def start_formation(self):
+        """The team sheet's shape at kick-off: the starters' defenders, midfielders and forwards (433.0 is
+        4-3-3), only when the eleven are a keeper and ten outfield players in those three positions."""
+        for team in (self.home, self.away):
+            pos = [self.position.get(p) for p in self.starters if self.team_of.get(p) == team]
+            lines = [pos.count(k) for k in ("DF", "MF", "FW")]
+            if len(pos) != 11 or pos.count("GK") != 1 or sum(lines) != 10 or 0 in lines:
+                continue
+            name = "-".join(map(str, lines))
+            self.add("start_formation", 0.0, float("".join(map(str, lines))), "formation",
+                     f"Starting formation {name}, team sheet", team, None, period=1)
 
     def score(self):
         goals = {self.home: 0, self.away: 0}

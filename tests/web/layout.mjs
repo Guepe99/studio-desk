@@ -336,7 +336,7 @@ try {
 
     // 4: every graphic's text at least 11 px on screen
     await check(`${tag} graphic text`, async () => {
-      for (const graphic of ["pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
+      for (const graphic of ["lineup", "pass_shot", "why_card", "momentum", "team_stats", "nameplate"]) {
         const c = cues.find((x) => x.graphic === graphic);
         if (!c) continue;
         await seekTo(page, c.ts + Math.min(2, c.d / 2));
@@ -344,7 +344,7 @@ try {
         if (!Number.isFinite(t.min)) fail(`${tag} ${graphic}: not on screen`);
         else if (t.min < 11) fail(`${tag} ${graphic}: text at ${t.min.toFixed(1)} px (${t.what})`);
         if ((await sideScroll(page)) > 0) fail(`${tag} ${graphic}: horizontal scroll`);
-        if (graphic === "pass_shot" || graphic === "why_card" || graphic === "team_stats") await page.screenshot({ path: `${shots}/layout-${graphic}-${tag}.png`, fullPage: true });
+        if (graphic === "lineup" || graphic === "pass_shot" || graphic === "why_card" || graphic === "team_stats") await page.screenshot({ path: `${shots}/layout-${graphic}-${tag}.png`, fullPage: true });
       }
     });
     if (w === 390 || w === 844 || w === 1280 || w === 1920) {

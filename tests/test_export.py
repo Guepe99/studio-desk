@@ -8,7 +8,8 @@ from studiodesk.export import export
 PAYLOAD_KEYS = {"nameplate": {"player_id", "name", "shirt", "team_short", "speed_kmh", "fact_id"},
                 "pass_shot": {"mode", "player_id", "value", "unit", "quality", "fact_ids"},
                 "momentum": {"home", "away", "window", "fact_ids"},
-                "why_card": {"kind", "title", "body", "fact_ids"}}
+                "why_card": {"kind", "title", "body", "fact_ids"},
+                "lineup": {"teams", "fact_ids"}}
 
 
 def test_template_export(match_db, tmp_path):

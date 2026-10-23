@@ -91,6 +91,7 @@ def recap(match, facts, cp, title):
 
 def template_cues(match, facts, events):
     """Cue sheet from facts only, audiences analyst and casual, at most 2 overlapping per audience."""
+    from .agents import audiences
     home, away = (t["team_id"] for t in match["teams"])
     short = {t["team_id"]: t["short_name"] for t in match["teams"]}
     players = {p["player_id"]: p for p in match["players"]}
@@ -134,12 +135,8 @@ def template_cues(match, facts, events):
         sprints = sorted(by_kind.get("sprint_speed", []), key=lambda f: -f["value"])[:TOP_SPRINTS[audience]]
         cands += [(2, f["ts"], "nameplate", nameplate(f)) for f in sprints]
         if audience == "analyst":
-            for n, ts in enumerate(window_ends, 1):
-                so_far = [f for f in momentum if f["ts"] <= ts]
-                cands.append((3, ts, "momentum", {
-                    "home": [f["value"] for f in so_far if f["team_id"] == home],
-                    "away": [f["value"] for f in so_far if f["team_id"] == away],
-                    "window": n, "fact_ids": [f["fact_id"] for f in so_far]}))
+            for ts in window_ends:
+                cands.append((3, ts, "momentum", audiences.momentum_payload(momentum, ts, home, away)))
             ok = [f for f in by_kind.get("pass_difficulty", []) if result.get(f["source_event_ids"][0]) == "success"]
             for f in sorted(ok, key=lambda f: -f["value"])[:HARDEST_PASSES]:
                 cands.append((4, f["ts"], "pass_shot", pass_(f)))
