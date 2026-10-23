@@ -1,6 +1,6 @@
 // Reduced motion holds the TV camera (layout review, finding 12): with prefers-reduced-motion the 3D
-// view stays on camera 1's wide shot through a goal's punch-in, the tight shot of the scorer and the
-// goal replay; without it the same moments cut (a check that the check sees the cuts).
+// view stays on camera 1's wide shot through a crowd cutaway, a goal's punch-in, the tight shot of
+// the scorer and the goal replay; without it the same moments cut (a check that the check sees the cuts).
 //
 //   MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-camera.mjs
 import { createRequire } from "node:module";
@@ -26,13 +26,13 @@ async function shots(reducedMotion) {
     const sd = window.studioDesk, v = sd.view3d, s = v.scene, raf = () => new Promise((r) => requestAnimationFrame(r));
     if (!s) return null;
     const { replays } = await import("./js/view3d.js");
-    const goal = s.cams.goals[0], stop = s.cams.stops.find((x) => x[0] >= goal.ts), rep = replays(sd.match)[0];
+    const cut = s.cams.cutaways[0], goal = s.cams.goals[0], stop = s.cams.stops.find((x) => x[0] >= goal.ts), rep = replays(sd.match)[0];
     const at = async (ts) => {
       sd.setPlaying(false); sd.seek(ts);
       for (let k = 0; k < 4; k++) await raf();
       return { ts, camera: s.debug.camera, active: s.scene.activeCamera.name, fov: s.cams.tv.fov };
     };
-    return { punch: await at(goal.ts - 0.3), tight: await at((stop[0] + stop[1]) / 2), replay: rep ? await at(rep.from + 3) : null };
+    return { cutaway: await at((cut.from + cut.to) / 2), punch: await at(goal.ts - 0.3), tight: await at((stop[0] + stop[1]) / 2), replay: rep ? await at(rep.from + 3) : null };
   });
   await ctx.close();
   return out;
@@ -43,12 +43,13 @@ try {
   if (!still || !moving) fail("no 3D scene: run with WebGL (WEBGL=1, the default for this script)");
   else {
     console.log(JSON.stringify({ still, moving }));
-    for (const k of ["punch", "tight", "replay"]) {
+    for (const k of ["cutaway", "punch", "tight", "replay"]) {
       if (!still[k]) { fail(`${k}: no such moment in ${MATCH}`); continue; }
       if (still[k].camera !== "broadcast" || still[k].active !== "tv") fail(`reduced motion at the ${k}: camera ${still[k].camera} (${still[k].active})`);
     }
     // the check of the check: without the preference the same moments do cut and punch in
     if (moving.tight.camera !== "celebration" && !moving.tight.camera.startsWith("replay")) fail(`no-preference tight shot: ${moving.tight.camera}`);
+    if (!moving.cutaway.camera.startsWith("crowd-")) fail(`no-preference cutaway: ${moving.cutaway.camera}`);
     if (moving.replay && !moving.replay.camera.startsWith("replay")) fail(`no-preference replay: ${moving.replay.camera}`);
     if (!(moving.punch.fov < still.punch.fov - 1e-3)) fail(`punch-in: fov ${moving.punch.fov} moving, ${still.punch.fov} still; the moving camera should be tighter`);
   }

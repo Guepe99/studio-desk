@@ -289,8 +289,9 @@ export class View3D {
   // The shirt and surname over the player on the ball, as a football game shows them: in open play
   // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
   // The players an open proof cites get the same tag; the carrier's own tag goes when he is one of them.
+  // None on a crowd or stadium cutaway (scene3d/cutaway.js).
   _carrier(v) {
-    const on = v && !v.replay && this.main === "3d";
+    const on = v && !v.replay && this.main === "3d" && !this.scene?.cams.mode.startsWith("crowd");
     this.citeTags.forEach((tag, k) => (on && k < this.cited.length ? this._place(tag, this.cited[k], v.ts) : (tag.hidden = true)));
     const tag = this.tag, i = on ? this._holder(v.ts) : -1;
     if (i < 0 || i !== this._holder(v.ts - CARRIER.hold) || this.cited.includes(i)) { tag.hidden = true; return; }
