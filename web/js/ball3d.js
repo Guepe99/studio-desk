@@ -38,9 +38,24 @@ const KICKS = { pass: "pass", cross: "long", shot: "shot", shot_freekick: "shot"
   goalkick: "long", clearance: "long" };
 const TOUCHES = { dribble: "touch", take_on: "touch", tackle: "touch", interception: "trap", bad_touch: "touch" };
 const HANDS = new Set(["keeper_save", "keeper_claim", "keeper_punch", "keeper_pick_up"]);
+// the ball lies still before these, so nobody plays with it
+const SET_PIECES = new Set(["freekick_crossed", "freekick_short", "shot_freekick", "shot_penalty", "goalkick", "corner_crossed", "corner_short", "throw_in"]);
+// Moves of a player keeping a still ball at his feet (docs/flow3d.md, section 5): the leg actions
+// [kind, seconds from the start] and how the ball rolls [t0, t1, metres along his facing], so it
+// ends where it started; len: seconds the move takes; p: how often it is picked. A sole roll (the
+// ball out and back under the sole), a drag-back then a touch that puts it back, a step-over, a
+// feint with the shoulders.
+const SKILLS = {
+  roll: { p: 0.3, len: 1.0, legs: [["roll", 0.3]], ball: [[0.3, 0.48, 0.12], [0.48, 0.66, -0.12]] },
+  drag: { p: 0.25, len: 1.33, legs: [["drag", 0.3], ["touch", 1.05]], ball: [[0.3, 0.6, -0.26], [1.05, 1.3, 0.26]] },
+  stepover: { p: 0.2, len: 0.8, legs: [["stepover", 0.35]], ball: [] },
+  feint: { p: 0.25, len: 0.65, legs: [["feint", 0.3]], ball: [] },
+};
 // seconds before and after contact that a leg action lasts, and the facing ramps
-export const LEG_WINDOW = { shot: [0.5, 0.5], long: [0.5, 0.5], pass: [0.42, 0.4], touch: [0.28, 0.28], trap: [0.42, 0.32] };
-const YAW_RAMP = { shot: [0.6, 0.35], long: [0.6, 0.35], pass: [0.55, 0.3], touch: [0.3, 0.25], trap: [0.45, 0.3] };
+export const LEG_WINDOW = { shot: [0.5, 0.5], long: [0.5, 0.5], pass: [0.42, 0.4], touch: [0.28, 0.28], trap: [0.42, 0.32],
+  roll: [0.3, 0.7], drag: [0.3, 0.45], stepover: [0.35, 0.45], feint: [0.3, 0.35] };
+const YAW_RAMP = { shot: [0.6, 0.35], long: [0.6, 0.35], pass: [0.55, 0.3], touch: [0.3, 0.25], trap: [0.45, 0.3],
+  roll: [0.4, 0.4], drag: [0.4, 0.4], stepover: [0.4, 0.4], feint: [0.4, 0.4] };
 
 const smooth = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 const ramp = (a, b, v) => smooth((v - a) / (b - a));
@@ -63,6 +78,7 @@ export class BallPlan {
     for (let t = this.t0; t <= this.t1; t += 0.1) { const b = this.raw(t); if (b) zg = Math.min(zg, b[2]); }
     this.zGround = Number.isFinite(zg) ? Math.max(0, zg) : 0;
     this.segs = [];      // { t0, t1, r }: clock bends
+    this.moves = [];     // { t0, t1, v, keys }: the ball moved under a still player's foot (skills)
     this.actors = new Map();   // entity index -> { warp: [], yaw: [], legs: [], face: [] }
     this.nets = [];      // { t0, t1, s: samples }: a scored ball carried on into the netting
     this._plan();
@@ -124,12 +140,12 @@ export class BallPlan {
       }
       // a ball in a keeper's hands, or a dead ball the next player throws in, is not dribbled
       if (!next || next.period !== e.period || HANDS.has(e.type_name) || next.type_name === "throw_in" || tEnd - a < 0.3 || tEnd - a > 10) continue;
-      this._dribble(a, tEnd, this._who(next.player_id), next.player_id);
+      this._dribble(a, tEnd, this._who(next.player_id), next.player_id, next);
     }
   }
 
   // Controlled ball from a to b by entity o: touches every 0.6-1.0 s while the ball moves.
-  _dribble(a, b, o, pid) {
+  _dribble(a, b, o, pid, next) {
     if (o === null) return;
     const pa = this.raw(a), pb = this.raw(b);
     let path = 0, prev = pa;
@@ -141,7 +157,7 @@ export class BallPlan {
     }
     if (!pa || !pb) return;
     const v = path / (b - a);
-    if (v < 1) return;        // a ball standing still: the player just keeps it
+    if (v < 1) { this._skills(a, b, o, pid, next); return; }   // a ball standing still: he plays with it
     const dt = Math.min(1.0, Math.max(0.6, 0.55 + 0.04 * v));
     const n = Math.max(1, Math.round((b - a) / dt));
     const side = this._foot(pid);
@@ -150,6 +166,58 @@ export class BallPlan {
       this._bend(t0, t1, PUSH_R);
       if (s > 0) this._action(o, t0, "touch", side, null);
     }
+  }
+
+  // A player keeping a still ball in open play does not stand like a statue: from the end of his
+  // control to his next kick he plays small moves (SKILLS), picked by a seeded draw so every frame of
+  // the same moment is the same. Only before his own kick, never before a set piece (the ball must
+  // lie still for a free kick, a corner or a penalty) and only while he stands at the ball.
+  _skills(a, b, o, pid, next) {
+    if (!next || SET_PIECES.has(next.type_name) || next.end_x === undefined || next.end_x === null) return;
+    const yaw = Math.atan2(next.end_x - next.start_x, next.end_y - next.start_y);
+    const f = [Math.sin(yaw), Math.cos(yaw)];
+    let h = 2166136261;
+    for (const ch of `${pid}@${Math.round(a * 10)}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    const rnd = mulberry(h);
+    const names = Object.keys(SKILLS);
+    // after the control (the trap's window ends 0.32 s after contact) and before the kick's backswing
+    for (let c = a + 0.45; ;) {
+      const fit = names.filter((n) => c + SKILLS[n].len <= b - 0.55);
+      if (!fit.length) break;
+      let r = rnd() * fit.reduce((s, n) => s + SKILLS[n].p, 0), name = fit[0];
+      for (const n of fit) { r -= SKILLS[n].p; if (r <= 0) { name = n; break; } }
+      const S = SKILLS[name];
+      const near = S.legs.every(([, t]) => {
+        const p = this.match.at(o, c + t), q = this.ball(c + t);
+        return p && q && Math.hypot(q.x - p[0], q.y - p[1]) < 1.5;
+      });
+      if (near) {
+        if (S.ball.length) {
+          const keys = [[c, 0]];
+          let d = 0;
+          for (const [t0, t1, dd] of S.ball) { keys.push([c + t0, d]); d += dd; keys.push([c + t1, d]); }
+          this.moves.push({ t0: c, t1: c + S.len, v: f, keys });
+        }
+        for (const [kind, t] of S.legs) this._action(o, c + t, kind, this._foot(pid), yaw);
+      }
+      c += S.len + 0.15 + 0.35 * rnd();
+    }
+  }
+
+  // metres the skills have moved the ball from its tracking point at ts, as [dx, dy]
+  _moved(ts) {
+    // moves are pushed in event order and never overlap: binary search for the last one started
+    let lo = 0, hi = this.moves.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (this.moves[mid].t0 <= ts) lo = mid + 1; else hi = mid; }
+    const m = this.moves[lo - 1];
+    if (m && ts < m.t1) {
+      let k = 0;
+      while (k < m.keys.length - 2 && ts > m.keys[k + 1][0]) k++;
+      const [ta, da] = m.keys[k], [tb, db] = m.keys[k + 1];
+      const d = da + (db - da) * smooth((ts - ta) / Math.max(tb - ta, 1e-6));
+      return [m.v[0] * d, m.v[1] * d];
+    }
+    return null;
   }
 
   // Bend the clock on [t0, t1] with speed ratio r, softened until the ball stays within TOL.
@@ -336,6 +404,8 @@ export class BallPlan {
       const p = this.raw(this.bent(ts));
       if (!p) return null;
       [x, y, h] = [p[0], p[1], Math.max(0, p[2] - this.zGround)];
+      const mv = this._moved(ts);
+      if (mv) { x += mv[0]; y += mv[1]; }
     }
     let q = [0, 0, 0, 1];
     if (this.quats) {
@@ -440,6 +510,13 @@ const LEG_KEYS = {
   pass: [[-0.42, 0, 22, 0, 8], [-0.24, -10, 45, -5, 35], [-0.1, -26, 72, -10, 50], [0, 16, 26, -12, 50], [0.13, 40, 18, -10, 42], [0.25, 28, 24, -5, 25], [0.4, 6, 26, 0, 8]],
   touch: [[-0.28, 4, 30, 0, 8], [-0.12, -6, 55, 0, 25], [0, 24, 30, -5, 28], [0.12, 18, 30, 0, 15], [0.28, 4, 30, 0, 4]],
   trap: [[-0.42, 4, 25, 0, 8], [-0.2, 32, 52, -12, 40], [-0.06, 36, 44, -15, 42], [0, 30, 40, -12, 42], [0.12, 18, 36, -5, 25], [0.32, 4, 26, 0, 4]],
+  // the skills: the sole up on the ball (toes up), out and back (roll) or pulled back under the body
+  // (drag); the step-over circles the leg from inside to outside over the ball; the feint is a
+  // short jab of the leg under a shoulder drop (BODY_KEYS)
+  roll: [[-0.3, 4, 30, 0, 5], [-0.12, 36, 70, -12, 8], [0, 40, 62, -22, 8], [0.18, 50, 62, -18, 8], [0.36, 40, 62, -22, 8], [0.55, 12, 42, -8, 5], [0.7, 2, 30, 0, 4]],
+  drag: [[-0.3, 4, 30, 0, 5], [-0.12, 36, 70, -12, 8], [0, 40, 62, -22, 8], [0.15, 24, 56, -20, 6], [0.3, 8, 46, -12, 5], [0.45, 2, 30, 0, 4]],
+  stepover: [[-0.35, 4, 30, 0, 5], [-0.15, 30, 70, 10, -20], [0, 45, 80, 15, 10], [0.15, 30, 62, 10, 45], [0.3, 8, 36, 0, 30], [0.45, 2, 30, 0, 5]],
+  feint: [[-0.3, 4, 30, 0, 5], [-0.1, 18, 45, 5, 22], [0, 16, 40, 5, 26], [0.15, 6, 34, 0, 10], [0.35, 2, 30, 0, 4]],
 };
 // The standing leg. For the kicks it is the plant leg of the last, longer stride: it swings
 // through high, reaches out and lands heel first beside the ball about 0.1 s before contact, the
@@ -449,9 +526,11 @@ const SUPPORT_KEYS = {
   shot: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 72, 0, 0], [-0.14, 32, 18, -5, 0], [-0.07, 24, 24, 0, 0], [0, 14, 34, 0, 0], [0.1, 2, 30, 8, 0], [0.32, -8, 34, 15, 0], [0.5, 4, 30, 0, 0]],
   long: [[-0.5, -14, 45, 10, 0], [-0.3, 26, 70, 0, 0], [-0.14, 34, 18, -5, 0], [-0.07, 26, 24, 0, 0], [0, 16, 34, 0, 0], [0.14, 4, 30, 8, 0], [0.32, -6, 32, 12, 0], [0.5, 4, 30, 0, 0]],
   pass: [[-0.42, -12, 42, 8, 0], [-0.22, 22, 48, 0, 0], [-0.09, 18, 22, 0, 0], [0, 12, 27, 0, 0], [0.13, 6, 27, 0, 0], [0.4, 2, 26, 0, 0]],
-  touch: STAND, trap: STAND,
+  touch: STAND, trap: STAND, roll: STAND, drag: STAND, stepover: STAND,
+  // the feint sinks on the standing leg
+  feint: [[-0.3, 12, 28, 0, 0], [-0.1, 18, 42, 0, 0], [0.05, 20, 46, 0, 0], [0.35, 12, 28, 0, 0]],
 };
-const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5 };
+const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5, roll: 0.5, drag: 0.5, stepover: 0.5, feint: 0.6 };
 
 // The rest of the body during a kick, for a kick with the right foot (the rig mirrors a left-foot
 // kick). Keys [t, pelvis, shoulders, lean, bend, freeAbd, freeFlex, kickAbd, kickFlex] in degrees:
@@ -475,9 +554,15 @@ const BODY_KEYS = {
     [0, -2, 3, 5, 6, 48, -2, 16, -6], [0.13, 6, -5, 5, 4, 36, 22, 14, -14], [0.25, 4, -3, 4, 2, 24, 12, 12, -6], [0.4, 0, 0, 3, 0, 12, 0, 12, 0]],
   touch: [[-0.28, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -2, 2, 4, 2, 14, 0, 12, 0], [0, 0, 0, 5, 3, 15, 0, 12, 0], [0.12, 1, -1, 4, 2, 14, 0, 12, 0], [0.28, 0, 0, 2, 0, 12, 0, 12, 0]],
   trap: [[-0.42, 0, 0, 2, 0, 12, 0, 12, 0], [-0.2, -2, 2, 6, 3, 18, 0, 12, 0], [0, -1, 1, 8, 4, 20, 0, 14, 0], [0.12, 0, 0, 6, 3, 16, 0, 12, 0], [0.32, 0, 0, 2, 0, 12, 0, 12, 0]],
+  // the skills: arms a little out for balance; the step-over and the feint dip the shoulders
+  // towards the kicking side (bend < 0) and turn the hips with it, the feint deeper and lower
+  roll: [[-0.3, 0, 0, 2, 0, 12, 0, 12, 0], [0, -4, 3, -2, 4, 28, 5, 24, -5], [0.36, -2, 2, -1, 3, 26, 3, 22, -3], [0.7, 0, 0, 2, 0, 12, 0, 12, 0]],
+  drag: [[-0.3, 0, 0, 2, 0, 12, 0, 12, 0], [0, -4, 3, -2, 4, 30, 5, 25, -5], [0.3, 2, -2, 0, 2, 24, 0, 18, 0], [0.45, 0, 0, 2, 0, 12, 0, 12, 0]],
+  stepover: [[-0.35, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -10, 6, 4, -6, 30, 0, 25, 0], [0, -16, 10, 5, -10, 38, 5, 30, 0], [0.2, -6, 4, 6, -4, 32, 0, 24, 0], [0.45, 0, 0, 2, 0, 12, 0, 12, 0]],
+  feint: [[-0.3, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -8, 8, 6, -12, 35, 0, 25, 0], [0.05, -10, 10, 8, -14, 40, 0, 26, 0], [0.2, -4, 4, 5, -5, 25, 0, 18, 0], [0.35, 0, 0, 2, 0, 12, 0, 12, 0]],
 };
 // How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
-const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35 };
+const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35, roll: 0.5, drag: 0.5, stepover: 0.7, feint: 0.7 };
 const ELBOW = [30, 55];   // degrees of elbow bend in the arm poses: free arm, kicking-side arm
 
 // Value j of keys [t, v1, v2, ...] at t, in radians: Catmull-Rom tangents, so the foot keeps its
@@ -509,4 +594,16 @@ export function bodyPose(kind, t) {
   const v = [1, 2, 3, 4, 5, 6, 7, 8].map((j) => spline(BODY_KEYS[kind], t, j)), e = ELBOW.map((d) => (d * Math.PI) / 180);
   const w = actionW(kind, t);
   return { pelvis: v[0], shoulders: v[1], lean: v[2], bend: v[3], free: [v[4], v[5], e[0]], kick: [v[6], v[7], e[1]], w, wa: w * ARM_W[kind] };
+}
+
+// seeded 0..1 draws (mulberry32): the skills a player plays are the same on every run
+function mulberry(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }

@@ -10,7 +10,9 @@
 import { BallPlan, legPose, bodyPose } from "./ball3d.js";
 
 const B = window.BABYLON;
-const KINDS = ["shot", "long", "pass", "touch", "trap"];
+const KINDS = ["shot", "long", "pass", "touch", "trap", "roll", "drag", "stepover", "feint"];
+// the sole moves rest on top of the ball: its centre lies under the front of the foot, not ahead of it
+const ON_TOP = new Set(["roll", "drag", "stepover"]);
 
 export class BallRig {
   constructor(scene, match, span, probeRoot, scale, ballR) {
@@ -26,7 +28,7 @@ export class BallRig {
       chain.forEach((n) => n.computeWorldMatrix(true));
       const f = L[`foot_${side}`].getAbsolutePosition(), t = L[`ball_${side}`].getAbsolutePosition();
       const c = B.Vector3.Lerp(f, t, 0.65).scale(scale);
-      this.reach[kind + side] = { x: c.x, z: c.z + ballR };
+      this.reach[kind + side] = { x: c.x, z: c.z + (ON_TOP.has(kind) ? 0 : ballR) };
     }
     this.match = match; this.ballR = ballR;
     this.replan(span);

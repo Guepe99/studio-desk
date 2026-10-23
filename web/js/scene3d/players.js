@@ -41,6 +41,20 @@ export const LOCO = [
   { name: "Sprint_Loop", speed: 9.0, stride: 6.0 },
 ];
 const BLEND_S = 0.08;   // s, time constant of the locomotion weights: no one-frame pops
+
+// People step faster than the loops: [ground speed m/s, steps per second] (docs/flow3d.md section
+// 6: PMC3756042, PMC3022995, jssm.org table 2, PMC12047830). The first point is the walk loop at
+// its own stride, so slow walks keep the clip as it is.
+const CADENCE = [[0.93, 1.5], [1.51, 1.91], [2.9, 2.88], [4.15, 2.88], [5.07, 3.04], [7.32, 3.6], [8.8, 4.58]];
+const WARP_MIN = 0.6;   // the leg swing is never cut below 60% of the clip's
+// Metres per cycle (two steps) a person runs at ground speed v; null below the table (clip stride).
+export function humanStride(v) {
+  if (v <= CADENCE[0][0]) return null;
+  let k = 0;
+  while (k < CADENCE.length - 2 && v > CADENCE[k + 1][0]) k++;
+  const [[a, fa], [b, fb]] = [CADENCE[k], CADENCE[k + 1]];
+  return (2 * v) / (fa + (fb - fa) * Math.min(1, (v - a) / (b - a)));
+}
 export const MODES = ["forward", "backpedal", "strafe", "jockey"];
 
 // Weights of the four clips for a ground speed (two neighbours at a time, summing to 1).
@@ -135,38 +149,107 @@ export function actionDriver(match, schedule) {
   };
 }
 
-// Throw-ins: the thrower picks the ball up, lifts it over his head with both hands and throws it
-// (Laws of the Game, Law 15: both hands, from behind and over the head, facing the field). The arms
-// borrow the raise of THROW.clip, held at THROW.up; the scene puts the ball between the hands
-// (throwBall). Times are seconds from the throw: [start, release, end].
-export const THROW = { clip: "M_celeb_arms_up", up: 1.1, start: -1.6, raise: 0.7, end: 0.45 };
+// Throw-ins (Laws of the Game, Law 15: both hands, from behind and over the head, facing the
+// field). The taker picks the ball up once he reaches it and slows down (a crouch, THROW.crouch,
+// with the body drawn to the ball), carries it at his chest (THROW.carry held at carryT) while the
+// tracking walks him to the spot, then raises it over his head (THROW.clip, from lift to up) and
+// throws on the event time. A Premier League throw-in waits 15 to 18 s on average
+// (docs/flow3d.md, section 5): the wait is the tracking's, the ball is in his hands for it. The
+// scene puts the ball between the hands (throwBall). Times: start, raise, end are seconds from
+// the throw; down, grab, rise from the pick-up.
+export const THROW = {
+  clip: "M_celeb_arms_up", lift: 0.55, up: 1.1, start: -1.6, raise: 0.7, end: 0.45,
+  carry: "GK_Catch", carryT: 1.6, crouch: "M_crouch_head_down", crouchT: 0.5,
+  down: 0.45, grab: 0.15, rise: 0.45,
+  near: 1.2,     // m: the taker has reached the ball
+  walk: 2.4, still: 1.2,   // m/s: his tracking speed in the second before the pick-up, and through the crouch
+  after: 0.35,   // s from reaching the ball to the bottom of the crouch
+  look: 30,      // s: how far back the reach is looked for
+  reach: 0.35,   // m in front of the body where the hands meet the ball on the grass
+  drawIn: 0.75, drawHold: 0.3, drawOut: 1.2,   // s: the draw to the ball eases in from the window's start, holds, eases out
+};
+const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 
-// Per player id, [{ts, yaw}] of his throw-ins, yaw towards where the ball goes.
-export function scheduleThrows(events) {
+// Per player id, [{ts, yaw, pick, ball}] of his throw-ins: yaw towards where the ball goes, pick
+// the time his hands close on the ball, ball where it lies then ([x, y], null without positions).
+// match: positions (match.at, match.index) to find when the taker reaches the ball standing at the
+// line and has slowed down; without them, or when he never does, the pick-up comes just before
+// the raise, where he stands (ball null: no draw).
+export function scheduleThrows(events, match = null) {
   const out = {};
   for (const e of events) {
     if (e.type_name !== "throw_in" || !e.player_id) continue;
-    (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y) });
+    const latest = e.ts + THROW.start - THROW.rise - 0.1;
+    let pick = latest, ball = null;
+    const i = match?.index?.[e.player_id];
+    if (i !== undefined) {
+      const at = (t) => {
+        const p = match.at(i, t), b = match.at(0, t), b2 = match.at(0, t + 0.1);
+        if (!p || !b || !b2) return false;
+        // the ball lies still at the line and he stands at it
+        return Math.hypot(b[0] - e.start_x, b[1] - e.start_y) < 1.5 && Math.hypot(b2[0] - b[0], b2[1] - b[1]) < 0.05 && Math.hypot(p[0] - b[0], p[1] - b[1]) < THROW.near;
+      };
+      // and has slowed down: at most a walk for the second before the pick-up, nearly still through
+      // the crouch (so the crouch stays full body, and the body never moves 5 cm in a 60 Hz frame)
+      const speed = (t) => { const a = match.at(i, t - 0.05), c = match.at(i, t + 0.05); return a && c ? Math.hypot(c[0] - a[0], c[1] - a[1]) / 0.1 : Infinity; };
+      const calm = (t) => { for (let s = t - 1; s <= t + THROW.rise; s += 0.05) if (speed(s) > (s < t - THROW.down ? THROW.walk : THROW.still)) return false; return true; };
+      let first = null;
+      for (let t = latest; t > e.ts - THROW.look && at(t); t -= 0.1) first = t;
+      for (let t = first ?? Infinity; t <= latest; t += 0.05) {
+        if (t < first + THROW.after || !at(t) || !calm(t)) continue;
+        const b = match.at(0, t);
+        pick = t; ball = [b[0], b[1]];
+        break;
+      }
+    }
+    (out[e.player_id] ??= []).push({ ts: e.ts, yaw: Math.atan2(e.end_x - e.start_x, e.end_y - e.start_y), pick, ball });
   }
   return out;
 }
 
-// The throw holding ts and the time from its release (negative before), or null.
+// The throw holding ts: {t, u: seconds from the release (negative before), p: seconds from the
+// pick-up}, or null.
 export function throwAt(list, ts) {
-  for (const t of list ?? []) if (ts >= t.ts + THROW.start && ts < t.ts + THROW.end) return { t, u: ts - t.ts };
+  for (const t of list ?? []) if (ts >= t.pick - THROW.down && ts < t.ts + THROW.end) return { t, u: ts - t.ts, p: ts - t.pick };
   return null;
 }
 
-// The throw-ins as a driver (priority 30): arms up over the head, facing the throw.
+// The throw-ins as a driver (priority 30): down to the ball, up with it at the chest, arms over
+// the head facing the throw.
 export function throwDriver(match, schedule) {
   return {
     priority: 30,
     pose(i, ts) {
       const a = throwAt(schedule[match.meta.entities[i]], ts);
       if (!a) return null;
-      const { u } = a, w = Math.max(0, Math.min(1, (u - THROW.start) / 0.25, (THROW.end - u) / THROW.end));
-      const t = Math.min(THROW.up, ((u - THROW.start) / THROW.raise) * THROW.up);
-      return { yaw: a.t.yaw, yawW: w, emotion: { kind: "throw", clip: THROW.clip, t, weight: w, upper: true } };
+      const { t: T, u, p } = a, out = { leg: null };
+      // the arms: the carry from the pick-up, crossfaded into the raise, which fades after the release
+      const carry = { clip: THROW.carry, t: THROW.carryT, weight: smooth01((p + THROW.grab) / 0.4) };
+      if (u < THROW.start) out.emotion = { kind: "throw", ...carry, upper: true };
+      else {
+        const t = THROW.lift + Math.min(1, (u - THROW.start) / THROW.raise) * (THROW.up - THROW.lift);
+        const w = Math.max(0, Math.min(1, (THROW.end - u) / THROW.end));
+        out.emotion = { kind: "throw", clip: THROW.clip, t, weight: w * smooth01((u - THROW.start) / 0.3), upper: true, under: { ...carry, weight: carry.weight * w } };
+      }
+      // the crouch: full body while he picks the ball up, eased in and out
+      const wc = smooth01((p + THROW.down) / 0.3) * (1 - smooth01((p - THROW.rise + 0.3) / 0.3));
+      if (wc > 0) out.emotion = { kind: "throw", clip: THROW.crouch, t: THROW.crouchT, weight: wc, full: true, under: carry };
+      // drawn to the ball so his hands meet it, facing it; then the facing of the throw
+      const here = match.at?.(i, ts);
+      // from the window's first frame (no jump), capped at THROW.near, and slow: from within
+      // THROW.near it adds under 3 cm a frame at 60 Hz to his own walk
+      const wb = smooth01((p + THROW.down) / THROW.drawIn) * (1 - smooth01((p - THROW.drawHold) / THROW.drawOut));
+      if (T.ball && here && wb > 0) {
+        const dx = T.ball[0] - here[0], dy = T.ball[1] - here[1], d = Math.hypot(dx, dy);
+        if (d > 1e-3) {
+          const k = (Math.min(THROW.near, Math.max(0, d - THROW.reach)) / d) * wb;
+          out.dx = dx * k; out.dy = dy * k;
+          out.yaw = Math.atan2(dx, dy); out.yawW = wb;
+        }
+      }
+      const wy = smooth01((u - THROW.start + 0.5) / 0.4) * Math.max(0, Math.min(1, (THROW.end - u) / THROW.end));
+      if (wy > (out.yawW ?? 0)) { out.yaw = T.yaw; out.yawW = wy; }
+      return out;
     },
   };
 }
@@ -215,8 +298,19 @@ export function setupAnimations(inst, container, prefix) {
   const fps = loco[0].targetedAnimations[0].animation.framePerSecond;
   if (!TRACKS.has(container)) TRACKS.set(container, {});
   const tracks = TRACKS.get(container);
+  // the legs of the walk, jog and sprint loops: each bone's node and its mean pose over the cycle
+  const legs = [];
+  for (const name of WARP_BONES) {
+    const node = nodes.get(`${prefix}${name}`);
+    if (!node?.rotationQuaternion) continue;
+    const means = loco.slice(1).map((g) => {
+      const ta = g.targetedAnimations.find((t) => t.target === node && t.animation.targetProperty === "rotationQuaternion");
+      return ta ? cycleMean(ta.animation, g.from, g.to) : null;
+    });
+    if (means.every(Boolean)) legs.push({ node, means });
+  }
   return {
-    loco, fps, cache,
+    loco, fps, cache, legs,
     node: (name) => nodes.get(`${prefix}${name}`),
     // the group for clip `name`, or null when the file lacks it
     get(name) {
@@ -270,16 +364,59 @@ function upperTracks(container, name) {
   return { from: g.from, list: list.map((t) => [t.target.name, t.animation]) };
 }
 
-// After the animation step: the upper-body emotion of player p at its full weight.
+// Stride warping (Unreal's pose warping, docs/flow3d.md section 6): the leg bones of the forward
+// loops are pulled towards their mean pose over the cycle by the stride ratio s, so the swing
+// shrinks with the faster cycle. Hips and knees by s, the ankles left alone: on M001 the jog's
+// planted foot then slides 0.059 m a step at the median, against 0.050 m unwarped (less at p95);
+// knees by 0, 0.5 or 1.5 of it slid 0.139, 0.094 and 0.109 m (docs/flow3d.md section 6). Runs
+// after the animation step and before the ball rig's leg actions and grounding (Scene3D adds it
+// first).
+const WARP_BONES = ["thigh_l", "thigh_r", "calf_l", "calf_r"];
+const WARP_N = 32;   // samples of the cycle for the mean pose
+const MEANS = new WeakMap();   // animation -> its mean quaternion over its group's [from, to)
+function cycleMean(a, from, to) {
+  const got = MEANS.get(a);
+  if (got) return got;
+  const m = new B.Quaternion(0, 0, 0, 0);
+  let first = null;
+  for (let j = 0; j < WARP_N; j++) {
+    const q = a.evaluate(from + ((to - from) * j) / WARP_N);
+    first ??= q.clone();
+    const sg = B.Quaternion.Dot(first, q) < 0 ? -1 : 1;
+    m.x += sg * q.x; m.y += sg * q.y; m.z += sg * q.z; m.w += sg * q.w;
+  }
+  m.normalize();
+  MEANS.set(a, m);
+  return m;
+}
+let qm = null;
+export function warpStride(p) {
+  const W = p.warp;
+  if (!W || !p.holder.isEnabled()) return;
+  qm ??= new B.Quaternion();
+  const [, w1, w2, w3] = W.w, n = w1 + w2 + w3;
+  for (const { node, means: [a, b, c] } of p.anim.legs) {
+    // the loops' means blended by their weights (they lie a few degrees apart)
+    const sb = B.Quaternion.Dot(a, b) < 0 ? -1 : 1, sc = B.Quaternion.Dot(a, c) < 0 ? -1 : 1;
+    qm.set((w1 * a.x + sb * w2 * b.x + sc * w3 * c.x) / n, (w1 * a.y + sb * w2 * b.y + sc * w3 * c.y) / n,
+      (w1 * a.z + sb * w2 * b.z + sc * w3 * c.z) / n, (w1 * a.w + sb * w2 * b.w + sc * w3 * c.w) / n).normalize();
+    B.Quaternion.SlerpToRef(qm, node.rotationQuaternion, 1 - (1 - W.s) * W.g, node.rotationQuaternion);
+  }
+}
+
+// After the animation step: the upper-body emotion of player p at its full weight, over the one
+// it fades from (e.under: the throw-in's carry under the raise).
 export function applyUpper(p) {
   const e = p.upper;
   if (!e || !p.holder.isEnabled()) return;
-  const T = p.anim.upper(e.clip);
-  if (!T) return;
-  const f = T.from + Math.max(0, e.t) * p.anim.fps;
-  for (const [bone, a] of T.list) {
-    const n = p.anim.node(bone);
-    if (n?.rotationQuaternion) B.Quaternion.SlerpToRef(n.rotationQuaternion, a.evaluate(f), e.weight, n.rotationQuaternion);
+  for (const x of e.under?.weight > 0 ? [e.under, e] : [e]) {
+    const T = p.anim.upper(x.clip);
+    if (!T) continue;
+    const f = T.from + Math.max(0, x.t) * p.anim.fps;
+    for (const [bone, a] of T.list) {
+      const n = p.anim.node(bone);
+      if (n?.rotationQuaternion) B.Quaternion.SlerpToRef(n.rotationQuaternion, a.evaluate(f), x.weight, n.rotationQuaternion);
+    }
   }
 }
 
@@ -313,7 +450,8 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   const e = r.emotion;
   // a full-body clip (crouch, knee slide) only while the player is nearly still; running, it is
   // upper body only so the legs keep the locomotion (the tracking owns the root)
-  const eFull = !!(e && e.full && !r.action && v < 1.5);
+  // (the tracking's speed, r.vTrack: a driver drawing him to the ball does not count)
+  const eFull = !!(e && e.full && !r.action && (r.vTrack ?? v) < 1.5);
   if (eFull) full = Math.max(full, e.weight);
   const loop = motionLoop(motion, r.mode, r.runL);
   const lm = loop && motion.clips[loop];
@@ -336,7 +474,16 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   wl = p.wl = p.wl === undefined || k === 1 ? wl : p.wl + (wl - p.wl) * k;
   const moving = w[1] + w[2] + w[3];
   const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
-  p.phase = (((p.phase + dir * (vv / stride) * dt) % 1) + 1) % 1;
+  // stride warping, forward runs only: the cycle runs at a person's cadence and warpStride swings
+  // the legs by the same ratio, so the planted foot still moves back at the ground speed. The
+  // forward share fw eases like the weights, so leaving or entering "forward" fades the warp
+  // (and the cadence with it) instead of dropping it in a frame; no leg bones, no warp.
+  const human = r.mode === "forward" && moving > 0 ? humanStride(vv) : null;
+  if (r.mode === "forward") p.warpS = human ? Math.max(WARP_MIN, Math.min(1, human / stride)) : 1;
+  const fw = p.fw = (p.fw ?? 0) + ((r.mode === "forward" ? 1 : 0) - (p.fw ?? 0)) * k;
+  const s = p.anim.legs?.length && p.warpS ? 1 - (1 - p.warpS) * fw : 1;
+  p.phase = (((p.phase + dir * (vv / (stride * s)) * dt) % 1) + 1) % 1;
+  p.warp = s < 1 ? { s, g: moving * (1 - full) * (1 - wl), w } : null;
   p.idle = (p.idle + dt / LOCO[0].period) % 1;
   p.anim.loco.forEach((g, j) => {
     const wj = w[j] * (1 - full);
@@ -352,7 +499,9 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   // an upper-body emotion waits for applyUpper; a full-body one is a clip like the actions (a
   // full-body motion clip only while nearly still, eFull; otherwise its upper body)
   const up = !!e?.upper && !eFull;
-  p.upper = up && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)) } : null;
+  p.upper = up && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)), under: e.under } : null;
+  // the arms' pose under a full-body emotion or a raise not yet started (the throw-in's carry)
+  if (!p.upper && e?.under?.weight > 0) p.upper = { clip: e.under.clip, t: e.under.t, weight: Math.min(1, e.under.weight) };
   if (e && !up && p.anim.get(e.clip)) want.set(e.clip, [e.t, eFull ? e.weight : e.weight * (1 - full)]);
   if (r.action) p.anim.get(r.action.clip);
   for (const [key, g] of Object.entries(p.anim.cache)) {

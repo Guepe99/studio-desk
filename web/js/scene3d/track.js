@@ -36,3 +36,38 @@ export function hermiteAt(match, i, ts) {
   }
   return out;
 }
+
+// The shown root of player i at ts, smoothed by a critically damped spring without its lag. The
+// spring's impulse response, omega^2 u e^(-omega u), weighs the path behind the point it reads;
+// the whole track is known, so it reads ahead by the response's mean delay (2 / omega) and a
+// constant velocity passes unchanged. Under an acceleration a the point moves by about a / omega^2
+// (1.25 cm at 5 m/s^2 and omega 20); the acceleration steps of the simulator are spread over the
+// response instead of landing in one frame. Stateless: a seek shows the same root as playback.
+// omega 0 (or a sample off the pitch) gives the path itself.
+const ROOT_K = 9, ROOT_CAP = 0.05;   // samples of the response; metres off the path at most
+const KERNELS = new Map();   // omega -> { u: [s], w: [weights summing to 1], lead: s }
+function kernel(omega) {
+  if (!KERNELS.has(omega)) {
+    const u = Array.from({ length: ROOT_K }, (_, j) => ((j + 0.5) / ROOT_K) * (6 / omega));
+    const raw = u.map((x) => x * Math.exp(-omega * x)), sum = raw.reduce((a, b) => a + b, 0);
+    const w = raw.map((x) => x / sum);
+    KERNELS.set(omega, { u, w, lead: u.reduce((a, x, j) => a + x * w[j], 0) });
+  }
+  return KERNELS.get(omega);
+}
+export function rootAt(match, i, ts, omega) {
+  const now = match.at(i, ts);
+  if (!now || !(omega > 0)) return now;
+  const { u, w, lead } = kernel(omega), out = [0, 0, 0];
+  for (let j = 0; j < ROOT_K; j++) {
+    const q = match.at(i, Math.min(Math.max(ts + lead - u[j], 0), match.duration));
+    if (!q) return now;
+    for (let k = 0; k < 3; k++) out[k] += w[j] * q[k];
+  }
+  // a turn faster than a person can make (the DEMO fixture's zigzags) is rounded by less than
+  // ROOT_CAP, through a soft clamp so the root keeps a smooth path; on the simulated matches the
+  // offset is 1.3 cm at most and the clamp takes 2% of it
+  const d = Math.hypot(out[0] - now[0], out[1] - now[1]);
+  if (d > 1e-9) { const f = (ROOT_CAP * Math.tanh(d / ROOT_CAP)) / d; for (let k = 0; k < 2; k++) out[k] = now[k] + (out[k] - now[k]) * f; }
+  return out;
+}
