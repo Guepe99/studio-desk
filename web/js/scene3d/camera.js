@@ -24,11 +24,16 @@
 // then back to camera 1; the ball rule is off meanwhile. A foul or a keeper's save gets the same
 // tight shot (of the fouler, of the keeper) when play really stops: from 1 s after it until 0.5 s
 // before the next event, and only if that leaves at least 2 s.
+// At other stoppages (throw-ins, goal kicks, corners, free kicks) the director sometimes cuts away
+// to the crowd and the stadium (cutaway.js): the fans in the front rows, the fans behind a goal, or
+// a beauty shot of the bowl from high in a corner, on the replay camera (free outside replays),
+// then back to camera 1 before the restart.
 // Replays use one free camera at one of four angles: the goal camera (behind the goal on the long
 // axis, line of sight 13.5 degrees, OP-32 2.2.7), a pitch-level camera in line with the 18-yard
 // line, the reverse angle from the far stand, and a high tactical view. They are stateless (a
 // Gaussian-smoothed ball) so any frame renders alone.
 import { railPlan, railAt, hidden } from "./sightline.js";
+import { CELEBRATION, scorers, tightStops, cutawayPlan, cutawayShot } from "./cutaway.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -54,15 +59,14 @@ const smooth01 = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * 
 // the handheld drifts with him instead of chasing each stride
 const TIGHT = { dist: 18, height: 2.2, width: 4.5, aim: 0.95, avg: 10 };
 const GOAL_CAM = { back: 14, tilt: 13.5 * DEG };   // metres behind the goal line, sight line to the penalty mark
-export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
+export { CELEBRATION };
 // punch-in on a goal: starts `lead` s before it, full after `ramp` s, `width` m across the frame,
 // aimed `front` m out from where the ball crosses into the net
 const PUNCH = { lead: 1.6, ramp: 1.4, width: 16, front: 4 };
 // a shot that is not a goal gets a lighter punch-in, held `hold` s after the strike and let go over `out` s
 const SHOT_PUNCH = { width: 22, hold: 1.2, out: 1.2 };
 const SHOTS = new Set(["shot", "shot_freekick", "shot_penalty"]);
-const STOP_EVENTS = new Set(["foul", "keeper_save"]);
-// prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no cut to camera 2, no replay camera
+// prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no cut to camera 2, no replay camera, no cutaway
 const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 
 // Zoom factor for the size of the frame on screen: 1 from 1000 CSS px wide, down to 0.65 on a phone.
@@ -136,17 +140,11 @@ export class Cameras {
     this.mode = "broadcast";
     this.focus = null;   // metres to the subject of a tight shot or a replay (depth of field), else null
     // the scorer of each goal fact, as an entity index
-    this.goals = match.goals.map((g) => {
-      const pid = g.player_id ?? match.events.find((e) => g.source_event_ids?.includes(e.event_id))?.player_id;
-      return { ts: g.ts, i: match.meta.entities.indexOf(pid) };
-    }).filter((g) => g.i > 0);
+    this.goals = scorers(match);
     // stoppages with a tight shot, as [from, to, entity]: goals, then fouls and saves that stop play
-    const idx = (pid) => match.meta.entities.indexOf(pid);
-    this.stops = this.goals.map((g) => [g.ts + CELEBRATION[0], g.ts + CELEBRATION[1], g.i]);
-    match.events.forEach((e, k) => {
-      const next = match.events[k + 1]?.ts ?? match.duration;
-      if (STOP_EVENTS.has(e.type_name) && idx(e.player_id) > 0 && next - 0.5 - (e.ts + 1) >= 2) this.stops.push([e.ts + 1, Math.min(e.ts + 6, next - 0.5), idx(e.player_id)]);
-    });
+    this.stops = tightStops(match, this.goals);
+    // crowd and stadium cutaways at the other stoppages, never over a tight shot
+    this.cutaways = cutawayPlan(match, this.stops);
     // punch-ins: goals until the cut to camera 2, other shots briefly ({ts, x, y, width, until, out})
     this.punches = this.goals.map((g) => { const b = match.at(0, g.ts); return b && { ts: g.ts, x: b[0], y: b[1], width: PUNCH.width, until: g.ts + CELEBRATION[0], out: 0 }; }).filter(Boolean);
     for (const e of match.events) {
@@ -175,6 +173,13 @@ export class Cameras {
       const angle = view.angle ?? this.replayAngle;
       this._replay(ts, angle);
       this.mode = `replay-${angle}`;
+      return;
+    }
+    const cut = this.cutaways.find((c) => ts >= c.from && ts < c.to);
+    if (cut) {
+      this._cutaway(ts, cut);
+      this.state = null;
+      this.mode = `crowd-${cut.kind}`;
       return;
     }
     const stop = this.stops.find(([a, b]) => ts >= a && ts < b);
@@ -230,6 +235,18 @@ export class Cameras {
     this.focus = dist;
     this.scene.activeCamera = cam;
     return true;
+  }
+
+  // A cutaway (cutaway.js) on the replay camera; depth of field on the fans, none on the bowl.
+  _cutaway(ts, c) {
+    const { pos, aim, width, hfov, focus } = cutawayShot(c, ts), cam = this.replay;
+    cam.position.set(...pos);
+    const target = new B.Vector3(...aim);
+    cam.setTarget(target);
+    const dist = B.Vector3.Distance(cam.position, target);
+    cam.fov = hfov ? 2 * Math.atan(Math.tan(hfov / 2) / this._aspect(cam)) : this._fovFor(cam, width, dist);
+    if (focus) this.focus = dist;
+    this.scene.activeCamera = cam;
   }
 
   _zoom() { return lensScale(this.scene.getEngine().getRenderingCanvas()?.clientWidth); }

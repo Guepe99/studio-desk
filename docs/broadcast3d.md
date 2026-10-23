@@ -69,6 +69,73 @@ shot of a match broadcast does.
   game (`view3d.js` CARRIER): the player of the next touch, while the ball is on the ground within
   2.5 m of him for 0.2 s.
 
+### Cutaways at stoppages
+
+Feedback from the owner after watching M001 in 3D: at a throw-in or a goal kick he expected a shot
+of the crowd and the stadium, as on TV and in a football game. The rules we follow:
+
+| Rule | Number | Source |
+|---|---|---|
+| The director stays on camera 1 in play and directs when the ball is dead | "when the ball's not in play, that's when a director directs"; camera 1 "as much as I can" | UEFA Champions Journal, "Director's cut" (a Champions League final director) |
+| Cut only once the ball has gone out | "I prefer to cut when the ball has gone out of play" | SVG Europe, interview with a FIFA World Cup 2022 host-broadcast director (9 Dec 2022) |
+| Crowd and bench shots are their own cameras, called live at stoppages | "Fans on five, manager on 13" | Champions Journal, as above |
+| A "public" camera filming the crowd is one of 13 camera classes of a match broadcast; one camera change every 9 s on average (583 a game), replay shots 6.8 s on average | 200 fully annotated games | SoccerNet-v2 (Deliège et al., CVPR Workshops 2021), camera shot segmentation |
+| Football games show the stadium from the air and fans waving flags and scarves | drone shots of the stadium, banners and flags in the stands | EA SPORTS FIFA 23 coverage (NME) and EA's visuals deep dive |
+| Length of one cutaway | 4 to 5 s | our choice: no source gives one; it is shorter than the 9 s average shot and the 6.8 s replay shot above, so the restart is never missed |
+| How often | at least 60 s apart, always one within 150 s when a stoppage allows, 55% of the stoppages in between | our choice: no source gives a rate; this gives about one every two and a half minutes, at about half of the stoppages |
+| Back on camera 1 before the restart | 4 s before a throw-in (the taker picks the ball up 1.6 s before it), 3 s before any other restart | our choice, over the 0.5 s floor the tight shots keep |
+
+Sources: https://www.champions-journal.com/1000/directors-cut ,
+https://www.sportsvideo.org/?p=232815 , https://arxiv.org/abs/2011.13367 ,
+https://www.nme.com/news/gaming-news/fifa-23-will-improve-matchday-experience-with-better-crowds-and-flashier-replays-3285320 ,
+https://www.ea.com/ea-studios/ea-sports/news/visuals-audio-deep-dive .
+
+What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
+
+- **Which stoppages:** the dead ball before a throw-in, a goal kick, a corner or a free kick. The
+  cut comes 1.5 s after the ball leaves the pitch (the first tracking sample outside the lines), or
+  for a foul right after camera 2's tight shot of the fouler, cutting straight from it. A stoppage
+  with a goal is left to the celebration and the goal replay. The match data has no substitutions
+  and no half-time break (the second half starts 1.3 s after the first ends), so neither gets one.
+- **Which shot**, by restart and never the same kind twice in a row (a hash of the match id and the
+  event id picks the first or second preference):
+  - *fans*: the two front rows of the far stand, the 3D spectators with their scarves, from the far
+    touchline 9 m away and a little from the side, 7.5 m across the frame, depth of field on the
+    rows so the bowl behind softens, sliding 1.6 m along the row over 4 s (a handheld walking the
+    touchline). First choice at throw-ins and free kicks.
+  - *end*: the fans behind the goal nearer the restart, from 9 m in front of the goal line and
+    13 m to the side, 3.4 m up (over the players' heads), the goal in the foreground and the end
+    stand in the home or away colours filling the frame, pushing in from 30 to 24 m across over
+    4.5 s. First choice at corners.
+  - *stadium*: a beauty shot from high in the near corner away from the restart, 21 m up under the
+    roof, 66 degrees across the whole bowl to the far stand, the corner screen and the floodlights,
+    panning slowly over 5 s. First choice at goal kicks. Never straight from camera 2's tight
+    shot: depth of field switches off at that cut, and the first frames of the rebuilt post chain
+    show stale green where nothing is drawn, which in this shot is the sky (seen in the stills).
+- **Never during play:** every cutaway lies between two events, after the ball is out and ending
+  at least 3 s (4 s at a throw-in) before the restart; never over a tight shot or a goal replay.
+  The carrier tag is off during a cutaway.
+- **Same frame every time:** the plan is a pure function of the match (no `Math.random`), so a
+  seek, a replay and a video frame agree. With `prefers-reduced-motion` camera 1 holds the wide shot
+  and there is no cutaway, like the other cuts.
+- **On M001:** 39 cutaways, 20 in the first half and 19 in the second, of 83 restarts: 15 fans,
+  13 end, 11 stadium, back on camera 1 between 9.5 and 27 s before the restart. M002 to M004 get
+  40 to 42.
+- **No new geometry:** the shots use the replay camera, free outside replays, and the existing
+  stands and crowd. Frame cost on M001, match paused, median of four renders finished on the GPU
+  (SwiftShader, high profile, 1280 x 720; compare only): the stadium shot 6.2 s and 177 draw
+  calls against camera 1's 6.2 s and 373 at the same moment; the fans and end shots 11.9 s and
+  10.4 s, about 640 draw calls, as camera 2's tight shot (10.7 s, 658), because both use depth of
+  field (high profile only), against 8.0 s on camera 1.
+
+Tests: `node --test tests/web/cutaway.test.mjs` (the plan on M001 is the same twice, no event
+inside a cutaway, the next event is the restart, the cut back comes in time, no overlap with tight
+shots or replays, spacing and variety; a throw-in too soon gets none),
+`MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-camera.mjs` (reduced motion
+holds camera 1 through a cutaway, without it the cutaway cuts). Stills:
+`WEBGL=2 MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh cutaway3d-stills.mjs <tag>`
+into `out/crowd-cutaways/` (not in git).
+
 ## 2. Post-processing
 
 `DefaultRenderingPipeline` with an HDR buffer on both profiles:
