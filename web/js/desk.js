@@ -1370,8 +1370,9 @@ export class Desk {
 const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
 // The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
 // player check-ins, the analyst's team shape panels) wait for the visitor; the template graphics (momentum,
-// name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did.
-const GEN_WAITS = (c) => c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats";
+// name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do
+// the fillers (payload.filler, audiences.py fill_cues): they keep every sheet from going a minute with nothing.
+const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

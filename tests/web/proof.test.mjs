@@ -147,7 +147,24 @@ test("M001 line-ups: the two formations on screen, each found in its team's star
     assert.deepEqual(pr.numbers.map((x) => x.src.fact.kind), ["start_formation", "start_formation"]);
     assert.deepEqual(pr.facts.map((f) => f.fact_id), cue.payload.fact_ids);
   }
-  assert.equal(P.match.cues.filter((c) => c.graphic === "lineup").length, 9);  // analyst, casual and kids in en, it and es
+  // one per sheet (analyst, casual, kids, the two teams and three players) in en, it and es
+  assert.equal(P.match.cues.filter((c) => c.graphic === "lineup").length, 24);
+});
+
+test("M001 fillers: a pass gives its length and difficulty, a name plate its speed, each from its own fact; the kids read their words", () => {
+  const P = PACKS.M001, fill = P.match.cues.filter((c) => c.payload.filler);
+  const pass = fill.find((c) => c.graphic === "pass_shot" && c.lang === "it" && c.audience === "casual");
+  const pr = proofOf(pass, P.ctx(pass));
+  assert.equal(pr.numbersOk, true);
+  assert.deepEqual(pr.numbers.map((x) => x.src.fact.kind), ["pass_distance", "pass_difficulty"], onAirText(pass));
+  assert.match(onAirText(pass), /Difficoltà \d+,\d\/10/);
+  const plate = fill.find((c) => c.graphic === "nameplate" && c.lang === "en");
+  assert.deepEqual(proofOf(plate, P.ctx(plate)).numbers.map((x) => x.src.fact.kind), ["sprint_speed"]);
+  const kids = fill.find((c) => c.graphic === "pass_shot" && c.lang === "en" && c.audience === "kids");
+  assert.match(kids.payload.quality, /^How hard: \d+\.\d\/10$/);
+  // the momentum of a window and a check-in fill too, and every filler is a code graphic
+  assert.ok(fill.some((c) => c.graphic === "momentum") && fill.some((c) => c.payload.kind === "checkin" && !c.audience.startsWith("player:")));
+  assert.ok(fill.every((c) => c.story_id === null));
 });
 
 test("the numbers in a line: minutes, a /10 scale, a formation, a score and a unit", () => {

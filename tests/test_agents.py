@@ -383,7 +383,7 @@ def test_export_uses_runtime_records_with_contract_shapes(desk_db, tmp_path):
         assert set(s["texts"]) == {"en", "it", "es"} and set(s["fact_ids"]) <= fact_ids
     assert {c["lang"] for c in cues} == {"en", "it", "es"} and {"analyst", "casual"} <= {c["audience"] for c in cues}
     for c in cues:
-        assert set(c["payload"]) == PAYLOAD_KEYS[c["graphic"]]
+        assert set(c["payload"]) - {"filler"} == PAYLOAD_KEYS[c["graphic"]]  # a filler adds its marker
         assert set(c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]) <= fact_ids
         assert c["audience"] in ("analyst", "casual", "kids") or c["audience"].split(":")[0] in ("team", "player")
     assert all(isinstance(t["fact_ids"], list) for t in tr)

@@ -145,6 +145,9 @@ is the OGraf `data` for that graphic:
 | `team_stats` | `{when, rows: [{stat, home, away, home_v, away_v}], fact_ids}` (feat/analyst-stats) |
 | `lineup` | `{teams: [{side, formation, lines: [[{player_id, shirt, name}]]}], fact_ids}` (feat/no-empty-minutes) |
 
+Any payload may also carry `filler: true` (feat/no-empty-minutes, additive): a code cue added so that a
+sheet never goes a minute with nothing on air (see Audiences additions). A graphic ignores the key.
+
 ## Replay export (static, no API needed)
 
 `python -m studiodesk.export <match_id>` writes `web/data/<match_id>/`:
@@ -412,18 +415,31 @@ Agents only learn about an event when the clock releases it, in replay generatio
   - `start_formation`: one fact per team at `ts` 0, period 1, `unit` `formation`, `value` the team
     sheet's lines as digits from the starters' positions (`433.0` is 4-3-3), label
     `Starting formation 4-3-3, team sheet`. Written only for 11 starters with one keeper and three lines.
-  - `lineup` cue at `ts` 0, 15 s, `story_id` null, for `analyst`, `casual` and `kids` in each language of
-    the sheet, unless a cue of that audience starts in the first 15 s. Payload: `teams`, home then away,
-    `side`, `formation` as shown (`4-3-3`), `lines` the starters as GK, DF, MF, FW, each line by shirt,
-    `name` the surname (the full name when two players of the match share it); `fact_ids` the two
-    `start_formation` facts, home then away.
-  - Then, while a stretch of play with no cue of the audience on screen (counting template cues and
-    stories whose `default_status` is `auto_approved`; a waiting story's cues may never air) is longer than `MAX_GAP_S`
-    (analyst 300 s, casual and kids 360 s, on the English sheet, each half apart), the filler that starts
-    latest within that limit of the stretch's start: a `momentum` cue of a window end (payload as the
-    template one, 8 s) or the `checkin` `why_card` of the player with the most touches at a check-in `ts`
-    (8 s). A filler starts no earlier than its facts and at most 60 s after them, overlaps no cue of the
-    audience (waiting stories included) and ends before half-time or full time; it is written once per language of the sheet.
+  - Fillers (additive): every cue this step adds to keep a sheet from going a minute with nothing on air
+    has `story_id` null and one payload key more, `filler: true`; the template keys of its graphic are
+    unchanged. The marker tells a filler from a template cue of the same graphic, so a rerun of the step
+    drops the earlier fillers and writes the same ones again (same cues, same ids). On the page a filler
+    never waits for the producer, whatever the sheet (`GEN_WAITS` in `web/js/desk.js`): the risk rule
+    approves it, as it does the Momentum panels.
+  - `lineup` filler at `ts` 0, 15 s, on every sheet of the pack (`analyst`, `casual`, `kids`, `team:*`,
+    `player:*`) in each of its languages, unless a cue of that sheet starts in the first 15 s. Payload:
+    `teams`, home then away, `side`, `formation` as shown (`4-3-3`), `lines` the starters as GK, DF, MF,
+    FW, each line by shirt, `name` the surname (the full name when two players of the match share it);
+    `fact_ids` the two `start_formation` facts, home then away; `filler: true`.
+  - Then, on every sheet, while a stretch of play with nothing on air for a visitor who never touches the
+    desk (stories `auto_approved` and not `flagged`, and code cues that do not wait; timed on the English
+    sheet, each half apart) is longer than `MAX_GAP_S` (55 s), or would leave the half's last clock minute
+    empty, one filler of these, with the template payload of its graphic plus `filler: true`:
+    `pass_shot` (`mode` `pass`, 6 s) of a completed pass, `value` and `unit` its `pass_distance`,
+    `quality` its `pass_difficulty` as `Difficulty 8.1/10` (`Difficoltà 8,1/10`, `Dificultad 8,1/10`; the
+    kids `How hard: 8.1/10`, `Quanto era difficile: 8,1/10`, `Qué difícil: 8,1/10`), `fact_ids` the
+    distance, the difficulty and the `ball_speed` when there is one; `nameplate` (6 s) of a
+    `sprint_speed` fact, `speed_kmh` its value; `momentum` (8 s) of a window end, payload as the template
+    one; the `checkin` `why_card` (8 s) of the player with the most touches at a check-in `ts`, never on a
+    `player:*` sheet, worded for the kids on theirs. A filler starts no earlier than its facts and at most
+    60 s after them (a `nameplate` or `pass_shot` ends before its player's `off_ts`), overlaps no cue of the sheet (waiting stories included) and ends before half-time or
+    full time; each fact fills a sheet once; it is written once per language of the sheet. Never the
+    graphic of the cue just before it on the sheet when another fits.
 - `python -m studiodesk.agents.audiences <match_id> --db data/matches.sqlite --pack replays/<match_id>`
   rewrites a pack offline; `export` and `export --pack` apply the same step.
 - Page: "Same moment, several audiences", a box under the controls (never on the 1920x1080 stage):

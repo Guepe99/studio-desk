@@ -37,7 +37,9 @@ def test_template_export(match_db, tmp_path):
     assert {c["audience"] for c in cues} == {"analyst", "casual", "kids"} and {c["lang"] for c in cues} == {"en"}
     assert len({c["cue_id"] for c in cues}) == len(cues)
     for c in cues:
-        assert c["story_id"] is None and set(c["payload"]) == PAYLOAD_KEYS[c["graphic"]]
+        # a filler (audiences.fill_cues) carries one key more, the marker; the line-ups are always one
+        assert c["story_id"] is None and set(c["payload"]) - {"filler"} == PAYLOAD_KEYS[c["graphic"]]
+        assert c["payload"].get("filler", True) is True and (c["graphic"] != "lineup" or c["payload"]["filler"])
         used = c["payload"].get("fact_ids") or [c["payload"]["fact_id"]]
         assert set(used) <= fact_ids
     for audience in ("analyst", "casual", "kids"):
@@ -59,7 +61,9 @@ def test_export_uses_runtime_cues_when_present(match_db, tmp_path):
     rt.commit()
     out = export("M001", conn, tmp_path / "web", rt)
     cues = json.loads((out / "cues.json").read_text())
-    assert cues == [{"match_id": "M001", "cue_id": "C-000001", "story_id": None, "ts": 5.0, "duration_s": 6.0,
+    fillers = [c for c in cues if c["payload"].get("filler")]
+    assert fillers and all(c["story_id"] is None for c in fillers)  # the quiet minutes around it are filled
+    assert [c for c in cues if c not in fillers] == [{"match_id": "M001", "cue_id": "C-000001", "story_id": None, "ts": 5.0, "duration_s": 6.0,
                      "graphic": "nameplate", "audience": "casual", "lang": "en", "payload": {"player_id": "T01-9"}},
                     {"match_id": "M001", "cue_id": "C-000002", "story_id": None, "ts": 5.0, "duration_s": 6.0,  # the kids copy
                      "graphic": "nameplate", "audience": "kids", "lang": "en", "payload": {"player_id": "T01-9"}}]
