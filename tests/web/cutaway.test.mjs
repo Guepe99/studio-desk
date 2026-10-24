@@ -73,7 +73,19 @@ test("a throw-in too soon after the ball goes out gets no cutaway", () => {
   assert.ok(plan[0].from > 100 && plan[0].to <= 130 - CUTAWAY.before.throw_in);
 });
 
-test("no cutaway above 4x, where it would only flash by", () => {
-  assert.equal(viewAt([], 100, 4).cuts, true);
-  assert.equal(viewAt([], 100, 16).cuts, false);
+// the director itself, on a NullEngine: the page's flag reaches camera.js and turns its cuts off
+const M1 = load("M001");
+test("no cut to camera 2 or to a cutaway above 4x, where it would only flash by", { skip: !M1 && "no web/data/M001" }, async () => {
+  const { cameras } = await import("./null3d.mjs");
+  const c = await cameras(M1);
+  const mode = (ts, speed) => { c.update(viewAt([], ts, speed), ts, 0); return c.mode; };
+  assert.ok(c.stops.length && c.cutaways.length);
+  for (const [a, b] of c.stops) {
+    assert.equal(mode((a + b) / 2, 4), "celebration", `tight shot ${a}`);
+    assert.equal(mode((a + b) / 2, 16), "broadcast", `tight shot ${a} at 16x`);
+  }
+  for (const q of c.cutaways) {
+    assert.match(mode((q.from + q.to) / 2, 4), /^crowd/, `cutaway ${q.from}`);
+    assert.equal(mode((q.from + q.to) / 2, 64), "broadcast", `cutaway ${q.from} at 64x`);
+  }
 });

@@ -5,8 +5,8 @@
 const B = window.BABYLON;
 
 export const PROFILES = {
-  // laptop or desktop with WebGL 2: three shadow cascades fitted to the view, sharpen, bloom (MSAA only
-  // where SSAO2 is not supported, post.js),
+  // laptop or desktop with WebGL 2: three shadow cascades fitted to the view, sharpen, bloom (MSAA 4
+  // only where SSAO2 is not supported, FXAA with it, post.js),
   // depth of field on tight shots and replays, SSAO2 at half resolution (docs/broadcast3d.md)
   high: { name: "high", shadows: "csm", shadowMap: 1024, cascades: 3, autoDepthBounds: true, shadowQuality: "medium",
     msaa: 4, fxaa: false, sharpen: true, bloom: true, bloomScale: 0.5, dof: true, ssao: true,

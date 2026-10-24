@@ -10,10 +10,13 @@
 //
 // After a goal the 3D view shows it again in the dead time before the restart, from REPLAY.after s
 // after the goal (when camera 2 leaves the scorer), for REPLAY.len s, as a TV director does: angle A
-// from behind the goal at full speed, ending REPLAY.end s after the goal with the ball in the net,
-// then angle B at pitch level at half speed on the strike (REPLAY.slow). Only when the restart comes
-// later than that, and only up to 4x (at 16x it would last a third of a second). The page clock, the
-// score bug, the 2D pitch and the graphics stay live.
+// from behind the goal at full speed, ending REPLAY.end s after the ball reaches the goal line, then
+// angle B at pitch level at half speed on the strike (REPLAY.slow). Both are anchored on the shot
+// event and the ball's crossing, not on the goal fact's time, which can come up to 1.5 s after the
+// strike; both always show the strike and the ball crossing the line. Only when the restart comes
+// later than that, and only up to 4x (at 16x it would last a third of a second); never under
+// prefers-reduced-motion (camera 1 then holds the wide shot, scene3d/cutaway.js REDUCE). The page
+// clock, the score bug, the 2D pitch and the graphics stay live.
 //
 // The page falls back to 2D only when the scene cannot start or the browser drops it. A slow 3D
 // view stays: the visitor chose it. When it runs under SLOW_FPS frames a second for a whole
@@ -28,10 +31,14 @@
 //
 // After BEACON_S of 3D play the page sends one anonymous line to api/perf (api.py): the median frame
 // rate, the GPU's name when the browser gives it, the screen size and pixel ratio, the match.
+import { CELEBRATION, REDUCE } from "./scene3d/cutaway.js";
+
 const SLOW_FPS = 10, WARMUP_S = 20, FPS_WINDOW_S = 10, BEACON_S = 30;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
-// slow: angle B's page seconds, its speed, and the match seconds before the goal it starts (the shot is about 0.7 s before)
-const REPLAY = { after: 6, len: 5.5, end: 1.6, maxSpeed: 4, slow: { len: 3, rate: 0.5, before: 1 } };
+// after: when camera 2 leaves the scorer; before: match s each angle shows ahead of the strike at least;
+// slow: angle B's page seconds, its speed, and the match s it shows after the crossing (faster than
+// half speed only when strike and crossing would not fit in its 1.5 s otherwise)
+const REPLAY = { after: CELEBRATION[1], len: 5.5, end: 1.6, before: 0.3, maxSpeed: 4, slow: { len: 3, rate: 0.5, after: 0.2 } };
 // the name over the player on the ball: the player of the next touch, once within reach m of a ball no
 // higher than high m for hold s, drawn above m metres over the feet. Off the ball events name no carrier.
 const CARRIER = { reach: 2.5, high: 1, hold: 0.2, above: 2.1, off: new Set(["interception", "foul", "tackle", "keeper_claim", "keeper_save"]) };
@@ -75,17 +82,42 @@ export function holdForReplays(cues, reps) {
   return cues.map((c) => moved.get(c) ?? c);
 }
 
-// The goal replays that fit before the restart: [{from, to, src, end}] in page time; src is the
-// match time the replay starts from, end the goal it goes in (-1 at x = 0, 1 at x = 105).
+// The strike and the ball reaching the goal line, in match time: the goal fact's last source event
+// up to the goal (the shot), and the first tracking sample after it with the ball within 0.3 m of a
+// goal line (the tracking ball stops on the line; ball3d.js carries the drawn one into the net).
+export function strike(match, g) {
+  const ids = g.source_event_ids ?? [];
+  const shot = match.events.filter((e) => ids.includes(e.event_id) && e.ts <= g.ts).at(-1)?.ts ?? g.ts;
+  for (let t = shot; t <= Math.min(g.ts + 2, match.duration); t += 0.02) {
+    const b = match.at(0, t);
+    if (b && (b[0] < 0.3 || b[0] > 104.7)) return { shot, cross: t, end: b[0] < 52.5 ? -1 : 1 };
+  }
+  const b = match.at(0, Math.min(g.ts + 0.7, match.duration));
+  return { shot, cross: g.ts, end: b && b[0] < 52.5 ? -1 : 1 };
+}
+
+// The goal replays that fit before the restart: [{from, to, src, cut, slow, rate, end}]; from, to and
+// cut in page time, src and slow the match time angles A and B start from, rate angle B's speed, end
+// the goal it goes in (-1 at x = 0, 1 at x = 105).
 export function replays(match) {
   const ev = [...match.events].sort((a, b) => a.ts - b.ts);
   return match.goals.map((g) => {
     const from = g.ts + REPLAY.after, to = from + REPLAY.len, next = ev.find((e) => e.ts > g.ts + 1);
     if (to > match.duration || (next && next.ts < to + 1)) return null;
-    const b = match.at(0, Math.min(g.ts + 0.7, match.duration));   // where the ball is a moment after the shot
-    const a = REPLAY.len - REPLAY.slow.len;   // angle A's page seconds
-    return { from, to, src: g.ts + REPLAY.end - a, cut: from + a, slow: g.ts - REPLAY.slow.before, end: b && b[0] < 52.5 ? -1 : 1 };
+    const { shot, cross, end } = strike(match, g), S = REPLAY.slow;
+    const a = REPLAY.len - S.len;   // angle A's page seconds, at full speed
+    const src = Math.min(shot - REPLAY.before, cross + REPLAY.end - a);
+    const slow = Math.min(shot - REPLAY.before, cross + S.after - S.len * S.rate);
+    return { from, to, src, cut: from + a, slow, rate: Math.max(S.rate, (cross + S.after - slow) / S.len), end };
   }).filter(Boolean);
+}
+
+// Whether the picture jumped from the last drawn view l to v (the camera and the turns then start
+// afresh): a seek, a replay cut, the clock going back or across half time (the break is a cut, not
+// a second of play). Play is never a jump, at any speed: the page moves the clock by at most speed x
+// 1 s a frame (app.js tick), and a forward step longer than that is a seek.
+export function jumped(l, v, seeked, speed, half) {
+  return seeked || !l || v.replay !== l.replay || v.ts < l.ts || v.ts - l.ts > Math.max(1, speed) + 0.1 || (v.ts >= half) !== (l.ts >= half);
 }
 
 // The 3D picture at page time ts: {ts, replay, end?, angle?}.
@@ -93,10 +125,13 @@ export function viewAt(reps, ts, speed) {
   if (speed <= REPLAY.maxSpeed) for (const r of reps) {
     if (ts < r.from || ts >= r.to) continue;
     if (ts < r.cut) return { ts: r.src + (ts - r.from), replay: true, end: r.end, angle: "goal" };
-    return { ts: r.slow + (ts - r.cut) * REPLAY.slow.rate, replay: true, end: r.end, angle: "low" };
+    return { ts: r.slow + (ts - r.cut) * r.rate, replay: true, end: r.end, angle: "low" };
   }
   return { ts, replay: false, cuts: speed <= REPLAY.maxSpeed };   // a crowd cutaway would only flash by at 16x
 }
+
+// After the region shows, so a screen reader hears the words that come into it.
+const later = (fn) => setTimeout(fn, 100);
 
 const script = (src) => new Promise((ok, ko) => {
   const s = document.createElement("script");
@@ -124,9 +159,10 @@ export class View3D {
     Object.assign(this, { match, els, onChange, t });
     this.mode = "2d";          // what the visitor asked for
     this.scene = null;
-    this.reps = replays(match);
+    this.goalReps = replays(match);
     this.speed = 1;
     this.last = null;
+    this.dirty = false;        // draw the next frame even paused (a resize, the cited tags, the layout)
     // tests move these three to see the 2D suggestion and the beacon in seconds
     Object.assign(this, { floor: SLOW_FPS, warmup: WARMUP_S, beaconAt: BEACON_S });
     this.fps = null;
@@ -155,21 +191,27 @@ export class View3D {
       this.citeTags.push(tag);
     }
     for (const tag of this.citeTags.slice(this.cited.length)) tag.hidden = true;
-    this.last = null;
+    this.dirty = true;
   }
 
-  // The visitor's choice (the minimap item of the settings, the suggestion's button).
+  // The visitor's choice (the minimap item of the settings, the suggestion's button); app.js calls it.
   pick(mode) { this.set(mode); }
+
+  // The goal replays this visitor gets: none under prefers-reduced-motion.
+  get reps() { return REDUCE.matches ? [] : this.goalReps; }
 
   // The suggestion line, after the notice in the controls: the words, "Switch to 2D", "Keep 3D".
   _hintBox(after) {
     const box = Object.assign(document.createElement("div"), { id: "slow-hint", hidden: true });
-    box.setAttribute("role", "status");
+    // the live region is the words, filled once the line shows, so a screen reader hears them
     const text = document.createElement("span");
+    text.setAttribute("role", "status");
     const go = Object.assign(document.createElement("button"), { type: "button", className: "ctl primary" });
     const keep = Object.assign(document.createElement("button"), { type: "button", className: "ctl" });
     go.addEventListener("click", () => { this._hint(false); this.pick("2d"); });
     keep.addEventListener("click", () => this._hint(false));
+    // the buttons hide their own line: the focus goes to the frame, not to the page's body
+    box.addEventListener("click", () => { if (box.hidden) this.els.stage.closest("#frame")?.focus({ preventScroll: true }); });
     box.append(text, go, keep);
     after.after(box);
     return { box, text, go, keep };
@@ -181,10 +223,12 @@ export class View3D {
       const fps = this.fps.toLocaleString(document.documentElement.lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       // a live region: rewriting the same words makes a screen reader say them again
       const set = (el, s) => { if (el.textContent !== s) el.textContent = s; };
-      set(h.text, this.t("slow3d").replace("{fps}", fps));
       set(h.go, this.t("slow3dGo"));
       set(h.keep, this.t("slow3dKeep"));
-    }
+      const say = this.t("slow3d").replace("{fps}", fps);
+      if (!h.box.hidden) set(h.text, say);
+      else { h.text.textContent = ""; clearTimeout(h.fill); h.fill = later(() => !h.box.hidden && set(h.text, say)); }
+    } else clearTimeout(h.fill);
     h.box.hidden = !on;
     this.onChange();
   }
@@ -233,6 +277,22 @@ export class View3D {
 
   _span(ts) { return [Math.max(0, ts - WINDOW[0]), Math.min(this.match.duration, ts + WINDOW[1])]; }
 
+  // Plans the window again when the picture nears its edge. A plan takes 0.3 to 0.4 s (mostly the
+  // awareness layer, measured on M001): in play it runs after this frame is drawn, a fraction of a
+  // second ahead of the edge; a seek out of the window plans at once.
+  _replan(ts) {
+    const s = this.scene, [a, b] = s.span, end = this.match.duration;
+    const near = (m) => (ts - 5 < a && a > 0) || (ts + m > b && b < end);
+    if (near(1)) { clearTimeout(this.planning); this.planning = null; s.replan(this._span(ts)); return; }
+    if (this.planning || !near(5 + this.speed * 0.1)) return;
+    this.planning = setTimeout(() => {
+      this.planning = null;
+      if (this.scene !== s || this.lost) return;
+      s.replan(this._span(viewAt(this.reps, Math.min(this.clock, end), this.speed).ts));
+      this.dirty = true;
+    }, 0);
+  }
+
   // Puts each picture where the shown view wants it: the 2D pitch in the frame (2D) or hidden (3D);
   // in the Radar the small one goes in the radar box at the bottom of the frame, under the graphics.
   _apply() {
@@ -248,7 +308,7 @@ export class View3D {
     this.relabel();
     document.body.dataset.shownView = v;
     if (v === "2d") this._badge(false);
-    this.last = null;   // draw the next frame whatever the clock does
+    this.dirty = true;   // draw the next frame whatever the clock does
     this.onChange();
   }
 
@@ -268,8 +328,14 @@ export class View3D {
     if (say && !this.notice) this.prior = n.hidden ? "" : n.textContent;
     this.notice = !!say;
     this.say = say;
-    n.textContent = say?.() || this.prior || "";
-    n.hidden = !n.textContent;
+    const text = say?.() || this.prior || "";
+    clearTimeout(this.filling);
+    // an alert region that shows already filled is not read out: it shows empty, then gets the words
+    if (text && n.hidden) {
+      n.textContent = "";
+      n.hidden = false;
+      this.filling = later(() => { if (this.say === say) { n.textContent = text; this.onChange(); } });
+    } else { n.textContent = text; n.hidden = !text; }
     this.onChange();
   }
 
@@ -287,7 +353,7 @@ export class View3D {
     b.textContent = on ? this.t("replay") : "";
   }
 
-  resize() { if (!this.lost) this.scene?.resize(); this.last = null; }   // a lost context has no textures to rebuild
+  resize() { if (!this.lost) this.scene?.resize(); this.dirty = true; }   // a lost context has no textures to rebuild
 
   // One page frame: draws the 3D picture at page time ts. Called before the graphics are placed.
   frame(ts, speed, seeked, playing) {
@@ -296,27 +362,23 @@ export class View3D {
     if (!s || this.mode === "2d" || this.lost) { this.prev = null; return this._carrier(null); }
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
-    const [a, b] = s.span, end = this.match.duration;
-    if ((v.ts - 5 < a && a > 0) || (v.ts + 5 > b && b < end)) s.replan(this._span(v.ts));
-    const l = this.last;
-    // a jump (seek, replay cut, or more than the camera spring takes in one step) starts the
-    // camera and the turns afresh
-    const half = this.match.meta.period1_s;   // the half-time break is a cut, not a second of play
-    const jumped = seeked || !l || v.replay !== l.replay || v.ts < l.ts || v.ts - l.ts > 1 || (v.ts > half) !== (l.ts > half);
+    this._replan(v.ts);
+    const l = this.last, jump = jumped(l, v, seeked, speed, this.match.meta.period1_s);
     // a pause also ends a run of play for the frame-rate watch
     this._watch(playing);
-    if (this.mode === "2d") return this._carrier(null);
     // paused: nothing new to draw, once the shaders a seek needed have compiled (until then a
     // paused picture would stay without its players) and unless the canvas was resized, which
-    // clears it
-    const size = `${s.engine.getRenderWidth()}x${s.engine.getRenderHeight()}`;
-    if (!jumped && v.ts === l.ts && this.ready && size === this.size) return;
+    // clears it, or the layout changed
+    const size = `${s.engine.getRenderWidth()}x${s.engine.getRenderHeight()}`, still = !jump && v.ts === l.ts;
+    if (still && this.ready && size === this.size && !this.dirty) return;
     this.size = size;
+    this.dirty = false;
     if (v.replay) s.cams.goalEnd = v.end;
-    s.update(v, jumped ? 0 : v.ts - l.ts);
+    s.update(v, jump ? 0 : v.ts - l.ts);
     // before the render, so the frame drawn then is the whole picture; until the post effects
-    // compile nothing new is drawn (as sample3d.js __setTime)
-    const ready = s.scene.isReady() && (s.scene.activeCamera?._postProcesses ?? []).every((p) => !p || p.isReady());
+    // compile nothing new is drawn (as sample3d.js __setTime). Only paused or after a jump: in play
+    // the next frame comes anyway, and the first paused one checks again.
+    const ready = (still || jump) && s.scene.isReady() && (s.scene.activeCamera?._postProcesses ?? []).every((p) => !p || p.isReady());
     s.render();
     this.ready = ready;
     this.last = v;
@@ -327,9 +389,11 @@ export class View3D {
   // The shirt and surname over the player on the ball, as a football game shows them: in open play
   // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
   // The players an open proof cites get the same tag; the carrier's own tag goes when he is one of them.
-  // None on a crowd or stadium cutaway (scene3d/cutaway.js).
+  // None on a crowd or stadium cutaway (scene3d/cutaway.js), nor on camera 2's tight shots (the
+  // shot is of that player).
   _carrier(v) {
-    const on = v && !v.replay && this.main === "3d" && !this.scene?.cams.mode.startsWith("crowd");
+    const mode = this.scene?.cams.mode ?? "";
+    const on = v && !v.replay && this.main === "3d" && !mode.startsWith("crowd") && mode !== "celebration";
     this.citeTags.forEach((tag, k) => (on && k < this.cited.length ? this._place(tag, this.cited[k], v.ts) : (tag.hidden = true)));
     const tag = this.tag, i = on ? this._holder(v.ts) : -1;
     if (i < 0 || i !== this._holder(v.ts - CARRIER.hold) || this.cited.includes(i)) { tag.hidden = true; return; }

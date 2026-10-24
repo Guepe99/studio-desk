@@ -14,7 +14,10 @@ const HALF_L = 52.5, HALF_W = 34;
 const LINE = 0.05;   // metres: a ball this close to a line is on it
 export const RESTARTS = new Set(["throw_in", "goalkick", "corner_crossed", "corner_short", "freekick_short", "freekick_crossed", "shot_freekick", "shot_penalty"]);
 export const STOP_EVENTS = new Set(["foul", "keeper_save"]);
-export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer
+export const CELEBRATION = [1, 6];    // seconds after the goal: camera 2 on the scorer (view3d.js starts the goal replay at its end)
+// prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no rail slide, no cut
+// to camera 2, no cutaway (camera.js), no goal replay (view3d.js)
+export const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 // seconds: after the ball is out, back on camera 1 before the restart (a throw-in's taker picks
 // the ball up 1.6 s before it, players.js THROW), shot lengths
 export const CUTAWAY = {
@@ -97,8 +100,9 @@ export function cutawayPlan(match, busy = tightStops(match)) {
     if (since < CUTAWAY.gap[0] || (since < CUTAWAY.gap[1] && h >= CUTAWAY.share)) continue;
     const prefs = KINDS[fam], start = Math.floor(hash01(id, (r.event_id ?? k) + 7919) * 2);   // the first or the second choice leads
     const order = [...prefs.slice(start), ...prefs.slice(0, start)];
-    // not the stadium straight from camera 2: depth of field switches off at that cut, and the first
-    // frames of the rebuilt post chain show stale green where nothing is drawn, the stadium's sky
+    // not the stadium straight from camera 2: depth of field switched off at that cut by rebuilding
+    // the post chain, whose first frames showed stale green where nothing is drawn, the stadium's
+    // sky. post.js no longer rebuilds; the plan stays as it was.
     const kind = order.find((q) => q !== prev && b - a >= CUTAWAY.len[q] && !(tight && q === "stadium"));
     if (!kind) continue;
     const x = r.start_x ?? HALF_L, end = x < HALF_L ? -1 : 1;

@@ -1,5 +1,6 @@
 // Post-processing: a graded HDR chain on every profile (docs/broadcast3d.md, section 2).
-// - DefaultRenderingPipeline with HDR: MSAA 4 on WebGL 2, FXAA otherwise; a sharpen pass for the
+// - DefaultRenderingPipeline with HDR: MSAA 4 on WebGL 2, FXAA where SSAO2 draws the scene (the
+//   high profile) or without WebGL 2; a sharpen pass for the
 //   crisp edge of a broadcast camera; bloom only above 1.0 in the HDR buffer, which in practice
 //   means the floodlight lamps (half the bloom resolution on the low profile).
 // - A broadcast grade through a colour lookup table built here (grade() below), a very light
@@ -87,10 +88,12 @@ export function setupPost(scene, cameras, profile) {
     ssao.expensiveBlur = false;
   }
   const pipe = new B.DefaultRenderingPipeline("broadcast", true, scene, cameras);
-  // with SSAO2 the scene is drawn into its prepass target, not the pipeline's: MSAA there would only
-  // multisample full-screen passes (depth of field, bloom), which gains nothing and costs a resolve each
+  // with SSAO2 the scene is drawn into its prepass target, not the pipeline's: MSAA here would only
+  // multisample full-screen passes (depth of field, bloom), which gains nothing and costs a resolve
+  // each. FXAA then: MSAA 4 in the prepass target (ssao.textureSamples) cost 33 to 40% of the frame
+  // rate on the SwiftShader test renderer, FXAA 17% (scene3d-perf.mjs high, docs/broadcast3d.md)
   pipe.samples = ssao ? 1 : profile.msaa;
-  pipe.fxaaEnabled = profile.fxaa;
+  pipe.fxaaEnabled = profile.fxaa || !!ssao;
   pipe.sharpenEnabled = profile.sharpen;
   if (profile.sharpen) { pipe.sharpen.edgeAmount = 0.25; pipe.sharpen.colorAmount = 1; }
   pipe.bloomEnabled = profile.bloom;
@@ -101,6 +104,9 @@ export function setupPost(scene, cameras, profile) {
     pipe.bloomScale = profile.bloomScale;
   }
   pipe.depthOfFieldBlurLevel = B.DepthOfFieldEffectBlurLevel.Low;   // here, as setting it rebuilds the pipeline
+  // depth of field is built once, here, and then only attached to the cameras or detached
+  // (update): turning depthOfFieldEnabled on and off rebuilt the whole chain at each cut
+  pipe.depthOfFieldEnabled = !!profile.dof;
   pipe.chromaticAberrationEnabled = false;
   pipe.grainEnabled = false;
   pipe.imageProcessingEnabled = true;
@@ -110,21 +116,25 @@ export function setupPost(scene, cameras, profile) {
   const lut = lutTexture(scene);
   setGrade(ip.imageProcessingConfiguration ?? scene.imageProcessingConfiguration, lut);
   vignette(ip);
-  let dof = false;
+  let dof = pipe.depthOfFieldEnabled;
+  // Depth of field on or off without a rebuild: its passes attached to the cameras or not, the depth
+  // pass of each camera running or not (else a whole extra draw of the scene every frame), and the
+  // clear moved to the chain's first pass (the scene is drawn into that one's input).
+  const setDof = (on) => {
+    if (on === dof || !pipe.depthOfFieldEnabled) return;
+    dof = on;
+    const mgr = scene.postProcessRenderPipelineManager, next = (pipe.bloomEnabled ? pipe.bloom._effects[0] : null) ?? pipe.imageProcessing;
+    if (on) mgr.enableEffectInPipeline("broadcast", pipe.depthOfField._name, cameras); else mgr.disableEffectInPipeline("broadcast", pipe.depthOfField._name, cameras);
+    pipe.depthOfField._effects[0].autoClear = on;
+    if (next) next.autoClear = !on;
+    for (const r of Object.values(scene._depthRenderer ?? {})) r.enabled = on;
+  };
+  setDof(false);
   return {
     pipe, ssao, lut,
     // per frame: depth of field on for a tight shot or a replay (focus in metres), off otherwise
     update(cams) {
-      const want = !!profile.dof && cams.focus !== null && !!pipe;
-      if (want !== dof) {
-        dof = want;
-        // the pipeline adds a depth observer at each rebuild with depth of field and never removes it,
-        // and leaves the depth pass of each camera running once depth of field is off: a whole
-        // extra draw of the scene every frame
-        scene.onAfterRenderTargetsRenderObservable.remove(pipe._depthOfFieldSceneObserver);
-        pipe.depthOfFieldEnabled = want;
-        for (const r of Object.values(scene._depthRenderer ?? {})) r.enabled = want;
-      }
+      setDof(!!profile.dof && cams.focus !== null);
       if (dof) {
         const cam = scene.activeCamera;
         pipe.depthOfField.focusDistance = cams.focus * 1000;   // millimetres
@@ -133,8 +143,9 @@ export function setupPost(scene, cameras, profile) {
       }
     },
     drop() {
+      setDof(false);
       pipe.samples = 1; pipe.fxaaEnabled = true; pipe.sharpenEnabled = false; pipe.bloomEnabled = false;
-      pipe.depthOfFieldEnabled = false; dof = false; profile.dof = false;
+      pipe.depthOfFieldEnabled = false; profile.dof = false;
       if (ssao) { ssao.dispose(); ssao = null; this.ssao = null; }
     },
   };
