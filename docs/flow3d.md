@@ -613,3 +613,7 @@ over 0.5 m/s (worst 943.2 m/s)"; no hold: "the loop changes at the same angle bo
 player 12 % taller steps at 1.000 of the cadence, want 0.893"; the old facing: "a seek faces the
 ball: 0, 2"; one threshold at 0.7: "0.75 m/s flips to the run"; the old head look: "the head
 turns 0.000, want 0.600"; the old emotions: "the emotion's weight dips to 0.00").
+
+In the browser, on the final code: `sample3d-shots.mjs` passes (0 facing snaps over 15 degrees in
+a frame, jog slide 0.076 m per step), `kick3d-shots.mjs` passes in both looks, `view3d.mjs` on
+M001 passes, and `frame-cost.mjs` (WebGL 2, from 530 s) counts 376 draw calls, as before.
