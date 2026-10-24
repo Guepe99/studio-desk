@@ -53,7 +53,7 @@ Only events and facts that happened decide a reaction:
   `keeper_punch`, `keeper_pick_up`) the contact time is that event; otherwise the shot must end
   within 3 m of the keeper and the contact is the moment the drawn ball comes closest to that end.
 - For a goal the contact time is when the drawn ball passes the keeper (its distance ahead of him
-  turns negative).
+  turns negative), a ball beside him too.
 
 At the contact time the ball's offset from the keeper, in his frame (facing the shot), picks the
 reaction:
@@ -62,17 +62,20 @@ reaction:
 |---|---|
 | tip over the bar | ball centre above 2.0 m |
 | catch at the chest | within 0.7 m sideways and at least 0.45 m up |
+| gather a low ball | within 0.6 m sideways and lower than that (a ball straight at him is not dived on) |
 | low dive | under 0.6 m and within 1.6 m sideways |
 | full-stretch dive | everything else |
 | beaten keeper | a goal: a low or full dive that starts 0.15 s after the shot and reaches only 25 to 60% of the way (the share of a 1 s dive he has time for) |
 
-Timing: the keeper moves 0.12 s after the shot at the earliest, never before. When the clip's
-natural run-up does not fit between that and the contact, it is played faster, up to 2.5 times; a
-reflex save still shows at least 0.15 s of movement.
+Timing: the keeper moves 0.12 s after the shot at the earliest (0.15 s when beaten), never before.
+When the clip's natural run-up does not fit between that and the contact, it is played faster, up
+to 2.5 times; a reflex save still shows at least 0.15 s of movement, so a ball on him sooner than
+0.27 s after the shot is met a moment late (the hands still go to where it was).
 
 Body: the feet leave the tracked spot by 2 m at most, the body lifts, lands, stays down for a
 moment and blends back onto the tracking in 0.8 s. Each reaction is cut short by the keeper's next
-one.
+one, and by the end of the period (fading out over 0.3 s): the match clock runs on across half
+time, so a shot just before the whistle no longer dives on into the second half.
 
 ### In the data
 
@@ -525,3 +528,62 @@ warp's pull jumps 0.343 in a frame"; no leg bones, no warp; the stride against t
 table, which fails when the table's 3.04 steps/s at 5.07 m/s is changed to 3.3) and
 `tests/web/skills.test.mjs` (a plan over a window inside the first gives the same moves, which
 fails when the seed takes the window's start).
+
+## 8. Review fixes: the ball in the keeper's hands, the net, the spin
+
+A review of `ball3d.js`, `keeper3d.js` and their rigs found the ball dropping out of the keeper's
+hands, a 20 m jump when the net window ended, close-range goals that never reached the net, and a
+ball that turned at every replan. Measured with node scripts on M001-M004, smoothed as the scene
+draws them, planned on the scene's windows (15 s back, 105 s ahead).
+
+### What changed
+
+- **Held ball.** After a `keeper_save`, `keeper_claim` or `keeper_pick_up` that the same keeper
+  plays next in the same period (25 cases), the drawn ball goes into his hands within 0.3 s, stays
+  0.85 m up and 0.3 m in front of him, and is dropped for his kick (it falls under gravity from
+  0.85 m, about 0.52 s before the kick). In the scene (`KeeperRig`) he carries it with the
+  throw-in's chest pose (`THROW.carry`) under any reaction still playing, and after the arms are
+  aimed the ball is put between his hands wherever the pose has them, as `scene3d.throwBall` does.
+  A parry (the next ball is someone else's) falls under gravity instead of dropping in 0.1 s.
+- **Net window.** It rests in the net for at least 3 s, then eases out onto the tracking ball over
+  2.5 s (carried back for the kick-off), and ends before the next event or a jump of the tracking
+  ball. Before, it ended 30 s after the goal by snapping to wherever the tracking ball was.
+- **Close-range goals.** The crossing search starts 0.1 s after the shot (it needed 0.25 s), and
+  the speed is measured over what time there is. The two goals with no net (M002 4013, M004 3429.8)
+  now press the netting, and the keeper reacts to the first of them, which passes beside him.
+- **First-time kicks.** A ball kicked within 0.15 s of arriving is a kick, not a trap.
+- **Spin.** The rotation restarts at every kick from the same orientation on a 0.02 s grid of
+  absolute match time, and each plan starts integrating at the last kick before its window (and
+  plans the ball from there): every plan gives the same rotation at the same match time.
+- **Keeper timing.** The run-up never starts before shot + 0.12 s (0.15 s beaten), and contact is
+  at least 0.15 s after that, so no division by zero is possible; a reaction is cut at the end of
+  its period; a low ball within 0.6 m sideways is gathered (catch), not dived on. The chest catch
+  alone left the hands 0.76 m from a ball on the grass (DEMO 240.9), so for a low catch the rig
+  stoops him first: bent forward from the hips with straight legs, the coaching technique for a
+  ground ball straight at the keeper, until his shoulders are an arm's reach above the ball (80
+  degrees at most), and then aims the arms.
+- Null guards where the tracking ball can be missing; `KeeperRig.procedural` and the `TOL` export
+  removed (unused).
+
+### Numbers (node, M001-M004, the scene's planning windows)
+
+| Measure | Before | After |
+|---|---|---|
+| Held balls: samples in the keeper's hands (h > 0.6 m, within 0.8 m), 25 holds, 537 samples | 0% | 100% |
+| Parried ball from contact to the grass | 0.02 to 0.10 s | gravity (1.31 m in 0.52 s) |
+| Goals with a jump over 1 m between 60 Hz frames, of 12 | 10 (18.6 to 26.1 m) | 0 (largest 0.55 m, the tracking ball's own) |
+| Goals that never reach the net | 2 | 0 |
+| Goals without a keeper reaction | 1 | 0 |
+| Keeper reactions running past half time | 1 | 0 |
+| Reactions starting before shot + reaction time | 5 | 0 |
+| Low saves at the body (16) drawn as dives | 14 | 0 |
+| Kicks drawn as traps, of 4039 | 5 | 0 |
+| Ball rotation jump at a replan, M001 and M003, 12 each | 30 to 180 degrees | 0 |
+| Same moment from two plans (a seek), 8 times | up to 128 degrees | 0 |
+| `ball()` + 3 `pose()` per player per frame | 40 to 48 us | 41 to 51 us (busy machine, noise) |
+| One ball plan, 120 s window | 23 to 47 ms | 23 to 68 ms (it now plans back to the last kick) |
+
+Tests: `tests/web/keeperball3d.test.mjs` (nine checks, each failing on the code before this
+section), `flow3d.test.mjs` on M001-M004, `net3d.test.mjs` rests at the end of the rest time. In
+the browser `tests/web/hold3d.mjs` steps a hold at 30 fps and checks the ball stays between the
+hands.

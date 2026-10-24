@@ -11,6 +11,7 @@
 // place (no root motion) and keyed on keeper3d.CLIP_KEYS; keeperRoot() gives the root curve.
 import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
 import { nodesOf, chain, aim, turnWorld } from "./awareness-rig.js";
+import { THROW } from "./scene3d/players.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -25,7 +26,7 @@ export class KeeperRig {
     probe.animationGroups.forEach((g) => g.dispose());
     const P = nodesOf(probe.rootNodes[0], "gk-probe-");
     // stand-ins for the clips the file lacks, keyed on the unposed probe (before the measuring)
-    this.procedural = buildKeeperClips(s.scene, s.container, P);
+    buildKeeperClips(s.scene, s.container, P);
     // the retargeted clips (players.js loadMotion) with their root curve; ?motion=procedural or a
     // missing file leaves the procedural poses below
     this.real = {};
@@ -68,11 +69,26 @@ export class KeeperRig {
   }
 
   pose(i, ts) {
-    const r = this.at(i, ts);
-    if (!r) return null;
-    const k = r.real ? realRoot(r, ts) : keeperRoot(r, ts);
-    return { dx: k.dx, dy: k.dy, dz: k.lift, roll: k.roll, yaw: r.yaw, yawW: k.w,
-      action: { clip: r.clip, time: k.clipT, weight: k.w }, actionW: k.w };
+    const r = this.at(i, ts), hd = this.held(i, ts);
+    const k = r && (r.real ? realRoot(r, ts) : keeperRoot(r, ts));
+    if (!k && !hd) return null;
+    const out = k ? { dx: k.dx, dy: k.dy, dz: k.lift, roll: k.roll, yaw: r.yaw, yawW: k.w,
+      action: { clip: r.clip, time: k.clipT, weight: k.w }, actionW: k.w } : {};
+    // a ball he keeps: carried at the chest like a throw-in taker's, under the reaction while it plays
+    if (hd) out.emotion = { kind: "hold", clip: THROW.carry, t: THROW.carryT, weight: hd.arms, upper: true };
+    return out;
+  }
+
+  // The ball in keeper i's hands at ts (ball3d.js holds): { arms, grip } weights of his carrying
+  // pose and of the ball on his hands, or null.
+  held(i, ts) {
+    if (!this.enabled) return null;
+    for (const d of this.s.rig.plan?.holds ?? []) {
+      if (d.i !== i || ts < d.t0 - 0.05 || ts >= d.t2) continue;
+      const out = 1 - smooth((ts - d.t1) / (d.t2 - d.t1));   // let go for the kick
+      return { arms: smooth((ts - d.t0) / 0.3) * out, grip: smooth((ts - d.t0 + 0.05) / 0.2) * out };
+    }
+    return null;
   }
 
   // Arms towards the contact point: in from the first move, held through contact, out on landing.
@@ -84,6 +100,7 @@ export class KeeperRig {
       if (!r || !p.holder.isEnabled()) continue;
       const w = smooth((ts - r.start) / (r.tc - r.start)) * (1 - smooth((ts - r.tc - 0.2) / 0.4));
       if (w <= 0) continue;
+      if (r.kind === "catch" && r.h < 0.6) this._stoop(p, r, w);
       const target = new B.Vector3(r.ball[0] - HALF_L, r.ball[2], r.ball[1] - HALF_W);
       for (const side of ["l", "r"]) {
         const up = p.anim.node(`upperarm_${side}`), lo = p.anim.node(`lowerarm_${side}`), hand = p.anim.node(`hand_${side}`);
@@ -94,6 +111,31 @@ export class KeeperRig {
         aimPart(lo, hand, target.subtract(lo.getAbsolutePosition()), w);
       }
     }
+    for (const p of this.s.players) this._grip(p, ts);   // after the arms moved
+  }
+
+  // A low ball straight at him is gathered stooping: bent forward from the hips, legs straight,
+  // until the shoulders are an arm's reach above the ball (80 degrees at most); the arms then aim.
+  _stoop(p, r, w) {
+    const sp = p.anim.node("spine_01"), a = p.anim.node("upperarm_l"), b = p.anim.node("upperarm_r");
+    if (!sp?.parent || !a || !b) return;
+    chain(a); chain(b);
+    const pivot = sp.getAbsolutePosition().y, L = (a.getAbsolutePosition().y + b.getAbsolutePosition().y) / 2 - pivot;
+    if (L < 0.1) return;
+    const c = Math.min(1, Math.max(Math.cos((80 * Math.PI) / 180), (r.ball[2] + 0.55 - pivot) / L));
+    turnWorld(sp, new B.Vector3(r.u[0], 0, r.u[1]), Math.acos(c) * w);   // about his right: forward and down
+  }
+
+  // The held ball sits between his hands wherever the pose puts them (as scene3d.throwBall).
+  _grip(p, ts) {
+    const hd = this.held(p.i, ts), s = this.s;
+    if (!hd || hd.grip <= 0 || !p.holder.isEnabled() || !s.ball.isEnabled()) return;
+    const m = this.hands(p.i);
+    if (!m) return;
+    B.Vector3.LerpToRef(s.ball.position, new B.Vector3(m[0] - HALF_L, m[2], m[1] - HALF_W), hd.grip, s.ball.position);
+    s.ballShadow.position.x = s.ball.position.x;
+    s.ballShadow.position.z = s.ball.position.z;
+    s.ballShadow.material.alpha = 1 / (1 + (s.ball.position.y - s.ballR) * 0.6);
   }
 
   hands(i) {
@@ -164,7 +206,7 @@ const SEQ = { dive: [STANCE, STRETCH, LANDED, LANDED, STANCE], low: [STANCE, GAT
   catch: [STANCE, CATCH, HUG, HUG, STANCE], tip: [STANCE, TIP, LANDED, STANCE, STANCE] };
 
 // Key the poses on an unposed probe and add them to the container as animation groups, so the
-// players' lazy clip cache (players.js setupAnimations) finds them by name. Returns the names built.
+// players' lazy clip cache (players.js setupAnimations) finds them by name.
 function buildKeeperClips(scene, container, P) {
   const fps = container.animationGroups[0].targetedAnimations[0].animation.framePerSecond;
   chain(P.upperarm_r); chain(P.upperarm_l);
@@ -176,7 +218,6 @@ function buildKeeperClips(scene, container, P) {
   const rest = Object.fromEntries(bones.map((b) => [b, P[b].rotationQuaternion.clone()]));
   const byName = new Map(container.transformNodes.map((n) => [n.name, n]));
   const have = new Set(container.animationGroups.map((g) => g.name));
-  const built = new Set();
   for (const [kind, names] of Object.entries(CLIPS)) {
     for (const name of new Set(names)) {
       if (have.has(name)) continue;
@@ -202,8 +243,6 @@ function buildKeeperClips(scene, container, P) {
         g.addTargetedAnimation(an, byName.get(b));
       }
       container.animationGroups.push(g);
-      built.add(name);
     }
   }
-  return built;
 }

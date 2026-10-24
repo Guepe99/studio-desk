@@ -86,15 +86,17 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     }
     const K = match.at(i, tc), b = ball(tc);
     if (!K || !b) continue;
+    // never before his reaction time: a ball on him sooner is met a moment late (the hands find it at r.ball)
+    const earliest = e.ts + (goal ? LATE : REACT);
+    tc = Math.max(tc, earliest + MIN_PRE);
     const d = (b.x - K[0]) * u[0] + (b.y - K[1]) * u[1];
     const f = (b.x - K[0]) * fw[0] + (b.y - K[1]) * fw[1];
     const h = b.h + ballR;
     // a beaten keeper always throws himself full length at it (a crouching drop reads as giving up)
     const kind = goal ? "dive"
-      : h > 2.0 ? "tip" : Math.abs(d) < 0.7 && h >= 0.45 ? "catch" : h < 0.6 && Math.abs(d) < 1.6 ? "low" : "dive";
+      : h > 2.0 ? "tip" : Math.abs(d) < 0.7 && h >= 0.45 || Math.abs(d) < 0.6 ? "catch" : h < 0.6 && Math.abs(d) < 1.6 ? "low" : "dive";   // low and at him: gathered, not dived on
     const T = TIMING[kind];
-    let start = goal ? Math.max(e.ts + LATE, tc - T.pre) : Math.max(e.ts + REACT, tc - T.pre);
-    start = Math.min(start, tc - MIN_PRE);
+    const start = Math.min(Math.max(earliest, tc - T.pre), tc - MIN_PRE);
     // a beaten keeper reaches only the share of the dive his late start allows
     const reach = goal ? clamp((tc - start) / 1.0, 0.25, 0.6) : 1;
     const side = d >= 0 ? 1 : -1;   // +1: his right
@@ -102,7 +104,9 @@ export function planKeeper(match, ball, { ballR = 0.11, body = { shoulder: 1.45,
     const r = { i, pid: kpid, shot: e.event_id, goal, kind, side, clip: CLIPS[kind][side > 0 ? 1 : 0], tc, start, set0: e.ts - SET_S,
       end: tc + T.fall + T.lie + T.rise, yaw, u, fw, ball: [b.x, b.y, h], d, h, ...solve(kind, target, body) };
     const c = real[r.clip];
-    if (c) fitClip(r, c, { earliest: goal ? e.ts + LATE : e.ts + REACT, want: [-target.d, target.h, f], goal });
+    if (c) fitClip(r, c, { earliest, want: [-target.d, target.h, f], goal });
+    // the whistle ends it: no reaction runs on into the next period (time runs on across half time)
+    r.end = Math.min(r.end, e.period === 1 && match.meta.period1_s ? match.meta.period1_s : match.duration);
     out.push(r);
   }
   // one at a time per keeper: a later reaction cuts the earlier short
@@ -184,7 +188,7 @@ export function realRoot(r, ts) {
   const skip = rootAt(q, q.c0), [l, u, f] = rootAt(q, clipT).map((x, j) => x - skip[j] * (1 - g));
   const around = g * (1 - smooth((ts - r.tc - 0.2) / 0.4));   // height and depth only near contact
   const left = (l * q.lat + q.shift * g) * back, ahead = (f + q.fwd * around) * back;
-  const w = Math.max(0, Math.min(rampIn(r, ts), back));
+  const w = Math.max(0, Math.min(rampIn(r, ts), back, (r.end - ts) / 0.3));   // a reaction cut short fades out
   return { dx: -r.u[0] * left + r.fw[0] * ahead, dy: -r.u[1] * left + r.fw[1] * ahead, lift: (u + q.up * around) * back, roll: 0, w, clipT };
 }
 
