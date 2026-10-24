@@ -573,7 +573,7 @@ celebration variants that dipped to nothing between two clips.
   and the motion loops' strides and speeds are times `p.h`, the player's height over the
   measured one (`scene3d.js`).
 - **Facing** (`players.js` `wantFacing`, called by `scene3d.js`). His run once faster than 0.9 m/s
-  until he slows under 0.5 m/s; nearly still, the ball. A seek (dt 0) decides from that frame
+  until he slows under 0.7 m/s; nearly still, the ball. A seek (dt 0) decides from that frame
   alone: the ball's bearing even at his feet, the centre spot without a ball. A NaN yaw or yaw
   speed resets the spring.
 - **Chained variants** (`awareness.js`). An emotion that starts by the end of the last one of the
@@ -591,22 +591,25 @@ celebration variants that dipped to nothing between two clips.
 | Worst speed artefact there | 874 to 952 m/s | 0 |
 | Players over 5 m/s at period1_s, each match | 22 | 0 |
 | Root off the sampled path there | 6.4 to 7.0 m | 0.011 m |
-| Motion-loop swaps, M001 600 to 900 s (12.6 player-minutes of backpedal and strafe) | 293 (23.2 a minute) | 230 (18.2 a minute) |
+| Motion-loop swaps, M001 600 to 900 s (12.6 player-minutes of backpedal and strafe) | 293 (23.2 a minute) | 228 (18.0 a minute) |
 | Swaps back within 0.3 s | 15 | 8 |
 | Largest change of a loop's share in a frame | 1.000 | 0.105 |
-| Facing target flips over 90 degrees in that window | 820 | 638 |
+| Facing target flips over 90 degrees in that window | 820 | 687 |
 | Lowest emotion weight between two chained variants, DEMO (22 pairs) | 0.00 | 1.00 |
 | `animatePlayer` for 22 players a frame (node, two runs each, best of three) | 19.3 to 19.4 us | 21.8 to 24.8 us |
 
 A hold of 0.25 gave 19.4 swaps a minute and 10 back; 0.5 gave 16.2 and 4 but keeps the old loop
-further off his travel. Thresholds of 1.1 and 0.4 m/s for the facing cut its flips to 529
-but leave a player who sets off at 1 m/s facing the ball; 0.9 and 0.5 were kept. Most flips left
-come as a player stops or sets off (run to still 267, still to run 205).
+further off his travel. A facing drop-out under 0.7 m/s (0.9 and 0.5 m/s) cut its flips to 638
+but added three facing snaps over 15 degrees in a frame on DEMO at 91.8 s, where two players turn
+on the spot: in their slowest frames the run's direction is noise and the facing followed it
+round. 1.1 and 0.7 m/s cut the flips to 600 but leave a player who sets off at 1 m/s facing the
+ball. 0.9 and 0.7 m/s were kept. Most flips left come as a player stops or sets off (run to
+still 302, still to run 245).
 
 Checks, each shown failing with its fix undone first: `tests/web/players-review.test.mjs` (half
 time on M001 to M004 with the old `track.js`: "459 of 1320 player-frames with a speed artefact
 over 0.5 m/s (worst 943.2 m/s)"; no hold: "the loop changes at the same angle both ways (gap
 0.5 degrees)"; no cross-fade: "a loop's share moves by 1.00 in a frame"; the height ignored: "a
 player 12 % taller steps at 1.000 of the cadence, want 0.893"; the old facing: "a seek faces the
-ball: 0, 2"; one threshold at 0.7: "0.65 m/s flips to the ball"; the old head look: "the head
+ball: 0, 2"; one threshold at 0.7: "0.75 m/s flips to the run"; the old head look: "the head
 turns 0.000, want 0.600"; the old emotions: "the emotion's weight dips to 0.00").

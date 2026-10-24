@@ -279,7 +279,9 @@ export function resolve(drivers, i, ts) {
 // the facing he had. A seek (dt 0) decides from this frame alone, the ball's bearing even at his
 // feet (the centre spot without a ball), so what it shows is a function of match time.
 // v, vx, vy: his ground speed; at: where he is shown; ball: [x, y] or null.
-const RUN_ON = 0.9, RUN_OFF = 0.5;
+// (RUN_OFF under 0.7: the run's direction in the last slow frames of a turn on the spot is noise,
+// and the facing then whips round with it)
+const RUN_ON = 0.9, RUN_OFF = 0.7;
 export function wantFacing(p, { v, vx, vy, mode, ball, at, dt }) {
   const seek = !(dt > 0);
   p.running = v > (seek ? 0.7 : p.running ? RUN_OFF : RUN_ON);

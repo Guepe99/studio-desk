@@ -136,9 +136,9 @@ test("the run facing has hysteresis: speed noise round the threshold does not fl
   const p = { yaw: 0 }, ball = [0, 30], at = [0, 0], run = (v) => P.wantFacing(p, { v, vx: v, vy: 0, mode: "forward", ball, at, dt: 1 / 60 });
   const away = Math.PI / 2, toBall = 0;   // running along +x, the ball along +y
   assert.ok(Math.abs(run(1.2) - away) < 1e-9);
-  for (const v of [0.75, 0.65, 0.8, 0.6]) assert.ok(Math.abs(run(v) - away) < 1e-9, `${v} m/s flips to the ball`);
-  assert.ok(Math.abs(run(0.3) - toBall) < 1e-9);
-  for (const v of [0.75, 0.65, 0.8]) assert.ok(Math.abs(run(v) - toBall) < 1e-9, `${v} m/s flips to the run`);
+  for (const v of [0.85, 0.75, 0.8, 0.72]) assert.ok(Math.abs(run(v) - away) < 1e-9, `${v} m/s flips to the ball`);
+  assert.ok(Math.abs(run(0.5) - toBall) < 1e-9);
+  for (const v of [0.75, 0.85, 0.8]) assert.ok(Math.abs(run(v) - toBall) < 1e-9, `${v} m/s flips to the run`);
 });
 
 // AwarenessRig._post with a stub chain: the yaw it turns the neck by, for an emotion, an event
