@@ -35,7 +35,7 @@ function onTarget(m) {
   });
 }
 
-for (const id of ["DEMO", "M001"]) {
+for (const id of ["DEMO", "M001", "M002", "M003", "M004"]) {
   const m = load(id);
   test(`${id}: smooth paths pass through every sample with continuous velocity`, { skip: !m }, () => {
     const sm = smoothMatch(m), fps = m.meta.fps, h = 1e-3;   // float32 metres: a smaller step is noise
@@ -82,7 +82,9 @@ for (const id of ["DEMO", "M001"]) {
       }
       assert.ok(shift <= 2.05, `${tag}: feet leave the spot by ${shift.toFixed(2)} m`);
       const last = keeperRoot(r, r.end - 1e-3);
-      if (last) assert.ok(Math.hypot(last.dx, last.dy) < 0.05 && last.lift < 0.02 && Math.abs(last.roll) < 0.05 && last.w < 0.02, `${tag}: not back on the spot at the end`);
+      // a reaction the half-time or full-time whistle cuts short fades out where he is
+      const cut = [m.meta.period1_s, m.duration].some((t) => Math.abs(r.end - t) < 1e-9);
+      if (last && !cut) assert.ok(Math.hypot(last.dx, last.dy) < 0.05 && last.lift < 0.02 && Math.abs(last.roll) < 0.05 && last.w < 0.02, `${tag}: not back on the spot at the end`);
       if (!r.goal && r.kind !== "catch") assert.ok(lift > 0.1, `${tag}: never leaves the ground`);
     }
     // a beaten keeper is late: he moves no earlier than 0.15 s after the shot

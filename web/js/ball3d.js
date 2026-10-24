@@ -16,7 +16,7 @@
 // bend is checked against the tracking ball and softened until it stays within TOL metres.
 // Players are moved (motion warping) so the foot is on the ball at the moment of contact.
 
-export const TOL = 1.2;          // m: ball distance budget from the tracking ball (the bound is 1.5)
+const TOL = 1.2;          // m: ball distance budget from the tracking ball (the bound is 1.5)
 const MAX_WARP = 3.0;            // m: farther than this from the ball, a player does not touch it
 const PASS_DECEL = 4.0;          // m/s^2, ground pass: between turf rolling (0.45-1.5) and match fits (7.9)
 const LOFT_R = 0.85;             // end/start speed ratio of a lofted ball (air drag only)
@@ -32,12 +32,23 @@ const NET_Z = 0.7;               // damping ratio: most of the energy stays in t
 const NET_GRIP = 6;              // 1/s, the cords drag on the ball along the net
 const NET_HOLD = 0.4;            // s, the stretched cords sag back slower than the ball rebounds
 const ROLL_DECEL = 1.5;          // m/s^2, the ball rolling on the turf inside the goal
+const NET_REST = 3;              // s after the take-over: the ball lies in the goal at least this long
+const NET_OUT = 2.5;             // s: then it eases out of the goal onto the tracking ball (carried back for the kick-off)
+const NET_SPAN = 4 + NET_REST + NET_OUT + 6;   // s after the shot a net window ends at the latest
+// A keeper who catches the ball and plays it himself next holds it at his chest until he drops it
+// for his kick (the tracking ball lies at his feet meanwhile; keeper3d-rig.js puts it in the hands)
+const HOLD_H = 0.85;             // m: underside of a ball held at the chest
+const HOLD_F = 0.3;              // m in front of the keeper, towards his next ball
+const HOLD_IN = 0.3;             // s from contact for the ball to come into the hands
+const G = 9.81;
+const DROP = Math.sqrt((2 * HOLD_H) / G) + 0.1;   // s before his kick he lets it go: it lands 0.1 s before the foot
 
 const KICKS = { pass: "pass", cross: "long", shot: "shot", shot_freekick: "shot", shot_penalty: "shot",
   freekick_crossed: "long", freekick_short: "pass", corner_crossed: "long", corner_short: "pass",
   goalkick: "long", clearance: "long" };
 const TOUCHES = { dribble: "touch", take_on: "touch", tackle: "touch", interception: "trap", bad_touch: "touch" };
 const HANDS = new Set(["keeper_save", "keeper_claim", "keeper_punch", "keeper_pick_up"]);
+const HOLDS = new Set(["keeper_save", "keeper_claim", "keeper_pick_up"]);   // a punch never holds it
 // the ball lies still before these, so nobody plays with it
 const SET_PIECES = new Set(["freekick_crossed", "freekick_short", "shot_freekick", "shot_penalty", "goalkick", "corner_crossed", "corner_short", "throw_in"]);
 // Moves of a player keeping a still ball at his feet (docs/flow3d.md, section 5): the leg actions
@@ -67,7 +78,7 @@ export function decel(u, r) { return (2 / (1 + r)) * (u - (1 - r) * u * u / 2); 
 
 export class BallPlan {
   constructor(match, span, { reach, ballR = 0.11 } = {}) {
-    this.match = match;
+    const m = this.match = match;
     this.reach = reach ?? (() => ({ x: 0, z: 0.45 }));
     this.ballR = ballR;
     this.t0 = span[0] - 1;
@@ -81,6 +92,18 @@ export class BallPlan {
     this.moves = [];     // { t0, t1, v, keys }: the ball moved under a still player's foot (skills)
     this.actors = new Map();   // entity index -> { warp: [], yaw: [], legs: [], face: [] }
     this.nets = [];      // { t0, t1, s: samples }: a scored ball carried on into the netting
+    this.holds = [];     // { i, t0, t1, t2, f }: a keeper holds the ball from t0, drops it at t1 for his kick at t2
+    this.falls = [];     // { t0, t1, h }: a ball parried or let go by a keeper falls under gravity, not faster
+    // the ball's rotation starts afresh at every kick (_spin), on a grid of STEP in match time: the
+    // last kick before the stretch starts it here. Planning reaches back to that kick and to the
+    // shot of a goal still in the net, so every plan draws the same ball from there on.
+    this.kicks = m.events.filter((e) => KICKS[e.type_name]).map((e) => Math.ceil(e.ts / STEP - 1e-9)).sort((a, b) => a - b);
+    const kt0 = Math.floor(this.t0 / STEP);
+    let k0 = kt0;
+    for (const g of this.kicks) { if (g > kt0) break; k0 = g; }
+    this.qk0 = Math.max(k0, Math.floor((this.t0 - 120) / STEP));   // a ball nobody kicks for two minutes: cap the work
+    const goals = new Set(m.goals.flatMap((g) => g.source_event_ids ?? []));
+    this.from = Math.min(this.t0 - 6, this.qk0 * STEP - 1, ...m.events.filter((e) => goals.has(e.event_id) && e.ts + NET_SPAN >= this.t0 && e.ts <= this.t0).map((e) => e.ts - 1));
     this._plan();
     this._nets();
     this._spin();
@@ -100,7 +123,7 @@ export class BallPlan {
 
   _plan() {
     const m = this.match, fps = m.meta.fps;
-    const ev = m.events.filter((e) => e.ts >= this.t0 - 6 && e.ts <= this.t1 + 6).sort((a, b) => a.ts - b.ts);
+    const ev = m.events.filter((e) => e.ts >= this.from && e.ts <= this.t1 + 6).sort((a, b) => a.ts - b.ts);
     for (let k = 0; k < ev.length; k++) {
       const e = ev[k], next = ev[k + 1];
       const tEnd = next && next.period === e.period ? next.ts : Math.min(e.ts + 3, this.t1);
@@ -128,8 +151,11 @@ export class BallPlan {
         }
         // the receiver turns to the ball while it travels, then controls it
         const rec = next && !HANDS.has(next.type_name) && next.period === e.period ? this._who(next.player_id) : null;
-        if (rec !== null && arr < tEnd - 0.05 && dist > 4) {
-          const b0 = this.raw(arr), b1 = this.raw(arr - 0.3);
+        // a ball he kicks within 0.15 s of its arrival is a first-time kick, not a trap (the kick's
+        // own leg action would be refused that close to the trap's)
+        const firstTime = next && KICKS[next.type_name] && tEnd - arr < 0.15;
+        const b0 = this.raw(arr), b1 = this.raw(arr - 0.3);
+        if (rec !== null && !firstTime && b0 && b1 && arr < tEnd - 0.05 && dist > 4) {
           const yaw = Math.atan2(b1[0] - b0[0], b1[1] - b0[1]);
           if (this._action(rec, arr, "trap", this._foot(next.player_id), yaw)) this._actor(rec).face.push([e.ts + 0.15, arr]);
         }
@@ -138,11 +164,31 @@ export class BallPlan {
         const i = this._who(e.player_id);
         if (i !== null) this._action(i, e.ts, TOUCHES[e.type_name], this._foot(e.player_id), null);
       }
+      if (HANDS.has(e.type_name)) this._hands(e, next);
       // a ball in a keeper's hands, or a dead ball the next player throws in, is not dribbled
       if (!next || next.period !== e.period || HANDS.has(e.type_name) || next.type_name === "throw_in" || tEnd - a < 0.3 || tEnd - a > 10) continue;
       this._dribble(a, tEnd, this._who(next.player_id), next.player_id, next);
     }
   }
+
+  // A keeper's hands on the ball (event e): he holds it until his own next ball (a throw or a kick
+  // from his hands), else it falls from where he touched it (a parry, a punch) no faster than gravity.
+  _hands(e, next) {
+    const i = this._who(e.player_id), b = this.raw(e.ts), K = i === null ? null : this.match.at(i, e.ts);
+    if (!b || !K) return;
+    if (HOLDS.has(e.type_name) && next && next.period === e.period && next.player_id === e.player_id && next.ts - e.ts >= HOLD_IN + DROP) {
+      // he faces where his next ball goes (the middle of the pitch without an end point)
+      const to = Number.isFinite(next.end_x) && Number.isFinite(next.end_y) ? [next.end_x, next.end_y] : [PITCH_L / 2, 34];
+      const d = Math.hypot(to[0] - K[0], to[1] - K[1]);
+      const f = d > 0.5 ? [(to[0] - K[0]) / d, (to[1] - K[1]) / d] : [K[0] > PITCH_L / 2 ? -1 : 1, 0];
+      this.holds.push({ i, t0: e.ts, t1: next.ts - DROP, t2: next.ts, f });
+      return;
+    }
+    const h = b[2] - this.zGround;
+    if (h > 0.05) this.falls.push({ t0: e.ts, t1: e.ts + Math.sqrt((2 * h) / G), h });
+  }
+  _hold(ts) { for (const d of this.holds) if (ts >= d.t0 && ts < d.t2) return d; return null; }
+  _fall(ts) { for (const d of this.falls) if (ts >= d.t0 && ts < d.t1) return d; return null; }
 
   // Controlled ball from a to b by entity o: touches every 0.6-1.0 s while the ball moves.
   _dribble(a, b, o, pid, next) {
@@ -151,6 +197,7 @@ export class BallPlan {
     let path = 0, prev = pa;
     for (let t = a + 0.1; t <= b; t += 0.1) {
       const p = this.raw(t);
+      if (!p || !prev) return;
       const step = Math.hypot(p[0] - prev[0], p[1] - prev[1]);
       if (step > 3) return;   // a jump (ball reset after a goal): leave it alone
       path += step; prev = p;
@@ -248,7 +295,7 @@ export class BallPlan {
     const p = this.match.at(i, t), b = this.ball(t);
     if (!p || !b) return false;
     if (yaw === null) {   // touches: face where the ball goes next, or the ball
-      const n = this.ball(t + 0.25);
+      const n = this.ball(t + 0.25) ?? b;
       yaw = Math.hypot(n.x - b.x, n.y - b.y) > 0.4 ? Math.atan2(n.x - b.x, n.y - b.y) : Math.atan2(b.x - p[0], b.y - p[1]);
     }
     const c = this.reach(kind, side), s = Math.sin(yaw), co = Math.cos(yaw);
@@ -268,23 +315,28 @@ export class BallPlan {
     const ids = new Set(this.match.goals.flatMap((g) => g.source_event_ids ?? []));
     const r = this.ballR, H = 1 / 240;
     for (const e of this.match.events) {
-      if (!ids.has(e.event_id) || e.ts + 35 < this.t0 || e.ts > this.t1) continue;   // a ball rests in the net up to 30 s after a goal, so a later plan keeps it
+      if (!ids.has(e.event_id) || e.ts + NET_SPAN < this.t0 || e.ts > this.t1) continue;   // a later plan keeps a ball still in the net
       const end = e.end_x > PITCH_L / 2 ? 1 : -1, gx = end > 0 ? PITCH_L : 0;
       let tc = null;
       // take over 2.5 m short of the line: the tracking ball already brakes for its stop there
-      for (let t = e.ts; t < e.ts + 4; t += 0.005) { const b = this.ball(t); if (b && (b.x - gx) * end > -2.5) { tc = t; break; } }
-      if (tc === null || tc - 0.25 < e.ts) continue;
-      const a = this.ball(tc - 0.25), c = this.ball(tc);
-      const p = [c.x, c.y, c.h + r], v = [(c.x - a.x) / 0.25, (c.y - a.y) / 0.25, (c.h - a.h) / 0.25];
+      // (a shot from close range: at least 0.1 s after the kick, so its speed can be measured)
+      for (let t = e.ts + 0.1; t < e.ts + 4; t += 0.005) { const b = this.ball(t); if (b && (b.x - gx) * end > -2.5) { tc = t; break; } }
+      if (tc === null) continue;
+      const dt = Math.min(0.25, tc - e.ts), a = this.ball(tc - dt), c = this.ball(tc);
+      if (!a || !c) continue;
+      const p = [c.x, c.y, c.h + r], v = [(c.x - a.x) / dt, (c.y - a.y) / dt, (c.h - a.h) / dt];
       if ((v[0] * end) < 3) continue;   // a ball dribbled over the line: nothing to carry
-      // the window: up to the next event or a jump of the tracking ball (the reset for the kick-off)
-      let t1 = Math.min(tc + 30, this.t1 + 1);
+      // the window: the ball flies into the netting and lies in the goal, then eases out onto the
+      // tracking ball (which is carried back for the kick-off), all before the next event and
+      // before any jump of the tracking ball (a reset); planned whole, whatever the plan's span
+      let tEnd = Math.min(tc + NET_REST + NET_OUT + 6, e.ts + NET_SPAN);
       const next = this.match.events.find((x) => x.ts > tc + 0.05);
-      if (next) t1 = Math.min(t1, next.ts);
-      for (let t = tc; t < t1; t += 0.1) {
+      if (next) tEnd = Math.min(tEnd, next.ts);
+      for (let t = tc + 0.3; t < tEnd; t += 0.1) {   // (from when the tracking ball has stopped on the line)
         const q0 = this.raw(t), q1 = this.raw(t + 0.1);
-        if (q0 && q1 && Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) > 3) { t1 = t; break; }
+        if (q0 && q1 && Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) > 3) { tEnd = t; break; }
       }
+      const t1 = tEnd;
       // planes as [axis, sign, position(p)]: the ball's front surface past the plane presses it
       const planes = [
         ["back", (q) => (q[0] - gx) * end + r - NET_D, [end, 0, 0]],
@@ -335,7 +387,10 @@ export class BallPlan {
         for (let j = 0; j < 3; j++) p[j] += v[j] * H;
         if (released && t - released.t > 1.5 && Math.hypot(...v) < 0.02 && p[2] - r < 0.01) { s.push([p[0], p[1], 0, 0, null, null]); break; }
       }
-      this.nets.push({ t0: tc, t1, end, s, dt: 2 * H });
+      // out of the goal once it has settled (or in time to be on the tracking ball by tEnd)
+      const settled = tc + (s.length - 1) * 2 * H;
+      const th = Math.max(tc, Math.min(Math.max(settled, tc + NET_REST), tEnd - NET_OUT));
+      this.nets.push({ t0: tc, t1: Math.min(tEnd, th + NET_OUT), th, end, s, dt: 2 * H });
     }
   }
 
@@ -358,22 +413,33 @@ export class BallPlan {
     return { end: w.n.end, plane: a[4], at: a[5], depth: a[3] + ((b[4] === a[4] ? b[3] : a[3]) - a[3]) * w.u };
   }
 
-  // Ball rotation, integrated once from the start of the stretch so any frame can be drawn alone.
+  // Ball rotation, integrated once for the stretch so any frame can be drawn alone. It is a function
+  // of match time, the same in every plan (a replan or a seek never turns the ball): every kick
+  // starts it afresh from the same orientation, on a grid of STEP in absolute match time, and the
+  // integration starts at the last kick before the stretch. The reset is hidden in the kick itself.
   _spin() {
-    const n = Math.ceil((this.t1 - this.t0) / STEP) + 2;
+    const kicks = this.kicks, k0 = this.qk0, k1 = Math.ceil(this.t1 / STEP) + 1;
+    const n = k1 - k0 + 1;
     this.quats = new Float64Array(4 * n);
-    let q = [0, 0, 0, 1], w = [0, 0, 0];
-    let prev = this.ball(this.t0);
+    let q = [0, 0, 0, 1], w = [0, 0, 0], kn = kicks.findIndex((g) => g > k0);
+    let prev = this.ball(k0 * STEP);
     this.quats.set(q, 0);
     for (let k = 1; k < n; k++) {
-      const cur = this.ball(this.t0 + k * STEP);
+      const t = (k0 + k) * STEP, cur = this.ball(t) ?? prev;
+      if (kn >= 0 && kn < kicks.length && k0 + k >= kicks[kn]) {   // a kick: afresh
+        while (kn < kicks.length && kicks[kn] <= k0 + k) kn++;
+        q = [0, 0, 0, 1]; w = [0, 0, 0];
+        this.quats.set(q, 4 * k); prev = cur; continue;   // the same state a plan starting here has at k = 0
+      }
+      if (!cur || !prev) { this.quats.set(q, 4 * k); prev = cur; continue; }
       // world axes: X = x, Y = up, Z = y
       const vx = (cur.x - prev.x) / STEP, vz = (cur.y - prev.y) / STEP, v = Math.hypot(vx, vz);
-      if (v > 0.05) {
+      if (this._hold(t)) w = [0, 0, 0];   // in the keeper's hands
+      else if (v > 0.05) {
         // rolling: axis = up x direction; in the air the kick's spin carries on (backspin if lofted)
         const ax = [vz / v, 0, -vx / v];
         if (cur.h < 0.05) w = ax.map((c) => c * Math.min(v / this.ballR, SPIN_CAP));
-        else if (prev.h < 0.05) w = ax.map((c) => c * AIR_SPIN * Math.min(1.5, v / 20) * (this._lofted(this.t0 + k * STEP) ? -1 : 1));
+        else if (prev.h < 0.05) w = ax.map((c) => c * AIR_SPIN * Math.min(1.5, v / 20) * (this._lofted(t) ? -1 : 1));
       } else if (cur.h < 0.05) w = [0, 0, 0];
       const a = Math.hypot(...w) * STEP;
       if (a > 1e-9) {
@@ -385,7 +451,7 @@ export class BallPlan {
       prev = cur;
     }
   }
-  _lofted(t) { for (let k = 1; k <= 10; k++) if (this.ball(t + k * 0.1).h > 1.2) return true; return false; }
+  _lofted(t) { for (let k = 1; k <= 10; k++) if (this.ball(t + k * 0.1)?.h > 1.2) return true; return false; }
 
   // --- queries
   // clock bend: the tracking time whose ball is shown at ts
@@ -400,16 +466,35 @@ export class BallPlan {
     if (w) {
       const a = w.n.s[w.k], b = w.n.s[w.k + 1] ?? a;
       [x, y, h] = [0, 1, 2].map((j) => a[j] + (b[j] - a[j]) * w.u);
+      const p = ts > w.n.th && this.raw(this.bent(ts));
+      if (p) {   // out of the goal onto the tracking ball
+        const u = smooth((ts - w.n.th) / NET_OUT);
+        x += (p[0] - x) * u; y += (p[1] - y) * u; h += (Math.max(0, p[2] - this.zGround) - h) * u;
+      }
     } else {
       const p = this.raw(this.bent(ts));
       if (!p) return null;
       [x, y, h] = [p[0], p[1], Math.max(0, p[2] - this.zGround)];
       const mv = this._moved(ts);
       if (mv) { x += mv[0]; y += mv[1]; }
+      const hd = this._hold(ts), K = hd && this.match.at(hd.i, ts);
+      if (K) {   // into his hands from the contact, held at the chest, dropped for the kick
+        const hx = K[0] + hd.f[0] * HOLD_F, hy = K[1] + hd.f[1] * HOLD_F;
+        if (ts < hd.t1) {
+          const u = smooth((ts - hd.t0) / HOLD_IN);
+          x += (hx - x) * u; y += (hy - y) * u; h += (HOLD_H - h) * u;
+        } else {
+          const u = smooth((ts - hd.t1) / (hd.t2 - hd.t1));
+          x = hx + (x - hx) * u; y = hy + (y - hy) * u; h = Math.max(h, HOLD_H - (G / 2) * (ts - hd.t1) ** 2);
+        }
+      } else if (!hd) {
+        const fl = this._fall(ts);
+        if (fl) h = Math.max(h, fl.h - (G / 2) * (ts - fl.t0) ** 2);
+      }
     }
     let q = [0, 0, 0, 1];
     if (this.quats) {
-      const f = Math.min(Math.max((ts - this.t0) / STEP, 0), this.quats.length / 4 - 1.001);
+      const f = Math.min(Math.max(ts / STEP - this.qk0, 0), this.quats.length / 4 - 1.001);
       const k = Math.floor(f), u = f - k;
       q = nlerp(this.quats.subarray(4 * k, 4 * k + 4), this.quats.subarray(4 * k + 4, 4 * k + 8), u);
     }
@@ -458,17 +543,19 @@ export class BallPlan {
   }
 
   // largest distance from the tracking ball over [from, to] and at the event times, for the tests;
-  // a scored ball in the netting is left out (the tracking ball stops on the line)
+  // a scored ball in the netting is left out (the tracking ball stops on the line), and so is a
+  // ball in or out of a keeper's hands (the tracking ball drops to his feet)
   check(from = this.t0 + 1, to = this.t1 - 1) {
     let worst = 0, atEvents = 0;
     for (let t = from; t <= to; t += 0.01) {
-      if (this._net(t)) continue;
+      if (this._net(t) || this._hold(t) || this._fall(t)) continue;
       const p = this.raw(t), b = this.ball(t);
       if (p && b) worst = Math.max(worst, Math.hypot(p[0] - b.x, p[1] - b.y, p[2] - this.zGround - b.h));
     }
     for (const e of this.match.events) {
       if (e.ts < from || e.ts > to) continue;
       const p = this.raw(e.ts), b = this.ball(e.ts);
+      if (!p || !b) continue;
       atEvents = Math.max(atEvents, Math.hypot(p[0] - b.x, p[1] - b.y));
     }
     let legs = 0;

@@ -33,8 +33,11 @@ test("M001: a scored ball keeps its speed over the line, presses the net and sta
   let peak = 0;
   for (let t = tLine; t < tLine + 1; t += 0.01) { const n = plan.net(t); if (n) peak = Math.max(peak, n.depth); }
   assert.ok(peak > 0.3, `net pushed ${peak.toFixed(2)} m`);
-  // and comes to rest inside the goal, on the ground, not back on the pitch
-  const rest = at(g.ts + 8), inside = (rest.x - line) * end;
+  // and comes to rest inside the goal, on the ground, not back on the pitch (then it eases out
+  // onto the tracking ball, carried back for the kick-off)
+  const n = plan.nets.find((x) => x.t0 > g.ts - 5 && x.t0 <= g.ts + 1);
+  assert.ok(n && n.th - n.t0 >= 3 - 1e-9, "no rest in the net");
+  const rest = at(n.th - 0.1), inside = (rest.x - line) * end;
   assert.ok(inside > 0.3 && inside < NET_D + 0.5 && Math.abs(rest.y - 34) < GOAL_W / 2 && rest.h < 0.2,
     `ball at rest at ${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}, ${rest.h.toFixed(2)}`);
   // the tracking check leaves the net window out and still holds elsewhere
