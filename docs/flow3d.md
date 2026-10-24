@@ -557,7 +557,11 @@ draws them, planned on the scene's windows (15 s back, 105 s ahead).
   plans the ball from there): every plan gives the same rotation at the same match time.
 - **Keeper timing.** The run-up never starts before shot + 0.12 s (0.15 s beaten), and contact is
   at least 0.15 s after that, so no division by zero is possible; a reaction is cut at the end of
-  its period; a low ball within 0.6 m sideways is gathered (catch), not dived on.
+  its period; a low ball within 0.6 m sideways is gathered (catch), not dived on. The chest catch
+  alone left the hands 0.76 m from a ball on the grass (DEMO 240.9), so for a low catch the rig
+  stoops him first: bent forward from the hips with straight legs, the coaching technique for a
+  ground ball straight at the keeper, until his shoulders are an arm's reach above the ball (80
+  degrees at most), and then aims the arms.
 - Null guards where the tracking ball can be missing; `KeeperRig.procedural` and the `TOL` export
   removed (unused).
 

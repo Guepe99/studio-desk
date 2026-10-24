@@ -1,7 +1,8 @@
 // A keeper holding the ball (web/js/ball3d.js holds, web/js/keeper3d-rig.js): the 3D clip is
 // stepped at 30 fps through the first hold after <ts> and the ball must sit between his hands,
-// within 0.15 m of their midpoint, from 0.2 s after the catch until he lets it go, and never jump
-// over 0.5 m a frame. Exits 1 otherwise; saves out/shots/hold3d.png from a camera beside him.
+// within 0.15 m of their midpoint, from 0.2 s after the catch until he lets it go, and never move
+// over 0.3 m a frame from 0.1 s after the catch to his kick. Exits 1 otherwise; saves
+// out/shots/hold3d.png from a camera beside him.
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh hold3d.mjs [match] [ts]
 import { createRequire } from "node:module";
@@ -35,7 +36,7 @@ try {
     for (let t = d.t0 - 0.5; t < d.t2 + 0.3; t += 1 / 30) {
       await window.__setTime(t - s.tl.from);
       const b = sc.ball.position, h = sc.keeper.hands(d.i), cur = [b.x, b.y, b.z];
-      if (prev) jump = Math.max(jump, Math.hypot(...cur.map((v, k) => v - prev[k])));
+      if (prev && t >= d.t0 + 0.1 && t <= d.t2) jump = Math.max(jump, Math.hypot(...cur.map((v, k) => v - prev[k])));   // in his hands and dropped, not the flight
       prev = cur;
       if (t >= d.t0 + 0.2 && t <= d.t1) rows.push({ t: +t.toFixed(2), off: Math.hypot(b.x - (h[0] - 52.5), b.y - h[2], b.z - (h[1] - 34)), y: b.y });
     }
@@ -51,9 +52,9 @@ try {
   }, Number(ts));
   if (r.none) { console.log(`FAIL no hold after ${ts}`); bad = true; }
   else {
-    const worst = r.rows.reduce((a, x) => (x.off > a.off ? x : a), { off: 0 });
-    console.log(`hold of entity ${r.hold.i} ${r.hold.t0.toFixed(2)}-${r.hold.t1.toFixed(2)}: ${r.rows.length} frames, ball off the hands at most ${worst.off.toFixed(3)} m (${worst.t}), largest frame step ${r.jump.toFixed(3)} m`);
-    if (worst.off > 0.15 || r.jump > 0.5 || r.rows.length < 5) bad = true;
+    const worst = r.rows.reduce((a, x) => (x.off > a.off ? x : a), { off: 0, t: "-" });
+    console.log(`hold of entity ${r.hold.i} ${r.hold.t0.toFixed(2)}-${r.hold.t1.toFixed(2)}: ${r.rows.length} frames, ball off the hands at most ${worst.off.toFixed(3)} m (${worst.t}), largest frame step ${r.jump.toFixed(3)} m, ball centre ${Math.min(...r.rows.map((x) => x.y)).toFixed(2)} to ${Math.max(...r.rows.map((x) => x.y)).toFixed(2)} m up`);
+    if (worst.off > 0.15 || r.jump > 0.3 || r.rows.length < 5) bad = true;
     await page.screenshot({ path: `${shots}/hold3d.png` });
   }
 } finally {

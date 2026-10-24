@@ -100,6 +100,7 @@ export class KeeperRig {
       if (!r || !p.holder.isEnabled()) continue;
       const w = smooth((ts - r.start) / (r.tc - r.start)) * (1 - smooth((ts - r.tc - 0.2) / 0.4));
       if (w <= 0) continue;
+      if (r.kind === "catch" && r.h < 0.6) this._stoop(p, r, w);
       const target = new B.Vector3(r.ball[0] - HALF_L, r.ball[2], r.ball[1] - HALF_W);
       for (const side of ["l", "r"]) {
         const up = p.anim.node(`upperarm_${side}`), lo = p.anim.node(`lowerarm_${side}`), hand = p.anim.node(`hand_${side}`);
@@ -111,6 +112,18 @@ export class KeeperRig {
       }
     }
     for (const p of this.s.players) this._grip(p, ts);   // after the arms moved
+  }
+
+  // A low ball straight at him is gathered stooping: bent forward from the hips, legs straight,
+  // until the shoulders are an arm's reach above the ball (80 degrees at most); the arms then aim.
+  _stoop(p, r, w) {
+    const sp = p.anim.node("spine_01"), a = p.anim.node("upperarm_l"), b = p.anim.node("upperarm_r");
+    if (!sp?.parent || !a || !b) return;
+    chain(a); chain(b);
+    const pivot = sp.getAbsolutePosition().y, L = (a.getAbsolutePosition().y + b.getAbsolutePosition().y) / 2 - pivot;
+    if (L < 0.1) return;
+    const c = Math.min(1, Math.max(Math.cos((80 * Math.PI) / 180), (r.ball[2] + 0.55 - pivot) / L));
+    turnWorld(sp, new B.Vector3(r.u[0], 0, r.u[1]), Math.acos(c) * w);   // about his right: forward and down
   }
 
   // The held ball sits between his hands wherever the pose puts them (as scene3d.throwBall).
