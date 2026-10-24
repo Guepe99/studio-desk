@@ -1,6 +1,7 @@
 // Reduced motion holds the TV camera (layout review, finding 12): with prefers-reduced-motion the 3D
 // view stays on camera 1's wide shot through a crowd cutaway, a goal's punch-in, the tight shot of
-// the scorer and the goal replay; without it the same moments cut (a check that the check sees the cuts).
+// the scorer and the goal replay (none plays), and camera 1 does not slide along its rail; without it
+// the same moments cut and slide (a check that the check sees them).
 //
 //   MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-camera.mjs
 import { createRequire } from "node:module";
@@ -30,9 +31,14 @@ async function shots(reducedMotion) {
     const at = async (ts) => {
       sd.setPlaying(false); sd.seek(ts);
       for (let k = 0; k < 4; k++) await raf();
-      return { ts, camera: s.debug.camera, active: s.scene.activeCamera.name, fov: s.cams.tv.fov };
+      return { ts, camera: s.debug.camera, active: s.scene.activeCamera.name, fov: s.cams.tv.fov, replay: !!v.last?.replay, x: s.cams.tv.position.x };
     };
-    return { cutaway: await at((cut.from + cut.to) / 2), punch: await at(goal.ts - 0.3), tight: await at((stop[0] + stop[1]) / 2), replay: rep ? await at(rep.from + 3) : null };
+    // the rail: the moment camera 1 is furthest along it (camera.js railAt)
+    const { railAt } = await import("./js/scene3d/sightline.js"), { BROADCAST_POS } = await import("./js/scene3d/camera.js");
+    let slide = 0;
+    for (let t = 0; t < sd.match.duration; t += 1) if (Math.abs(railAt(s.cams.rail, t)) > Math.abs(railAt(s.cams.rail, slide))) slide = t;
+    return { cutaway: await at((cut.from + cut.to) / 2), punch: await at(goal.ts - 0.3), tight: await at((stop[0] + stop[1]) / 2), replay: rep ? await at(rep.from + 3) : null,
+      rail: await at(slide), home: BROADCAST_POS.x };
   });
   await ctx.close();
   return out;
@@ -46,7 +52,10 @@ try {
     for (const k of ["cutaway", "punch", "tight", "replay"]) {
       if (!still[k]) { fail(`${k}: no such moment in ${MATCH}`); continue; }
       if (still[k].camera !== "broadcast" || still[k].active !== "tv") fail(`reduced motion at the ${k}: camera ${still[k].camera} (${still[k].active})`);
+      if (still[k].replay) fail(`reduced motion at the ${k}: the goal replay plays`);
     }
+    if (Math.abs(still.rail.x - still.home) > 1e-6) fail(`reduced motion: camera 1 slides along its rail (x ${still.rail.x} against ${still.home})`);
+    if (!(Math.abs(moving.rail.x - moving.home) > 0.5)) fail(`no-preference: camera 1 does not slide on its rail at ${moving.rail.ts} (x ${moving.rail.x} against ${moving.home})`);
     // the check of the check: without the preference the same moments do cut and punch in
     if (moving.tight.camera !== "celebration" && !moving.tight.camera.startsWith("replay")) fail(`no-preference tight shot: ${moving.tight.camera}`);
     if (!moving.cutaway.camera.startsWith("crowd-")) fail(`no-preference cutaway: ${moving.cutaway.camera}`);

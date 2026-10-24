@@ -60,9 +60,15 @@ shot of a match broadcast does.
   nothing but grass behind the players.
 - **Replays:** one free camera at four angles: the goal camera (14 m behind the goal line on the
   long axis, 13.5 degrees to the penalty mark), a pitch-level camera in line with the 18-yard line,
-  the reverse angle from the far stand and a high tactical view. A goal replay runs 5.5 s: 2.5 s
-  from behind the goal at full speed, then the last second before the goal and the ball in the net
-  from pitch level at half speed (`view3d.js` REPLAY.slow), as broadcasts slow the decisive touch.
+  the reverse angle from the far stand and a high tactical view. A goal replay runs 5.5 s from
+  when camera 2 leaves the scorer: 2.5 s from behind the goal at full speed, ending 1.6 s after
+  the ball crosses the line, then 3 s from pitch level at half speed on the strike, as broadcasts
+  slow the decisive touch (`view3d.js` REPLAY). Both angles are anchored on the shot event and on
+  the first tracking sample with the ball on the goal line, not on the goal fact's time, which can
+  come up to 1.5 s after the strike: each starts at least 0.3 s before the strike and shows the
+  ball crossing the line (on M001 to M004 the old windows missed the strike in 8 of 12 goals on
+  the first angle and 7 of 12 on the second; `tests/web/view3d.test.mjs`). The slow angle runs
+  faster than half speed only when the flight is too long for its 3 s (0.66x on one goal of M002).
 - **Shots and the player on the ball:** every shot that is not a goal gets a short punch-in on
   camera 1 towards where it ends (22 m wide, 1.2 s held, 1.2 s out, `camera.js` SHOT_PUNCH). In
   open play the shirt and surname of the player on the ball hang over his head, as in a football
@@ -96,8 +102,9 @@ What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
   cut comes 1.5 s after the ball is dead: the first tracking sample with the ball on the ground
   (under 0.5 m) and on or over a line, or at rest (the simulator parks a ball that goes out on the
   line itself, so a ball still in the air never counts). After a foul it comes right after camera
-  2's tight shot of the fouler, cutting straight from it. No cutaway above 4x, the fastest speed
-  the goal replays play at: at 16x a 4 s shot would only flash by. A stoppage
+  2's tight shot of the fouler, cutting straight from it. No cutaway and no cut to camera 2 above
+  4x, the fastest speed the goal replays play at: at 16x a 4 s shot would only flash by (camera 1
+  stays on, and lets a goal's punch-in go as it does a shot's). A stoppage
   with a goal is left to the celebration and the goal replay. The match data has no substitutions
   and no half-time break (the second half starts 1.3 s after the first ends), so neither gets one.
 - **Which shot**, by restart and never the same kind twice in a row (a hash of the match id and the
@@ -113,14 +120,16 @@ What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
   - *stadium*: a beauty shot from high in the near corner away from the restart, 21 m up under the
     roof, 66 degrees across the whole bowl to the far stand, the corner screen and the floodlights,
     panning slowly over 5 s. First choice at goal kicks. Never straight from camera 2's tight
-    shot: depth of field switches off at that cut, and the first frames of the rebuilt post chain
-    show stale green where nothing is drawn, which in this shot is the sky (seen in the stills).
+    shot: depth of field switched off at that cut by rebuilding the post chain, whose first frames
+    showed stale green where nothing is drawn, which in this shot is the sky (seen in the stills).
+    Depth of field is now built once and only attached or detached (`post.js`); the rule stays.
 - **Never during play:** every cutaway lies between two events, after the ball is out and ending
   at least 3 s (4 s at a throw-in) before the restart; never over a tight shot or a goal replay.
   The carrier tag is off during a cutaway.
 - **Same frame every time:** the plan is a pure function of the match (no `Math.random`), so a
   seek, a replay and a video frame agree. With `prefers-reduced-motion` camera 1 holds the wide shot
-  and there is no cutaway, like the other cuts.
+  throughout: no cutaway, no cut to camera 2, no goal replay, no punch-in and no slide along its
+  rail (`cutaway.js` REDUCE).
 - **On M001:** 39 cutaways, 20 in the first half and 19 in the second, of 83 restarts: 15 fans,
   13 end, 11 stadium, back on camera 1 between 9.5 and 27 s before the restart. M002 to M004 get
   40 to 42.
@@ -145,7 +154,7 @@ into `out/crowd-cutaways/` (not in git).
 
 | Piece | High (WebGL 2, desktop) | Low (phone, WebGL 1, software) |
 |---|---|---|
-| Anti-aliasing | MSAA 4 | FXAA |
+| Anti-aliasing | FXAA (MSAA 4 where SSAO2 is not supported) | FXAA |
 | Sharpen | edge 0.25 | edge 0.25 |
 | Bloom | threshold 1.0 in HDR, weight 0.3, kernel 64, half scale | the same at quarter scale |
 | Tone mapping | Khronos PBR Neutral | Khronos PBR Neutral |
@@ -154,6 +163,12 @@ into `out/crowd-cutaways/` (not in git).
 | Depth of field | the pitchside tight shot and the replays (not the high tactical view), f/2.8 on a 24 mm tall sensor | off |
 | SSAO2 | half resolution, 8 samples, radius 1.2 m | off |
 | Motion blur, grain, chromatic aberration | off | off |
+
+Anti-aliasing on high: with SSAO2 the scene is drawn into SSAO2's prepass target, so the
+pipeline's MSAA never reached it and the high profile had none at all. MSAA 4 in that target
+(`ssao.textureSamples`) took the sample scene from 0.64 to 0.38 and 0.43 fps, FXAA to 0.53 fps
+(`scene3d-perf.mjs high`, SwiftShader, 1280 x 720, back to back on 24 Oct): FXAA it is, with the
+sharpen pass after it as on low.
 
 Babylon docs: https://doc.babylonjs.com/features/featuresDeepDive/postProcesses/defaultRenderingPipeline .
 

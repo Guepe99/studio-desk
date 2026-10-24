@@ -110,26 +110,29 @@ export function setupLighting(scene, profile, mode = "night") {
 // Players and ball are the only casters, and they stay on the pitch or just off it: the cascades
 // only need the camera depths where rays through the frame cross that box (9 x 9 rays, slab test).
 const FIT_BOX = [[-HALF_L - 6, HALF_L + 6], [0, 2.5], [-HALF_W - 6, HALF_W + 6]], FIT_N = 9;
-const fitRay = new B.Ray(B.Vector3.Zero(), B.Vector3.Forward()), fitP = new B.Vector3(), fitM = B.Matrix.Identity();
+// every frame: no allocation per ray (it made 324 Vector3s and 243 arrays a frame)
+const fitRay = new B.Ray(B.Vector3.Zero(), B.Vector3.Forward()), fitP = new B.Vector3(), fitQ = new B.Vector3(), fitM = B.Matrix.Identity();
+const AXES = ["x", "y", "z"];
 function fitCascades(csm, cam) {
   const scene = cam.getScene(), view = cam.getViewMatrix(), e = scene.getEngine(), k = e.getHardwareScalingLevel();
   const w = e.getRenderWidth() * k, h = e.getRenderHeight() * k;   // picking takes CSS pixels
   let near = Infinity, far = -Infinity;
+  const depth = (t) => {
+    const z = B.Vector3.TransformCoordinatesToRef(fitRay.direction.scaleToRef(t, fitQ).addInPlace(fitRay.origin), view, fitP).z;
+    near = Math.min(near, z); far = Math.max(far, z);
+  };
   for (let i = 0; i < FIT_N; i++) for (let j = 0; j < FIT_N; j++) {
     scene.createPickingRayToRef(w * i / (FIT_N - 1), h * j / (FIT_N - 1), fitM, fitRay, cam);
-    const o = fitRay.origin.asArray(), d = fitRay.direction.asArray();
+    const o = fitRay.origin, d = fitRay.direction;
     let t0 = 0, t1 = Infinity;
     for (let k = 0; k < 3; k++) {
-      const [lo, hi] = FIT_BOX[k];
-      if (Math.abs(d[k]) < 1e-9) { if (o[k] < lo || o[k] > hi) t1 = -1; continue; }
-      const a = (lo - o[k]) / d[k], b = (hi - o[k]) / d[k];
+      const lo = FIT_BOX[k][0], hi = FIT_BOX[k][1], ok = o[AXES[k]], dk = d[AXES[k]];
+      if (Math.abs(dk) < 1e-9) { if (ok < lo || ok > hi) t1 = -1; continue; }
+      const a = (lo - ok) / dk, b = (hi - ok) / dk;
       t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b));
     }
     if (t0 > t1) continue;
-    for (const t of [t0, t1]) {
-      const z = B.Vector3.TransformCoordinatesToRef(fitRay.origin.add(fitRay.direction.scale(t)), view, fitP).z;
-      near = Math.min(near, z); far = Math.max(far, z);
-    }
+    depth(t0); depth(t1);
   }
   if (near > far) { csm.setMinMaxDistance(0, 1); return; }
   const span = (cam.maxZ || csm.shadowMaxZ) - cam.minZ;

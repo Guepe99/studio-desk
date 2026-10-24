@@ -333,15 +333,19 @@ try {
       const relang = await page.evaluate(async () => {
         const v = window.studioDesk.view3d, n = document.querySelector("#notice"), lang = (l) => document.querySelector(`[data-lang="${l}"]`).click();
         v._notice(() => v.t("lost3d"));
+        // an alert region is read out when words come into it: it shows empty, then gets them
+        const first = { shown: !n.hidden, text: n.textContent };
+        await new Promise((r) => setTimeout(r, 200));
         const en = n.textContent;
         lang("it");
         await new Promise((r) => setTimeout(r, 50));
         const it = n.textContent;
         lang("en");
         v._notice(null);
-        return [en, it];
+        return [en, it, first];
       });
       if (!relang[0] || relang[0] === relang[1]) fail(`the 3D notice kept its language: ${JSON.stringify(relang)}`);
+      if (!relang[2].shown || relang[2].text) fail(`the 3D notice did not show empty before its words: ${JSON.stringify(relang[2])}`);
 
       // seek sweep over the whole match, twice: after the first (players clone their motion clips
       // lazily, scene3d/players.js) the second must leave the heap and the scene the same size
@@ -381,14 +385,18 @@ try {
         Object.assign(v, { floor: 1000, warmup: v.played + 2, beaconAt: v.played + 3, beaconSent: false, gaps: [] });
         sd.seek(1200); sd.setPlaying(true);
         const after = await until(() => !hint.hidden, 60);
+        const status = hint.querySelector("[role=status]"), early = status?.textContent;
+        await wait(300);   // the words come into the live region once it shows
         const [go, keep] = hint.querySelectorAll("button");
-        const out = { after, shown: v.shown, notice: v.notice, text: hint.textContent, go: go.textContent, keep: keep.textContent };
-        keep.click();
+        const out = { after, shown: v.shown, notice: v.notice, text: status?.textContent, go: go.textContent, keep: keep.textContent };
+        keep.focus(); keep.click();
+        out.focusAfterKeep = document.activeElement?.id;
         await wait(12000);
-        Object.assign(out, { keptHidden: hint.hidden, keptShown: v.shown });
+        Object.assign(out, { keptHidden: hint.hidden, keptShown: v.shown, early });
         v.suggested = false;   // the line again, for its other button
         await until(() => !hint.hidden, 60);
-        go.click();
+        go.focus(); go.click();
+        out.focusAfterGo = document.activeElement?.id;
         await wait(500);
         const pitch = document.querySelector("#pitch");
         Object.assign(out, { switched: v.shown, hintAfterSwitch: !hint.hidden, pitch: !pitch.hidden && pitch.parentElement.id === "stage" });
@@ -401,6 +409,7 @@ try {
       console.log(`floor at 1000 fps: the suggestion after ${slow.after.toFixed(1)} s ("${slow.text}"), the view ${slow.shown}; ${JSON.stringify(slow)}; beacon ${JSON.stringify(perf)}`);
       if (slow.shown !== "3d" || slow.notice || !/frames a second/.test(slow.text)) fail(`under the floor the 3D view did not stay with the suggestion: ${JSON.stringify(slow)}`);
       if (slow.go !== "Switch to 2D" || slow.keep !== "Keep 3D") fail(`the suggestion's buttons read ${slow.go} / ${slow.keep}`);
+      if (slow.focusAfterKeep !== "frame" || slow.focusAfterGo !== "frame") fail(`the suggestion's buttons left the focus on ${slow.focusAfterKeep} / ${slow.focusAfterGo}, not the frame`);
       if (!slow.keptHidden || slow.keptShown !== "3d") fail(`"Keep 3D" did not keep the 3D without the line: ${JSON.stringify(slow)}`);
       if (slow.switched !== "2d" || slow.hintAfterSwitch || !slow.pitch) fail(`"Switch to 2D" did not switch: ${JSON.stringify(slow)}`);
       if (slow.kept !== "split") fail(`the minimap turned on by hand after the switch did not stay (${slow.kept})`);

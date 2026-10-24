@@ -23,7 +23,8 @@
 // on a long lens, for a tight shot of the scorer (CELEBRATION seconds from 1 s after the goal),
 // then back to camera 1; the ball rule is off meanwhile. A foul or a keeper's save gets the same
 // tight shot (of the fouler, of the keeper) when play really stops: from 1 s after it until 0.5 s
-// before the next event, and only if that leaves at least 2 s.
+// before the next event, and only if that leaves at least 2 s. Above 4x (view.cuts false) camera 1
+// stays on: a 5 s tight shot would last 0.3 s at 16x.
 // At other stoppages (throw-ins, goal kicks, corners, free kicks) the director sometimes cuts away
 // to the crowd and the stadium (cutaway.js): the fans in the front rows, the fans behind a goal, or
 // a beauty shot of the bowl from high in a corner, on the replay camera (free outside replays),
@@ -33,7 +34,7 @@
 // line, the reverse angle from the far stand, and a high tactical view. They are stateless (a
 // Gaussian-smoothed ball) so any frame renders alone.
 import { railPlan, railAt, hidden } from "./sightline.js";
-import { CELEBRATION, scorers, tightStops, cutawayPlan, cutawayShot } from "./cutaway.js";
+import { CELEBRATION, REDUCE, scorers, tightStops, cutawayPlan, cutawayShot } from "./cutaway.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -66,17 +67,23 @@ const PUNCH = { lead: 1.6, ramp: 1.4, width: 16, front: 4 };
 // a shot that is not a goal gets a lighter punch-in, held `hold` s after the strike and let go over `out` s
 const SHOT_PUNCH = { width: 22, hold: 1.2, out: 1.2 };
 const SHOTS = new Set(["shot", "shot_freekick", "shot_penalty"]);
-// prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no cut to camera 2, no replay camera, no cutaway
-const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 
 // Zoom factor for the size of the frame on screen: 1 from 1000 CSS px wide, down to 0.65 on a phone.
 export const lensScale = (cssW) => Math.min(1, Math.max(0.65, (cssW || 1000) / 1000));
 
-// Ball position smoothed with a Gaussian over the data around ts (stateless).
+// The half ts is in, as [first, last] match second: the operator never looks across half time
+// (the ball is reset for the kick-off between the two).
+export function periodOf(match, ts) {
+  const h = match.meta?.period1_s ?? 0;
+  return ts < h ? [0, h - 0.1] : [h, match.duration];
+}
+
+// Ball position smoothed with a Gaussian over the data around ts, within its half (stateless).
 export function smoothBall(match, ts, sigma, lead) {
   let sx = 0, sy = 0, sw = 0;
+  const [lo, hi] = periodOf(match, ts);
   for (let k = -18; k <= 8; k++) {
-    const p = match.at(0, Math.min(Math.max(ts + k * 0.1, 0), match.duration));
+    const p = match.at(0, Math.min(Math.max(ts + k * 0.1, lo), hi));
     if (!p) continue;
     const w = Math.exp(-((k * 0.1 - lead) ** 2) / (2 * sigma * sigma));
     sx += p[0] * w; sy += p[1] * w; sw += w;
@@ -88,7 +95,8 @@ export function smoothBall(match, ts, sigma, lead) {
 export function broadcastGoal(match, ts) {
   const [bx, by] = smoothBall(match, ts, 0.35, 0.1);
   // where the ball is going: smoothed velocity over half a second
-  const [px, py] = smoothBall(match, ts - 0.25, 0.35, 0.1), [nx, ny] = smoothBall(match, ts + 0.25, 0.35, 0.1);
+  const [lo, hi] = periodOf(match, ts);
+  const [px, py] = smoothBall(match, Math.max(lo, ts - 0.25), 0.35, 0.1), [nx, ny] = smoothBall(match, Math.min(hi, ts + 0.25), 0.35, 0.1);
   const lx = Math.max(-LEAD_MAX[0], Math.min(LEAD_MAX[0], (nx - px) * 2 * LEAD_S));
   const ly = Math.max(-LEAD_MAX[1], Math.min(LEAD_MAX[1], (ny - py) * 2 * LEAD_S));
   let cx = 0, cy = 0, sw = 0;
@@ -182,13 +190,13 @@ export class Cameras {
       this.mode = `crowd-${cut.kind}`;
       return;
     }
-    const stop = this.stops.find(([a, b]) => ts >= a && ts < b);
+    const stop = view.cuts !== false && this.stops.find(([a, b]) => ts >= a && ts < b);
     if (stop && this._celebrate(ts, stop)) {
       this.state = null;   // the wide shot warms up again afterwards
       this.mode = "celebration";
       return;
     }
-    this._broadcast(ts, dt);
+    this._broadcast(ts, dt, true, view.cuts !== false);
     this.mode = "broadcast";
   }
 
@@ -251,31 +259,35 @@ export class Cameras {
 
   _zoom() { return lensScale(this.scene.getEngine().getRenderingCanvas()?.clientWidth); }
 
+  // dt s of the operator up to ts, in sub-steps of 0.02 s; the goal is read again every 0.1 s of
+  // match time and at ts, so a long frame (16x, 64x) follows play as short frames do
   _step(ts, dt) {
-    const g = broadcastGoal(this.match, ts);
     const s = this.state;
-    // dead zone: the spring only sees how far the goal is outside the ellipse
-    const ex = g.x - s.x[0], ez = g.z - s.z[0];
-    const r = Math.hypot(ex / DEAD[0], ez / DEAD[1]);
-    const k = r > 1 ? 1 - 1 / r : 0;
-    for (let t = dt; t > 1e-6; t -= 0.02) {
-      const h = Math.min(0.02, t);
+    let g = null, at = -Infinity;
+    for (let left = dt; left > 1e-6; left -= 0.02) {
+      const h = Math.min(0.02, left), t = ts - left + h;
+      if (t - at > 0.1 - 1e-6 || left <= 0.02 + 1e-6) { g = broadcastGoal(this.match, t); at = t; }
+      // dead zone: the spring only sees how far the goal is outside the ellipse, from where the camera is now
+      const ex = g.x - s.x[0], ez = g.z - s.z[0], r = Math.hypot(ex / DEAD[0], ez / DEAD[1]), k = r > 1 ? 1 - 1 / r : 0;
       spring(s.x, s.x[0] + ex * k, OMEGA_PAN, h);
       spring(s.z, s.z[0] + ez * k, OMEGA_PAN, h);
       spring(s.w, g.width, OMEGA_ZOOM, h);
     }
   }
 
-  _broadcast(ts, dt, punch = true) {
-    if (!this.state || dt === 0 || dt > 1) {
-      // after a jump, warm up the operator over the previous three seconds
-      const g = broadcastGoal(this.match, Math.max(0, ts - 3));
+  // full: the punch-ins and the rail (off under prefers-reduced-motion); cuts: camera 2 takes the
+  // goal from the punch-in (else camera 1 lets the punch-in go itself)
+  _broadcast(ts, dt, full = true, cuts = true) {
+    if (!this.state || dt === 0 || dt > 3) {
+      // after a jump, warm up the operator over the previous three seconds of the same half (also
+      // for a frame of over 3 s at 16x or 64x: the springs forget anything older, and it costs less)
+      const t0 = Math.max(periodOf(this.match, ts)[0], ts - 3), g = broadcastGoal(this.match, t0);
       this.state = { x: [g.x, 0], z: [g.z, 0], w: [g.width, 0] };
-      for (let t = Math.max(0, ts - 3) + 0.1; t <= ts + 1e-6; t += 0.1) this._step(t, 0.1);
+      for (let t = t0 + 0.1; t <= ts + 1e-6; t += 0.1) this._step(t, 0.1);
     } else this._step(ts, dt);
-    const s = this.state, cam = this.tv, [px, pz, pw] = punch ? this._punch(ts, s) : [s.x[0], s.z[0], s.w[0]];
+    const s = this.state, cam = this.tv, [px, pz, pw] = full ? this._punch(ts, s, cuts) : [s.x[0], s.z[0], s.w[0]];
     const target = new B.Vector3(px, 0, pz);
-    cam.position.set(BROADCAST_POS.x + railAt(this.rail, ts), BROADCAST_POS.y, BROADCAST_POS.z);
+    cam.position.set(BROADCAST_POS.x + (full ? railAt(this.rail, ts) : 0), BROADCAST_POS.y, BROADCAST_POS.z);
     const dist = B.Vector3.Distance(cam.position, target);
     const tanH = pw * this._zoom() / 2 / dist;
     cam.fov = 2 * Math.atan(tanH / this._aspect(cam));
@@ -304,11 +316,13 @@ export class Cameras {
   // The operator's punch-in on a shot: from 1.6 s before it he zooms in towards the goal mouth
   // where the ball ends up, so the strike, the keeper and the net read large; on a goal PUNCH.width
   // across, held until the cut to camera 2; on any other shot SHOT_PUNCH, let go after the strike,
-  // the way a game camera leans in on a shot. Returns the shown [x, z, width].
-  _punch(ts, s) {
-    const g = this.punches.find((q) => ts > q.ts - PUNCH.lead && ts < q.until + q.out);
+  // the way a game camera leans in on a shot; a goal's too when there is no cut to camera 2 (above
+  // 4x). Returns the shown [x, z, width].
+  _punch(ts, s, cuts = true) {
+    const out = (q) => q.out || (cuts ? 0 : SHOT_PUNCH.out);
+    const g = this.punches.find((q) => ts > q.ts - PUNCH.lead && ts < q.until + out(q));
     if (!g) return [s.x[0], s.z[0], s.w[0]];
-    const p = smooth01((ts - g.ts + PUNCH.lead) / PUNCH.ramp) * (g.out ? 1 - smooth01((ts - g.until) / g.out) : 1);
+    const p = smooth01((ts - g.ts + PUNCH.lead) / PUNCH.ramp) * (out(g) ? 1 - smooth01((ts - g.until) / out(g)) : 1);
     const end = Math.sign(g.x - HALF_L) || 1;
     const ax = g.x - HALF_L - end * PUNCH.front, az = (g.y - HALF_W) * DEPTH;
     return [s.x[0] + (ax - s.x[0]) * p, s.z[0] + (az - s.z[0]) * p, s.w[0] + (Math.min(s.w[0], g.width) - s.w[0]) * p];
