@@ -11,6 +11,7 @@
 //
 // Everything is planned once on a 0.05 s grid with causal smoothing, so pose() and look() are pure
 // functions of (i, ts) and a seek, a replay or a video frame always shows the same thing.
+import { velocityAt } from "./scene3d/track.js";
 
 export const STEP = 0.05;
 const D = Math.PI / 180;
@@ -54,6 +55,7 @@ const MOTION = {
   SD_Dejected: ["M_crouch_head_down"], SD_Appeal: ["M_appeal_arms_out"], SD_Palms: ["M_palms_shrug"],
   "call:SD_ArmUp": ["M_call_ball"], "appeal:SD_ArmUp": ["M_point_forward", "M_call_ball"], SD_Point: ["M_keeper_organise"],
 };
+const FADE_IN = 0.25, FADE_OUT = 0.4;            // s, an emotion eases in and out
 const PRIO = { celebrate: 6, join: 5, dejected: 5, near_miss: 4, appeal: 3, protest: 3, call: 2, organise: 1 };
 const MODES = ["forward", "backpedal", "strafe", "jockey"];
 const KICKS = new Set(["pass", "cross", "freekick_crossed", "freekick_short", "corner_crossed", "corner_short", "goalkick", "throw_in"]);
@@ -103,6 +105,15 @@ export class Awareness {
   _emotions() {
     const m = this.match, out = [];
     const idx = (pid) => (pid && m.index[pid] !== undefined ? m.index[pid] : null);
+    // an emotion that starts by the end of the last one of the same player, source and kind (the
+    // chained variants, the keeper's two beats) fades in over it (emotion()): no dip between them
+    const last = new Map();
+    const push = (e) => {
+      const key = `${e.i}|${e.src}|${e.kind}`, p = last.get(key);
+      if (p && e.t0 > p.t0 && e.t0 <= p.t0 + p.dur + 1e-9) { e.prev = p; p.followed = true; }
+      last.set(key, e);
+      out.push(e);
+    };
     const add = (pid, kind, clip, t0, dur, src, extra = {}) => {
       const i = idx(pid);
       if (i === null || !m.at(i, t0)) return;
@@ -115,13 +126,13 @@ export class Awareness {
         while (t < t0 + dur - 0.5) {
           const c = opts[k++ % opts.length], mc = this.motion.clips[c];
           const d = mc.loop ? t0 + dur - t : Math.min(mc.len, t0 + dur - t);
-          out.push({ i, kind, clip: c, t0: t, dur: d, prio: PRIO[kind], src, ...extra });
-          t += d;
+          push({ i, kind, clip: c, t0: t, dur: d, prio: PRIO[kind], src, ...extra });
+          t += d - FADE_IN;   // the next variant fades in over the end of this one
           if (opts.length === 1 && !mc.loop) break;
         }
         return;
       }
-      out.push({ i, kind, clip, t0, dur, prio: PRIO[kind], src, ...extra });
+      push({ i, kind, clip, t0, dur, prio: PRIO[kind], src, ...extra });
     };
     const onPitch = (team, ts) => this.ents.map((p, i) => i).filter((i) => i > 0 && this.team[i] === team && m.at(i, ts));
     const dist = (i, j, ts) => { const a = m.at(i, ts), b = m.at(j, ts); return Math.hypot(a[0] - b[0], a[1] - b[1]); };
@@ -228,13 +239,21 @@ export class Awareness {
     return best;
   }
 
+  // A chained variant fading in plays over the one before it (`under`, fadeOut: it keeps its
+  // full weight, no fade-out, and the new one covers it), so the weight never dips between the two.
   emotion(i, ts) {
     const e = this.emotionAt(i, ts);
     if (!e) return null;
+    const u = ts - e.t0, weight = clamp(Math.min(u / FADE_IN, e.followed ? 1 : (e.dur - u) / FADE_OUT), 0, 1);
+    const out = { ...this._clipAt(e, ts), weight, upper: true, kind: e.kind };
+    if (e.prev && u < FADE_IN) out.under = { ...this._clipAt(e.prev, ts), weight: 1, fadeOut: true };
+    return out;
+  }
+
+  _clipAt(e, ts) {
     const mc = this.motion?.clips[e.clip];
     const u = ts - e.t0, len = mc?.len ?? CLIPS[e.clip] ?? 1, once = mc ? !mc.loop : ONCE.has(e.clip);
-    const weight = clamp(Math.min(u / 0.25, (e.dur - u) / 0.4), 0, 1);
-    return { clip: e.clip, t: once ? Math.min(u, len) : u % len, weight, upper: true, full: !!mc?.full, kind: e.kind };
+    return { clip: e.clip, t: once ? Math.min(u, len) : u % len, full: !!mc?.full };
   }
 
   // per player: [from, to] windows while a pass travels to him (no scans then, R4)
@@ -279,8 +298,7 @@ export class Awareness {
         const p = m.at(i, t);
         pos[i] = p;
         if (!p) continue;
-        const a = m.at(i, Math.max(0, t - 0.2)) ?? p, c = m.at(i, Math.min(m.duration, t + 0.2)) ?? p;
-        vel[i] = [(c[0] - a[0]) / 0.4, (c[1] - a[1]) / 0.4];
+        vel[i] = velocityAt(m, (s) => m.at(i, s), t, 0.2, p);   // never across the half-time jump
       }
       // possession: an outfield player within 1.5 m of a low ball, else the team of the last event
       while (ev + 1 < this.events.length && this.events[ev + 1].ts <= t) ev++;

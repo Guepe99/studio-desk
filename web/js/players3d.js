@@ -369,7 +369,6 @@ function relaxJoints(scene, root, pid) {
   let fist = null, slump = 0, added = false;
   const step = () => {
     if (!root.isEnabled()) return;
-    fist ??= scene.getAnimationGroupByName(`${pid}-${FIST}`);
     const open = OPEN * (1 - Math.min(1, fist?.animatables[0]?.weight ?? 0));
     for (const { n, rest, finger } of joints) {
       const a = finger ? open : SLUMP * slump;
@@ -379,6 +378,9 @@ function relaxJoints(scene, root, pid) {
   return (r) => {
     const e = r.emotion;
     slump = e?.kind === "dejected" && e.clip?.startsWith("M_") ? Math.min(1, e.weight ?? 0) : 0;
+    // the fist clip is cloned the first time it plays (players.js), so it is looked up then, not
+    // every frame for a player who never plays it
+    if (!fist && (e?.clip === FIST || e?.under?.clip === FIST)) fist = scene.getAnimationGroupByName(`${pid}-${FIST}`);
     // added on the first frame, so it runs after applyUpper (registered once the players exist)
     if (!added) { added = true; scene.onAfterAnimationsObservable.add(step); }
   };

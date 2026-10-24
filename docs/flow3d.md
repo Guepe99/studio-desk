@@ -525,3 +525,88 @@ warp's pull jumps 0.343 in a frame"; no leg bones, no warp; the stride against t
 table, which fails when the table's 3.04 steps/s at 5.07 m/s is changed to 3.3) and
 `tests/web/skills.test.mjs` (a plan over a window inside the first gives the same moves, which
 fails when the seed takes the window's start).
+
+## 8. Review fixes: half time, motion loops, head look, strides, facing
+
+A review of the players' code found the smoothing and speed estimates reading across half time,
+motion loops that swap in one frame, a head look that switched off all at once, strides that
+ignored the player's height, a facing that depended on what was shown before a seek, and chained
+celebration variants that dipped to nothing between two clips.
+
+### Measured causes (before, the code of section 7)
+
+- **Half time.** The tracking jumps between the last frame of the first half and the first of
+  the second (H = period1_s x fps): the players walk off and come back somewhere else. The
+  Catmull-Rom smoothing (`hermiteAt`) took its neighbours across the jump, the shown root
+  (`rootAt`) read the path across it, and the speeds (the scene at +-0.05 s, awareness at
+  +-0.2 s) divided the jump by 0.1 to 0.4 s. On every match, about 459 of 1320 player-frames
+  within 0.5 s of the whistle had a speed over 0.5 m/s outside the samples' own (worst 874 to
+  952 m/s), all 22 players ran over 5 m/s at period1_s, and the root was up to 6.4 to 7.0 m off
+  the sampled path.
+- **Motion loops.** `motionLoop` picked the best matching loop afresh every frame and
+  `animatePlayer` swapped its weight in one: on M001 600 to 900 s, 293 swaps in 12.6
+  player-minutes of backpedal and strafe (23.2 a minute), 15 back again within 0.3 s, and a
+  loop's share of the weight moved by 1.0 in a frame.
+- **Head look.** The look-at was skipped whole during an event action, an M_ emotion or a head
+  clip, at any weight: the head snapped to the look when the weight passed 0.
+- **Strides.** Players are scaled by their height (0.95 to 1.05, `players3d.js`) but the cycle rate
+  used the measured stride: a tall player's feet slid forward, a short one's back.
+- **Facing.** The facing target kept the last one when the player was nearly still with the ball
+  at his feet, so after a seek it was whatever the previous frame had shown. One threshold at
+  0.7 m/s chose between his run and the ball: 820 target flips over 90 degrees in the window above.
+- **Chained variants.** Each variant faded out over 0.4 s and the next faded in from 0 after it
+  ended, and the keeper's two beats after a goal (head clip, then hands on hips) did the same.
+
+### What changed
+
+- **Half time** (`track.js`). `halfSpan` gives the half a match time is in; `hermiteAt` treats the
+  half's last sample as the end of the data (its last 0.1 s goes on at the end velocity) and
+  `rootAt` reads only its own half. `velocityAt` is the speed of a path inside its half; the scene
+  (`scene3d.js`, both the shown and the tracking speed) and awareness (`awareness.js`) use it.
+- **Motion loops** (`players.js`). `motionLoop` gives the loop playing a bonus of 0.35 on the
+  match (`LOOP_HOLD`), about 14 degrees past the diagonal, and `animatePlayer` cross-fades the
+  loops' shares over 0.15 s (`LOOP_FADE`); a seek starts from the one picked.
+- **Head look** (`awareness-rig.js`). The look is turned by k = (1 - action weight) x (1 - M_
+  emotion weight) x (1 - head clip weight), and a head clip fading out under the next gesture
+  gives way by the gesture's weight.
+- **Strides** (`players.js`). The cycle rate of the forward gait, the person's stride of the warp
+  and the motion loops' strides and speeds are times `p.h`, the player's height over the
+  measured one (`scene3d.js`).
+- **Facing** (`players.js` `wantFacing`, called by `scene3d.js`). His run once faster than 0.9 m/s
+  until he slows under 0.5 m/s; nearly still, the ball. A seek (dt 0) decides from that frame
+  alone: the ball's bearing even at his feet, the centre spot without a ball. A NaN yaw or yaw
+  speed resets the spring.
+- **Chained variants** (`awareness.js`). An emotion that starts by the end of the last one of the
+  same player, source and kind keeps that one at full weight under it while it fades in (the
+  variants now overlap by 0.25 s, `FADE_IN`); `animatePlayer` keeps a full-body clip under it on
+  the legs it covers.
+- Small: a missing clip warns once per name; the fist clip is looked up only when an emotion
+  asks for it; `MODES` is no longer exported by `players.js`.
+
+### Numbers (node, 60 Hz)
+
+| | Before | After |
+|---|---|---|
+| Player-frames within 0.5 s of half time with a speed artefact over 0.5 m/s, M001 / M002 / M003 / M004 (of 1320 each) | 459 / 460 / 458 / 459 | 0 / 0 / 0 / 0 |
+| Worst speed artefact there | 874 to 952 m/s | 0 |
+| Players over 5 m/s at period1_s, each match | 22 | 0 |
+| Root off the sampled path there | 6.4 to 7.0 m | 0.011 m |
+| Motion-loop swaps, M001 600 to 900 s (12.6 player-minutes of backpedal and strafe) | 293 (23.2 a minute) | 230 (18.2 a minute) |
+| Swaps back within 0.3 s | 15 | 8 |
+| Largest change of a loop's share in a frame | 1.000 | 0.105 |
+| Facing target flips over 90 degrees in that window | 820 | 638 |
+| Lowest emotion weight between two chained variants, DEMO (22 pairs) | 0.00 | 1.00 |
+| `animatePlayer` for 22 players a frame (node, two runs each, best of three) | 19.3 to 19.4 us | 21.8 to 24.8 us |
+
+A hold of 0.25 gave 19.4 swaps a minute and 10 back; 0.5 gave 16.2 and 4 but keeps the old loop
+further off his travel. Thresholds of 1.1 and 0.4 m/s for the facing cut its flips to 529
+but leave a player who sets off at 1 m/s facing the ball; 0.9 and 0.5 were kept. Most flips left
+come as a player stops or sets off (run to still 267, still to run 205).
+
+Checks, each shown failing with its fix undone first: `tests/web/players-review.test.mjs` (half
+time on M001 to M004 with the old `track.js`: "459 of 1320 player-frames with a speed artefact
+over 0.5 m/s (worst 943.2 m/s)"; no hold: "the loop changes at the same angle both ways (gap
+0.5 degrees)"; no cross-fade: "a loop's share moves by 1.00 in a frame"; the height ignored: "a
+player 12 % taller steps at 1.000 of the cadence, want 0.893"; the old facing: "a seek faces the
+ball: 0, 2"; one threshold at 0.7: "0.65 m/s flips to the ball"; the old head look: "the head
+turns 0.000, want 0.600"; the old emotions: "the emotion's weight dips to 0.00").
