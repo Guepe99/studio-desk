@@ -15,6 +15,7 @@
 // which is what makes it slow down after a kick and run ahead of the player after a touch. Each
 // bend is checked against the tracking ball and softened until it stays within TOL metres.
 // Players are moved (motion warping) so the foot is on the ball at the moment of contact.
+import { run } from "./slices.js";
 
 const TOL = 1.2;          // m: ball distance budget from the tracking ball (the bound is 1.5)
 const MAX_WARP = 3.0;            // m: farther than this from the ball, a player does not touch it
@@ -77,7 +78,8 @@ const angleLerp = (a, b, u) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) 
 export function decel(u, r) { return (2 / (1 + r)) * (u - (1 - r) * u * u / 2); }
 
 export class BallPlan {
-  constructor(match, span, { reach, ballR = 0.11 } = {}) {
+  // sliced: the plan is built only as this.steps runs (Scene3D.planning, slices.js); else now
+  constructor(match, span, { reach, ballR = 0.11, sliced = false } = {}) {
     const m = this.match = match;
     this.reach = reach ?? (() => ({ x: 0, z: 0.45 }));
     this.ballR = ballR;
@@ -104,10 +106,11 @@ export class BallPlan {
     this.qk0 = Math.max(k0, Math.floor((this.t0 - 120) / STEP));   // a ball nobody kicks for two minutes: cap the work
     const goals = new Set(m.goals.flatMap((g) => g.source_event_ids ?? []));
     this.from = Math.min(this.t0 - 6, this.qk0 * STEP - 1, ...m.events.filter((e) => goals.has(e.event_id) && e.ts + NET_SPAN >= this.t0 && e.ts <= this.t0).map((e) => e.ts - 1));
-    this._plan();
-    this._nets();
-    this._spin();
+    this.steps = this._steps();
+    if (!sliced) run(this.steps);
   }
+
+  *_steps() { yield* this._plan(); this._nets(); yield; yield* this._spin(); }
 
   // --- planning
   _who(pid) { const i = this.match.index[pid]; return i === undefined ? null : i; }
@@ -121,10 +124,11 @@ export class BallPlan {
     return h % 5 === 0 ? "l" : "r";
   }
 
-  _plan() {
+  *_plan() {
     const m = this.match, fps = m.meta.fps;
     const ev = m.events.filter((e) => e.ts >= this.from && e.ts <= this.t1 + 6).sort((a, b) => a.ts - b.ts);
     for (let k = 0; k < ev.length; k++) {
+      yield;
       const e = ev[k], next = ev[k + 1];
       const tEnd = next && next.period === e.period ? next.ts : Math.min(e.ts + 3, this.t1);
       const kick = KICKS[e.type_name];
@@ -417,7 +421,7 @@ export class BallPlan {
   // of match time, the same in every plan (a replan or a seek never turns the ball): every kick
   // starts it afresh from the same orientation, on a grid of STEP in absolute match time, and the
   // integration starts at the last kick before the stretch. The reset is hidden in the kick itself.
-  _spin() {
+  *_spin() {
     const kicks = this.kicks, k0 = this.qk0, k1 = Math.ceil(this.t1 / STEP) + 1;
     const n = k1 - k0 + 1;
     this.quats = new Float64Array(4 * n);
@@ -425,6 +429,7 @@ export class BallPlan {
     let prev = this.ball(k0 * STEP);
     this.quats.set(q, 0);
     for (let k = 1; k < n; k++) {
+      if (k % 32 === 0) yield;
       const t = (k0 + k) * STEP, cur = this.ball(t) ?? prev;
       if (kn >= 0 && kn < kicks.length && k0 + k >= kicks[kn]) {   // a kick: afresh
         while (kn < kicks.length && kicks[kn] <= k0 + k) kn++;

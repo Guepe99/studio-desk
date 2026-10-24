@@ -43,9 +43,12 @@ export class AwarenessRig {
 
   // Plans the layer for the match time [span[0], span[1]] (Scene3D.replan); the keeper rig, if
   // any, keeps the others off a keeper on the grass as before.
-  replan(span) {
+  // planFor builds one on a given ball plan (sliced: as its steps run, Scene3D.planning); use puts it in place.
+  replan(span) { this.use(this.planFor(span, this.s.rig.plan)); }
+  planFor(span, plan, sliced = false) { return new Awareness(this.s.match, span, { ball: (t) => plan.ball(t), motion: this.s.motion ?? null, sliced }); }
+  use(aw) {
     const s = this.s;
-    this.aw = new Awareness(s.match, span, { ball: (t) => s.rig.ball(t), motion: s.motion ?? null });
+    this.aw = aw;
     if (s.keeper) this.aw.bodyOf = (i, ts) => s.keeper.body(i, ts);
   }
 

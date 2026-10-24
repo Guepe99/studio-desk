@@ -44,8 +44,10 @@ export class BallRig {
     });
   }
 
-  // Plans the ball for the match time [span[0], span[1]] (Scene3D.replan).
-  replan(span) { this.plan = new BallPlan(this.match, span, { reach: (kind, side) => this.reach[kind + side], ballR: this.ballR }); }
+  // Plans the ball for the match time [span[0], span[1]] (Scene3D.replan); sliced: built as its
+  // steps run (Scene3D.planning).
+  replan(span) { this.plan = this.planFor(span); }
+  planFor(span, sliced = false) { return new BallPlan(this.match, span, { reach: (kind, side) => this.reach[kind + side], ballR: this.ballR, sliced }); }
   addPlayer(i, root) { this.players.set(i, { root, legs: legNodes(root), leg: null }); }
   setLeg(i, leg) { const p = this.players.get(i); if (p) p.leg = leg ?? null; }
   ball(ts) { return this.plan.ball(ts); }

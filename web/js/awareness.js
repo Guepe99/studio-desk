@@ -12,6 +12,7 @@
 // Everything is planned once on a 0.05 s grid with causal smoothing, so pose() and look() are pure
 // functions of (i, ts) and a seek, a replay or a video frame always shows the same thing.
 import { velocityAt } from "./scene3d/track.js";
+import { run } from "./slices.js";
 
 export const STEP = 0.05;
 const D = Math.PI / 180;
@@ -72,7 +73,8 @@ function hash(s, n = 0) {
 
 export class Awareness {
   // motion: the clips.json of web/vendor/motion (null keeps the procedural SD_ stand-ins)
-  constructor(match, span = [0, match.duration], { ball, motion = null } = {}) {
+  // sliced: the plan is built only as this.steps runs (Scene3D.planning, slices.js); else now
+  constructor(match, span = [0, match.duration], { ball, motion = null, sliced = false } = {}) {
     this.match = match;
     this.motion = motion;
     const m = match;
@@ -84,7 +86,13 @@ export class Awareness {
     this.events = [...m.events].sort((a, b) => a.ts - b.ts);
     this.joins = [];   // team-mates running to a scorer: {i, si, t0, T, t1, side}
     this.bodyOf = null;   // (i, ts) -> [[x, y, w?], ...] points of a body lying on the grass (w: 0..1 going down), or null (keeper3d-rig.js)
-    this.emotions = this._emotions();
+    this.steps = this._steps(span);
+    if (!sliced) run(this.steps);
+  }
+
+  *_steps(span) {
+    const m = this.match;
+    this.emotions = yield* this._emotions();
     // after a goal the players bunch round the scorer: bodies are kept apart then (see _apart)
     this.apart = m.goals.map((g) => [g.ts, g.ts + 14]);
     this.byPlayer = new Map();
@@ -92,7 +100,7 @@ export class Awareness {
     this.receives = this._receives();
     this.T0 = Math.max(0, span[0] - 10);
     this.K = Math.ceil((Math.min(m.duration, span[1] + 1) - this.T0) / STEP) + 1;
-    this._plan();
+    yield* this._plan();
   }
 
   // own goal x of a team at ts (contract: home attacks x = 105 in period 1)
@@ -102,7 +110,7 @@ export class Awareness {
   }
 
   // ------------------------------------------------------------------ emotions (R10..R16)
-  _emotions() {
+  *_emotions() {
     const m = this.match, out = [];
     const idx = (pid) => (pid && m.index[pid] !== undefined ? m.index[pid] : null);
     // an emotion that starts by the end of the last one of the same player, source and kind (the
@@ -142,6 +150,7 @@ export class Awareness {
 
     // R10-R12: goals, from the score facts of the ledger
     for (const f of m.goals) {
+      yield;
       const g = f.ts, ev = (f.source_event_ids ?? []).map((id) => byId.get(id)).find(Boolean);
       const scorer = f.player_id ?? ev?.player_id, si = idx(scorer), src = f.fact_id;
       if (si === null || !m.at(si, g)) continue;
@@ -184,6 +193,7 @@ export class Awareness {
     // R13: near misses: a missed shot that ends by the frame, or a shot the keeper saves
     const shots = this.events.filter((e) => e.type_name.startsWith("shot") && e.result_name !== "success");
     for (const e of shots) {
+      yield;
       const gx = e.end_x < 52.5 ? 0 : 105;
       const saved = this.events.some((s) => s.type_name === "keeper_save" && s.ts >= e.ts && s.ts - e.ts < 2.5);
       const byFrame = Math.abs(e.end_x - gx) < 3 && Math.abs(e.end_y - 34) < 3.66 + 2.5;
@@ -202,6 +212,7 @@ export class Awareness {
     // R14: fouls: the fouled player goes down (players.js "tumble") and then appeals, the fouler shows his palms,
     // two teammates protest
     for (const e of this.events.filter((x) => x.type_name === "foul")) {
+      yield;
       const src = `event:${e.event_id}`;
       add(e.related_player_id, "appeal", "SD_Appeal", e.ts + 1.6, 1.6, src);
       add(e.player_id, "protest", "SD_Palms", e.ts + 0.5, 1.5, src);
@@ -214,6 +225,7 @@ export class Awareness {
 
     // R15: a player about to receive a long pass calls for it, arm up, until it is struck
     for (let k = 0; k + 1 < this.events.length; k++) {
+      if (k % 64 === 0) yield;
       const e = this.events[k], n = this.events[k + 1];
       if (!KICKS.has(e.type_name) || n.team_id !== e.team_id || n.player_id === e.player_id || n.period !== e.period) continue;
       if (Math.hypot(e.end_x - e.start_x, e.end_y - e.start_y) < 15) continue;
@@ -222,6 +234,7 @@ export class Awareness {
 
     // R16: the keeper organises his defence before a set piece against him
     for (const e of this.events.filter((x) => SET_PIECES.has(x.type_name))) {
+      yield;
       const gk = gkOf(other(e.team_id), e.ts);
       if (gk !== null) add(this.ents[gk], "organise", "SD_Point", e.ts - 4, 3.5, `event:${e.event_id}`);
     }
@@ -280,7 +293,7 @@ export class Awareness {
   }
 
   // ------------------------------------------------------------------ the plan (R1..R9)
-  _plan() {
+  *_plan() {
     const m = this.match, N = this.ents.length, K = this.K;
     this.fy = new Float32Array(K * N); this.fw = new Float32Array(K * N);
     this.hy = new Float32Array(K * N); this.hp = new Float32Array(K * N);
@@ -291,6 +304,7 @@ export class Awareness {
     const react = this.ents.map((p) => REACT + REACT_JITTER * (2 * hash(p, 3) - 1));
     let ev = 0;
     for (let k = 0; k < K; k++) {
+      if (k % 4 === 0) yield;
       const t = this.T0 + k * STEP;
       const b = this.ball(t);
       const pos = [], vel = [];

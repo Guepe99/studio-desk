@@ -43,10 +43,12 @@ export class KeeperRig {
     if (s.awareness?.aw) s.awareness.aw.bodyOf = (i, ts) => this.body(i, ts);
   }
 
-  // Plans the reactions for the match time [span[0], span[1]] (Scene3D.replan).
-  replan(span) {
-    const s = this.s;
-    this.reactions = planKeeper(s.match, (t) => s.rig.ball(t), { ballR: s.ballR, span, real: this.real });
+  // Plans the reactions for the match time [span[0], span[1]] (Scene3D.replan); planFor on a given
+  // ball plan, use puts them in place.
+  replan(span) { this.use(this.planFor(span, this.s.rig.plan)); }
+  planFor(span, plan) { return planKeeper(this.s.match, (t) => plan.ball(t), { ballR: this.s.ballR, span, real: this.real }); }
+  use(reactions) {
+    this.reactions = reactions;
     this.by = new Map();
     for (const r of this.reactions) (this.by.get(r.i) ?? this.by.set(r.i, []).get(r.i)).push(r);
   }

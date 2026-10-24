@@ -22,6 +22,7 @@ import { loadFootballer, dressFootballer } from "./players3d.js";
 import { smoothMatch, rootAt, velocityAt } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
 import { buildScreens } from "./scene3d/screen.js";
+import { run } from "./slices.js";
 
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
@@ -329,11 +330,22 @@ export class Scene3D {
 
   // Plans the ball, the awareness layer and the keepers for another stretch of match time: the
   // broadcast page keeps a window around its clock, so a whole match never sits in memory.
-  replan(span) {
-    this.span = span;
-    this.rig.replan(span);
-    this.awareness?.replan(span);
-    this.keeper?.replan(span);
+  replan(span) { run(this.planning(span))(); }
+
+  // The same plans step by step (slices.js): yields between pieces of work and returns the swap that
+  // puts them all in place at once, so the picture never mixes two windows.
+  *planning(span) {
+    const ball = this.rig.planFor(span, true);
+    yield* ball.steps;
+    const aw = this.awareness?.planFor(span, ball, true);
+    if (aw) yield* aw.steps;
+    const kr = this.keeper?.planFor(span, ball);
+    return () => {
+      this.span = span;
+      this.rig.plan = ball;
+      if (aw) this.awareness.use(aw);
+      if (kr) this.keeper.use(kr);
+    };
   }
 
   // the page drives frames from its own requestAnimationFrame: beginFrame and endFrame let Babylon

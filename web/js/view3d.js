@@ -5,8 +5,8 @@
 //
 // The rigs plan the ball, the awareness layer and the keepers for a stretch of match time. Here
 // that stretch is a window around the clock (WINDOW), planned again when the clock leaves it, so a
-// 94-minute match never sits in memory; a seek out of the window costs one plan (0.1 to 0.3 s on
-// this server).
+// 94-minute match never sits in memory. In play the next window is built in slices between frames
+// (_replan, slices.js); a seek out of the window costs one plan at once (0.3 to 0.4 s on this server).
 //
 // After a goal the 3D view shows it again in the dead time before the restart, from REPLAY.after s
 // after the goal (when camera 2 leaves the scorer), for REPLAY.len s, as a TV director does: angle A
@@ -32,9 +32,12 @@
 // After BEACON_S of 3D play the page sends one anonymous line to api/perf (api.py): the median frame
 // rate, the GPU's name when the browser gives it, the screen size and pixel ratio, the match.
 import { CELEBRATION, REDUCE } from "./scene3d/cutaway.js";
+import { slices, SLICE_MS } from "./slices.js";
 
 const SLOW_FPS = 10, WARMUP_S = 20, FPS_WINDOW_S = 10, BEACON_S = 30;
 const WINDOW = [15, 105];   // match seconds planned behind and ahead of the picture
+// page seconds of play ahead of the window's edge that the next plan starts (at 64x: as soon as one is in)
+const PLAN_LEAD = 1;
 // after: when camera 2 leaves the scorer; before: match s each angle shows ahead of the strike at least;
 // slow: angle B's page seconds, its speed, and the match s it shows after the crossing (faster than
 // half speed only when strike and crossing would not fit in its 1.5 s otherwise)
@@ -277,20 +280,29 @@ export class View3D {
 
   _span(ts) { return [Math.max(0, ts - WINDOW[0]), Math.min(this.match.duration, ts + WINDOW[1])]; }
 
-  // Plans the window again when the picture nears its edge. A plan takes 0.3 to 0.4 s (mostly the
-  // awareness layer, measured on M001): in play it runs after this frame is drawn, a fraction of a
-  // second ahead of the edge; a seek out of the window plans at once.
-  _replan(ts) {
-    const s = this.scene, [a, b] = s.span, end = this.match.duration;
-    const near = (m) => (ts - 5 < a && a > 0) || (ts + m > b && b < end);
-    if (near(1)) { clearTimeout(this.planning); this.planning = null; s.replan(this._span(ts)); return; }
-    if (this.planning || !near(5 + this.speed * 0.1)) return;
-    this.planning = setTimeout(() => {
+  // Plans the window again when the picture nears its edge. A plan is 0.3 to 0.4 s of work (mostly
+  // the awareness layer, measured on M001): in play it is built in slices of SLICE_MS between frames
+  // (slices.js), started PLAN_LEAD page seconds (and 5 match s) ahead of the edge, and swapped in
+  // whole when done, so the picture does not stop. A seek out of the window plans at once; a seek
+  // inside it drops the slices under way; reaching the edge first builds what is left at once.
+  _replan(ts, seeked) {
+    const s = this.scene, end = this.match.duration, job = this.planning;
+    const near = ([a, b], m) => (ts - 5 < a && a > 0) || (ts + m > b && b < end);
+    if (job && seeked) { job.stop(); this.planning = null; }
+    if (near(s.span, 1)) {
+      if (this.planning && !near(job.span, 1)) return job.finish();
+      this.planning?.stop();
       this.planning = null;
+      return s.replan(this._span(ts));
+    }
+    if (this.planning || !near(s.span, 5 + this.speed * PLAN_LEAD)) return;
+    const span = this._span(ts), next = this.planning = slices(s.planning(span), SLICE_MS, (swap) => {
+      if (this.planning === next) this.planning = null;
       if (this.scene !== s || this.lost) return;
-      s.replan(this._span(viewAt(this.reps, Math.min(this.clock, end), this.speed).ts));
+      swap();
       this.dirty = true;
-    }, 0);
+    });
+    next.span = span;
   }
 
   // Puts each picture where the shown view wants it: the 2D pitch in the frame (2D) or hidden (3D);
@@ -362,7 +374,7 @@ export class View3D {
     if (!s || this.mode === "2d" || this.lost) { this.prev = null; return this._carrier(null); }
     this.speed = speed;
     const v = viewAt(this.reps, Math.min(ts, this.match.duration), speed);
-    this._replan(v.ts);
+    this._replan(v.ts, seeked);
     const l = this.last, jump = jumped(l, v, seeked, speed, this.match.meta.period1_s);
     // a pause also ends a run of play for the frame-rate watch
     this._watch(playing);
