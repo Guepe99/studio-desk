@@ -1368,7 +1368,7 @@ export class Desk {
 
 // A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 // a template graphic has one cue per language: taking it out takes it out in every language
-const slot = (c) => `${c.graphic}|${c.ts}|${c.audience}`;
+const slot = (c) => `${c.graphic}|${c.due ?? c.ts}|${c.audience}`;   // a card held past a replay keeps its slot (view3d.js holdForReplays)
 // The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
 // player check-ins, the analyst's team shape panels) wait for the visitor; the template graphics (momentum,
 // name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do

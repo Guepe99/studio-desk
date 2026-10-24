@@ -156,15 +156,9 @@ def export(match_id, conn, out_root, runtime=None):
     out = Path(out_root) / match_id
     out.mkdir(parents=True, exist_ok=True)
     m = meta(conn, match_id)
-    _dump(out / "meta.json", m)
-    with open(out / "tracking.f32", "wb") as fh:
-        for (blob,) in conn.execute("SELECT pos FROM tracking_frames WHERE match_id = ? ORDER BY frame", (match_id,)):
-            fh.write(blob)
     events = _all(conn, "SELECT * FROM events WHERE match_id = ? ORDER BY ts, event_id", (match_id,))
     facts = _parsed(_all(conn, "SELECT * FROM facts WHERE match_id = ? ORDER BY ts, fact_id", (match_id,)),
                     "source_event_ids", "source_frames")
-    _dump(out / "events.json", events)
-    _dump(out / "facts.json", facts)
     has_runtime = runtime is not None and runtime.execute(
         "SELECT 1 FROM cues WHERE match_id = ? LIMIT 1", (match_id,)).fetchone()
     if has_runtime:
@@ -173,6 +167,13 @@ def export(match_id, conn, out_root, runtime=None):
         stories, traces, cues = [], [], template_cues(m, facts, events)
     from .agents import audiences  # every audience's line, the kids sheet and the player check-ins
     stories, cues = audiences.apply(m, facts, events, stories, cues)
+    # everything is built before the first write: a failure above leaves the old folder as it was
+    _dump(out / "meta.json", m)
+    with open(out / "tracking.f32", "wb") as fh:
+        for (blob,) in conn.execute("SELECT pos FROM tracking_frames WHERE match_id = ? ORDER BY frame", (match_id,)):
+            fh.write(blob)
+    _dump(out / "events.json", events)
+    _dump(out / "facts.json", facts)
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)

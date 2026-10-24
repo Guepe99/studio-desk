@@ -79,3 +79,20 @@ def test_export_uses_runtime_cues_when_present(match_db, tmp_path):
                      "graphic": "nameplate", "audience": "casual", "lang": "en", "payload": {"player_id": "T01-9"}},
                     {"match_id": "M001", "cue_id": "C-000002", "story_id": None, "ts": 5.0, "duration_s": 6.0,  # the kids copy
                      "graphic": "nameplate", "audience": "kids", "lang": "en", "payload": {"player_id": "T01-9"}}]
+
+
+def test_a_failed_export_leaves_the_old_folder_as_it_was(match_db, tmp_path, monkeypatch):
+    _, conn = match_db
+    out = export("M001", conn, tmp_path / "web")
+    before = {p.name: p.read_bytes() for p in out.iterdir()}
+
+    def broken(*_):
+        raise KeyError("pass_distance")
+    monkeypatch.setattr(au, "apply", broken)
+    (out / "facts.json").write_text("[]")   # an older facts file: a half-written export would replace it
+    before["facts.json"] = b"[]"
+    try:
+        export("M001", conn, tmp_path / "web")
+    except KeyError:
+        pass
+    assert {p.name: p.read_bytes() for p in out.iterdir()} == before

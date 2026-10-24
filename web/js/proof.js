@@ -6,7 +6,7 @@
 // and matched to the story's facts again here, the same rules as the verifier (studiodesk/agents/rules.py):
 // a fact value within its rounding, a minute of a fact, a cited event or the moment, the score after a
 // goal (or 0-0), a formation.
-import { TEXT as DESK, tr, kindName, h, valueText } from "./desk.js";
+import { TEXT as DESK, tr, h, valueText } from "./desk.js";
 
 const MAX_EVENTS = 6;     // a story citing more (a recap cites every pass) lists the events of its short facts
 const SHORT_SOURCE = 3;   // a fact from up to 3 events (a shot, a goal) names them; a window of play does not
@@ -25,6 +25,7 @@ export const STRINGS = {
     dtNumbers: "Numbers check (code)", numbersOk: "Every number matches the fact ledger", numbersBad: "A number does not match the fact ledger",
     dtApproval: "On air because", ap_auto_approved: "Approved by the risk rule", ap_approved: "Approved by the producer",
     ap_edited: "Edited and approved by the producer", ap_template: "A template graphic needs no approval",
+    ap_rejected: "Taken off air by the producer", ap_expired: "Off air: its moment passed while it waited", ap_needs_review: "Waiting for the producer",
     offAir: "This graphic is no longer on air.",
   },
   it: {
@@ -40,6 +41,7 @@ export const STRINGS = {
     dtNumbers: "Controllo dei numeri (codice)", numbersOk: "Ogni numero corrisponde al registro dei fatti", numbersBad: "Un numero non corrisponde al registro dei fatti",
     dtApproval: "In onda perché", ap_auto_approved: "Approvata dalla regola del rischio", ap_approved: "Approvata dalla regia",
     ap_edited: "Modificata e approvata dalla regia", ap_template: "Una grafica standard non ha bisogno di approvazione",
+    ap_rejected: "Tolta dalla regia", ap_expired: "Fuori onda: il suo momento è passato mentre aspettava", ap_needs_review: "In attesa della regia",
     offAir: "Questa grafica non è più in onda.",
   },
   es: {
@@ -55,6 +57,7 @@ export const STRINGS = {
     dtNumbers: "Control de las cifras (código)", numbersOk: "Cada cifra coincide con el registro de datos", numbersBad: "Una cifra no coincide con el registro de datos",
     dtApproval: "En antena porque", ap_auto_approved: "Aprobada por la regla de riesgo", ap_approved: "Aprobada por la realización",
     ap_edited: "Editada y aprobada por la realización", ap_template: "Un gráfico estándar no necesita aprobación",
+    ap_rejected: "Retirado por la realización", ap_expired: "Fuera de antena: su momento pasó mientras esperaba", ap_needs_review: "A la espera de la realización",
     offAir: "Este gráfico ya no está en antena.",
   },
 };
@@ -82,13 +85,13 @@ export const FACT_KINDS = {
 };
 export const EVENT_KINDS = {
   en: { clearance: "Clearance", corner_crossed: "Corner into the box", corner_short: "Short corner", cross: "Cross", dribble: "Run with the ball",
-    foul: "Foul", freekick_crossed: "Free kick into the box", freekick_short: "Short free kick", goalkick: "Goal kick", interception: "Interception",
+    foul: "Foul", freekick_crossed: "Free kick into the box", freekick_short: "Short free kick", shot_freekick: "Free-kick shot", goalkick: "Goal kick", interception: "Interception",
     keeper_claim: "Keeper claim", keeper_save: "Save", pass: "Pass", shot: "Shot", goal: "Goal", tackle: "Tackle", take_on: "Take-on", throw_in: "Throw-in" },
   it: { clearance: "Rinvio", corner_crossed: "Calcio d'angolo in area", corner_short: "Calcio d'angolo corto", cross: "Cross", dribble: "Conduzione",
-    foul: "Fallo", freekick_crossed: "Punizione in area", freekick_short: "Punizione corta", goalkick: "Rimessa dal fondo", interception: "Intercetto",
+    foul: "Fallo", freekick_crossed: "Punizione in area", freekick_short: "Punizione corta", shot_freekick: "Tiro su punizione", goalkick: "Rimessa dal fondo", interception: "Intercetto",
     keeper_claim: "Presa del portiere", keeper_save: "Parata", pass: "Passaggio", shot: "Tiro", goal: "Gol", tackle: "Contrasto", take_on: "Dribbling", throw_in: "Rimessa laterale" },
   es: { clearance: "Despeje", corner_crossed: "Córner al área", corner_short: "Córner en corto", cross: "Centro", dribble: "Conducción",
-    foul: "Falta", freekick_crossed: "Falta al área", freekick_short: "Falta en corto", goalkick: "Saque de puerta", interception: "Intercepción",
+    foul: "Falta", freekick_crossed: "Falta al área", freekick_short: "Falta en corto", shot_freekick: "Tiro de falta", goalkick: "Saque de puerta", interception: "Intercepción",
     keeper_claim: "Blocaje del portero", keeper_save: "Parada", pass: "Pase", shot: "Disparo", goal: "Gol", tackle: "Entrada", take_on: "Regate", throw_in: "Saque de banda" },
 };
 
@@ -98,9 +101,9 @@ export function px(lang, key, vars = {}) {
 }
 const plainName = (k) => String(k).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 export const factKind = (k, lang) => FACT_KINDS[lang]?.[k] ?? FACT_KINDS.en[k] ?? plainName(k);
-// a shot that went in is a goal (SPADL: result "success")
+// a shot that went in is a goal, a free kick too (SPADL: result "success")
 export const eventKind = (e, lang) => {
-  const k = e.type_name === "shot" && e.result_name === "success" ? "goal" : e.type_name;
+  const k = (e.type_name === "shot" || e.type_name === "shot_freekick") && e.result_name === "success" ? "goal" : e.type_name;
   return EVENT_KINDS[lang]?.[k] ?? EVENT_KINDS.en[k] ?? plainName(k);
 };
 
@@ -123,9 +126,10 @@ export function onAirText(cue) {
   return ""; // momentum: bars, no numbers
 }
 
-// The numbers in a text, each with what it reads as: a minute ("10'", "45+2'", "8th minute", "minuto 8"),
-// a formation (4-3-3), a score (2-1) or a value (33.8, 8,5/10 with the /10 kept, 83 and the unit after it).
-const TOKEN = /(\d+)\+(\d+)\s?['’′]|\b(\d+)(?:st|nd|rd|th) minute\b|\bminut[oe] (\d+)\b|\b(\d(?:-\d){2,4})\b|\b(\d+) ?- ?(\d+)\b|(\d+(?:[.,]\d+)?)( ?\/ ?10\b)?( ?['’′])?/g;
+// The numbers in a text, each with what it reads as: a minute ("10'", "45+2'", "8th minute", "by the 20th",
+// "minuto 8", "en el 20", "y el 80", "al 70"), a formation (4-3-3), a score (2-1) or a value (33.8, 8,5/10 with the /10
+// kept, 83 and the unit after it). The short minute forms are the phrasebook's and the verifier's (rules.py _at).
+const TOKEN = /(\d+)\+(\d+)\s?['’′]|\b(?:by the )?(\d+)(?:st|nd|rd|th)(?: minute)?\b|\b(?:minut[oe]|el|all?'?) ?(\d+(?:\+\d+)?)\b(?![.,]?\d|['’′+\/-]| ?(?:%|km|m\b))|\b(\d(?:-\d){2,4})\b|\b(\d+) ?- ?(\d+)\b|(\d+(?:[.,]\d+)?)( ?\/ ?10\b)?( ?['’′])?/g;
 export function numbersIn(text) {
   const out = [];
   for (const m of String(text).matchAll(TOKEN)) {
@@ -138,7 +142,7 @@ export function numbersIn(text) {
     else if (mark) Object.assign(tok, { kind: "minute", m: num });
     else {
       const after = text.slice(m.index + all.length).trimStart();
-      const unit = ten ? "/10" : /^km\/h/.test(after) ? "km/h" : /^km\b/.test(after) ? "km" : /^m\b/.test(after) ? "m" : after.startsWith("%") ? "%" : "";
+      const unit = ten ? "/10" : /^km\/h/.test(after) ? "km/h" : /^km\b/.test(after) ? "km" : /^(?:m|metres?|meters?|metri|metros)\b/.test(after) ? "m" : after.startsWith("%") ? "%" : "";
       Object.assign(tok, { kind: "value", n: Number(num.replace(",", ".")), d: (num.split(/[.,]/)[1] ?? "").length, unit });
     }
     out.push(tok);
@@ -146,13 +150,15 @@ export function numbersIn(text) {
   return out;
 }
 
-// A fact value as the panel shows it: a score as the score it made, a momentum index as the number
+// A fact value as the panel shows it: a score as the score it made (leader first in English, home first in
+// Italian and Spanish, as the lines write it: rules.py score_text), a momentum index as the number
 export function factValue(f, match, lang) {
-  if (f.kind === "score") return match.score(f.ts).join("-");
+  if (f.kind === "score") { const sc = match.score(f.ts); return (lang === "en" ? [...sc].sort((a, b) => b - a) : sc).join("-"); }
   if (f.unit === "index") return valueText({ ...f, unit: "" }, lang);
   return valueText(f, lang);
 }
 
+const SHOWN_UNITS = new Set(["km/h", "km", "m", "%", "/10"]);   // the units a line writes after the number
 const near = (v, n, d) => Math.abs(v - n) <= 0.5 * 10 ** -d + 1e-9;
 const sameScore = (p, [a, b]) => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a);
 
@@ -177,13 +183,15 @@ function sourceOf(tok, { facts, events, story, match, minute }, used = new Set()
     const f = pick((x) => x.unit === "formation" && String(Math.round(x.value)) === tok.digits);
     return f ? { fact: f } : null;
   }
-  const f = pick((x) => {
+  const fits = (x) => {
     const v = Number(x.value);
     if (tok.unit === "km") return (x.unit === "m" && near(v / 1000, tok.n, tok.d)) || (x.unit === "km" && near(v, tok.n, tok.d));
     if (!near(v, tok.n, tok.d)) return false;
     if (tok.unit === "/10") return x.unit === "/10" || x.unit === "index";
     return !tok.unit || tok.unit === x.unit;
-  });
+  };
+  // a number without a unit takes a fact written without one first: "29 touches" is not the 29.2 km/h
+  const f = (!tok.unit && pick((x) => fits(x) && !SHOWN_UNITS.has(x.unit))) || pick(fits);
   return f ? { fact: f } : null;
 }
 
@@ -206,16 +214,18 @@ export function proofOf(cue, { story, factIndex, eventIndex, match, minute, stat
   const used = new Set();
   const numbers = numbersIn(onAirText(cue)).map((tok) => {
     const src = sourceOf(tok, { facts, events: allEvents, story, match, minute }, used);
-    if (src?.fact) used.add(src.fact);
+    if (src?.fact && tok.kind !== "minute") used.add(src.fact);   // the title's "15'" leaves the 15th minute's touches to "27 touches"
     return { ...tok, src };
   });
   const players = new Set([story?.player_id, p.player_id, ...known.map((f) => f.player_id), ...shown.map((e) => e.player_id)]
     .filter((id) => id && match.players[id]));
   const v = story?.verifier ?? {};
+  // a casual, kids or team line audiences.py wrote from the facts, not the story's own (AI or phrasebook) line
+  const own = story && cue.graphic === "why_card" && cue.audience !== "analyst" && status !== "edited" && p.body !== story.texts?.[cue.lang];
   return {
     cue, story, facts, numbers, events: shown, more: allEvents.length > shown.length, players,
-    writer: !story ? "code" : v.on_air ?? "ai",       // "phrasebook" | "template" | "ai" | "code" (a template graphic)
-    verifier: story && !v.on_air ? v.status ?? null : null,   // the verifier passed the AI's own line; a phrasebook line is code
+    writer: !story ? "code" : own ? "phrasebook" : v.on_air ?? "ai",       // "phrasebook" | "template" | "ai" | "code" (a template graphic)
+    verifier: story && !v.on_air && !own ? v.status ?? null : null,   // the verifier passed the AI's own line; a phrasebook line is code
     safety: story?.safety ?? null,
     approval: status ?? "template", // a generated graphic goes through the desk too (desk.js genFor)
     numbersOk: numbers.every((x) => x.src),
@@ -262,6 +272,7 @@ export class Proof {
   constructor(bar, panel, ctx) {
     Object.assign(this, { bar, panel, ...ctx });
     this.live = [];          // the cues on air, as the bar shows them
+    this.seen = [];          // the cue objects update() last drew
     this.openId = null;      // the cue whose proof is open
     this.key = "";
     panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); this.close(); } });
@@ -283,12 +294,14 @@ export class Proof {
   // The cues on air now (host.live): a new set or a new language redraws the bar
   update(cues) {
     const lang = this.state.lang, key = `${lang}|${cues.map((c) => c.cue_id).join(",")}`;
-    if (key === this.key) return;
+    // a producer's edit airs new cue objects under the same ids
+    if (key === this.key && cues.length === this.seen.length && cues.every((c) => this.seen.includes(c))) return;
     this.key = key;
+    this.seen = cues;
     this.live = [...cues].sort((a, b) => a.ts - b.ts || String(a.cue_id).localeCompare(String(b.cue_id)));
-    // a new language or audience airs the same graphic as another cue: the open proof follows it
-    const same = this.openId && !this.live.some((c) => c.cue_id === this.openId)
-      && this.live.find((c) => c.story_id === this.cue.story_id && c.graphic === this.cue.graphic && c.ts === this.cue.ts);
+    // the open cue as it airs now, or, in a new language or audience, the same graphic as another cue
+    const same = this.openId && (this.live.find((c) => c.cue_id === this.openId)
+      ?? this.live.find((c) => c.story_id === this.cue.story_id && c.graphic === this.cue.graphic && c.ts === this.cue.ts));
     if (same) { this.openId = same.cue_id; this.cue = same; }
     const focused = this.bar.contains(document.activeElement) ? document.activeElement.dataset.cue : null;
     this.bar.lang = lang;

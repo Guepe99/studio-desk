@@ -70,7 +70,7 @@ export function holdForReplays(cues, reps) {
     const r = reps.find((x) => c.ts < x.to && c.ts + c.duration_s > x.from);
     const ts = Math.max(r ? r.to : c.ts, free);
     free = ts + c.duration_s;
-    if (ts !== c.ts) moved.set(c, { ...c, ts });
+    if (ts !== c.ts) moved.set(c, { ...c, ts, due: c.ts });   // due: the sheet's time, the desk's key for it
   }
   return cues.map((c) => moved.get(c) ?? c);
 }

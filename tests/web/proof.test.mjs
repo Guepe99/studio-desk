@@ -1,9 +1,9 @@
-// web/js/proof.js: what the "Show proof" panel lists for each graphic of the DEMO and M001 packs.
+// web/js/proof.js: what the "Show proof" panel lists for each graphic of the DEMO and M001-M004 packs.
 //   node --test tests/web/proof.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { proofOf, proofWords, numbersIn, onAirText, STRINGS, FACT_KINDS, EVENT_KINDS } from "../../web/js/proof.js";
+import { Proof, proofOf, proofWords, numbersIn, onAirText, STRINGS, FACT_KINDS, EVENT_KINDS } from "../../web/js/proof.js";
 import { Match } from "../../web/js/match.js";
 
 const root = new URL("../../", import.meta.url);
@@ -22,7 +22,7 @@ function pack(m) {
   };
   return { match, stories, minute, ctx };
 }
-const PACKS = Object.fromEntries(["DEMO", "M001"].map((m) => [m, pack(m)]));
+const PACKS = Object.fromEntries(["DEMO", "M001", "M002", "M003", "M004"].map((m) => [m, pack(m)]));
 
 // Every digit run the panel may show for a cue, built straight from the ledger: the cited facts' values at
 // the roundings the lines use, formation and score digits, "10" of a /10 scale, the minutes of the facts,
@@ -62,6 +62,14 @@ for (const [m, P] of Object.entries(PACKS)) {
       assert.equal(pr.numbersOk, true);
     }
     assert.ok(n > 10, `only ${n} numbers on screen`);
+  });
+
+  test(`${m}: each number of a check-in comes from the fact of its own line`, () => {
+    for (const cue of P.match.cues.filter((c) => c.payload.kind === "checkin")) {
+      const ids = cue.payload.fact_ids, pr = proofOf(cue, P.ctx(cue)), values = pr.numbers.filter((x) => x.kind === "value");
+      const want = cue.payload.body.split("\n").map((l, i) => (/\d/.test(l) ? ids[i] : null)).filter(Boolean);
+      assert.deepEqual(values.map((x) => x.src.fact.fact_id), want, `${cue.cue_id} ${cue.lang}: ${onAirText(cue)}`);
+    }
   });
 
   test(`${m}: every number the panel shows, in every language, comes from the fact ledger`, () => {
@@ -194,6 +202,12 @@ test("the numbers in a line: minutes, a /10 scale, a formation, a score and a un
     .map(({ text, kind, unit, m }) => [text, kind, unit ?? m ?? ""]);
   assert.deepEqual(got, [["45+2'", "minute", "45+2"], ["8,5/10", "value", "/10"], ["8th minute", "minute", "8"], ["minuto 10", "minute", "10"],
     ["4-3-3", "formation", ""], ["4-4-2", "formation", ""], ["2-1", "score", ""], ["1.9", "value", "km"], ["83", "value", "%"], ["10'", "minute", "10"], ["13'", "minute", "13"]]);
+  // the phrasebook's later minutes drop the word (rules.py _at), and a distance may be spelled out
+  const short = numbersIn("to 7.5/10 by the 20th, en el 20, entre el minuto 70 y el 80, al 70, all'80, en el minuto 45+2, from 25 metres, da 26 metri, el 25%")
+    .map(({ text, kind, unit, m }) => [text, kind, unit ?? m ?? ""]);
+  assert.deepEqual(short, [["7.5/10", "value", "/10"], ["by the 20th", "minute", "20"], ["el 20", "minute", "20"], ["minuto 70", "minute", "70"],
+    ["el 80", "minute", "80"], ["al 70", "minute", "70"], ["all'80", "minute", "80"], ["minuto 45+2", "minute", "45+2"], ["25", "value", "m"],
+    ["26", "value", "m"], ["25", "value", "%"]]);
 });
 
 test("every string, fact kind and event kind is in the three languages, and the pack's kinds have a name", () => {
@@ -205,4 +219,41 @@ test("every string, fact kind and event kind is in the three languages, and the 
   // no em dash, and Italian with its accents
   for (const lang of LANGS) assert.ok(!JSON.stringify([STRINGS[lang], FACT_KINDS[lang], EVENT_KINDS[lang]]).includes("—"), lang);
   assert.ok(!/ e' | perche' | piu' /.test(JSON.stringify(STRINGS.it)));
+});
+
+test("the open panel follows a producer's edit of the graphic on air, and says when it is taken off", () => {
+  const el = () => ({ attrs: {}, kids: [], dataset: {}, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {}, append(...k) { this.kids.push(...k); },
+    replaceChildren(...k) { this.kids = k; }, contains: () => false, querySelector: () => null, focus() {} });
+  globalThis.document = { createElement: el, createElementNS: el, activeElement: null };
+  const P = PACKS.M001, cue = P.match.cues.find((c) => c.graphic === "why_card" && c.story_id && /km\/h/.test(c.payload.body) && c.lang === "en");
+  let status = "auto_approved";
+  const desk = { byId: P.stories, genFor: () => null, factIndex: P.ctx(cue).factIndex, eventIndex: P.ctx(cue).eventIndex,
+    clockText: P.minute, status: () => status, what: () => "Goal" };
+  const pf = new Proof(el(), el(), { desk, match: P.match, state: { lang: "en" }, pitch: {}, view3d: () => null, onLayout() {} });
+  pf.update([cue]);
+  Object.assign(pf, { openId: cue.cue_id, cue, key: "" });
+  pf.update([cue]);
+  assert.equal(pf.proof.numbersOk, true);
+  // the desk airs the edit as a new cue object under the same id
+  const edited = { ...cue, payload: { ...cue.payload, body: cue.payload.body.replace(/\d+(?:\.\d)? km\/h/, "999.9 km/h") } };
+  status = "edited";
+  pf.update([edited]);
+  assert.equal(pf.cue, edited);
+  assert.equal(pf.proof.numbersOk, false);
+  assert.equal(proofWords(pf.proof, { match: P.match, minute: P.minute, lang: "en", what: "" }).checks.at(-1)[1], STRINGS.en.ap_edited);
+  for (const st of ["rejected", "expired"]) {
+    status = st;
+    pf.update([{ ...edited }]);
+    assert.ok(!/ap_/.test(proofWords(pf.proof, { match: P.match, minute: P.minute, lang: "it", what: "" }).checks.at(-1)[1]), st);
+  }
+  delete globalThis.document;
+});
+
+test("a casual or kids line the code wrote from the facts says so, without the verifier of the AI's line", () => {
+  const P = PACKS.DEMO, cue = P.match.cues.find((c) => c.cue_id === "C-000013"), s = P.stories.get(cue.story_id);
+  assert.notEqual(cue.payload.body, s.texts.en);
+  const pr = proofOf(cue, P.ctx(cue));
+  assert.deepEqual([pr.writer, pr.verifier], ["phrasebook", null]);
+  const ai = P.match.cues.find((c) => c.story_id === cue.story_id && c.audience === "analyst" && c.lang === "en");
+  assert.equal(proofOf(ai, P.ctx(ai)).writer, "ai");
 });

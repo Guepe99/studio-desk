@@ -79,3 +79,20 @@ test("a substitute's sheet first has something of its own after he comes on, not
   }
   assert.ok(subs >= 3, `only ${subs} substitutes have a sheet`);
 });
+
+test("a card a goal replay holds back keeps its graphic on the desk, so its proof and its Take out still find it", () => {
+  let n = 0;
+  for (const m of IDS) {
+    const mt = match(m), d = desk(m, mt), reps = replays(mt);
+    for (const audience of ["analyst", "casual", "kids"]) {
+      const sheet = d.sheet(mt.cues, audience, "en"), held = holdForReplays(sheet, reps);
+      sheet.forEach((c, i) => {
+        if (held[i] === c || c.story_id) return;
+        n++;
+        assert.equal(d.genFor(held[i]), d.genFor(c), `${m} ${c.cue_id} ${c.graphic} ${c.ts} -> ${held[i].ts}`);
+        assert.ok(d.genFor(c), c.cue_id);
+      });
+    }
+  }
+  assert.ok(n > 0, "no card was held back: the test checks nothing");
+});
