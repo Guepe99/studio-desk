@@ -148,7 +148,8 @@ export class OGrafHost {
       ...this.opts.vendorParams(),
     };
     inst.loaded = el.load(params);
-    inst.loaded.then(() => {
+    // chain: settles once the graphic is on screen (played, or scheduled and at its time)
+    inst.chain = inst.loaded.then(() => {
       if (inst.gone) return;
       inst.ready = true;
       if (inner) {

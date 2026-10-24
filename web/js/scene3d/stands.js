@@ -7,6 +7,7 @@
 // Everything else here is static: world matrices and materials are frozen.
 import { buildCrowd3D, HAIR, pickHair } from "./crowd.js";
 import { toonMaterial } from "./toon.js";
+import { FRONT_S, FRONT_E, SIDE_D, END_D, ROOF_Y, MAST_X, MAST_Z, MAST_H } from "./bowl.js";
 // match time goes to the shaders modulo a whole number of periods of sin(7 t) and sin(4.2 t): sin()
 // of a whole match (up to 6,000 s) loses precision on phone GPUs
 const WAVE_T = 200 * Math.PI / 7;
@@ -47,32 +48,38 @@ export function pickFan(end, r) {
   const [h, a] = SHIRT_SHARE[end];
   return r < h ? "home" : r < h + a ? "away" : null;
 }
+// A card's cardFan: its spectator's shirt (+1 home, -1 away, 0 neutral) and end (+1 home end,
+// -1 away end, 0 a side stand or the side half of a corner), as goal sides are signed (crowdGoal.y).
+const SIGN = { home: 1, away: -1 };
+export const cardFan = (fan, end) => [SIGN[fan] ?? 0, SIGN[end] ?? 0];
 
 // Cards jump when their end, or their team, celebrates: a vertex offset in the shader driven by
-// the time since the last goal (crowdGoal: since, side +1 home / -1 away, match time, this
-// material's team +1 / -1 / 0). Per-card delay and length come from a hash of its position, with
-// the same ranges as the 3D spectators (crowd.js REACT).
+// the time since the last goal (crowdGoal: since, side +1 home / -1 away, match time). Each card
+// carries its spectator's shirt and end (cardFan), the same on torso, head and hair, so a
+// spectator jumps whole, by the same rule as the 3D ones (crowd.js reaction). Per-card delay and
+// length come from a hash of its position (a head and its torso share x and z), with the same
+// ranges as the 3D spectators (crowd.js REACT).
 class CardJumpPlugin extends B.MaterialPluginBase {
-  constructor(material, team, state) {
+  constructor(material, state) {
     super(material, "CardJump", 210, { CARDJUMP: false });
-    this.team = team;
     this.state = state;
     this._enable(true);
   }
   prepareDefines(defines) { defines.CARDJUMP = true; }
   getClassName() { return "CardJumpPlugin"; }
+  getAttributes(attributes) { attributes.push("cardFan"); }
   getUniforms() {
-    return { ubo: [{ name: "crowdGoal", size: 4, type: "vec4" }], vertex: "#ifdef CARDJUMP\nuniform vec4 crowdGoal;\n#endif\n" };
+    return { ubo: [{ name: "crowdGoal", size: 3, type: "vec3" }], vertex: "#ifdef CARDJUMP\nuniform vec3 crowdGoal;\n#endif\n" };
   }
-  bindForSubMesh(ubo) { ubo.updateFloat4("crowdGoal", this.state.since, this.state.side, this.state.time % WAVE_T, this.team); }
+  bindForSubMesh(ubo) { ubo.updateFloat3("crowdGoal", this.state.since, this.state.side, this.state.time % WAVE_T); }
   getCustomCode(shaderType, shaderLanguage) {
     if (shaderType !== "vertex" || (shaderLanguage ?? 0) !== B.ShaderLanguage.GLSL) return null;
     return {
+      CUSTOM_VERTEX_DEFINITIONS: "#ifdef CARDJUMP\nattribute vec2 cardFan;\n#endif\n",
       CUSTOM_VERTEX_UPDATE_WORLDPOS: `#ifdef CARDJUMP
 {
   vec3 o = finalWorld[3].xyz;
-  float endSide = abs(o.x) > ${(HALF_L + 8).toFixed(1)} && abs(o.z) < ${(HALF_W + 8).toFixed(1)} ? -sign(o.x) : 0.0;   // +1 home end (x < 0)
-  bool mine = crowdGoal.y != 0.0 && (endSide == crowdGoal.y || crowdGoal.w == crowdGoal.y);
+  bool mine = crowdGoal.y != 0.0 && (cardFan.x == crowdGoal.y || cardFan.y == crowdGoal.y);
   vec3 p3 = fract(o.xzx * 0.1031); p3 += dot(p3, p3.yzx + 33.33); float h = fract((p3.x + p3.y) * p3.z);   // sin-free hash, as pitch.js
   float t = crowdGoal.x - mix(0.2, 1.6, h);
   float stay = mix(6.3, 7.7, fract(h * 7.13));
@@ -204,7 +211,7 @@ export function buildStadium(scene, match, profile, rnd) {
       }
     }
   };
-  const FRONT_S = HALF_W + 9, FRONT_E = HALF_L + 9, SIDE_D = 26, END_D = 22, ROOF_Y = 25.5, GANTRY_HALF = 40;
+  const GANTRY_HALF = 40;
   stand(2 * FRONT_E, FRONT_S, SIDE_D, 0, "side");                // far side
   stand(2 * FRONT_E, FRONT_S, SIDE_D, Math.PI, "side", true);    // near side
   stand(2 * FRONT_S, FRONT_E, END_D, Math.PI / 2, "away");   // right end (x > 0)
@@ -251,9 +258,9 @@ export function buildStadium(scene, match, profile, rnd) {
   // a cheap lit material, not PBR: an alpha-tested PBR albedo samples as empty under WebGL 1 on
   // the software test renderer (lavapipe), and a crowd needs no image-based light
   const cheer = { since: 99, side: 0, time: 0 };
-  const crowdMat = (name, tex, rgb, team = 0) => {
+  const crowdMat = (name, tex, rgb) => {
     const m = new B.StandardMaterial(name, scene);
-    m.cardJump = new CardJumpPlugin(m, team, cheer);
+    m.cardJump = new CardJumpPlugin(m, cheer);
     m.diffuseColor = new B.Color3(...rgb);
     m.emissiveColor = new B.Color3(...rgb).scale(0.35);
     m.specularColor = B.Color3.Black();
@@ -271,9 +278,10 @@ export function buildStadium(scene, match, profile, rnd) {
   // neutral clothes are muted (white, navy, greys, beige, black) so the two kits carry the colour
   const neutral = ["#e8e8e8", "#1d2230", "#3b4660", "#6b6f78", "#c9b48a", "#16181e", "#4f5d6b"].map(lin);
   const shirts = [dim(home, 1), dim(home, 0.75), dim(away, 1), dim(away, 0.75), ...neutral.map((c) => dim(c, 0.9))];
-  const shirtTeam = [1, 1, -1, -1, ...neutral.map(() => 0)];
   const skins = ["#f1c9a5", "#e0ac83", "#c68a62", "#8d5a3b", "#5c3a24"].map((h) => dim(lin(h), 1));
-  const torsos = shirts.map(() => []), faces = skins.map(() => []), hairs = HAIR.map(() => []);
+  // per group: the card matrices and, two floats a card, its spectator's cardFan
+  const group = (list) => list.map(() => ({ m: [], fan: [] }));
+  const torsos = group(shirts), faces = group(skins), hairs = group(HAIR);
   // the 3D spectators are toon shaded in display (gamma) colours, flat and saturated
   const gam = (hex) => B.Color3.FromHexString(hex).asArray();
   const near3d = {
@@ -294,23 +302,27 @@ export function buildStadium(scene, match, profile, rnd) {
     }
     // planes face -Z by default; turn them to face the pitch like the stand
     B.Quaternion.RotationYawPitchRollToRef(rotY + Math.PI, 0, 0, q);
+    const card = (g) => { B.Matrix.ComposeToRef(one, q, pos, m); g.m.push(...m.m); g.fan.push(...cardFan(fan, end)); };
     pos.set(x, y + 0.45 + rnd() * 0.06, z);
-    B.Matrix.ComposeToRef(one, q, pos, m); torsos[shirt].push(...m.m);
+    card(torsos[shirt]);
     pos.y += 0.42;
-    B.Matrix.ComposeToRef(one, q, pos, m); faces[skin].push(...m.m);
+    card(faces[skin]);
     pos.y += 0.03;   // same x and z as the head: the card jump hashes them alike
-    B.Matrix.ComposeToRef(one, q, pos, m); hairs[hair].push(...m.m);
+    card(hairs[hair]);
   }
   const n = people.length;
-  const crowd = (name, w, h, tex, cols, groups, teams) => groups.forEach((list, k) => {
-    if (!list.length) return;
+  let first = null;   // a card mesh: the 3D spectators take the same lights (crowd.js)
+  const crowd = (name, w, h, tex, cols, groups) => groups.forEach((g, k) => {
+    if (!g.m.length) return;
     const mesh = B.MeshBuilder.CreatePlane(`${name}${k}`, { width: w, height: h }, scene);
-    mesh.material = crowdMat(`${name}Mat${k}`, tex, cols[k], teams?.[k] ?? 0);
-    mesh.thinInstanceSetBuffer("matrix", new Float32Array(list), 16, true);
+    mesh.material = crowdMat(`${name}Mat${k}`, tex, cols[k]);
+    mesh.thinInstanceSetBuffer("matrix", new Float32Array(g.m), 16, true);
+    mesh.thinInstanceSetBuffer("cardFan", new Float32Array(g.fan), 2, true);
     mesh.freezeWorldMatrix();
     mesh.alwaysSelectAsActiveMesh = true;   // one bounding box for the whole group
+    first ??= mesh;
   });
-  crowd("crowdTorso", 0.62, 0.62, torsoTex, shirts, torsos, shirtTeam);
+  crowd("crowdTorso", 0.62, 0.62, torsoTex, shirts, torsos);
   crowd("crowdHead", 0.25, 0.3, headTex, skins, faces);
   if (profile.crowdHair) crowd("crowdHair", 0.34, 0.36, hairTex, HAIR.map(lin).map((c) => dim(c, 1)), hairs);
   for (const k of HAIR.keys()) { const h = scene.getMaterialByName(`crowdHairMat${k}`); if (h) h.zOffset = -2; }   // drawn over its head
@@ -376,11 +388,11 @@ export function buildStadium(scene, match, profile, rnd) {
   const lampMat = mat(scene, "lamps", [0.12, 0.13, 0.15], 0.4);
   const masts = [], heads = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const base = new B.Vector3(sx * (HALF_L + 27), 0, sz * (HALF_W + 34));   // behind the corner stand
-    const mast = B.MeshBuilder.CreateCylinder("mast", { diameterTop: 0.9, diameterBottom: 1.8, height: 46, tessellation: 8 }, scene);
-    mast.position.set(base.x, 23, base.z); masts.push(mast);
+    const base = new B.Vector3(sx * MAST_X, 0, sz * MAST_Z);   // behind the corner stand
+    const mast = B.MeshBuilder.CreateCylinder("mast", { diameterTop: 0.9, diameterBottom: 1.8, height: MAST_H, tessellation: 8 }, scene);
+    mast.position.set(base.x, MAST_H / 2, base.z); masts.push(mast);
     const lamp = B.MeshBuilder.CreateBox("lampHead", { width: 11, height: 5.5, depth: 0.8 }, scene);
-    lamp.position.set(base.x, 46, base.z);
+    lamp.position.set(base.x, MAST_H, base.z);
     lamp.lookAt(new B.Vector3(0, -20, 0));
     heads.push(lamp);
   }
@@ -392,7 +404,7 @@ export function buildStadium(scene, match, profile, rnd) {
   const stadium = {
     people: n, near: near.length, cards: n - near.length, goals, cheer, crowd3d: null,
     // the 3D spectators, after the players so the page shows the pitch first
-    async load() { stadium.crowd3d = await buildCrowd3D(scene, near, goals, rnd, { outline: profile.crowdOutline }); },
+    async load() { stadium.crowd3d = await buildCrowd3D(scene, near, goals, rnd, { outline: profile.crowdOutline, lightsOf: first }); },
     update(ts) {
       const g = goals.filter((x) => x.ts <= ts && ts - x.ts < 12).pop();   // the last goal drives the cards
       cheer.since = g ? ts - g.ts : 99;

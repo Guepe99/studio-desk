@@ -5,7 +5,7 @@ import { OGrafHost } from "./ograf-host.js";
 import { Desk } from "./desk.js";
 import { Voice } from "./voice.js";
 import { BoothAudio } from "./booth-audio.js";
-import { View3D, probe, defaultView, warm3d, RADAR, replays, holdForReplays } from "./view3d.js";
+import { View3D, probe, defaultView, warm3d, RADAR, replays, holdForReplays, viewAt } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Proof } from "./proof.js";
 import { Moments, LEAD_S } from "./moments.js";
@@ -538,8 +538,9 @@ function tick(now) {
     state.ts += dt * state.speed;
     if (state.ts >= end) { state.ts = end; setPlaying(false); }
   }
-  // past the last tracking frame (full-time recap) the picture holds the last frame
-  if (view3d?.shown !== "3d") pitch.draw(match, Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
+  // past the last tracking frame (full-time recap) the picture holds the last frame; the inset under
+  // the 3D picture shows the time the 3D shows (a goal replay too)
+  if (view3d?.shown !== "3d") pitch.draw(match, view3d?.main === "3d" ? viewAt(view3d.reps, Math.min(state.ts, match.duration), state.speed).ts : Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
   proof.update([...host.live.values()].map((i) => i.cue));
   view3d?.frame(state.ts, state.speed, state.seeked, state.playing);
   drawScorebug();

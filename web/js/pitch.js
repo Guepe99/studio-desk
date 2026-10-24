@@ -30,7 +30,7 @@ export const textOn = (hex) => {
   return (l + 0.05) / (L_INK + 0.05) > 1.05 / (l + 0.05) ? INK : "#ffffff";
 };
 
-const TRAIL = [0, 1, 2, 3, 4, 5].map((j) => `rgba(255,255,255,${(0.6 * (1 - (j - 1) / 5)).toFixed(2)})`);
+const TRAIL = [1, 2, 3, 4, 5].map((j) => `rgba(255,255,255,${(0.6 * (1 - (j - 1) / 5)).toFixed(2)})`);
 const SIGNAL = "#00ff87";   // the house accent on the picture (--green in broadcast.css)
 const AIR = "#ffd23f";      // the ball's ring when it is above head height
 // Keepers wear a colour of their own: the first of these far enough from both kits of both teams.
@@ -271,7 +271,7 @@ export class Pitch {
       const q = match.at(0, ts - j * 0.2);
       if (!q || Math.hypot(q[0] - prevB[0], q[1] - prevB[1]) > 12) break;
       const s = toStage(q[0], q[1]);
-      g.strokeStyle = TRAIL[j];
+      g.strokeStyle = TRAIL[j - 1];
       g.lineWidth = br * (1.1 - j * 0.16);
       g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(s[0], s[1]); g.stroke();
       prev = s; prevB = q;

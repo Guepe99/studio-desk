@@ -252,7 +252,8 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 - Animation: seven loops baked at load time into a vertex animation texture at 20 frames/s
   ([Babylon baked texture animations](https://doc.babylonjs.com/features/featuresDeepDive/animation/baked_texture_animations),
   instanced buffer `bakedVertexAnimationSettingsInstanced`): sit, seated clap, stand, rise,
-  arms up, jump, clap. Each spectator has its own loop and phase, set from match time, so seeks,
+  arms up, jump, clap, and for each cheer a 10-frame blend from its last frame back to the seat
+  and one back to standing. Each spectator has its own loop and phase, set from match time, so seeks,
   replays and video frames agree.
 - Colours: shirts by end. Home end 78% home kit and 4% away, away end 70% away and 14% home,
   sides 60% and 12%; the rest wear muted neutrals (white, navy, black, greys, beige), so the
@@ -263,7 +264,10 @@ biggest tells. This section gives the rules the build follows, with numbers and 
   over. They jump with the 3D rows (a vertex shader offset of 0.3 to 0.42 m).
 - Reaction to goals, from the score facts in the match data (never invented): the scoring team's
   end, and that team's fans anywhere, rise 0.2 to 1.6 s after the goal (a ripple), celebrate
-  with arms up, a jump or a clap, and sit back down between 7.2 and 10 s after it.
+  with arms up, a jump or a clap, and sit back down between 7.2 and 10 s after it. The cheer is
+  stretched to whole loops (0.8x to 1.2x) so it ends where the blend back starts; a fan who was
+  standing cheers from standing and goes back to standing. A card spectator carries his shirt
+  and end on torso, head and hair alike, so he jumps whole by the same rule, corners included.
 - Banners: eight banners of 7 x 1.3 m hung over the front walls of the stands, tied along the
   top edge, in plain team colours with no text or crests, waving with a vertex-shader sine wave
   (0.12 m at the free bottom edge, 4.2 rad/s, travelling along the banner). A first version had

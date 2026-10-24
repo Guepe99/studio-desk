@@ -41,6 +41,7 @@ export default class Nameplate extends SdGraphic {
     $(".speed").textContent = Number.isFinite(d.speed_kmh) ? `${d.speed_kmh.toFixed(1)} km/h` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_id);
     this.anchor = $(".anchor");
+    this.boxW = 0;   // measured on screen, with the loaded font (position)
   }
 
   get customActions() {
@@ -52,7 +53,10 @@ export default class Nameplate extends SdGraphic {
         const k = 1920 / (this.clientWidth || 1920);
         const sx = x * k, sy = y * k;
         this.anchor.classList.toggle("hidden", !visible || !Number.isFinite(sx));
-        this.anchor.classList.toggle("flip-x", sx > this.resolution.width * k - 460);
+        // to the left of the player when the tag would pass the right edge: its own width, a long
+        // name in capitals is over 500 px
+        this.boxW ||= this.anchor.querySelector(".box").offsetWidth;
+        this.anchor.classList.toggle("flip-x", sx - 2 + (this.boxW || 520) > this.resolution.width * k);
         // below the player only where the top is short and the bottom has more room: drawn
         // magnified on a phone the renderer is under 500 stage px tall, and neither side may fit
         this.anchor.classList.toggle("flip-y", sy < 330 && this.resolution.height * k - sy > sy);

@@ -35,17 +35,25 @@ export function pickHair(r) {
 // Reaction to one goal, seconds from the goal: rise after `delay`, cheer, sit after `stay`.
 export const RISE_S = 0.5, SIT_S = 0.7;
 export const REACT = { delay: [0.2, 1.6], stay: [6.3, 7.7] };   // seated again by goal + 10 s at the latest (1.6 + 7.7 + SIT_S)
+// the cheers: their clip and the seconds of one loop, as baked
+export const CHEERS = { armsUp: ["M_celeb_arms_up", 3], jump: ["M_celeb_jump_fist", 3], clap: ["M_clap", 2] };
 
-// Pose of a spectator at ts. person: {fan, end, delay, stay, cheer}; goals: [{ts, side}].
-// Returns {clip, t} (t: seconds into the clip, or a 0..1 blend for "rise"), or null when seated.
+// Pose of a spectator at ts. person: {fan, end, base, delay, stay, cheer}; goals: [{ts, side}].
+// Returns {clip, t} (t: seconds into the clip, or 0..1 through a blend: "rise", "<cheer>Sit",
+// "<cheer>Stand"), or null for the base loop. A fan who stands (base "stand") cheers from
+// standing and goes back to standing. The cheer plays whole loops, a little faster or slower, so
+// it ends where its blend out starts.
 export function reaction(person, goals, ts) {
+  const up = person.base === "stand";
   for (const g of goals) {
     if (person.fan !== g.side && person.end !== g.side) continue;
     const t = ts - g.ts - person.delay;
     if (t < 0 || t > person.stay + SIT_S) continue;
-    if (t < RISE_S) return { clip: "rise", t: t / RISE_S };
-    if (t > person.stay) return { clip: "rise", t: 1 - (t - person.stay) / SIT_S };
-    return { clip: person.cheer, t: t - RISE_S };
+    if (t >= person.stay) return { clip: `${person.cheer}${up ? "Stand" : "Sit"}`, t: (t - person.stay) / SIT_S };
+    const t0 = up ? 0 : RISE_S;
+    if (t < t0) return { clip: "rise", t: t / RISE_S };
+    const len = CHEERS[person.cheer][1], dur = person.stay - t0, loops = Math.max(1, Math.round(dur / len));
+    return { clip: person.cheer, t: (t - t0) * loops * len / dur };
   }
   return null;
 }
@@ -77,7 +85,7 @@ function sitPose(nodes) {
   tl.rotationQuaternion = save[0]; tl.computeWorldMatrix(true);
   for (const s of ["l", "r"]) {
     turn(n(`thigh_${s}`), side, sign * 1.45);
-    for (const k of [`calf_${s}`]) n(k).computeWorldMatrix(true);
+    n(`calf_${s}`).computeWorldMatrix(true);
     turn(n(`calf_${s}`), side, -sign * 1.5);
   }
   // pelvis down so the thighs sit at about 0.47 of standing hip height (a stadium seat)
@@ -93,8 +101,9 @@ function sample(group, t) {
   group.goToFrame(group.from + ((t * 60) % (len + 1e-6)));
 }
 
-// Bakes the clips into one Float32Array of bone matrices, frame after frame. Returns the frame
-// ranges {name: [from, to]} as the VAT settings want them.
+// Bakes the clips into one Float32Array of bone matrices, frame after frame: a clip from its
+// start for len seconds, or a blend [a, b] of 10 frames from pose a to pose b ([clip, t, sit]
+// each), node by node. Returns the frame ranges {name: [from, to]} as the VAT settings want them.
 function bake(skeleton, mesh, groups, nodes, list) {
   const rows = [], ranges = {};
   const all = Object.values(groups);
@@ -114,23 +123,20 @@ function bake(skeleton, mesh, groups, nodes, list) {
     if (sit) sitPose(nodes);
   };
   for (const g of all) { g.start(false, 1, g.from, g.to); g.pause(); }
+  const snap = (p) => { pose(...p); return nodeList.map((nd) => [nd.position.clone(), nd.rotationQuaternion?.clone()]); };
   for (const { name, clip, sit, len, blend } of list) {
     const from = rows.length;
-    const n = blend ? 10 : Math.max(2, Math.round(len * BAKE_FPS));
-    for (let f = 0; f < n; f++) {
-      if (blend) {
-        // seated -> standing at the first frame of Idle, node by node
-        pose("Idle_Loop", 0, true);
-        const a = nodeList.map((nd) => [nd.position.clone(), nd.rotationQuaternion?.clone()]);
-        pose("Idle_Loop", 0, false);
-        const k = f / (n - 1), e = k * k * (3 - 2 * k);
+    if (blend) {
+      const a = snap(blend[0]), b = snap(blend[1]);
+      for (let f = 0; f < 10; f++) {
+        const k = f / 9, e = k * k * (3 - 2 * k);
         nodeList.forEach((nd, i) => {
-          B.Vector3.LerpToRef(a[i][0], nd.position, e, nd.position);
-          if (a[i][1]) nd.rotationQuaternion = B.Quaternion.Slerp(a[i][1], nd.rotationQuaternion, e);
+          B.Vector3.LerpToRef(a[i][0], b[i][0], e, nd.position);
+          if (a[i][1]) nd.rotationQuaternion = B.Quaternion.Slerp(a[i][1], b[i][1], e);
         });
-      } else pose(clip, f / BAKE_FPS, sit);
-      grab();
-    }
+        grab();
+      }
+    } else for (let f = 0, n = Math.max(2, Math.round(len * BAKE_FPS)); f < n; f++) { pose(clip, f / BAKE_FPS, sit); grab(); }
     ranges[name] = [from, rows.length - 1];
   }
   for (const g of all) g.stop();
@@ -281,7 +287,7 @@ class CrowdPlugin extends B.MaterialPluginBase {
   getCustomCode(shaderType, shaderLanguage) {
     if ((shaderLanguage ?? 0) !== B.ShaderLanguage.GLSL) return null;
     if (shaderType === "vertex") return {
-      CUSTOM_VERTEX_DEFINITIONS: "#ifdef CROWD\nattribute float crowdRegion;\nattribute vec4 crowdShirt;\nattribute vec4 crowdSkin;\nattribute vec4 crowdHair;\nvarying vec3 vCrowd;\n#endif\n",
+      CUSTOM_VERTEX_DEFINITIONS: "#ifdef CROWD\nattribute float crowdRegion;\nattribute vec4 crowdShirt;\nattribute vec4 crowdSkin;\nattribute vec3 crowdHair;\nvarying vec3 vCrowd;\n#endif\n",
       // no scarf: its vertices fold into one point (a degenerate, invisible strip)
       CUSTOM_VERTEX_UPDATE_POSITION: "#ifdef CROWD\nif (crowdRegion > 5.5 && crowdShirt.a < 0.5) positionUpdated = vec3(0.0);\n#endif\n",
       CUSTOM_VERTEX_MAIN_END: `#ifdef CROWD
@@ -301,7 +307,9 @@ vCrowd = rg < 0.5 ? crowdSkin.rgb : rg < 1.5 ? crowdShirt.rgb : rg < 2.5 ? crowd
 
 // seats: [{x, y, z, rotY, end, fan, shirt: [r,g,b], skin: [r,g,b]}] in world metres (y: row floor).
 // goals: [{ts, side}]. Returns {update(ts), people, mesh, state(i)} or null if the model fails.
-export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false } = {}) {
+// lightsOf: a card mesh of the stands, whose lights this mesh takes (lighting.js shadeStands ran
+// before it existed).
+export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, lightsOf = null } = {}) {
   if (!seats.length) return null;
   const c = await B.LoadAssetContainerAsync(SPECTATOR_URL, scene);
   c.addAllToScene();
@@ -315,11 +323,15 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false }
     { name: "sit", clip: "Idle_Loop", sit: true, len: 2.5 },
     { name: "sitClap", clip: "M_clap", sit: true, len: 2 },
     { name: "stand", clip: "Idle_Loop", sit: false, len: 2.5 },
-    { name: "rise", blend: true },
-    { name: "armsUp", clip: "M_celeb_arms_up", sit: false, len: 3 },
-    { name: "jump", clip: "M_celeb_jump_fist", sit: false, len: 3 },
-    { name: "clap", clip: "M_clap", sit: false, len: 2 },
+    { name: "rise", blend: [["Idle_Loop", 0, true], ["Idle_Loop", 0, false]] },   // seated -> standing at the first frame of Idle
+    ...Object.entries(CHEERS).flatMap(([name, [clip, len]]) => [
+      { name, clip, sit: false, len },
+      // out of the cheer, from the frame after its last (its loop's end): to the seat, or to standing
+      { name: `${name}Sit`, blend: [[clip, len, false], ["Idle_Loop", 0, true]] },
+      { name: `${name}Stand`, blend: [[clip, len, false], ["Idle_Loop", 0, false]] },
+    ]),
   ];
+  const blends = new Set(list.filter((x) => x.blend).map((x) => x.name));
   // size: standing height from the head bone over the feet
   for (const g of Object.values(groups)) g.stop();
   for (const nd of Object.values(nodes)) nd.computeWorldMatrix(true);
@@ -349,10 +361,10 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false }
   const Finv = F.clone().invert();
 
   const n = seats.length;
-  const mats = new Float32Array(16 * n), shirt = new Float32Array(4 * n), skin = new Float32Array(4 * n), hair = new Float32Array(4 * n);
+  const mats = new Float32Array(16 * n), shirt = new Float32Array(4 * n), skin = new Float32Array(4 * n), hair = new Float32Array(3 * n);
   const vatSet = new Float32Array(4 * n);
   const people = [];
-  const cheers = ["armsUp", "armsUp", "jump", "clap"];
+  const cheers = ["armsUp", "armsUp", "jump", "clap"];   // CHEERS, arms up twice as often
   const D = new B.Matrix(), q = new B.Quaternion(), M = new B.Matrix();
   seats.forEach((s, i) => {
     const k = scale * (0.93 + 0.12 * rnd());
@@ -364,7 +376,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false }
     // scarf: about half the fans, in their team's colours (a = 1 shows it)
     shirt.set([...s.shirt, s.fan && rnd() < 0.55 ? 1 : 0], 4 * i);
     skin.set([...s.skin, 0.7 + 0.6 * rnd()], 4 * i);
-    hair.set([...s.hair, 1], 4 * i);
+    hair.set(s.hair, 3 * i);
     const r = rnd();
     const base = r < 0.06 ? "sitClap" : r < 0.1 ? "stand" : "sit";
     const p = {
@@ -380,10 +392,14 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false }
   mesh.thinInstanceSetBuffer("matrix", mats, 16, true);
   mesh.thinInstanceSetBuffer("crowdShirt", shirt, 4, true);
   mesh.thinInstanceSetBuffer("crowdSkin", skin, 4, true);
-  mesh.thinInstanceSetBuffer("crowdHair", hair, 4, true);
+  mesh.thinInstanceSetBuffer("crowdHair", hair, 3, true);
   mesh.thinInstanceSetBuffer("bakedVertexAnimationSettingsInstanced", vatSet, 4, false);
   mesh.alwaysSelectAsActiveMesh = true;
   mesh.isPickable = false;
+  if (lightsOf) for (const l of scene.lights) {
+    if (l.excludedMeshes.includes(lightsOf)) l.excludedMeshes.push(mesh);
+    if (l.includedOnlyMeshes.includes(lightsOf)) l.includedOnlyMeshes.push(mesh);
+  }
   if (outline) {
     // thin ink line of the inverted hull; the outline pass knows the baked animation
     mesh.renderOutline = true;
@@ -399,7 +415,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false }
       r = ranges[pose.clip];
       const frames = r[1] - r[0] + 1;
       // pinned frame (speed 0): non-looping playback straight from match time
-      off = pose.clip === "rise" ? Math.round(Math.min(1, Math.max(0, pose.t)) * (frames - 1)) : Math.floor(pose.t * BAKE_FPS) % frames;
+      off = blends.has(pose.clip) ? Math.round(Math.min(1, Math.max(0, pose.t)) * (frames - 1)) : Math.floor(pose.t * BAKE_FPS) % frames;
       speed = 0;
     }
     vatSet[4 * i] = r[0]; vatSet[4 * i + 1] = r[1]; vatSet[4 * i + 2] = off; vatSet[4 * i + 3] = speed;

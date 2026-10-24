@@ -86,7 +86,7 @@ async function run(w, h) {
   const seek = (ts) => page.evaluate(async (x) => {
     const sd = window.studioDesk, raf = () => new Promise((r) => requestAnimationFrame(r));
     sd.setPlaying(false); sd.seek(x); await raf(); await raf();
-    await Promise.all([...sd.host.live.values()].map((i) => i.chain));
+    await Promise.all([document.fonts.ready, ...[...sd.host.live.values()].map((i) => i.chain)]);
     await new Promise((r) => setTimeout(r, 800));
   }, ts);
   // a held story when the match has one (DEMO), else one the risk rule put on air (M001)
