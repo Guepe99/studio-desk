@@ -11,7 +11,7 @@
 //   mode         locomotion mode: "forward" (default), "backpedal", "strafe" or "jockey";
 //   emotion      {clip, t, weight, upper}: any clip of the player file played at t seconds, on
 //                 the upper body only when upper is true (celebration, dejection) }.
-// pose() must be a pure function of (i, ts): the scene asks it at ts and at ts +- 0.2 s.
+// pose() must be a pure function of (i, ts): the scene asks it at ts and at ts +- 0.05 s (VEL_H).
 // Drivers run in priority order, low first; a later facing is blended over the earlier ones and
 // the last mode and emotion win. The scene's own drivers: awareness modules 10 (suggested), the
 // ball rig 20, the event actions below and the keeper reactions 30 (a slide turns the body to its event point and
@@ -55,7 +55,6 @@ export function humanStride(v) {
   const [[a, fa], [b, fb]] = [CADENCE[k], CADENCE[k + 1]];
   return (2 * v) / (fa + (fb - fa) * Math.min(1, (v - a) / (b - a)));
 }
-export const MODES = ["forward", "backpedal", "strafe", "jockey"];
 
 // Weights of the four clips for a ground speed (two neighbours at a time, summing to 1).
 export function clipWeights(v) {
@@ -90,6 +89,8 @@ const IN_S = 0.15, OUT_S = 0.25;
 const TRACKS = new WeakMap();   // asset container -> {clip: upper-body tracks}
 const UPPER = /^(spine_0[23]|neck_01|Head|clavicle_[lr]|upperarm_[lr]|lowerarm_[lr]|hand_[lr])$/;
 const length = (a) => a.phases.reduce((s, [, f, t]) => s + t - f, 0);
+const WARNED = new Set();   // clips asked for that the player file lacks: one warning each
+const missing = (name) => { if (!WARNED.has(name)) { WARNED.add(name); console.warn(`3D: no clip ${name} in the player file`); } return null; };
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
 // Per player id, the actions the events call for: [{kind, start, end, at}], sorted, never
@@ -272,6 +273,28 @@ export function resolve(drivers, i, ts) {
   return out;
 }
 
+// The facing the scene gives player p before the drivers' turns (radians, atan2(dx, dy)): his run
+// once faster than RUN_ON m/s, until he slows under RUN_OFF (away from it when backpedalling);
+// nearly still, the ball unless it is at his feet, where its bearing swings at random, and there
+// the facing he had. A seek (dt 0) decides from this frame alone, the ball's bearing even at his
+// feet (the centre spot without a ball), so what it shows is a function of match time.
+// v, vx, vy: his ground speed; at: where he is shown; ball: [x, y] or null.
+// (RUN_OFF under 0.7: the run's direction in the last slow frames of a turn on the spot is noise,
+// and the facing then whips round with it)
+const RUN_ON = 0.9, RUN_OFF = 0.7;
+export function wantFacing(p, { v, vx, vy, mode, ball, at, dt }) {
+  const seek = !(dt > 0);
+  p.running = v > (seek ? 0.7 : p.running ? RUN_OFF : RUN_ON);
+  if (seek) p.want = null;
+  const d = ball ? Math.hypot(ball[0] - at[0], ball[1] - at[1]) : 0;
+  let want = null;
+  if (p.running) want = Math.atan2(vx, vy) + (mode === "backpedal" ? Math.PI : 0);
+  else if (ball && (d > 1 || (seek && d > 1e-3))) want = Math.atan2(ball[0] - at[0], ball[1] - at[1]);
+  else if (seek) want = Math.atan2(52.5 - at[0], 34 - at[1]);
+  if (Number.isFinite(want)) p.want = want;
+  return p.want ?? p.yaw ?? 0;
+}
+
 export function facing(base, turns) {
   let y = base;
   for (const [yaw, w] of turns) y += angleDiff(y, yaw) * w;
@@ -316,13 +339,13 @@ export function setupAnimations(inst, container, prefix) {
     get(name) {
       if (name in cache) return cache[name];
       const src = container.animationGroups.find((a) => a.name === name);
-      if (!src) return (cache[name] = null);
+      if (!src) return (cache[name] = missing(name));
       return (cache[name] = prep(src.clone(`${prefix}${name}`, (t) => nodes.get(`${prefix}${t.name}`) ?? t)));
     },
     // the upper-body rotation tracks of clip `name` (shared by all players of the file)
     upper(name) {
       if (name in tracks) return tracks[name];
-      return (tracks[name] = upperTracks(container, name));
+      return (tracks[name] = upperTracks(container, name) ?? missing(name));
     },
   };
 }
@@ -342,15 +365,18 @@ export async function loadMotion(s, base = "vendor/motion/") {
 // The motion loop for a non-forward mode, from the run direction in the character's frame
 // (runL: [left, forward] unit vector): backpedal and strafe take the loop whose travel matches
 // best, jockey its shuffle. null when the clips are not loaded (the stand-in gaits then play).
+// prev, the loop playing, keeps a bonus of LOOP_HOLD on the match: about 14 degrees past the
+// diagonal between two loops before the other takes over (animatePlayer cross-fades them).
 const LOOPS = ["M_jog_backward", "M_sidestep_left", "M_sidestep_right"];
-export function motionLoop(motion, mode, runL) {
+const LOOP_HOLD = 0.35, LOOP_FADE = 0.15;   // dot-product bonus; s, time constant of the cross-fade
+export function motionLoop(motion, mode, runL, prev = null) {
   if (!motion || mode === "forward") return null;
   if (mode === "jockey") return motion.clips.M_jockey_shuffle ? "M_jockey_shuffle" : null;
   let best = null, bd = -Infinity;
   for (const n of LOOPS) {
     const c = motion.clips[n];
     if (!c) continue;
-    const d = runL ? c.dir[0] * runL[0] + c.dir[1] * runL[1] : (n === "M_jog_backward") === (mode === "backpedal") ? 1 : 0;
+    const d = (n === prev ? LOOP_HOLD : 0) + (runL ? c.dir[0] * runL[0] + c.dir[1] * runL[1] : (n === "M_jog_backward") === (mode === "backpedal") ? 1 : 0);
     if (d > bd) { bd = d; best = n; }
   }
   return best;
@@ -444,23 +470,29 @@ export function settleFeet(p, sole = Infinity) {
 
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last
 // frame) from the resolved driver answers r. r.runL: the run direction in the character's frame
-// (motion loops). motion: the loaded clips.json, or null for the procedural stand-ins.
+// (motion loops). motion: the loaded clips.json, or null for the procedural stand-ins. p.h: the
+// player's height over the measured one (Scene3D scales his body by it, so his strides too).
 export function animatePlayer(p, v, dt, r, motion = null) {
   let full = r.action ? r.actionW : 0;
-  const e = r.emotion;
+  const e = r.emotion, h = p.h ?? 1;
   // a full-body clip (crouch, knee slide) only while the player is nearly still; running, it is
   // upper body only so the legs keep the locomotion (the tracking owns the root)
   // (the tracking's speed, r.vTrack: a driver drawing him to the ball does not count)
-  const eFull = !!(e && e.full && !r.action && (r.vTrack ?? v) < 1.5);
-  if (eFull) full = Math.max(full, e.weight);
-  const loop = motionLoop(motion, r.mode, r.runL);
+  const still = !r.action && (r.vTrack ?? v) < 1.5;
+  const eFull = !!(e && e.full && still);
+  // a chained emotion fading in over the one before (awareness.js, under.fadeOut): a full-body clip
+  // before keeps the legs it covers until this one is in
+  const hand = e?.under?.fadeOut ? e.under : null;
+  const uw = hand?.full && still ? hand.weight * (1 - e.weight) : 0;
+  if (eFull || uw > 0) full = Math.max(full, (eFull ? e.weight : 0) + uw);
+  const loop = motionLoop(motion, r.mode, r.runL, p.loop);
   const lm = loop && motion.clips[loop];
   let wl = 0;
   if (lm) {
     // the loop's phase follows the ground speed (no foot slide at its own speed); the jockey
     // shuffle keeps stepping when nearly still
     const jockey = loop === "M_jockey_shuffle";
-    const rate = jockey ? Math.min(1.5, Math.max(0.6, v / Math.max(lm.speed, 0.3))) / lm.len : v / Math.max(lm.stride, 0.3);
+    const rate = jockey ? Math.min(1.5, Math.max(0.6, v / Math.max(lm.speed * h, 0.3))) / lm.len : v / Math.max(lm.stride * h, 0.3);
     p.lphase = ((p.lphase ?? 0) + rate * dt) % 1;
     wl = jockey ? 1 : Math.min(1, v / 0.8);
   }
@@ -472,13 +504,24 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   const w = p.ws = goal.map((g, j) => (p.ws ? p.ws[j] + (g - p.ws[j]) * k : g));
   if (lm) p.loop = loop;
   wl = p.wl = p.wl === undefined || k === 1 ? wl : p.wl + (wl - p.wl) * k;
+  // the motion loops' shares of wl: the one picked eases in over LOOP_FADE and the others out, so
+  // a change of loop is a cross-fade; a seek, or the loops faded out, start from the one picked
+  const kl = dt > 0 ? 1 - Math.exp(-dt / LOOP_FADE) : 1;
+  p.lw ??= {};
+  if (kl === 1 || wl < 1e-3) for (const n in p.lw) delete p.lw[n];   // no allocation per frame
+  if (p.loop && wl >= 1e-3) {
+    let sum = 0;
+    p.lw[p.loop] ??= 0;
+    for (const n in p.lw) sum += p.lw[n] += ((n === p.loop ? 1 : 0) - p.lw[n]) * kl;
+    for (const n in p.lw) if ((p.lw[n] /= sum) < 1e-3) delete p.lw[n];
+  }
   const moving = w[1] + w[2] + w[3];
-  const stride = moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1;
+  const stride = h * (moving > 0 ? (w[1] * LOCO[1].stride + w[2] * LOCO[2].stride + w[3] * LOCO[3].stride) / moving : 1);
   // stride warping, forward runs only: the cycle runs at a person's cadence and warpStride swings
   // the legs by the same ratio, so the planted foot still moves back at the ground speed. The
   // forward share fw eases like the weights, so leaving or entering "forward" fades the warp
   // (and the cadence with it) instead of dropping it in a frame; no leg bones, no warp.
-  const human = r.mode === "forward" && moving > 0 ? humanStride(vv) : null;
+  const human = r.mode === "forward" && moving > 0 ? h * humanStride(vv) : null;   // a taller player strides further
   if (r.mode === "forward") p.warpS = human ? Math.max(WARP_MIN, Math.min(1, human / stride)) : 1;
   const fw = p.fw = (p.fw ?? 0) + ((r.mode === "forward" ? 1 : 0) - (p.fw ?? 0)) * k;
   const s = p.anim.legs?.length && p.warpS ? 1 - (1 - p.warpS) * fw : 1;
@@ -494,15 +537,18 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   // clips other than locomotion: only the ones asked for this frame carry weight
   const want = new Map();
   if (r.action) want.set(r.action.clip, [r.action.time, r.action.weight]);
-  // the motion loop, or the last one while it fades out
-  if (wl > 1e-3 && p.loop && p.anim.get(p.loop)) want.set(p.loop, [p.lphase * motion.clips[p.loop].len, wl * (1 - full)]);
+  // the motion loops by their shares (wl fades the last one out)
+  if (wl > 1e-3) for (const n in p.lw) if (p.anim.get(n)) want.set(n, [p.lphase * motion.clips[n].len, wl * p.lw[n] * (1 - full)]);
   // an upper-body emotion waits for applyUpper; a full-body one is a clip like the actions (a
   // full-body motion clip only while nearly still, eFull; otherwise its upper body)
   const up = !!e?.upper && !eFull;
   p.upper = up && e.weight * (1 - full) > 0 ? { clip: e.clip, t: e.t, weight: Math.min(1, e.weight * (1 - full)), under: e.under } : null;
+  // a full-body emotion fading in over a chained one: its upper body over the other's
+  if (!p.upper && hand && eFull && e.weight > 0) p.upper = { clip: e.clip, t: e.t, weight: Math.min(1, e.weight), under: hand };
   // the arms' pose under a full-body emotion or a raise not yet started (the throw-in's carry)
-  if (!p.upper && e?.under?.weight > 0) p.upper = { clip: e.under.clip, t: e.under.t, weight: Math.min(1, e.under.weight) };
+  else if (!p.upper && e?.under?.weight > 0) p.upper = { clip: e.under.clip, t: e.under.t, weight: Math.min(1, e.under.weight) };
   if (e && !up && p.anim.get(e.clip)) want.set(e.clip, [e.t, eFull ? e.weight : e.weight * (1 - full)]);
+  if (uw > 0 && p.anim.get(hand.clip)) want.set(hand.clip, [hand.t, uw]);
   if (r.action) p.anim.get(r.action.clip);
   for (const [key, g] of Object.entries(p.anim.cache)) {
     if (!g) continue;

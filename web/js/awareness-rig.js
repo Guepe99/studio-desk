@@ -7,7 +7,7 @@
 //   aw.headDir(i) -> {yaw, pitch}           // where entity i's rendered head points (tests)
 //
 // The layer never moves the legs during a ball action: while the ball rig or an event action holds
-// a player, his locomotion mode is left alone, and during an event action the head is too.
+// a player, his locomotion mode is left alone, and an event action takes the head by its weight.
 //
 // Emotion clips go to the scene as driver emotions; players.js applies them on the upper body
 // after the animation step (applyUpper), before the look-at here.
@@ -51,14 +51,14 @@ export class AwarenessRig {
 
   // What the drivers above this one do with player i at ts: a leg pose (ball rig) or an action.
   _held(i, ts) {
-    let leg = false, action = false;
+    let leg = false, action = false, actionW = 0;
     for (const d of this.s.drivers) {
       if ((d.priority ?? 0) <= 10) continue;
       const p = d.pose(i, ts);
       if (p?.leg) leg = true;
-      if (p?.action) action = true;
+      if (p?.action) { action = true; actionW = Math.max(actionW, Math.min(1, p.actionW ?? 1)); }
     }
-    return { leg, action };
+    return { leg, action, actionW };
   }
 
   pose(i, ts) {
@@ -81,22 +81,30 @@ export class AwarenessRig {
 
   // After the clips and the emotion's upper body (players.js) have posed the bodies: turn
   // spine_03, neck and head so the head points at the look target, clamped to the neck range
-  // around the chest (the holder's facing).
+  // around the chest (the holder's facing). An event action and the real clips (M_ emotions, the
+  // HEAD_CLIPS) move the head themselves: the look gives way to them by their weight, so the head
+  // eases between the two instead of snapping.
   _post() {
     const ts = this.s.ts;
     if (!this.enabled || ts === undefined) return;
-    for (const { p, n, c } of this.players.values()) {
-      if (!p.holder.isEnabled() || this._held(p.i, ts).action) continue;
-      if (HEAD_CLIPS.has(p.upper?.clip) || this.aw.emotion(p.i, ts)?.clip.startsWith("M_")) continue;   // the real clips move the head
+    for (const { p, c } of this.players.values()) {
+      if (!p.holder.isEnabled()) continue;
+      const e = this.aw.emotion(p.i, ts);
+      // a chained M_ variant fading in over another (under.fadeOut) is the two clips together
+      const ew = e?.clip.startsWith("M_") ? (e.under?.fadeOut ? 1 : e.weight) : 0;
+      // a head clip on the upper body, or one fading out under the next emotion (the keeper's two beats)
+      const u = p.upper, hw = HEAD_CLIPS.has(u?.clip) ? u.weight : HEAD_CLIPS.has(u?.under?.clip) && u.under.fadeOut ? 1 - u.weight : 0;
+      const k = (1 - this._held(p.i, ts).actionW) * (1 - ew) * (1 - hw);
+      if (!(k > 1e-3)) continue;
       const L = this.aw.look(p.i, ts);
       if (!L) continue;
       const want = headYaw(p.holder.rotation.y, L.yaw);
       const now = this.headDir(p.i);
-      const dy = angleDiff(now.yaw, want);
+      const dy = angleDiff(now.yaw, want) * k;
       for (const [bone, w] of Object.entries(YAW_SHARE)) c.turn(bone, UP, dy * w);
       // pitch: about the horizontal axis across the (now turned) look direction
-      const cur = this.headDir(p.i, true), dp = L.pitch - cur.pitch;
-      const right = new B.Vector3(Math.cos(want), 0, -Math.sin(want));
+      const cur = this.headDir(p.i, true), dp = (L.pitch - cur.pitch) * k;
+      const yaw = now.yaw + dy, right = new B.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
       for (const [bone, w] of Object.entries(PITCH_SHARE)) c.turn(bone, right, dp * w);
     }
   }

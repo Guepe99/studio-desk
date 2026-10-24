@@ -15,11 +15,11 @@ import { setupPost } from "./scene3d/post.js";
 import { buildPitch } from "./scene3d/pitch.js";
 import { buildStadium } from "./scene3d/stands.js";
 import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
-import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, offset, applyUpper, settleFeet, warpStride } from "./scene3d/players.js";
+import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, wantFacing, offset, applyUpper, settleFeet, warpStride } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
-import { smoothMatch, rootAt } from "./scene3d/track.js";
+import { smoothMatch, rootAt, velocityAt } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
 import { buildScreens } from "./scene3d/screen.js";
 
@@ -213,7 +213,7 @@ export class Scene3D {
       for (const m of inst.casters ?? root.getChildMeshes()) this.light.addCaster(m);
       const anim = setupAnimations(inst, container, `${pid}-`);
       this.rig.addPlayer(i, root);
-      this.players.push({ i, pid, holder, anim, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {}, face: inst.face });
+      this.players.push({ i, pid, holder, anim, h: inst.height ?? 1, yaw: null, phase: (this.players.length * 0.618) % 1, idle: (this.players.length * 0.37) % 1, w: [1, 0, 0, 0], aw: {}, face: inst.face });
     }
     // the container is not disposed: the clones share its geometry and lazy clips come from it
     this.container = container;
@@ -259,25 +259,20 @@ export class Scene3D {
       const r = resolve(this.drivers, p.i, ts);
       const at = (t) => { const q = match.at(p.i, t); if (!q) return q; const o = offset(this.drivers, p.i, t); return [q[0] + o[0], q[1] + o[1]]; };
       const shown = [now[0] + r.dx, now[1] + r.dy];
-      // velocity of the shown point (the path is smooth, so a short window is enough)
-      const a = at(Math.max(0, ts - VEL_H)) ?? shown, c = at(Math.min(match.duration, ts + VEL_H)) ?? shown;
-      const vx = (c[0] - a[0]) / (2 * VEL_H), vy = (c[1] - a[1]) / (2 * VEL_H), v = Math.hypot(vx, vy);
-      const ra = match.at(p.i, Math.max(0, ts - VEL_H)), rc = match.at(p.i, Math.min(match.duration, ts + VEL_H));
-      if (ra && rc) r.vTrack = Math.hypot(rc[0] - ra[0], rc[1] - ra[1]) / (2 * VEL_H);   // without the drivers' offsets
+      // velocity of the shown point (the path is smooth, so a short window is enough; never across
+      // the half-time jump), and of the tracking without the drivers' offsets
+      const [vx, vy] = velocityAt(match, at, ts, VEL_H, shown), v = Math.hypot(vx, vy);
+      r.vTrack = Math.hypot(...velocityAt(match, (t) => match.at(p.i, t), ts, VEL_H, now));
       p.holder.position.copyFrom(P(shown[0], shown[1], r.dz));
       p.holder.rotation.z = r.roll;
       p.free = !r.action && !r.leg && Math.abs(r.dz) < 1e-3 && !r.emotion?.full;
-      // face the run (away from it when backpedalling); when nearly still, face the ball unless it
-      // is at his feet, where its bearing swings at random
-      let want = p.want ?? p.yaw;
-      if (v > 0.7) want = Math.atan2(vx, vy) + (r.mode === "backpedal" ? Math.PI : 0);
-      else if (b && Math.hypot(b[0] - shown[0], b[1] - shown[1]) > 1) want = Math.atan2(b[0] - shown[0], b[1] - shown[1]);
-      p.want = want;
-      // the drivers turn the body over that facing, in priority order (players.js); the result goes
-      // through a critically damped spring that also follows the target's own turn rate, so it
-      // never snaps and does not lag a steady turn
-      const target = facing(want ?? 0, r.turns);
-      if (p.yaw === null || dt === 0) { p.yaw = target; p.yawV = 0; }
+      // face the run, or the ball when nearly still (players.js wantFacing); the drivers turn the
+      // body over that facing, in priority order; the result goes through a critically damped
+      // spring that also follows the target's own turn rate, so it never snaps and does not lag a
+      // steady turn
+      const tf = facing(wantFacing(p, { v, vx, vy, mode: r.mode, ball: b, at: shown, dt }), r.turns);
+      const target = Number.isFinite(tf) ? tf : p.yaw ?? 0;
+      if (p.yaw === null || dt === 0 || !Number.isFinite(p.yaw) || !Number.isFinite(p.yawV)) { p.yaw = target; p.yawV = 0; }
       else {
         const tv = Math.max(-YAW_RATE_MAX, Math.min(YAW_RATE_MAX, angleDiff(p.target, target) / dt));
         for (let left = dt; left > 1e-6; left -= 0.01) {
