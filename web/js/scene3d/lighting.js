@@ -8,6 +8,7 @@
 //   of a floodlit match.
 // - day: the previous look, a stadium HDRI and one sun at 52 degrees that casts the shadow map.
 // Khronos PBR Neutral tone mapping keeps kit colours as the export gives them.
+import { FRONT_E, MAST_X, MAST_Z, MAST_H } from "./bowl.js";
 const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
 
@@ -15,9 +16,9 @@ export const ENV_URL = "vendor/polyhaven/stadium_noon_256.env";
 // Sun of the HDRI (52 degrees up). It shines from behind the main camera's left shoulder, so the
 // shadows fall away from the viewer, as the regulations ask for the main camera.
 export const SUN_DIR = new B.Vector3(0.38, -0.79, 0.48).normalize();
-// Corner masts (stands.js puts them here): lamp heads 46 m up, 22 m behind the goal lines and
-// 30 m behind the touchlines. The first one, behind camera 1's left shoulder, casts the shadow map.
-export const MASTS = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => new B.Vector3(sx * (HALF_L + 22), 46, sz * (HALF_W + 30)));
+// Corner masts, at the lamp heads stands.js builds. The first one, behind camera 1's left shoulder,
+// casts the shadow map.
+export const MASTS = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => new B.Vector3(sx * MAST_X, MAST_H, sz * MAST_Z));
 const FLOOD = new B.Color3(1, 0.96, 0.92);   // about 5,600 K
 
 export const lightMode = (param) => (param === "day" ? "day" : "night");
@@ -184,7 +185,7 @@ export function buildFloodlights(scene) {
     s.rotation.set(-0.5, rotY, 0);   // tilted down towards the pitch
     strips.push(s);
   };
-  strip(140, 0, HALF_W + 9 + 26 * 0.2 - 0.6, 0);
+  strip(2 * FRONT_E, 0, HALF_W + 9 + 26 * 0.2 - 0.6, 0);   // as long as the far stand
   for (const sx of [-1, 1]) strip(64, sx * (HALF_L + 9 + 22 * 0.2 - 0.6), 0, sx * Math.PI / 2);
   const merge = (list, mat) => {
     const out = B.Mesh.MergeMeshes(list, true);

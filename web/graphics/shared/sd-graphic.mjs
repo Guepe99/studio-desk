@@ -13,6 +13,11 @@
 // sit on either side goes there, momentum).
 
 export const EASE = "cubic-bezier(.2,.8,.2,1)";
+// A team colour goes into a style attribute: only #rgb or #rrggbb, anything else is dropped and the
+// graphic falls back to its own colour.
+export const hexColor = (c) => (typeof c === "string" && /^#(?:[0-9a-f]{3}){1,2}$/i.test(c) ? c : undefined);
+const withColors = (rows) => Object.fromEntries(Object.entries(rows ?? {}).map(([k, r]) =>
+  [k, { ...r, color: hexColor(r?.color), text: hexColor(r?.text) }]));
 const REDUCED = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
 
 // The page's palette, again on :host: a graphic is a standalone OGraf component and may be hosted
@@ -72,8 +77,8 @@ export class SdGraphic extends HTMLElement {
     this.renderType = params.renderType ?? "realtime";
     this.lang = this.closest("[lang]")?.lang || "en"; // the host's language: kickers and labels follow it
     this.showFacts = !!params.v_showFactIds;
-    this.players = params.v_players ?? {};
-    this.teams = params.v_teams ?? {};
+    this.players = withColors(params.v_players);
+    this.teams = withColors(params.v_teams);
     this.resolution = params.renderCharacteristics?.resolution ?? { width: 1920, height: 1080 };
     this.shadowRoot.innerHTML = `<style>${BASE_CSS}${this.css()}</style><div class="stage">${this.html()}</div>`;
     this.stage = this.shadowRoot.querySelector(".stage");

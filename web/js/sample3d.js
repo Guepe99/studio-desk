@@ -47,7 +47,7 @@ export function clipSpan(tl) {
 const frame = $("#frame"), stage = $("#stage"), side = $("#side"), frame2d = $("#frame2d");
 const pitch = new Pitch($("#pitch"));
 let match, tl, scene, host;
-const state = { c: 0, playing: true, lastTs: null, lastC: null };
+const state = { c: 0, playing: true, lastTs: null, lastLive: null };
 
 function layout() {
   const portrait = window.innerHeight > window.innerWidth;
@@ -108,7 +108,10 @@ function show(c) {
   drawScorebug(v.live);
   $("#replay-badge").classList.toggle("on", v.replay);
   drawWipe(c);
-  host.sync(v.ts, jumped || capture);
+  // the graphics stay on the live clock, held through the replay, as on the broadcast page
+  const liveJumped = state.lastLive === null || v.live < state.lastLive || v.live - state.lastLive > 0.5;
+  state.lastLive = v.live;
+  host.sync(v.live, liveJumped || capture);
   $("#time").textContent = `${c.toFixed(1)} s`;
 }
 
@@ -174,7 +177,8 @@ async function main() {
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: capture ? 30 : 60,   // the capture (tests/web/sample3d-video.mjs) renders 30 frames a second
-    locate: (pid, now) => (match.index[pid] !== undefined ? scene.project(match.index[pid], now) : { x: 0, y: 0, visible: false }),
+    // on the picture as it is drawn: in a replay, the replayed play
+    locate: (pid) => (match.index[pid] !== undefined ? scene.project(match.index[pid], state.lastTs) : { x: 0, y: 0, visible: false }),
     // the TV view: no fact id chips (the 2D analyst page keeps them)
     vendorParams: () => ({ v_showFactIds: false, v_players: players, v_teams: teams }),
   });
@@ -197,8 +201,8 @@ async function main() {
     // nothing new is drawn: the captured frame would repeat the last one
     const post = () => (scene.scene.activeCamera?._postProcesses ?? []).every((p) => !p || p.isReady());
     for (let k = 0; k < 50 && !post(); k++) { await new Promise((r) => setTimeout(r, 20)); scene.render(); }
-    await Promise.all([...host.live.values()].map((i) => i.chain));
-    host.sync(tl.at(state.c).ts, false);   // place the graphics again now that they are loaded
+    await Promise.all([document.fonts.ready, ...[...host.live.values()].map((i) => i.chain)]);
+    host.sync(tl.at(state.c).live, false);   // place the graphics again now that they are loaded
     return tl.at(state.c);
   };
   window.sample3d = { match, tl, scene, host, state, setPlaying, LOOP_S, ready: true };

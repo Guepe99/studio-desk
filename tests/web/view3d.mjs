@@ -86,7 +86,7 @@ const seekTo = (page, ts) => page.evaluate(async (x) => {
   sd.setPlaying(false);
   sd.seek(x);
   await raf(); await raf();
-  await Promise.all([...sd.host.live.values()].map((i) => i.chain));
+  await Promise.all([document.fonts.ready, ...[...sd.host.live.values()].map((i) => i.chain)]);
   await raf(); await raf();
   // paused, the 3D picture keeps drawing until every shader it needs has compiled
   for (const t0 = performance.now(); performance.now() - t0 < 60000 && sd.view3d.shown !== "2d" && !sd.view3d.ready;) await raf();
