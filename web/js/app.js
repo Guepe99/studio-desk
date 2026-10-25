@@ -25,7 +25,10 @@ const STRINGS = {
     myteam: "My team", player: "Player",
     ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
     askHint: "Answers use only the match data up to the replay time.", askWait: "The studio is checking the match data.",
-    askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts",
+    askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts", askTry: "Try one of these",
+    askSugShots: "How many shots has each team had?", askSugControl: "Which team has controlled the match so far, and why?",
+    askSugGoals: "Who has scored so far?", askSugSprint: "Who has made the fastest sprint so far?",
+    askSugPass: "What has been the hardest pass so far?",
     askLimit: "No more questions for now: the limit has been reached. Try again tomorrow.",
     askPaused: "Questions are paused for now: the safety check has reached its limit. Try again later.",
     askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
@@ -55,7 +58,10 @@ const STRINGS = {
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", kids: "Bambini", myteam: "La mia squadra", player: "Giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
-    askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
+    askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti", askTry: "Prova una di queste",
+    askSugShots: "Quanti tiri ha fatto ogni squadra?", askSugControl: "Quale squadra ha controllato la partita finora, e perché?",
+    askSugGoals: "Chi ha segnato finora?", askSugSprint: "Chi ha fatto lo scatto più veloce finora?",
+    askSugPass: "Qual è stato il passaggio più difficile finora?",
     askLimit: "Per ora non si possono fare altre domande: il limite è stato raggiunto. Riprova domani.",
     askPaused: "Per ora le domande sono sospese: il controllo di sicurezza ha raggiunto il suo limite. Riprova più tardi.",
     askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
@@ -84,7 +90,10 @@ const STRINGS = {
     audience: "Público", analyst: "Analista", casual: "Espectador", kids: "Niños", myteam: "Mi equipo", player: "Jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
-    askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos",
+    askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos", askTry: "Prueba una de estas",
+    askSugShots: "¿Cuántos tiros ha hecho cada equipo?", askSugControl: "¿Qué equipo ha controlado el partido hasta ahora, y por qué?",
+    askSugGoals: "¿Quién ha marcado hasta ahora?", askSugSprint: "¿Quién ha hecho el sprint más rápido hasta ahora?",
+    askSugPass: "¿Cuál ha sido el pase más difícil hasta ahora?",
     askLimit: "Por ahora no se pueden hacer más preguntas: se ha alcanzado el límite. Inténtalo mañana.",
     askPaused: "Por ahora las preguntas están en pausa: el control de seguridad ha alcanzado su límite. Inténtalo más tarde.",
     askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se ha podido contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
@@ -786,7 +795,7 @@ async function main() {
   buildSeekMarks();
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
-  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout });
+  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts });
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts

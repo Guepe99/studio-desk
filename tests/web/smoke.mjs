@@ -199,9 +199,10 @@ const overflow = (page) => page.evaluate(() => {
   return span - (app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
 });
 
-// POST api/ask stubbed (the static site has no API): {} is the page's probe; "limit", "offline", "broken" (500)
+// api/ask stubbed (the static site has no API): GET is the page's probe; "limit", "offline", "broken" (500)
 // and "gone" (503) the error paths; "paused" Content Safety out of quota; "slow" answers after a second.
 const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
+  if (r.request().method() === "GET") return r.fulfill({ json: { available: true } });
   const b = JSON.parse(r.request().postData() || "{}");
   if (!b.question) return r.fulfill({ status: 422, json: { detail: [] } });
   sent.push(b);

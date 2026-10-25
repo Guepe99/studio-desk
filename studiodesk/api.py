@@ -456,7 +456,7 @@ class Question(BaseModel):
 
 
 def _ask_ready():
-    # A dependency runs before the body is read: the page probes with {} and shows the box only on a 422.
+    # A dependency runs before the body is read: a question to a site without a model is a 503, never counted.
     if not ENDPOINT:
         raise HTTPException(503, "no model on this site")
     try:
@@ -524,6 +524,17 @@ def _record_answer(sid: str, q: Question, out: dict, day: str) -> None:
                        "reason": out["reason"], "fact_ids": out["fact_ids"]}})
         conn.execute("INSERT INTO usage_daily (day, session_id, cost_usd) VALUES (?, '*', ?) ON CONFLICT (day, session_id) "
                      "DO UPDATE SET cost_usd = cost_usd + excluded.cost_usd", (day, u["cost_usd"]))
+
+
+@app.get("/api/ask")
+def get_ask():
+    """The page's probe: {"available"} after the same checks as a question (_ask_ready), always a 200, since a
+    4xx or 5xx shows as an error in the browser console of every visitor."""
+    try:
+        _ask_ready()
+    except HTTPException:
+        return {"available": False}
+    return {"available": True}
 
 
 @app.post("/api/ask", dependencies=[Depends(_ask_ready)])

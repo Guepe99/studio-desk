@@ -702,7 +702,13 @@ _LANG_WORDS = {lang: re.compile(rf"(?<!\w)(?:{w})(?!\w)", re.IGNORECASE) for lan
 # a score: "2-1", "2 to 1", "2 a 1", never part of a formation or a decimal
 _ASK_SCORE = re.compile(r"(?<![\w.,-])(\d{1,2})(?:\s*[-–]\s*|\s+(?:to|a)\s+)(\d{1,2})(?![\w.,-]*\d)", re.IGNORECASE)
 # numbers that carry a noun, not a unit: "7 sprints", "xT +0.034", a pass count "228/276" or "228 of 276 passes"
-_NOUN_NUMBERS = {
+_SHOT_WORDS = r"shots?|tiri|tiro|conclusioni|tiros?|remates?|disparos?"
+_ON_TARGET = r"on target|in porta|nello specchio|a puerta|al arco|entre (?:los )?tres palos"
+_NOUN_NUMBERS = {  # "shots on target" before "shots": the longer noun takes its number first
+    "shots on target": re.compile(_LB + rf"(\d+)\s+(?:(?:{_SHOT_WORDS})\s+)?(?:{_ON_TARGET})\b", re.IGNORECASE),
+    "shots": re.compile(_LB + rf"(\d+)\s+(?:{_SHOT_WORDS})\b(?!\s+(?:{_ON_TARGET}))", re.IGNORECASE),
+    "corners": re.compile(_LB + r"(\d+)\s+(?:corners?|calci d'angolo|angoli|c[oó]rners?|saques de esquina)\b",
+                          re.IGNORECASE),
     "sprints": re.compile(_LB + r"(\d+)\s+(?:sprints?|scatt[oi]|esprints?)\b", re.IGNORECASE),
     "xT": re.compile(r"\bxT\s*(?:of|di|de|:)?\s*([+-]?\d+(?:[.,]\d+)?)|" + _LB + r"([+-]?\d+(?:[.,]\d+)?)\s*xT\b"),
 }

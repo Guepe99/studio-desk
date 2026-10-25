@@ -71,7 +71,7 @@ def test_lists_tools_through_the_sdk(server_db):
             return {t.name for t in tools}, res
 
     names, res = asyncio.run(run())
-    assert names == {"get_match_info", "get_events", "get_facts", "get_fact", "get_player", "get_momentum"}
+    assert names == {"get_match_info", "get_events", "get_facts", "get_fact", "get_player", "get_momentum", "get_team_totals"}
     assert not res.isError and "Goal 1-0" in res.content[0].text
 
 

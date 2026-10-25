@@ -52,8 +52,8 @@ const open = async (browser, [width, height], phone, query = `?match=${MATCH}`) 
   const optional = (m) => /\/api\/|\/(voice|booth)\.json$/.test(m.location()?.url ?? "");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m)) fail(`${width}x${height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${width}x${height} page error: ${e.message}`));
-  // the static site has no API: an empty question answered 422 is the probe that shows the Ask button
-  await page.route("**/api/ask", (r) => r.fulfill({ status: 422, json: { detail: [] } }));
+  // the static site has no API: the probe (GET api/ask) answered available shows the Ask button
+  await page.route("**/api/ask", (r) => r.fulfill({ json: { available: true } }));
   await page.goto(new URL(query, base).href);
   await page.waitForFunction(() => window.studioDesk?.match && window.studioDesk.desk.ready, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
