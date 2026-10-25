@@ -14,6 +14,7 @@ https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=
 - The strip under the picture, **Agents at work**, shows which agent is busy and what it passed on.
 - In the 8th minute a big chance reaches the **Desk** beside the picture, under **Needs you**. Its risk is medium, so it waits for a person.
 - In the 10th minute Redwick Wanderers score. A goal is low risk, so the graphic goes on air by itself and is marked auto-approved.
+- Graphics are timed in match seconds, so at 4x the goal's cards stay on screen for 1.5 to 3 seconds. To watch them at real speed, press **Next key moment** (or N): it jumps to just before the next moment and drops to 1x.
 
 ## 2. Make a decision (1 minute)
 
