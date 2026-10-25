@@ -1,9 +1,7 @@
 # Studio Desk: rules for every Claude session and builder agent
 
 Hackathon entry for "Inside the Game" (Microsoft + Premier League), category Best Enterprise
-Solution. Deadline for us: 27 Oct 2026 12:00 Europe/Rome. The plan is
-`~/.claude/plans/facckamo-cos-mi-sono-golden-hearth.md`; progress lives on the artifact page
-https://claude.ai/artifact/LGK8e4Npo6MDLJaRf4VPXF (only the lead session writes it).
+Solution.
 
 ## Before writing code
 
