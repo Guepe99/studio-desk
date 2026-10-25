@@ -1,25 +1,32 @@
 """Measures of the system for the replay matches, written to docs/MEASURES.md (evaluation only).
 
-    .venv/bin/python scripts/measures.py [--runtime-dir out] [--out docs/MEASURES.md] [M001 M002 ...]
+    .venv/bin/python scripts/measures.py [--runtime-dir out] [--out docs/MEASURES.md] [--no-rules] [M001 M002 ...]
 
 Reads, per match: the AI pack `replays/<match>/stories.json`, the runtime database of the run that
 made it (`<runtime-dir>/runtime15-<match>.sqlite`: traces and audit) and, for the first measure only,
 the hidden `storylines` table of `data/matches.sqlite` (`STUDIODESK_MATCHES_DB` overrides it). Like
 scripts/eval_stories.py, this is an evaluation script: agents, the MCP server and the API never read
 the storylines. Nothing is written but the markdown page.
+
+For the comparison with the rules alone it also runs the workflow once per match with the model off
+(offline, no Azure, about a minute a match, in a temporary database); --no-rules skips it.
 """
 import argparse
+import asyncio
 import json
+import logging
 import statistics
 import sys
+import tempfile
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from studiodesk import config, db, mcp_server  # noqa: E402
-from studiodesk.agents import rules  # noqa: E402
+from studiodesk import config, db, export, mcp_server  # noqa: E402
+from studiodesk.agents import rules, workflow  # noqa: E402
+from studiodesk.agents.llm import FakeChatClient  # noqa: E402
 import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
@@ -74,12 +81,63 @@ def usage(audit, traces):
     return {"calls": len(calls), "tokens_in": sum(a["tokens_in"] for a in calls),
             "tokens_out": sum(a["tokens_out"] for a in calls), "cost_usd": sum(a["cost_usd"] for a in calls),
             "model_s": sum(json.loads(a["detail"]).get("latency_ms", 0) for a in calls) / 1000,
+            "steps": sum(bool(t["model"]) for t in traces),  # what the desk's audit log counts from the replay
             "trace_tokens": sum(t["tokens_in"] + t["tokens_out"] for t in traces),
             "trace_cost_usd": sum(t["cost_usd"] for t in traces)}
 
 
 def at(s):
     return datetime.fromisoformat(s).timestamp()
+
+
+def _model_off(schema, payload):
+    raise ConnectionError("model off")
+
+
+def rules_only(match_id, mconn):
+    """The same workflow with every model call failing, so each agent falls back to its written rules:
+    the finder keeps the must-tell candidates and the first other one, the analyst the facts, the
+    commentators the phrasebook and the template. Offline: the fake client answers no call."""
+    with tempfile.TemporaryDirectory() as d:
+        rt = db.connect(Path(d) / "runtime.sqlite")
+        try:
+            summary = asyncio.run(workflow.run_match(match_id, FakeChatClient(responder=_model_off), rt,
+                                                     model_name="off", log=lambda *_: None))
+            assert summary["model_calls"] == 0, summary
+            stories = export.runtime_records(match_id, rt)[0]
+        finally:
+            rt.close()
+    storylines = [dict(r) for r in mconn.execute(
+        "SELECT story_id, kind, ts_start, ts_end, team_id, player_id FROM storylines WHERE match_id = ?", (match_id,))]
+    found, planted = storylines_found(storylines, stories)
+    return {"match_id": match_id, "found": found, "planted": planted, **on_air(stories)}
+
+
+def rules_section(rows, rules_rows):
+    if not rules_rows:
+        return "Not measured in this run of the script (`--no-rules`)."
+    head = "| match | storylines found, agents / rules | stories, agents / rules | AI proposals on the desk, agents / rules |"
+    lines = [head, "|---|---|---|---|"]
+    by = {r["match_id"]: r for r in rows}
+    keys = ("found", "planted", "stories", "proposals")
+    rt = {k: sum(x[k] for x in rules_rows) for k in keys}
+    at = {k: sum(by[x["match_id"]][k] for x in rules_rows) for k in keys}
+    for r in rules_rows + [{"match_id": "all", **rt}]:
+        a = by.get(r["match_id"]) or at
+        lines.append(f"| {r['match_id']} | {a['found']} / {r['found']} of {r['planted']} | {a['stories']} / {r['stories']} "
+                     f"| {a['proposals']} / {r['proposals']} |")
+    return f"""The committed AI run against the same workflow with the model off: every call fails, so each agent
+falls back to its written rules (the story finder keeps the must-tell candidates, goals, comebacks and
+recaps, and the first other one; the analyst falls back to the facts; the commentators to the phrasebook and the
+fact-only template). The model-off run uses today's code and no Content Safety; it costs nothing and
+reproduces with `.venv/bin/python scripts/measures.py` (offline, about a minute a match).
+
+{chr(10).join(lines)}
+
+With the model the agents found {at['found']} of the {at['planted']} hidden storylines and wrote {at['stories']} stories; with
+the rules alone, {rt['found']} and {rt['stories']}. The
+commentators' lines passed every check in {at['proposals']} stories and wait on the desk as proposals; with the
+model off there are {rt['proposals']}. Either way, what goes on air is code-written text."""
 
 
 def timing(traces, stories):
@@ -141,7 +199,7 @@ def measure(match_id, pack, runtime, mconn):
 
 def total(rows):
     keys = ("found", "planted", "numbers", "names", "stories", "phrasebook", "template", "ai", "proposals",
-            "calls", "tokens_in", "tokens_out", "cost_usd", "model_s", "trace_tokens", "trace_cost_usd",
+            "calls", "steps", "tokens_in", "tokens_out", "cost_usd", "model_s", "trace_tokens", "trace_cost_usd",
             "rounds", "minutes", "wall_total_s")
     return {k: sum(r[k] for r in rows) for k in keys}
 
@@ -171,7 +229,7 @@ program's start-up before that, {live['setup_s']:.1f} seconds, is left out. A st
 air by itself is on screen at that moment."""
 
 
-def markdown(rows, live=None):
+def markdown(rows, live=None, rules_rows=None):
     t = total(rows)
     n = len(rows)
     head = ("| match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI "
@@ -230,8 +288,15 @@ a proposal; it goes on air only when a person edits the story.
 
 {t['calls']} model calls used {t['tokens_in']:,} input and {t['tokens_out']:,} output tokens, ${t['cost_usd']:.3f} in all
 (${t['cost_usd'] / n:.3f} a match), counted from the audit table, one row per model call. {traces_note}
+The desk's audit log reads the replay's traces, one row per agent step, so it shows {t['steps']} agent steps
+that used the model: a step can call it more than once (the verifier checks the texts again after a
+rewrite).
 The Content Safety checks (one call per story,
 {t['stories']} in all) are recorded in neither table and are not counted.
+
+## What the agents add over the rules alone
+
+{rules_section(rows, rules_rows)}
 
 ## Delay from event to graphic
 
@@ -255,13 +320,16 @@ def main():
     ap.add_argument("--runtime-dir", type=Path, default=config.ROOT / "out")
     ap.add_argument("--replays", type=Path, default=config.ROOT / "replays")
     ap.add_argument("--out", type=Path, default=config.ROOT / "docs" / "MEASURES.md")
+    ap.add_argument("--no-rules", action="store_true", help="skip the model-off runs")
     a = ap.parse_args()
+    logging.disable(logging.INFO)  # the workflow framework's chatter during the model-off runs
     with closing(db.connect(mcp_server.DB_PATH, readonly=True)) as mconn:
         rows = [measure(m, a.replays / m, a.runtime_dir / RUNTIME.format(m), mconn) for m in a.matches]
+        rules_rows = [] if a.no_rules else [rules_only(m, mconn) for m in a.matches]
     live = measure_live(a.runtime_dir / LIVE["runtime"], a.runtime_dir / LIVE["start"])
     old = a.out.read_text() if a.out.exists() else ""
     kept = old[old.index(FOUNDRY):] if FOUNDRY in old else ""  # written by scripts/foundry_evals.py, always last
-    a.out.write_text(markdown(rows, live) + kept)
+    a.out.write_text(markdown(rows, live, rules_rows) + kept)
     print(a.out.read_text())
 
 

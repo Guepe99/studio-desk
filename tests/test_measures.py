@@ -42,8 +42,10 @@ def test_usage_reads_the_audit_and_the_traces_apart():
     audit = [{"action": "model_call", "tokens_in": 100, "tokens_out": 10, "cost_usd": 0.5, "detail": json.dumps({"latency_ms": 1500})},
              {"action": "model_call", "tokens_in": 200, "tokens_out": 20, "cost_usd": 0.25, "detail": "{}"},
              {"action": "approved", "tokens_in": 0, "tokens_out": 0, "cost_usd": 0, "detail": "{}"}]
-    traces = [{"tokens_in": 100, "tokens_out": 10, "cost_usd": 0.5}, {"tokens_in": 300, "tokens_out": 30, "cost_usd": 0.75}]
+    traces = [{"tokens_in": 100, "tokens_out": 10, "cost_usd": 0.5, "model": "m"}, {"tokens_in": 300, "tokens_out": 30, "cost_usd": 0.75, "model": "m"},
+              {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0, "model": None}]  # the director's cue: a step without the model
     u = measures.usage(audit, traces)
+    assert u["steps"] == 2  # what the desk's audit log counts from the replay
     assert (u["calls"], u["tokens_in"], u["tokens_out"], u["cost_usd"], u["model_s"]) == (2, 300, 30, 0.75, 1.5)
     assert (u["trace_tokens"], u["trace_cost_usd"]) == (440, 1.25)
 
@@ -105,3 +107,18 @@ def test_measure_reads_only_its_match_and_the_page_adds_up(tmp_path):
     live = " ".join(measures.markdown([r], {"delays": [("goal", 4.0), ("big_chance", 9.0), ("goal", 6.0)], "setup_s": 3.0}).split())
     assert "The 2 goals reached the director's cue 4.0 and 6.0 seconds after the shot" in live
     assert "the big chance after 9.0 seconds, judged once the play had settled" in live and "3.0 seconds, is left out" in live and "—" not in page + live
+    assert "shows 0 agent steps that used the model" in " ".join(page.split())
+
+
+def test_rules_alone_runs_the_workflow_with_the_model_off(match_db, monkeypatch):
+    from studiodesk import mcp_server
+    info, conn = match_db
+    monkeypatch.setattr(mcp_server, "DB_PATH", info["path"])
+    r = measures.rules_only(info["match_id"], conn)  # no Azure: the fake client raises on every call
+    assert r["stories"] > 0 and r["proposals"] == 0 and r["ai"] == 0
+    assert r["phrasebook"] + r["template"] == r["stories"] and 0 <= r["found"] <= r["planted"]
+    agents = {"match_id": info["match_id"], "found": r["planted"], "planted": r["planted"], "stories": r["stories"] + 2, "proposals": 5}
+    page = measures.rules_section([agents], [r])
+    assert f"| {r['planted']} / {r['found']} of {r['planted']} | {r['stories'] + 2} / {r['stories']} | 5 / 0 |" in page
+    assert "| all |" in page and "--no-rules" in measures.rules_section([agents], [])
+    assert f"with the rules alone, {r['found']} and {r['stories']}" in " ".join(page.split())

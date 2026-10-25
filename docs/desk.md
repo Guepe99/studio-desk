@@ -55,9 +55,9 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   at a time, and the analyst sheet alone has 17 Team shape panels a match.
 - One nobody decided on before its slot ended is missed: it never airs, it leaves Needs you for the
   "Missed" count under Done, and its row says "missed, nobody put it on air in time", with no action
-  left. The same holds for the agents' stories: once the slot the director gave a held story has
-  ended, approving it would air nothing, so it stops asking (a story with no cue is missed 60 s after
-  its moment). Done says what happened to each: approved by you, approved automatically, skipped by
+  left. The agents' stories get a limit too: 5 match minutes after the slot the director gave a held
+  story (after its moment, when it has no cue), it stops asking and is missed. Approving it in those
+  5 minutes records the decision, but its slot has passed, so it airs only if you go back in the match. Done says what happened to each: approved by you, approved automatically, skipped by
   you, or missed. Each status has a one-line tooltip that says what it means.
 - The AI switch holds the agents' stories only: a generated graphic is code from the facts, so the
   rule above still decides it when the AI is off. A story stays off air with the AI off even when its

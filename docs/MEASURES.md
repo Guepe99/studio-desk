@@ -40,8 +40,32 @@ a proposal; it goes on air only when a person edits the story.
 
 692 model calls used 1,233,997 input and 87,321 output tokens, $0.319 in all
 ($0.080 a match), counted from the audit table, one row per model call. The traces of the agent steps add up to the same tokens.
+The desk's audit log reads the replay's traces, one row per agent step, so it shows 624 agent steps
+that used the model: a step can call it more than once (the verifier checks the texts again after a
+rewrite).
 The Content Safety checks (one call per story,
 83 in all) are recorded in neither table and are not counted.
+
+## What the agents add over the rules alone
+
+The committed AI run against the same workflow with the model off: every call fails, so each agent
+falls back to its written rules (the story finder keeps the must-tell candidates, goals, comebacks and
+recaps, and the first other one; the analyst falls back to the facts; the commentators to the phrasebook and the
+fact-only template). The model-off run uses today's code and no Content Safety; it costs nothing and
+reproduces with `.venv/bin/python scripts/measures.py` (offline, about a minute a match).
+
+| match | storylines found, agents / rules | stories, agents / rules | AI proposals on the desk, agents / rules |
+|---|---|---|---|
+| M001 | 3 / 3 of 4 | 15 / 15 | 14 / 0 |
+| M002 | 4 / 4 of 4 | 24 / 24 | 21 / 0 |
+| M003 | 2 / 1 of 3 | 16 / 15 | 13 / 0 |
+| M004 | 2 / 1 of 3 | 28 / 27 | 19 / 0 |
+| all | 11 / 9 of 14 | 83 / 81 | 67 / 0 |
+
+With the model the agents found 11 of the 14 hidden storylines and wrote 83 stories; with
+the rules alone, 9 and 81. The
+commentators' lines passed every check in 67 stories and wait on the desk as proposals; with the
+model off there are 0. Either way, what goes on air is code-written text.
 
 ## Delay from event to graphic
 

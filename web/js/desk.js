@@ -66,7 +66,9 @@ export const TEXT = {
     factsCaption: "Facts cited by the story", fact: "Fact", value: "Value", notInLedger: "not in the ledger", events: "Events ", analyst: "Analyst: ",
     goals: ({ n }) => `${n} goal${n === "1" ? "" : "s"}`,
     pitch: ({ n, run }) => `Pitch map: ${n} evidence event${n === 1 ? "" : "s"}${run ? " and the run behind a speed fact" : ""}`,
-    calls: "model calls", tokens: "tokens", cost: "model cost", yours: "of your actions", logCaption: "Audit log, newest first",
+    calls: "model calls", steps: "agent steps that used the model",
+    stepsTip: "From the replay's traces, one row per agent step. A step can call the model more than once: the verifier checks the texts again after a rewrite. The measures count each call.",
+    tokens: "tokens", cost: "model cost", yours: "of your actions", logCaption: "Audit log, newest first",
     colWho: "Who", colWhat: "What", colCost: "Tokens and cost",
     a_ai_off: "switched AI graphics off", a_ai_on: "switched AI graphics on", a_ask: "your question, {s}", a_auto: "auto-approved, risk {r} below {t}",
     a_approved: "approved", a_edited: "edited", a_rejected: "rejected", a_undo: "undid the last action",
@@ -153,7 +155,9 @@ export const TEXT = {
     factsCaption: "Fatti citati dalla storia", fact: "Fatto", value: "Valore", notInLedger: "non è nel registro dei fatti", events: "Eventi ", analyst: "Analista: ",
     goals: ({ n }) => `${n} gol`,
     pitch: ({ n, run }) => `Mappa del campo: ${n} event${n === 1 ? "o" : "i"} citat${n === 1 ? "o" : "i"} come prova${run ? " e la corsa dietro un dato di velocità" : ""}`,
-    calls: "chiamate al modello", tokens: "token", cost: "costo dei modelli", yours: "azioni tue", logCaption: "Registro, dal più recente",
+    calls: "chiamate al modello", steps: "passaggi degli agenti che hanno usato il modello",
+    stepsTip: "Dalle tracce del replay, una riga per passaggio di un agente. Un passaggio può chiamare il modello più di una volta: il verificatore ricontrolla i testi dopo una riscrittura. Le misure contano ogni chiamata.",
+    tokens: "token", cost: "costo dei modelli", yours: "azioni tue", logCaption: "Registro, dal più recente",
     colWho: "Chi", colWhat: "Cosa", colCost: "Token e costo",
     a_ai_off: "hai spento le grafiche IA", a_ai_on: "hai acceso le grafiche IA", a_ask: "la tua domanda, {s}", a_auto: "approvata in automatico, rischio {r} sotto {t}",
     a_approved: "approvata", a_edited: "modificata", a_rejected: "respinta", a_undo: "hai annullato l'ultima azione",
@@ -240,7 +244,9 @@ export const TEXT = {
     factsCaption: "Datos citados por la historia", fact: "Dato", value: "Valor", notInLedger: "no está en el registro de datos", events: "Eventos ", analyst: "Analista: ",
     goals: ({ n }) => `${n} gol${n === "1" ? "" : "es"}`,
     pitch: ({ n, run }) => `Mapa del campo: ${n} evento${n === 1 ? "" : "s"} citado${n === 1 ? "" : "s"} como prueba${run ? " y la carrera detrás de un dato de velocidad" : ""}`,
-    calls: "llamadas al modelo", tokens: "tokens", cost: "coste de los modelos", yours: "acciones tuyas", logCaption: "Registro, primero lo más reciente",
+    calls: "llamadas al modelo", steps: "pasos de los agentes que usaron el modelo",
+    stepsTip: "De las trazas del replay, una fila por paso de un agente. Un paso puede llamar al modelo más de una vez: el verificador vuelve a revisar los textos tras una reescritura. Las medidas cuentan cada llamada.",
+    tokens: "tokens", cost: "coste de los modelos", yours: "acciones tuyas", logCaption: "Registro, primero lo más reciente",
     colWho: "Quién", colWhat: "Qué", colCost: "Tokens y coste",
     a_ai_off: "has apagado los gráficos de IA", a_ai_on: "has encendido los gráficos de IA", a_ask: "tu pregunta, {s}", a_auto: "aprobada automáticamente, riesgo {r} por debajo de {t}",
     a_approved: "aprobada", a_edited: "editada", a_rejected: "rechazada", a_undo: "has deshecho la última acción",
@@ -306,7 +312,7 @@ const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself sta
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
 const TITLE_MAX = 80; // studiodesk/api.py TITLE_MAX_CHARS
 const LOOKAHEAD_S = 60; // a story whose first graphic is this close is listed, as Next
-const MISS_S = 60; // a story with no cue is missed this long after its moment, if nobody decided on it
+const MISS_S = 300; // an agents' story nobody decided on leaves Needs you 5 match minutes after its slot (or its moment, without a cue)
 const ON_AIR = ["auto_approved", "approved", "edited"];
 const REASONS = ["number", "player", "moment", "tone"]; // why a story was rejected, one tap each
 const API_TIMEOUT_MS = 4000;
@@ -525,11 +531,12 @@ export class Desk {
 
   // A story Content Safety flagged never goes on air by itself, whatever its risk.
   defaultStatus(s) { return s.safety === "flagged" ? "needs_review" : s.default_status; }
-  // a story or generated graphic nobody decided on while it could air is missed ("expired"): its slot has
-  // ended, so approving it would air nothing; it leaves Needs you for the missed count
+  // a story or generated graphic nobody decided on while it could air is missed ("expired") and leaves Needs
+  // you for the missed count: a generated graphic when its slot ends, an agents' story MISS_S after it
   status(s) {
-    const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s);
-    return d === "needs_review" && this.state.ts >= (this.slotEnd.get(s.story_id) ?? this.firstOf(s) + MISS_S) ? "expired" : d;
+    const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s), end = this.slotEnd.get(s.story_id);
+    if (d !== "needs_review") return d;
+    return this.state.ts >= (s.gen ? end : (end ?? this.firstOf(s)) + MISS_S) ? "expired" : d;
   }
   /** The status a tooltip explains: the AI switch and a filler first. */
   tipKey(s) {
@@ -624,7 +631,7 @@ export class Desk {
     if (this.locked()) return;
     const id = s.story_id, prev = this.decisions.get(id), wasStatus = this.status(s), at = new Date().toISOString();
     if (!undoing) this.aimFocus(this.nextWaiting(id));
-    this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at, from: wasStatus }); // from: a generated graphic rejected while waiting was skipped, not taken out
+    this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at, from: wasStatus, ts: this.state.ts }); // from: a generated graphic rejected while waiting was skipped, not taken out
     this.note = "";
     if (!this.online || s.gen) {
       this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
@@ -914,8 +921,13 @@ export class Desk {
   outcome(s) {
     const st = this.status(s);
     const by = this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
-    // the history of what aired: an on-air story whose first graphic has played says when
-    return this.onAir(s) && this.firstOf(s) <= this.state.ts ? this.tx("row_aired", { m: this.clockText(this.firstOf(s)), by }) : by;
+    return this.aired(s) ? this.tx("row_aired", { m: this.clockText(this.firstOf(s)), by }) : by;
+  }
+  // the history of what aired: on air by the rule, or decided in this tab (match time ts) before its slot ended,
+  // and the clock past its first graphic; a decision made after the slot, or read back from the API, claims nothing
+  aired(s) {
+    const d = this.decisions.get(s.story_id);
+    return this.onAir(s) && this.firstOf(s) <= this.state.ts && (!d || d.ts < (this.slotEnd.get(s.story_id) ?? Infinity));
   }
   // a generated graphic that waited for the visitor and was not put on air
   skipped(s) { return Boolean(s.gen) && this.decisions.get(s.story_id)?.from === "needs_review"; }
@@ -980,7 +992,7 @@ export class Desk {
       section("needs", needs.map((s) => this.renderCard(s)), needsEmpty),
       section("done", done.map((s) => this.renderRow(s)), tx("doneEmpty")),
       // the missed ones are counted, not listed among the decisions; their rows open on demand
-      missed.length ? h("details", { className: "sec missed", "data-focus": "sec:missed" },
+      missed.length ? h("details", { className: "missed", "data-focus": "sec:missed" },
         h("summary", { title: tx("tip_st_expired") }, tx("missed", { n: int(missed.length, this.state.lang) })),
         h("ul", { className: "items" }, missed.map((s) => h("li", {}, this.renderRow(s))))) : null,
     ];
@@ -1264,11 +1276,11 @@ export class Desk {
     const humans = [...(this.online ? this.auditRows.filter((r) => r.actor === "human") : []), ...this.localAudit];
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
     const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
-    return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt) };
+    return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
   }
 
   renderAudit() {
-    const { rows, agents, humans } = this.auditData();
+    const { rows, agents, humans, steps } = this.auditData();
     const lang = this.state.lang, tx = (k, v) => this.tx(k, v);
     const calls = agents.filter((r) => r.model);
     const tokens = agents.reduce((n, r) => n + r.tokens_in + r.tokens_out, 0), cost = agents.reduce((n, r) => n + r.cost_usd, 0);
@@ -1308,7 +1320,7 @@ export class Desk {
       // what it cost, last: a reviewer comes for the decisions
       h("h3", { className: "audit-head" }, tx("costHead")),
       h("div", { className: "totals" },
-        h("div", {}, h("b", {}, int(calls.length, lang)), ` ${tx("calls")}`),
+        h("div", steps ? { title: tx("stepsTip") } : {}, h("b", {}, int(calls.length, lang)), ` ${tx(steps ? "steps" : "calls")}`),
         h("div", {}, h("b", {}, int(tokens, lang)), ` ${tx("tokens")}`),
         h("div", {}, h("b", {}, usd(cost, lang)), ` ${tx("cost")}`),
         h("div", {}, h("b", {}, int(humans.length, lang)), ` ${tx("yours")}`)));
