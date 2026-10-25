@@ -152,7 +152,7 @@ async function scenario(browser, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone });
   const page = await ctx.newPage();
   // voice.json and booth.json are optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
-  // api/ask too: the page probes it with an empty body (422 with a model behind it, 503 without, as here).
+  // api/ask too: the static server here has no API, so the page's GET probe gets a 404 (the real API answers 200).
   const optional = (u) => /\/(voice|booth)\.json$/.test(u) || u.endsWith("/api/ask");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
@@ -234,7 +234,7 @@ async function scenario(browser, w, h) {
     });
     expect(c.parts.join() === "story-head,tally,kicker,headline,story-text,actions,more" && c.open === false && c.built === false,
       `${tag}: closed card ${s.story_id} ${JSON.stringify(c)}`);
-    expect(c.headline === whyCue(s).payload.title && c.kicker === "WHY IT MATTERS", `${tag}: card ${s.story_id} headline ${JSON.stringify([c.kicker, c.headline])}`);
+    expect(c.headline === whyCue(s).payload.title && c.kicker === "KEY MOMENT", `${tag}: card ${s.story_id} headline ${JSON.stringify([c.kicker, c.headline])}`);
     if (phone) expect(c.h <= 360, `${tag}: closed card ${s.story_id} is ${c.h} px tall at 390x844`);
   }
   await shoot("closed", null);

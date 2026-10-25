@@ -301,7 +301,7 @@ async function run(w, h) {
   else {
     await seek(kick + 2);
     const k = await page.evaluate(() => [...window.studioDesk.host.live.values()].map((i) => i.el.shadowRoot?.querySelector(".kicker")?.textContent).filter(Boolean));
-    expect(k.length && k.every((x) => !/WHY IT MATTERS|RECAP|SHOT SPEED|PASS SPEED|MOMENTUM/.test(x)), `${tag} 11: Italian kickers ${JSON.stringify(k)}`);
+    expect(k.length && k.every((x) => !/KEY MOMENT|RECAP|SHOT SPEED|PASS SPEED|MOMENTUM/.test(x)), `${tag} 11: Italian kickers ${JSON.stringify(k)}`);
   }
   await openDesk();
   await shot(page, `${PFX}-${tag}-it.png`);
