@@ -37,18 +37,18 @@ export const TEXT = {
     offair: "Off air", goMinute: "Go to minute {m}", goTitle: "Go to this moment",
     st_auto_approved: "Auto-approved", st_needs_review: "Needs review", st_approved: "Approved", st_edited: "Edited and approved", st_rejected: "Rejected",
     defaultWas: "default: {s}", heldSafety: "held: flagged by Content Safety",
-    line_live: "On air, {by}", by_auto_approved: "approved by the risk rule", by_approved: "approved by you", by_edited: "edited and approved by you", by_template: "template graphic, no approval needed",
+    line_live: "On air, {by}", by_auto_approved: "approved automatically (low risk)", by_approved: "approved by you", by_edited: "edited and approved by you", by_template: "template graphic, no approval needed",
     line_held: "Waiting for you, {why}", why_safety: "flagged by Content Safety", line_rejected: "Off air, rejected by you", line_kill: "Off air while AI graphics are off",
     details: "Details", whyReject: "What was wrong?", r_number: "A number", r_player: "A name", r_moment: "The moment", r_tone: "The tone",
     risk_low: "Low risk", risk_mid: "Medium risk", risk_high: "High risk", riskTitle: "Risk score {r}. Below {t} a story goes on air by itself.",
-    tip_low: "The risk rule puts it on air by itself. Reject it if something looks wrong.",
+    tip_low: "Low risk: it goes on air by itself. Reject it if something looks wrong.",
     tip_lowHeld: "Held for a safety check: read it before you put it on air.",
     tip_mid: "Check the names and numbers against the evidence before it goes on air.",
     tip_high: "Read the evidence and the notes first. Reject it if a claim does not match.",
     dtOnAir: "On air", dtDraft: "AI draft", dtVerifier: "Verifier", dtSafety: "Safety", none: "none",
     attempts: ({ n }) => `, ${n} attempt${n > 1 ? "s" : ""}`,
-    v_pass: "Pass", v_rewritten: "Rewritten", v_template: "Template line", air_phrasebook: "Phrasebook (code)", air_template: "Template line (code)",
-    d_pass: "Pass", d_rewritten: "Rewritten", d_template: "Not usable",
+    v_pass: "Pass", v_rewritten: "Passed after a rewrite", v_template: "Template line", air_phrasebook: "Phrasebook (code)", air_template: "Template line (code)",
+    d_pass: "Pass", d_rewritten: "Passed after a rewrite", d_template: "Not usable",
     n_rewritten: "What the earlier drafts got wrong", n_template: "Why the fact-only sentence",
     dn_rewritten: "What the earlier AI drafts got wrong", dn_template: "Why the AI drafts were not kept", notes: "Verifier notes",
     s_passed: "Passed", s_flagged: "Flagged", s_not_checked: "Not checked",
@@ -78,20 +78,27 @@ export const TEXT = {
     tokInOut: "{a} in, {b} out", zeroTokens: "0 tokens", sharedBy: ({ n }) => `, shared by ${n} stories`,
     how_ai: "AI", how_codeai: "Code and AI", how_rules: "Rules",
     ag_story_finder: "Story finder", ag_analyst: "Analyst", ag_commentator: "Commentator", ag_verifier: "Verifier", ag_director: "Director",
-    ag_human: "You", ag_auto: "Risk rule", ag_studio_host: "Studio host",
+    ag_human: "You", ag_auto: "Auto-approval", ag_studio_host: "Studio host",
     role_story_finder: "Picks moments from the events the match clock releases.",
     role_analyst: "Describes the moment from its facts, citing fact ids.",
     role_commentator: "Writes the lines in English, Italian and Spanish.",
     role_verifier: "Checks every number against the fact ledger; rewrites twice at most, then a template line.",
     role_director: "Picks graphic, time and audience; never more than 2 on screen.",
     sec_air: "On air now", sec_needs: "Needs you", sec_done: "Done",
+    missed: "Missed: {n}", row_aired: "aired at {m}', {by}",
+    tip_st_auto_approved: "Low risk, so it goes on air by itself. Reject it if something looks wrong.",
+    tip_st_needs_review: "It airs only if you put it on air: its risk is not low, or Content Safety flagged it.",
+    tip_st_approved: "You put it on air.", tip_st_edited: "You changed its text and put it on air. The new text passed the number and name checks.",
+    tip_st_rejected: "You kept it off air.", tip_st_expired: "Its moment passed before anyone put it on air, so it never aired.",
+    tip_st_kill: "AI graphics are off. An AI agent picked this moment, so it stays off air even though code wrote its words. Switch AI back on to air it.",
+    tip_st_template: "Made by code from the facts: no AI and no approval needed.",
     airEmpty: "Nothing on screen right now.", doneEmpty: "Nothing decided yet.",
-    needsEmpty: "Nothing waits for you. The agents write these graphics, and nothing they write goes on air until you or the risk rule approve it.",
-    next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "its slot is now", toAirPast: "its slot was at {m}'", left: "{s} s left",
+    needsEmpty: "Nothing waits for you. The agents write these graphics, and a low-risk one goes on air by itself, any other waits here for you.",
+    next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "due on air now", toAirPast: "was due on air at {m}'", left: "{s} s left",
     takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_lineup: "Line-ups", g_why_card: "Card",
     done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", k_checkin: "Player check-in",
     line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
-    line_expired: "Off air, its moment passed while it waited", row_expired: "expired, its moment passed",
+    line_expired: "Off air: missed, its moment passed before anyone put it on air", row_expired: "missed, nobody put it on air in time",
     row_rejected: "rejected by you", row_kill: "off air while AI graphics are off", info: "About your decisions",
     fHeadline: "Headline", fBody: "Text", emptyTitle: "The {name} headline cannot be empty.", factsLabel: "Facts: ",
     yourActions: "Your actions", colMinute: "Minute", costHead: "What the agents cost",
@@ -116,18 +123,18 @@ export const TEXT = {
     offair: "Fuori onda", goMinute: "Vai al minuto {m}", goTitle: "Vai a questo momento",
     st_auto_approved: "Approvata in automatico", st_needs_review: "Da rivedere", st_approved: "Approvata", st_edited: "Modificata e approvata", st_rejected: "Respinta",
     defaultWas: "stato iniziale: {s}", heldSafety: "in attesa: segnalata da Content Safety",
-    line_live: "In onda, {by}", by_auto_approved: "approvata dalla regola del rischio", by_approved: "approvata da te", by_edited: "modificata e approvata da te", by_template: "grafica standard, non serve approvazione",
+    line_live: "In onda, {by}", by_auto_approved: "approvata in automatico (rischio basso)", by_approved: "approvata da te", by_edited: "modificata e approvata da te", by_template: "grafica standard, non serve approvazione",
     line_held: "Aspetta una tua decisione, {why}", why_safety: "segnalata da Content Safety", line_rejected: "Fuori onda, respinta da te", line_kill: "Fuori onda finché le grafiche IA sono spente",
     details: "Dettagli", whyReject: "Cosa non andava?", r_number: "Un numero", r_player: "Un nome", r_moment: "Il momento", r_tone: "Il tono",
     risk_low: "Rischio basso", risk_mid: "Rischio medio", risk_high: "Rischio alto", riskTitle: "Punteggio di rischio {r}. Sotto {t} una storia va in onda da sola.",
-    tip_low: "La regola del rischio la manda in onda da sola. Respingila se qualcosa non torna.",
+    tip_low: "Rischio basso: va in onda da sola. Respingila se qualcosa non torna.",
     tip_lowHeld: "In attesa di un controllo di sicurezza: leggila prima di mandarla in onda.",
     tip_mid: "Confronta nomi e numeri con le prove prima che vada in onda.",
     tip_high: "Leggi prima le prove e le note. Respingila se un'affermazione non corrisponde.",
     dtOnAir: "In onda", dtDraft: "Bozza IA", dtVerifier: "Verificatore", dtSafety: "Sicurezza", none: "nessuno",
     attempts: ({ n }) => `, ${n} tentativ${n > 1 ? "i" : "o"}`,
-    v_pass: "Superato", v_rewritten: "Riscritto", v_template: "Frase modello", air_phrasebook: "Frasario (codice)", air_template: "Frase modello (codice)",
-    d_pass: "Superata", d_rewritten: "Riscritta", d_template: "Non usabile",
+    v_pass: "Superato", v_rewritten: "Superato dopo una riscrittura", v_template: "Frase modello", air_phrasebook: "Frasario (codice)", air_template: "Frase modello (codice)",
+    d_pass: "Superata", d_rewritten: "Superata dopo una riscrittura", d_template: "Non usabile",
     n_rewritten: "Cosa sbagliavano le bozze precedenti", n_template: "Perché la frase con i soli fatti",
     dn_rewritten: "Cosa sbagliavano le bozze IA precedenti", dn_template: "Perché le bozze IA sono state scartate", notes: "Note del verificatore",
     s_passed: "Superato", s_flagged: "Segnalato", s_not_checked: "Non controllato",
@@ -158,20 +165,27 @@ export const TEXT = {
     tokInOut: "{a} in input, {b} in output", zeroTokens: "0 token", sharedBy: ({ n }) => `, condiviso da ${n} storie`,
     how_ai: "IA", how_codeai: "Codice e IA", how_rules: "Regole",
     ag_story_finder: "Cercastorie", ag_analyst: "Analista", ag_commentator: "Commentatore", ag_verifier: "Verificatore", ag_director: "Regista",
-    ag_human: "Tu", ag_auto: "Regola del rischio", ag_studio_host: "Conduttore",
+    ag_human: "Tu", ag_auto: "Approvazione automatica", ag_studio_host: "Conduttore",
     role_story_finder: "Sceglie i momenti tra gli eventi che l'orologio della partita rende disponibili.",
     role_analyst: "Descrive il momento dai suoi fatti, citando gli id dei fatti.",
     role_commentator: "Scrive le frasi in inglese, italiano e spagnolo.",
     role_verifier: "Controlla ogni numero sul registro dei fatti; riscrive al massimo due volte, poi usa una frase modello.",
     role_director: "Sceglie grafica, momento e pubblico; mai più di 2 sullo schermo.",
     sec_air: "In onda ora", sec_needs: "Aspettano te", sec_done: "Già decise",
+    missed: "Perse: {n}", row_aired: "in onda al {m}', {by}",
+    tip_st_auto_approved: "Rischio basso: va in onda da sola. Respingila se qualcosa non torna.",
+    tip_st_needs_review: "Va in onda solo se la mandi tu: il rischio non è basso, oppure Content Safety l'ha segnalata.",
+    tip_st_approved: "L'hai mandata in onda tu.", tip_st_edited: "Hai cambiato il testo e l'hai mandata in onda. Il nuovo testo ha superato il controllo di numeri e nomi.",
+    tip_st_rejected: "L'hai tenuta fuori onda.", tip_st_expired: "Il suo momento è passato prima che qualcuno la mandasse in onda: non è mai andata in onda.",
+    tip_st_kill: "Le grafiche IA sono spente. Un agente IA ha scelto questo momento, quindi resta fuori onda anche se il testo l'ha scritto il codice. Riaccendi l'IA per mandarla in onda.",
+    tip_st_template: "Fatta dal codice a partire dai fatti: niente IA, non serve approvazione.",
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
-    needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, e niente di ciò che scrivono va in onda finché non lo approvi tu o la regola del rischio.",
+    needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
     next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: "doveva andare in onda al {m}'", left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
     done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
-    line_expired: "Fuori onda, il suo momento è passato mentre aspettava", row_expired: "scaduta, il suo momento è passato",
+    line_expired: "Fuori onda: persa, il suo momento è passato prima che qualcuno la mandasse in onda", row_expired: "persa, nessuno l'ha mandata in onda in tempo",
     row_rejected: "respinta da te", row_kill: "fuori onda finché le grafiche IA sono spente", info: "Sulle tue decisioni",
     fHeadline: "Titolo", fBody: "Testo", emptyTitle: "Il titolo ({name}) non può essere vuoto.", factsLabel: "Fatti: ",
     yourActions: "Le tue azioni", colMinute: "Minuto", costHead: "Quanto sono costati gli agenti",
@@ -196,18 +210,18 @@ export const TEXT = {
     offair: "Fuera de antena", goMinute: "Ir al minuto {m}", goTitle: "Ir a este momento",
     st_auto_approved: "Aprobada automáticamente", st_needs_review: "Por revisar", st_approved: "Aprobada", st_edited: "Editada y aprobada", st_rejected: "Rechazada",
     defaultWas: "estado inicial: {s}", heldSafety: "en espera: marcada por Content Safety",
-    line_live: "En antena, {by}", by_auto_approved: "aprobada por la regla de riesgo", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti", by_template: "gráfico estándar, no necesita aprobación",
+    line_live: "En antena, {by}", by_auto_approved: "aprobada automáticamente (riesgo bajo)", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti", by_template: "gráfico estándar, no necesita aprobación",
     line_held: "Espera tu decisión, {why}", why_safety: "marcada por Content Safety", line_rejected: "Fuera de antena, rechazada por ti", line_kill: "Fuera de antena mientras los gráficos de IA están apagados",
     details: "Detalles", whyReject: "¿Qué estaba mal?", r_number: "Un número", r_player: "Un nombre", r_moment: "El momento", r_tone: "El tono",
     risk_low: "Riesgo bajo", risk_mid: "Riesgo medio", risk_high: "Riesgo alto", riskTitle: "Puntuación de riesgo {r}. Por debajo de {t} una historia sale al aire sola.",
-    tip_low: "La regla de riesgo la emite sola. Recházala si algo no cuadra.",
+    tip_low: "Riesgo bajo: sale al aire sola. Recházala si algo no cuadra.",
     tip_lowHeld: "En espera de un control de seguridad: léela antes de emitirla.",
     tip_mid: "Comprueba los nombres y los números con las pruebas antes de que salga al aire.",
     tip_high: "Lee primero las pruebas y las notas. Recházala si una afirmación no coincide.",
     dtOnAir: "En antena", dtDraft: "Borrador de IA", dtVerifier: "Verificador", dtSafety: "Seguridad", none: "ninguno",
     attempts: ({ n }) => `, ${n} intento${n > 1 ? "s" : ""}`,
-    v_pass: "Superado", v_rewritten: "Reescrito", v_template: "Frase de plantilla", air_phrasebook: "Frasario (código)", air_template: "Frase de plantilla (código)",
-    d_pass: "Superado", d_rewritten: "Reescrito", d_template: "No utilizable",
+    v_pass: "Superado", v_rewritten: "Superado tras una reescritura", v_template: "Frase de plantilla", air_phrasebook: "Frasario (código)", air_template: "Frase de plantilla (código)",
+    d_pass: "Superado", d_rewritten: "Superado tras una reescritura", d_template: "No utilizable",
     n_rewritten: "Qué fallaba en los borradores anteriores", n_template: "Por qué la frase solo con datos",
     dn_rewritten: "Qué fallaba en los borradores de IA anteriores", dn_template: "Por qué se descartaron los borradores de IA", notes: "Notas del verificador",
     s_passed: "Superado", s_flagged: "Marcado", s_not_checked: "Sin comprobar",
@@ -238,20 +252,27 @@ export const TEXT = {
     tokInOut: "{a} de entrada, {b} de salida", zeroTokens: "0 tokens", sharedBy: ({ n }) => `, compartido por ${n} historias`,
     how_ai: "IA", how_codeai: "Código e IA", how_rules: "Reglas",
     ag_story_finder: "Buscahistorias", ag_analyst: "Analista", ag_commentator: "Comentarista", ag_verifier: "Verificador", ag_director: "Realizador",
-    ag_human: "Tú", ag_auto: "Regla de riesgo", ag_studio_host: "Presentador",
+    ag_human: "Tú", ag_auto: "Aprobación automática", ag_studio_host: "Presentador",
     role_story_finder: "Elige los momentos entre los eventos que libera el reloj del partido.",
     role_analyst: "Describe el momento a partir de sus datos, citando los id de los datos.",
     role_commentator: "Escribe las frases en inglés, italiano y español.",
     role_verifier: "Comprueba cada número con el registro de datos; reescribe dos veces como máximo y luego usa una frase de plantilla.",
     role_director: "Elige gráfico, momento y público; nunca más de 2 en pantalla.",
     sec_air: "En antena ahora", sec_needs: "Te esperan", sec_done: "Ya decididas",
+    missed: "Perdidas: {n}", row_aired: "en antena en el {m}', {by}",
+    tip_st_auto_approved: "Riesgo bajo: sale al aire sola. Recházala si algo no cuadra.",
+    tip_st_needs_review: "Solo sale al aire si la pones tú: su riesgo no es bajo, o Content Safety la marcó.",
+    tip_st_approved: "La pusiste en antena tú.", tip_st_edited: "Cambiaste su texto y la pusiste en antena. El texto nuevo pasó el control de números y nombres.",
+    tip_st_rejected: "La dejaste fuera de antena.", tip_st_expired: "Su momento pasó antes de que alguien la pusiera en antena: nunca salió.",
+    tip_st_kill: "Los gráficos de IA están apagados. Un agente de IA eligió este momento, así que sigue fuera de antena aunque su texto lo escribió el código. Vuelve a encender la IA para emitirlo.",
+    tip_st_template: "Hecho por código a partir de los datos: sin IA y sin aprobación.",
     airEmpty: "Ahora no hay nada en antena.", doneEmpty: "Todavía no hay nada decidido.",
-    needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, y nada de lo que escriben se emite hasta que lo apruebes tú o la regla de riesgo.",
-    next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "su hueco es ahora", toAirPast: "su hueco era en el {m}'", left: "quedan {s} s",
+    needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, los de riesgo bajo salen al aire solos, los demás esperan aquí tu decisión.",
+    next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "sale al aire ahora", toAirPast: "debía salir al aire en el {m}'", left: "quedan {s} s",
     takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_lineup: "Alineaciones", g_why_card: "Tarjeta",
     done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", k_checkin: "Números del jugador",
     line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
-    line_expired: "Fuera de antena, su momento pasó mientras esperaba", row_expired: "caducado, su momento pasó",
+    line_expired: "Fuera de antena: perdida, su momento pasó antes de que alguien la pusiera en antena", row_expired: "perdida, nadie la puso en antena a tiempo",
     row_rejected: "rechazada por ti", row_kill: "fuera de antena mientras los gráficos de IA están apagados", info: "Sobre tus decisiones",
     fHeadline: "Titular", fBody: "Texto", emptyTitle: "El titular ({name}) no puede quedar vacío.", factsLabel: "Datos: ",
     yourActions: "Tus acciones", colMinute: "Minuto", costHead: "Lo que costaron los agentes",
@@ -285,6 +306,7 @@ const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself sta
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
 const TITLE_MAX = 80; // studiodesk/api.py TITLE_MAX_CHARS
 const LOOKAHEAD_S = 60; // a story whose first graphic is this close is listed, as Next
+const MISS_S = 60; // a story with no cue is missed this long after its moment, if nobody decided on it
 const ON_AIR = ["auto_approved", "approved", "edited"];
 const REASONS = ["number", "player", "moment", "tone"]; // why a story was rejected, one tap each
 const API_TIMEOUT_MS = 4000;
@@ -503,11 +525,18 @@ export class Desk {
 
   // A story Content Safety flagged never goes on air by itself, whatever its risk.
   defaultStatus(s) { return s.safety === "flagged" ? "needs_review" : s.default_status; }
-  // a generated graphic nobody decided on while it could air has expired: it never airs
+  // a story or generated graphic nobody decided on while it could air is missed ("expired"): its slot has
+  // ended, so approving it would air nothing; it leaves Needs you for the missed count
   status(s) {
     const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s);
-    return s.gen && d === "needs_review" && this.state.ts >= this.slotEnd.get(s.story_id) ? "expired" : d;
+    return d === "needs_review" && this.state.ts >= (this.slotEnd.get(s.story_id) ?? this.firstOf(s) + MISS_S) ? "expired" : d;
   }
+  /** The status a tooltip explains: the AI switch and a filler first. */
+  tipKey(s) {
+    const st = this.status(s);
+    return this.killed(s) && st !== "rejected" && st !== "expired" ? "kill" : s.filler && st === "auto_approved" ? "template" : st;
+  }
+  tip(s) { const k = `tip_st_${this.tipKey(s)}`; return this.tx(k) === k ? "" : this.tx(k); }
   // the AI switch holds the agents' stories; a generated graphic is code from the facts, as a template was
   killed(s) { return this.kill && !s.gen; }
   onAir(s) { return !this.killed(s) && ON_AIR.includes(this.status(s)); }
@@ -884,7 +913,9 @@ export class Desk {
   // A Done row in a few words: who decided, or why it stays off air
   outcome(s) {
     const st = this.status(s);
-    return this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
+    const by = this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
+    // the history of what aired: an on-air story whose first graphic has played says when
+    return this.onAir(s) && this.firstOf(s) <= this.state.ts ? this.tx("row_aired", { m: this.clockText(this.firstOf(s)), by }) : by;
   }
   // a generated graphic that waited for the visitor and was not put on air
   skipped(s) { return Boolean(s.gen) && this.decisions.get(s.story_id)?.from === "needs_review"; }
@@ -908,9 +939,9 @@ export class Desk {
     const now = this.state.ts;
     this.liveCues = cues;
     this.live = new Set(cues.map((c) => c.story_id ?? this.genOf.get(slot(c))?.story_id).filter(Boolean));
-    // a generated graphic of the audience on screen also counts once it expires (3)
+    // a story, or a generated graphic of the audience on screen, also counts once it is missed (3)
     const reach = [...this.stories, ...this.gens.filter((g) => g.audience === this.state.audience)]
-      .map((s) => (s.gen && this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
+      .map((s) => (this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
     const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
     const a = document.activeElement, typing = this.root.contains(a) && a.matches("input, textarea");
     if (key !== this.liveKey && !typing) { this.liveKey = key; this.render(); return; }
@@ -935,7 +966,8 @@ export class Desk {
   renderStories() {
     const tx = (k, v) => this.tx(k, v), shown = this.shown();
     const needs = this.queue();
-    const done = shown.filter((s) => this.status(s) !== "needs_review" && !this.live.has(s.story_id));
+    const done = shown.filter((s) => !["needs_review", "expired"].includes(this.status(s)) && !this.live.has(s.story_id));
+    const missed = shown.filter((s) => this.status(s) === "expired").sort((a, b) => this.firstOf(b) - this.firstOf(a));
     // Next first, soonest first; then the rest, latest first
     done.sort((a, b) => (this.isNext(b) - this.isNext(a)) || (this.isNext(a) ? this.firstOf(a) - this.firstOf(b) : this.firstOf(b) - this.firstOf(a)));
     const air = this.airRows();
@@ -947,6 +979,10 @@ export class Desk {
       section("air", air, tx("airEmpty")),
       section("needs", needs.map((s) => this.renderCard(s)), needsEmpty),
       section("done", done.map((s) => this.renderRow(s)), tx("doneEmpty")),
+      // the missed ones are counted, not listed among the decisions; their rows open on demand
+      missed.length ? h("details", { className: "sec missed", "data-focus": "sec:missed" },
+        h("summary", { title: tx("tip_st_expired") }, tx("missed", { n: int(missed.length, this.state.lang) })),
+        h("ul", { className: "items" }, missed.map((s) => h("li", {}, this.renderRow(s))))) : null,
     ];
   }
 
@@ -996,7 +1032,7 @@ export class Desk {
     return h("article", { className: "story air", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`,
       "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
       this.storyHead(s, this.whenSpan("left", id)),
-      h("p", { className: "tally" }, this.stateLine(s)),
+      h("p", { className: "tally", title: this.tip(s) }, this.stateLine(s)),
       editing ? this.renderEditor(s) : this.airText(s),
       editing ? null : h("div", { className: "actions" },
         this.act(s, "rejected", tx("takeOut"), "ctl", "r"),
@@ -1018,7 +1054,7 @@ export class Desk {
     return h("article", { className: "story", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`,
       "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
       this.storyHead(s, next ? h("span", { className: "tag" }, tx("next")) : null),
-      h("p", { className: "tally" }, h("span", {}, this.stateLine(s)), this.whenSpan("air", id)),
+      h("p", { className: "tally" }, h("span", { title: this.tip(s) }, this.stateLine(s)), this.whenSpan("air", id)),
       editing ? this.renderEditor(s) : this.airText(s),
       // the actions come before Details, so they stay in view when it opens
       editing ? null : h("div", { className: "actions" },
@@ -1033,13 +1069,13 @@ export class Desk {
     const id = s.story_id, tx = (k, v) => this.tx(k, v), editing = this.editing === id, lang = this.state.lang;
     const st = this.status(s), rejected = st === "rejected", next = this.isNext(s);
     // a generated graphic whose moment has passed can no longer change what airs
-    const over = s.gen && (st === "expired" || this.state.ts >= this.slotEnd.get(s.story_id));
+    const over = st === "expired" || (s.gen && this.state.ts >= this.slotEnd.get(s.story_id));
     return h("div", { className: "row", "data-tally": this.tallyOf(s), id: `story-${id}`, "aria-labelledby": `h-${id}`, role: "group",
       "data-item": "", tabindex: -1, "data-focus": `${id}:card` },
       h("div", { className: "row-line" },
         this.minuteButton(s),
         h("b", { id: `h-${id}`, className: "kind" }, kindName(s.kind, lang)),
-        h("span", { className: "outcome" }, this.outcome(s)),
+        h("span", { className: "outcome", title: this.tip(s) }, this.outcome(s)),
         next ? [h("span", { className: "tag" }, tx("next")), this.whenSpan("in", id)] : null,
         editing || over ? null : h("span", { className: "row-acts" },
           rejected ? this.act(s, "approved", tx(this.killed(s) ? "approve" : "put"), "quiet", "a") : this.act(s, "rejected", tx(s.gen ? "takeOut" : "reject"), "quiet", "r"),

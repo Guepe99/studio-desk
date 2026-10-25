@@ -591,18 +591,18 @@ async function generated(page, all, match) {
   await seekTo(page, b.ts + 1);
   expect(!(await panelOn(b)), `${match}: a skipped team shape panel is on air`);
   expect(await text(`.sec-done #story-${gb} .outcome`) === "skipped by you", `${match}: skipped row ${await text(`#story-${gb} .outcome`)}`);
-  // nobody decided: off air, then expired into Done with no actions left
+  // nobody decided: off air, then missed: counted under Done, its row with no actions left
   const end = await page.evaluate((id) => window.studioDesk.desk.slotEnd.get(id), gc);
   await seekTo(page, c.ts + 1);
   expect(!(await panelOn(c)), `${match}: an undecided team shape panel is on air`);
   await seekTo(page, end + 1);
-  const row = await page.$eval(`.sec-done #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
-  expect(JSON.stringify(row) === '["expired, its moment passed",0]', `${match}: expired panel row ${JSON.stringify(row)}`);
+  const row = await page.$eval(`.missed #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
+  expect(JSON.stringify(row) === '["missed, nobody put it on air in time",0]', `${match}: missed panel row ${JSON.stringify(row)}`);
   // the risk rule's panel airs by itself and says who put it there
   const mom = all.find((x) => x.story_id === null && x.graphic === "momentum" && x.audience === "analyst" && x.lang === "en");
   await seekTo(page, mom.ts + 1);
   const gm = await gid(mom);
-  expect(/approved by the risk rule/.test(await text(`#story-${gm} .tally`)), `${match}: momentum panel says ${await text(`#story-${gm} .tally`)}`);
+  expect(/approved automatically \(low risk\)/.test(await text(`#story-${gm} .tally`)), `${match}: momentum panel says ${await text(`#story-${gm} .tally`)}`);
 }
 
 // Edges at 1440: an API that hangs, a refused edit, a language switch while editing, the on-air

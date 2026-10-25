@@ -99,7 +99,7 @@ async function run(w, h) {
   if (!pick) { fail(`${tag}: no held or auto-approved story in ${MATCH}`); return ctx.close(); }
   const card = `#story-${pick.id}`;
   const want = pick.held ? { act: "act-approved", filled: ["Put on air"], said: /^.+ \d+(\+\d+)?' approved, on air$/, line: /^On air, approved by you$/, undone: /^Waiting for you, /, back: /^Undone: .+ is held again$/ }
-    : { act: "act-rejected", filled: [], said: /^.+ \d+(\+\d+)?' rejected, off air$/, line: /^Off air, rejected by you$|^rejected by you$/, undone: /^On air, approved by the risk rule$/, back: /^Undone: .+ is on air again$/ };
+    : { act: "act-rejected", filled: [], said: /^.+ \d+(\+\d+)?' rejected, off air$/, line: /^Off air, rejected by you$|^rejected by you$/, undone: /^On air, approved automatically \(low risk\)$/, back: /^Undone: .+ is on air again$/ };
   await openDesk();
   // 5: at kick-off nothing is listed, and the empty Needs you says what the desk is for
   await seek(0);

@@ -8,7 +8,7 @@ import { BoothAudio } from "./booth-audio.js";
 import { View3D, probe, defaultView, warm3d, RADAR, replays, holdForReplays, viewAt } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Proof } from "./proof.js";
-import { Moments, LEAD_S } from "./moments.js";
+import { Moments, LEAD_S, keyCues } from "./moments.js";
 import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
@@ -40,7 +40,7 @@ const STRINGS = {
     actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
     didPick: "Picked: {what}", didPickAny: "Picked a moment", didExplain: "Wrote the analysis", didWrite: "Wrote the line",
-    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didTemplate: "Used the fact-only line",
+    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didPassRewrite: "Passed after a rewrite", didTemplate: "Used the fact-only line",
     didCheck: "Checked the numbers", didCue: "Put it in the rundown", didFail: "Model call failed", didHand: "Passed its work on",
     replay: "Replay", swap3d: "Show the 3D view large", swap2d: "Show the 2D pitch large", load3d: "Loading the 3D view",
     fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
@@ -74,7 +74,7 @@ const STRINGS = {
     actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
     actRules: "solo regole", actCode: "solo codice",
     didPick: "Ha scelto: {what}", didPickAny: "Ha scelto un momento", didExplain: "Ha scritto l'analisi", didWrite: "Ha scritto la frase",
-    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didTemplate: "Ha usato la frase con i soli fatti",
+    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didPassRewrite: "Tutto torna dopo una riscrittura", didTemplate: "Ha usato la frase con i soli fatti",
     didCheck: "Ha controllato i numeri", didCue: "L'ha messa in scaletta", didFail: "Errore del modello", didHand: "Ha passato le consegne",
     replay: "Replay", swap3d: "Mostra in grande la vista 3D", swap2d: "Mostra in grande il campo 2D", load3d: "Caricamento della vista 3D",
     fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
@@ -106,7 +106,7 @@ const STRINGS = {
     actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
     actRules: "reglas, sin modelo", actCode: "código, sin modelo",
     didPick: "Eligió: {what}", didPickAny: "Eligió un momento", didExplain: "Escribió el análisis", didWrite: "Escribió la frase",
-    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didTemplate: "Usó la frase solo con datos",
+    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didPassRewrite: "Todo cuadra tras una reescritura", didTemplate: "Usó la frase solo con datos",
     didCheck: "Comprobó los números", didCue: "La puso en la escaleta", didFail: "Error del modelo", didHand: "Pasó el relevo",
     replay: "Repetición", swap3d: "Mostrar en grande la vista 3D", swap2d: "Mostrar en grande el campo 2D", load3d: "Cargando la vista 3D",
     fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
@@ -407,7 +407,9 @@ function refreshCues() {
   // has the net across the foot of the picture, where the card sits
   host.setCues(holdForReplays(sheet, replays(match)), state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
-  moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
+  const mine = match.cues.filter((c) => c.audience === state.audience && c.lang === state.lang);
+  const waiting = (id) => desk.byId.get(id) && desk.status(desk.byId.get(id)) === "needs_review";
+  moments.setSheet(keyCues(sheet, mine, waiting), desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
     (c) => playStart(c.ts, desk.byId.get(c.story_id)?.evidence_event_ids));
   ask?.render();
 }
