@@ -27,10 +27,10 @@ SQUAD = ["GK"] * 2 + ["DF"] * 6 + ["MF"] * 6 + ["FW"] * 4  # 18 per club
 SHIRTS = {"GK": [1, 13], "DF": [2, 3, 4, 5, 15, 22], "MF": [6, 8, 10, 14, 16, 18], "FW": [7, 9, 11, 19]}
 
 
-def _pick(rng, used, make):
+def _pick(rng, used, make, forbid=True):
     while True:  # regenerate until the name is unused and not a real one
         name = make()
-        if name not in used and not is_forbidden(name):
+        if name not in used and not (forbid and is_forbidden(name)):
             used.add(name)
             return name
 
@@ -79,6 +79,8 @@ def make_league(rng, cal, n_teams=8):
         c1, c2 = rng.choice(len(COLOURS), 2, replace=False)
         c1, c2 = COLOURS[c1], COLOURS[c2]
         short = (place.replace(" ", "")[:3]).upper()
+        if is_forbidden(short):  # no redraw: PLACES is fixed, so the list itself must change
+            raise ValueError(f"short name {short} is a real name")
         teams.append(dict(team_id=tid, name=name, short_name=short, color_primary=c1,
                           color_secondary=c2, crest_svg=crest(rng, c1, c2, f"crest-{tid}")))
         venues[tid] = _pick(rng, used, lambda: f"{VENUE_A[rng.integers(len(VENUE_A))]} "
@@ -91,7 +93,8 @@ def make_league(rng, cal, n_teams=8):
             if pos == "FW" and seen[pos] == 1 and i % 2 == 0:
                 top = rng.uniform(*fast)
             pname = _pick(rng, used, lambda: f"{FIRST[rng.integers(len(FIRST))]} "
-                                             f"{LAST[rng.integers(len(LAST))]}")
+                                             f"{LAST[rng.integers(len(LAST))]}", forbid=False)
+            # a real full name is moved by _own_surname without a draw, so listing one keeps the stream
             pname = _own_surname(pname, taken.setdefault(i // 2, set()), names)
             players.append(dict(player_id=f"{tid}-{shirt}", team_id=tid, name=pname, shirt=shirt,
                                 position=pos, top_speed_kmh=round(float(top), 2)))

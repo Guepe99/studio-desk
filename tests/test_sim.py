@@ -85,6 +85,32 @@ def test_no_forbidden_names(built):
                                         "UNION ALL SELECT name FROM players UNION ALL SELECT venue_name FROM matches")]
     texts += [v["source"] for v in load_calibration().values()]
     assert texts and not [t for t in texts if is_forbidden(t)]
+    names = dict(conn.execute("SELECT player_id, name FROM players"))
+    assert names["T05-15"] == "Diego Ekwueme"  # a real footballer's name, moved along LAST
+
+
+def test_a_listed_player_name_moves_without_shifting_the_random_stream(monkeypatch):
+    from studiodesk.sim import squads
+    cal = load_calibration()
+    rng = np.random.default_rng(7)
+    teams, players, venues = make_league(rng, cal)
+    after = rng.integers(1 << 62)
+    real, listed = squads.is_forbidden, players[0]["name"]
+    monkeypatch.setattr(squads, "is_forbidden", lambda t: real(t) or t == listed)
+    rng = np.random.default_rng(7)
+    teams2, players2, venues2 = make_league(rng, cal)
+    assert rng.integers(1 << 62) == after and (teams2, venues2) == (teams, venues)
+    # the moved surname may push a later team-mate's along too, but nothing else of the league moves
+    assert players2[0]["name"] != listed and listed not in [p["name"] for p in players2]
+    strip = lambda ps: [{k: v for k, v in p.items() if k != "name"} for p in ps]  # noqa: E731
+    assert strip(players2) == strip(players)
+
+
+def test_a_listed_short_name_stops_the_build(monkeypatch):
+    from studiodesk.sim import squads
+    monkeypatch.setattr(squads, "is_forbidden", lambda t: len(t) == 3)
+    with pytest.raises(ValueError, match="short name"):
+        make_league(np.random.default_rng(7), load_calibration())
 
 
 def test_no_two_players_of_a_fixture_share_a_surname(built):
