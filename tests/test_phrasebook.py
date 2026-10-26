@@ -124,6 +124,6 @@ def _recap(goals):
 
 def test_the_recap_counts_scorers_and_leaves_out_own_goals():
     twice = _recap([(600.0, "T01", "T01-9"), (780.0, "T01", "T01-9")])
-    assert "Scorer: Varga (10', 13')." in twice["en"] and "Marcatore: Varga" in twice["it"] and "Gol: Varga" in twice["es"]
+    assert "Scorer: Varga (10', 13')." in twice["en"] and "Marcatore: Varga" in twice["it"] and "Goleador: Varga" in twice["es"]
     og = _recap([(600.0, "T01", "T01-9"), (3600.0, "T01", "T02-4")])  # Novak of T02 puts it in his own net
     assert "Scorer: Varga (10')." in og["en"] and "Novak" not in og["en"] + og["it"] + og["es"]

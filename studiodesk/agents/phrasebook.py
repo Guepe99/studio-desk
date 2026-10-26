@@ -496,7 +496,7 @@ def recap_line(m, story, lang, tone, focus, opener, form=0):  # noqa: ARG001
         joined = ", ".join(parts[:-1]) + (" {} ".format(("and", "e", "y")[rules.LANGS.index(lang)]) if len(parts) > 1 else "") + parts[-1]
         many = len(scorers) > 1
         head += " " + {"en": "Scorers: " if many else "Scorer: ", "it": "Marcatori: " if many else "Marcatore: ",
-                       "es": "Goles: " if many else "Gol: "}[lang] + joined + "."
+                       "es": "Goleadores: " if many else "Goleador: "}[lang] + joined + "."
     acc = {f["team_id"]: mt.group(1) for f in story["facts"]
            if f["kind"] == "pass_accuracy" and (mt := re.search(r"(\d+)%", f["label_en"]))}
     h, a = m.home["team_id"], m.away["team_id"]
