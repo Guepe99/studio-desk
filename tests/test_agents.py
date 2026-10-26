@@ -1117,6 +1117,75 @@ def test_a_discarded_plan_holds_no_graphics_slot(desk_db, monkeypatch, tmp_path)
         assert cues(rt) and cues(rt2) == cues(rt)
 
 
+def test_an_ordinal_before_a_counted_noun_is_no_minute_and_a_total_is_no_count():
+    allowed = [(1.0, "minute"), (2.0, "minute"), (35.0, "minute"), (41.0, "minute")]
+    for text, lang in (("El 1º gol.", "es"), ("At the 1st attempt.", "en"), ("In the 41st game.", "en"),
+                       ("Del 2° gol.", "it")):
+        assert rules.check_text(text, allowed, lang), text
+    assert rules.check_text("Momentum climbs by the 35th as Redwick push.", allowed) == []
+    passes = rules.allowed_numbers([{"fact_id": "F-TEAM_PASS_ACCURACY-000001", "kind": "team_pass_accuracy",
+                                     "value": 83.0, "unit": "%", "label_en": "Pass accuracy 83% (228/276)", "period": 1}])
+    assert rules.check_text("Redwick hanno completato 276 passaggi.", passes, "it")  # 276 were tried, not completed
+    for text, lang in (("228 passaggi su 276.", "it"), ("228 de 276 pases.", "es"), ("Completati 228 passaggi.", "it")):
+        assert rules.check_text(text, passes, lang) == [], text
+
+
+def test_a_value_on_the_half_reads_only_as_its_label_rounds_it(desk_db):
+    allowed = rules.allowed_numbers([
+        {"fact_id": "F-SHOT_DISTANCE-000002", "kind": "shot_distance", "value": 17.5, "unit": "m",
+         "label_en": "Shot from 18 m", "period": 1},
+        {"fact_id": "F-SHOT_SPEED-000001", "kind": "shot_speed", "value": 69.5, "unit": "km/h",
+         "label_en": "Shot at 70 km/h", "period": 1}])
+    assert rules.check_text("From 18 m, at 70 km/h, really 17.5 m and 69.5 km/h.", allowed) == []
+    assert rules.check_text("From 17 m.", allowed) and rules.check_text("At 69 km/h.", allowed)
+    assert rules._near("18", 17.5) and rules._near("17.5", 17.5) and not rules._near("17", 17.5)
+    m = rules.Match(srv.get_match_info("M001"))
+    run_ = {"fact_id": "F-DISTANCE_COVERED-000001", "kind": "distance_covered", "value": 1650.0, "unit": "m",
+            "label_en": "1.7 km covered", "ts": 600.0, "period": 1}
+    story = lambda f: {"kind": "top_sprint", "facts": [f], "ts": 600.0, "minute": 10}  # noqa: E731
+    assert "1.7 km" in rules.number_list(m, story(run_))  # the writer gets the label's km, either way it rounded
+    assert "1.6 km" in rules.number_list(m, story({**run_, "label_en": "1.6 km covered"}))
+
+
+def test_a_discarded_round_spends_no_opener_and_adds_no_audience(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    on_air, batch, failed, seen = workflow.Desk.on_air, workflow.run_batch, [], []
+
+    async def watch(desk, b, wait=True):
+        await batch(desk, b, wait)
+        seen.append(("MARK" in desk.spent, "mark" in desk.used["en"]["loud"], "player:MARK" in desk.director.audiences))
+
+    def spends_then_fails(self, s):
+        if not failed:  # the round spends an opener and a loud word, its plan takes an audience, then it fails
+            failed.append(1)
+            self.spent.add("MARK")
+            self.used["en"]["loud"].add("mark")
+            self.director.audiences.append("player:MARK")
+            raise RuntimeError("down")
+        return on_air(self, s)
+    monkeypatch.setattr(workflow, "run_batch", watch)
+    monkeypatch.setattr(workflow.Desk, "on_air", spends_then_fails)
+    run(rt, FakeChatClient())
+    assert failed and seen and not any(any(s) for s in seen)
+
+
+def test_a_fallback_whose_trace_fails_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    trace = workflow.Desk.trace
+
+    def down(*a, **k):
+        raise RuntimeError("down")
+
+    def no_fallback_trace(self, agent, step, *a, **k):
+        if step == "fallback":
+            raise RuntimeError("database locked")
+        return trace(self, agent, step, *a, **k)
+    monkeypatch.setattr(rules.Director, "plan", down)
+    monkeypatch.setattr(workflow.Desk, "trace", no_fallback_trace)
+    summary = run(rt, FakeChatClient())
+    assert summary["stories"] == 0 and stories(rt) == []
+
+
 def test_a_tool_result_counts_toward_the_call_it_feeds():
     token = workflow._ASK_USAGE.set({"pending_chars": 10})
     try:

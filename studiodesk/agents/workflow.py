@@ -18,7 +18,7 @@ import json
 import time
 import uuid
 from collections import Counter, defaultdict
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -945,11 +945,19 @@ async def run_batch(desk, batch, wait=True):
     """One batch on air; then its AI tail, awaited (replays stay the same run to run) or, live, left running."""
     if batch.candidates:
         air, tail = build_workflow(desk)  # a workflow runs one input at a time, and live tails overlap
-        slots = copy.deepcopy({k: getattr(desk.director, k) for k in ("placed", "whistles")})
+        # what a round spends: the director's slots and audiences, the phrasebook's openers and style rations
+        before = copy.deepcopy(({k: getattr(desk.director, k) for k in ("placed", "whistles", "audiences")},
+                                desk.spent, desk.used))
+
+        def restore(director_only=False):
+            slots, spent, used = copy.deepcopy(before)
+            vars(desk.director).update(slots)
+            if not director_only:
+                desk.spent, desk.used = spent, used
         try:
             rnd = (await air.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
-            vars(desk.director).update(copy.deepcopy(slots))  # a plan the failed round discarded holds no slot
+            restore()  # a round that failed spent nothing: no graphics slot, no opener
             try:
                 stories = []
                 for c in _rule_picks(rules.before_the_whistle(batch.candidates)):  # the candidates the finder had
@@ -963,16 +971,17 @@ async def run_batch(desk, batch, wait=True):
                 try:
                     cues = desk.director.plan(stories, batch.ts)
                 except Exception:  # noqa: BLE001 - the director failed again: the stories go on without cues
-                    vars(desk.director).update(copy.deepcopy(slots))
+                    restore(director_only=True)  # the stories aired: their openers stay spent
                     cues = []
                 rnd = Round(batch, stories, cues)
                 desk.trace("director", "fallback", "workflow failed",
                            _n(len(stories), "template story", "template stories"),
                            [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
             except Exception as e2:  # noqa: BLE001 - the fallback failed too: this batch airs nothing, the match goes on
-                vars(desk.director).update(copy.deepcopy(slots))
+                restore()
                 rnd = Round(batch, [], [])
-                desk.trace("director", "fallback", "workflow failed", f"fallback failed: {rules.brief_error(e2)}", [])
+                with suppress(Exception):  # the failure may be the trace or the database itself
+                    desk.trace("director", "fallback", "workflow failed", f"fallback failed: {rules.brief_error(e2)}", [])
         desk.save(rnd)
         if any(s["verifier"]["status"] == "pending" for s in rnd.stories):
             job = run_tail(desk, tail, rnd)

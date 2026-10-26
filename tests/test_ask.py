@@ -866,3 +866,12 @@ def test_a_minute_written_min_dot_stays_in_its_sentence():
     two = [goal(3, 2, 1, 1500), goal(4, 2, 2, 1800)]
     ids = {f["fact_id"] for f in two}
     assert rules.check_answer("Al min. 25 il 2-1, al min. 30 il 2-2.", two, 2700, "it", ids, (2, 2)) == []
+
+
+def test_an_ordinal_minute_in_an_answer_is_a_cited_minute():
+    goal = lambda i, a, b, ts: {"fact_id": f"F-SCORE-00000{i}", "kind": "score", "value": float(max(a, b)), "unit": "goal",
+                                 "label_en": f"Goal {a}-{b}", "ts": ts, "period": 1, "player": None, "team": None}
+    first, later = goal(1, 1, 0, 600), goal(3, 2, 1, 1500)
+    assert rules.check_answer("Goal 1-0 by the 10th.", [first], 2700, "en", {first["fact_id"]}, (1, 0)) == []
+    assert any("'10th'" in f for f in rules.check_answer("Goal 2-1 by the 10th.", [later], 2700, "en",
+                                                          {later["fact_id"]}, (2, 1)))

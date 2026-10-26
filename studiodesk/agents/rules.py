@@ -11,7 +11,8 @@ from collections import Counter
 
 from .. import config, names
 from ..export import DURATION
-from ..facts.engine import BOX_DEPTH, BOX_HALF_WIDTH, LENGTH, SAVE_S, WIDTH, WINDOW_S, formation_name, shot_outcome
+from ..facts.engine import (BOX_DEPTH, BOX_HALF_WIDTH, LENGTH, SAVE_S, WIDTH, WINDOW_S, formation_name, half_up,
+                             shot_outcome)
 
 LANGS = ("en", "it", "es")
 MUST_TELL = {"goal", "comeback", "recap"}
@@ -502,11 +503,8 @@ _CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]"
 # an ordinal is a minute only in a minute phrase: "41st minute", "81st-minute goal", "the 70th and 80th minutes",
 # "by the 45th", "from the 30th", "al 41°", "el 41º" ("his 2nd goal", "his 41st touch" are not minutes)
 _ORD = r"\d+(?:st|nd|rd|th|º|ª|°)"
-_ORDINAL_MINUTE = re.compile(
-    _ORD + rf"(?=(?:\s+(?:and|to|e|y)\s+(?:the\s+)?{_ORD})?[\s-]+(?:minutes?|minut[oi]s?)\b)"
-    + "|(?:" + "|".join(rf"(?<=\b{w} the )" for w in ("by", "to", "in", "at", "from", "until")) + ")" + _ORD
-    + "|(?:" + "|".join(rf"(?<=\b{w} )" for w in ("al", "el", "dal", "del")) + r")\d+[°º]", re.IGNORECASE)
 _ORDINAL_HALF = re.compile(r"[12](?:st|nd|º|ª|°)[\s-]+(?:half|tempo|tiempo)\b", re.IGNORECASE)  # a half, not a number
+_OF_TOTAL = re.compile(r"\d\s+(?:out\s+)?(?:of|su|di|de)\s+$", re.IGNORECASE)
 # a number right after the minute word is a minute ("al minuto 41 tiro di Duarte"), never a count
 _AFTER_MINUTE_WORD = re.compile(r"\b(?:min|minutes?|minut[oi]s?)\.?\s*$", re.IGNORECASE)
 # a bare integer right before what it counts ("2 tackles"): the count of one of a cited fact's units, or no fact's
@@ -523,6 +521,14 @@ _COUNT_NOUN = re.compile(r"\s+(" + "|".join(sorted(_COUNT_UNITS, key=len, revers
                          r"entradas|saves?|parate|paradas|crosses|cross|centros|chances?|occasioni|ocasiones|fouls?|"
                          r"falli|faltas|attempts?|tentativi|intentos|efforts?|interceptions?|clearances?|duels?|"
                          r"dribbles?|headers?|blocks?|runs?|actions?|turnovers?)\b", re.IGNORECASE)
+# after a preposition the ordinal is a minute unless a counted noun follows ("at the 1st attempt", "el 1º gol")
+_NOT_COUNTED = r"(?!" + _COUNT_NOUN.pattern + r"|[\s-]+(?:games?|match(?:es)?|times?|tries|partit[ae]|partidos?|" \
+                                             r"vez|volta|seasons?|stagion[ei]|temporadas?)\b)"
+_ORDINAL_MINUTE = re.compile(
+    _ORD + rf"(?=(?:\s+(?:and|to|e|y)\s+(?:the\s+)?{_ORD})?[\s-]+(?:minutes?|minut[oi]s?)\b)"
+    + "|(?:" + "|".join(rf"(?<=\b{w} the )" for w in ("by", "to", "in", "at", "from", "until")) + ")" + _ORD + _NOT_COUNTED
+    + "|(?:" + "|".join(rf"(?<=\b{w} )" for w in ("al", "el", "dal", "del")) + r")\d+[°º]" + _NOT_COUNTED,
+    re.IGNORECASE)
 
 
 def _family(unit):
@@ -608,8 +614,8 @@ def allowed_numbers(facts, minutes=()):
         for mt in _NUM.finditer(label):  # label numbers keep their own unit
             out.append((float(mt.group(1).replace(",", ".")), _family(mt.group(2))))
         out += [(float(x), "minute") for mt in _LABEL_MINUTES.finditer(label) for g in mt.groups() for x in g.split("+")]
-        if "pass_accuracy" in f["kind"]:  # "(228/276)": passes completed of passes tried
-            out += [(float(x), "passes") for pair in re.findall(r"\((\d+)/(\d+)\)", label) for x in pair]
+        for done, tried in re.findall(r"\((\d+)/(\d+)\)", label) if "pass_accuracy" in f["kind"] else ():
+            out += [(float(done), "passes"), (float(tried), "passes tried")]  # "(228/276)": completed of tried
     return out
 
 
@@ -646,7 +652,7 @@ def check_numbers(text, allowed, lang="en", ids=(), bare=True):
         raw, unit = mt.group(1), mt.group(2)
         x = float(raw.replace(",", "."))
         decimals = len(raw.split(",")[-1] if "," in raw else raw.split(".")[-1]) if re.search(r"[.,]", raw) else 0
-        tol = 0.5 * 10 ** -decimals + 1e-9
+        h = 0.5 * 10 ** -decimals  # the labels round half up: 17.5 reads 18, so 17 is not within rounding of it
         fam = _family(unit)
         if fam is None:  # a bare number claims nothing about what it measures: it must be one of the story's
             shown = mt.group(0).strip()
@@ -661,14 +667,16 @@ def check_numbers(text, allowed, lang="en", ids=(), bare=True):
             if (counted := _COUNT_NOUN.match(text, mt.end())) and not re.search(r"\d\s?-\s?$", text[:mt.start()]) \
                     and not _AFTER_MINUTE_WORD.search(text[:mt.start()]):
                 unit = _COUNT_UNITS.get(counted.group(1).lower())
-                if not (bare and unit and any(f in (unit, f"{unit} on target") and abs(x - v) < 1e-6 for v, f in allowed)):
+                # "228 of 276 passes": the total after "of" is the passes tried
+                ok = (unit, f"{unit} on target") + ((f"{unit} tried",) if _OF_TOTAL.search(text[:mt.start()]) else ())
+                if not (bare and unit and any(f in ok and abs(x - v) < 1e-6 for v, f in allowed)):
                     flags.append(f"number not in the facts: '{shown}{counted.group(0)}' is a count no fact gives")
                 continue
             if bare and any(f not in ("formation", "km") and abs(x - v) < 1e-6 for v, f in allowed):
                 continue
             flags.append(f"number not in the facts: '{shown}'")
             continue
-        near = [(v, f) for v, f in allowed if abs(x - v) <= tol]
+        near = [(v, f) for v, f in allowed if -h + 1e-9 < x - v <= h + 1e-9]
         if any(f == fam for _, f in near):
             continue
         shown = mt.group(0).strip()
@@ -799,7 +807,8 @@ MAX_ASK_FACTS = 8
 def _near(raw, value):
     """A number as written ("0,03") within rounding of a value."""
     decimals = len(re.split(r"[.,]", raw)[1]) if re.search(r"[.,]", raw) else 0
-    return abs(float(raw.replace(",", ".")) - value) <= 0.5 * 10 ** -decimals + 1e-9
+    h = 0.5 * 10 ** -decimals  # half up, as the labels round
+    return -h + 1e-9 < float(raw.replace(",", ".")) - value <= h + 1e-9
 
 
 def _language(text, lang):
@@ -1094,7 +1103,9 @@ def number_list(m, story, lang="en"):
     for f in text_facts(story):
         u, v = f["unit"], f["value"]
         if u == "m" and v >= 1000:
-            u, v = "km", v / 1000
+            # the label's km: it is rounded from the unrounded metres, so 1650.0 can read 1.6 or 1.7
+            km = re.search(r"(\d+\.\d) km", f.get("label_en") or "")
+            u, v = "km", float(km.group(1)) if km else half_up(v / 100) / 10
         if u == "formation":
             out.append(formation_name(v))
         elif u in ("%", "/10"):
