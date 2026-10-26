@@ -39,7 +39,8 @@ const AIR = "#ffd23f";      // the ball's ring when it is above head height
 // palette colour farthest from those (the first on a tie). Colours that are not #rrggbb are left out.
 // shortcut: keeper colours picked here; upgrade when the export carries the keepers' own kits
 export const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
-export const GK_PALETTE = [GK_KIT.home, GK_KIT.away, "#f2c230", "#f07a1f", "#22b8cf", "#e0457b", "#16161a"];
+// no near black: on the small see-through minimap it reads as any dark team's disc
+export const GK_PALETTE = [GK_KIT.home, GK_KIT.away, "#f2c230", "#f07a1f", "#22b8cf", "#e0457b"];
 // the 3D grass (scene3d/pitch.js, linear 0.052, 0.155, 0.040) and the 2D pitch's two stripes
 export const GRASS = ["#406e38", "#2a7536", "#2e7d3b"];
 const GK_CLASH = 25;
@@ -61,10 +62,10 @@ export function keeperKits(teams) {
   const home = pick("home", GK_KIT.away);
   return { home, away: pick("away", home) };
 }
-// team_id -> the keeper's colour on the 2D pitch
+// team_id -> the keeper's colour on the 2D pitch; a team without a side is home if first, else away
 export function keeperColours(teams) {
   const kits = keeperKits(teams);
-  return Object.fromEntries(Object.values(teams).map((t) => [t.team_id, kits[t.side]]));
+  return Object.fromEntries(Object.values(teams).map((t, i) => [t.team_id, kits[t.side] ?? kits[i ? "away" : "home"]]));
 }
 
 // Ids of the players the cues name: payload.player_id, or the players of the facts they cite.

@@ -14,7 +14,7 @@
 
 const B = window.BABYLON;
 import { toon, outlineMaterial } from "./toon3d.js";
-import { GK_KIT } from "./pitch.js";   // the keepers' shirts: keeperKits there
+import { keeperKits } from "./pitch.js";   // the keepers' shirts
 const SKIN_LEVEL = 0.6, HAIR_LEVEL = 0.5;
 export const REGIONS = ["skin", "kit_shirt", "kit_shorts", "kit_socks", "boots", "forearms", "hands"];
 export const SKIN_TONES = ["#f2cfb3", "#e3b08c", "#c98f68", "#a86d4b", "#7d4b31", "#57321f"];
@@ -79,7 +79,7 @@ const readable = (bg, pref) => (contrast(bg, pref) >= 2.5 ? pref : luminance(bg)
 // Team colours are muted on the 3D kits (a quarter less saturation, 12% darker): at full strength
 // flat toon shading under the broadcast grade reads as plastic. The 2D page keeps the team colours.
 const mute = (hex) => { const c = B.Color3.FromHexString(hex).toHSV(); return B.Color3.FromHSV(c.r, c.g * 0.75, c.b * 0.88).toHexString(); };
-export function kitColours(team, gk, keeper = GK_KIT[team.side] ?? GK_KIT.home) {
+export function kitColours(team, gk, keeper = keeperKits([team])[team.side === "away" ? "away" : "home"]) {
   const shirt = mute(gk ? keeper : team.color_primary);
   const second = mute(gk ? "#15171f" : team.color_secondary);
   return {

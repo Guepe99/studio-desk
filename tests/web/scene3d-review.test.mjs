@@ -152,8 +152,12 @@ for (const id of MATCHES) {
       assert.ok(gap >= 25, `${side} keeper ${kits[side]}: ${gap.toFixed(1)} from the nearest`);
       assert.ok(PT.GK_PALETTE.includes(kits[side]));
     }
-    const team = m.teams.find((t) => t.side === "home");
-    assert.deepEqual(K.kitColours(team, true), K.kitColours(team, true, "#1f9d6b"), "default: the home keeper's old shirt");
+    // without a keeper given, kitColours picks by the same rule from his own team: never the green
+    for (const team of m.teams) {
+      const own = PT.keeperKits([team])[team.side];
+      assert.notEqual(own, PT.GK_KIT.home, "the old green is too close to the grass");
+      assert.deepEqual(K.kitColours(team, true), K.kitColours(team, true, own), `${team.side}: default keeper shirt`);
+    }
   });
 
   // the 2D pitch (also the minimap over the 3D view) and the 3D kits show the same keeper colour,
@@ -171,6 +175,22 @@ for (const id of MATCHES) {
     }
   });
 }
+
+// _loadPlayers needs a browser (GLB, textures): its source is checked to dress both the footballer
+// and the mannequin from dressOf, with the keepers from keeperKits
+test("_loadPlayers dresses footballers and mannequins from dressOf", () => {
+  const src = Scene3D.prototype._loadPlayers.toString();
+  for (const want of [/keepers = keeperKits\(match\.teams\)/, /const dress = dressOf\(match, keepers, pid\)/,
+    /dressFootballer\(lib, pid, dress\)/, /const k = kit\(dress\)/, /gk \? keeper : team\.color_primary/])
+    assert.match(src, want);
+});
+
+test("a team without a side still gets a keeper colour in 2D, by the order of the teams", () => {
+  const teams = [{ team_id: "A", color_primary: "#c8102e", color_secondary: "#ffffff" }, { team_id: "B", color_primary: "#1d428a", color_secondary: "#ffffff" }];
+  const kits = PT.keeperKits(teams), flat = PT.keeperColours(teams);
+  assert.equal(flat.A, kits.home);
+  assert.equal(flat.B, kits.away);
+});
 
 test("team colours that are not #rrggbb are left out of the keepers' pick", () => {
   const teams = [{ team_id: "A", side: "home", color_primary: "#fff", color_secondary: "#c00" }, { team_id: "B", side: "away", color_primary: "#7a3fb8", color_secondary: "navy" }];

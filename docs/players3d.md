@@ -89,7 +89,8 @@ Considered and not used:
   keeper's or the grass (3D and 2D); then he takes the colour of a fixed palette farthest from
   those (`keeperKits` in web/js/pitch.js, which the 2D pitch and minimap use too). The green is
   always too close to the grass: home keepers wear yellow on M001 to M004 and cyan on DEMO, and
-  M004's away keeper wears near black.
+  M004's away keeper wears orange. The palette has no near black, which on the small
+  see-through minimap reads as a dark team's disc.
 - In the wide frame a player is 30 to 60 px tall: what reads is the shirt and shorts colour
   blocks and the socks, so the far body keeps those as flat colours and drops everything else.
 - Numbers are readable only in replays and close-ups; there the back number is the one that
