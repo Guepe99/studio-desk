@@ -371,6 +371,10 @@ async function scenario(browser, w, h) {
   expect(await page.evaluate((id) => window.studioDesk.desk.text(window.studioDesk.desk.byId.get(id), "en"), SWING.story_id) === SWING.verifier.proposals.en,
     `${tag}: Use proposal did not put it on air`);
   expect(!(await page.$(`${card(SWING)} .proposal button`)), `${tag}: Use proposal button still there once used`);
+  // said and logged as the AI's line, not as an edit; Details says in words what it was before
+  const used = await page.evaluate((id) => ({ msg: document.querySelector("#desk .done-msg")?.textContent, was: document.querySelector(`#story-${id} .default`)?.textContent,
+    action: window.studioDesk.desk.auditData().humans[0]?.action }), SWING.story_id);
+  expect(/: AI proposal on air$/.test(used.msg) && /^Before your decision/.test(used.was ?? "") && used.action === "used_proposal", `${tag}: Use proposal reads ${JSON.stringify(used)}`);
 
   // 6. the keys, with the focus in the desk
   await seekTo(page, ALL);

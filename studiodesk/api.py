@@ -314,10 +314,11 @@ def _meta_file(path: Path, mtime_ns: int) -> dict:
 
 
 def _story_row(conn, match_id: str, story_id: str) -> dict | None:
-    """The story's ts and fact ids, from a live run's `stories` row or else the replay's stories.json."""
-    row = conn.execute("SELECT ts, fact_ids FROM stories WHERE match_id = ? AND story_id = ?", (match_id, story_id)).fetchone()
+    """The story's ts, fact ids and verifier, from a live run's `stories` row or else the replay's stories.json."""
+    row = conn.execute("SELECT ts, fact_ids, verifier FROM stories WHERE match_id = ? AND story_id = ?",
+                       (match_id, story_id)).fetchone()
     if row:
-        return {"ts": row["ts"], "fact_ids": json.loads(row["fact_ids"])}
+        return {"ts": row["ts"], "fact_ids": json.loads(row["fact_ids"]), "verifier": json.loads(row["verifier"] or "{}")}
     return next((s for s in _replay(match_id, "stories.json") if s.get("story_id") == story_id), None)
 
 
@@ -435,6 +436,7 @@ def _detail(edited: dict | None) -> dict:
 
 @app.post("/api/decisions")
 def post_decision(d: Decision, request: Request, response: Response):
+    action = d.decision
     if d.edited_text:
         with _runtime() as conn:
             story = _story_row(conn, d.match_id, d.story_id)
@@ -449,6 +451,9 @@ def post_decision(d: Decision, request: Request, response: Response):
                              "VALUES (?, ?, 'human', 'edit_refused', ?, ?, ?)",
                              (sid, _now(), d.match_id, d.story_id, json.dumps({**_detail(d.edited_text), "reason": why})))
             return JSONResponse({"detail": f"{why}. It stays off air."}, status_code=422, headers=_cookie(response))
+        # the AI's own line, put on air as it is: its own audit action, still an edit for what goes on air
+        if d.decision == "edited" and d.edited_text == (story.get("verifier") or {}).get("proposals"):
+            action = "used_proposal"
     with _runtime(write=True) as conn:
         sid = _session(conn, request, response)
         if not _story_known(conn, d.match_id, d.story_id):
@@ -461,7 +466,7 @@ def post_decision(d: Decision, request: Request, response: Response):
                      (sid, d.match_id, d.story_id, d.decision, text, at))
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', ?, ?, ?, ?)",
-                     (sid, at, d.decision, d.match_id, d.story_id, json.dumps(_detail(d.edited_text))))
+                     (sid, at, action, d.match_id, d.story_id, json.dumps(_detail(d.edited_text))))
     return {"story_id": d.story_id, "decision": d.decision, "edited_text": d.edited_text, "at": at}
 
 
