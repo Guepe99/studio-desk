@@ -24,8 +24,8 @@ from .safety import AzureSafety, Throttled, verdict
 
 MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored the brief
 TOOL_RESULT_CHARS = 6000
-SAFETY_RETRY_S = 60.0
-STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows    # a Content Safety client that could not be built is tried again after this
+SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tried again after this
+STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows
 
 DECLINED = {
     "en": "The studio cannot answer that from the match data so far.",
@@ -213,10 +213,12 @@ def check(match_id, ts, text, ids, lang, p1):
         return "too many cited facts"
     with mcp_server.clock_at(ts):  # a fact after ts reads as unknown
         facts = [mcp_server.get_fact(match_id, i) for i in ids]
-        score = mcp_server.get_match_info(match_id)["score"]
+        info = mcp_server.get_match_info(match_id)
+        score = info["score"]
     if any("error" in f for f in facts):
         return "cited fact unknown or after ts"
-    flags = rules.check_answer(text, facts, p1, lang, set(ids), (score["home"], score["away"]))
+    who = [(t["name"], t["team_id"], None) for t in info["teams"]] + [(x["name"], x["team_id"], x["player_id"]) for x in info["players"]]
+    flags = rules.check_answer(text, facts, p1, lang, set(ids), (score["home"], score["away"]), who)
     return flags[0].split(":")[0] if flags else ""
 
 

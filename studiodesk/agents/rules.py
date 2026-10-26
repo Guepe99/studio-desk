@@ -522,7 +522,9 @@ def minute_word(text, lang):
     """The minute word in the answer's language: the model writes "minuto 10" in English now and then."""
     word = "minute" if lang == "en" else "minuto"
     if lang == "en":  # "in the 10th minute", as the stories' analysis says it (get_stories), is "in minute 10"
-        text = re.sub(r"\bthe (\d{1,3})(?:st|nd|rd|th) minute\b", r"minute \1", text)
+        text = re.sub(r"\b(?:(in|on) )?the (\d{1,3}(?:\+\d{1,2})?)(?:st|nd|rd|th) minute\b",
+                      lambda m: (f"{m[1]} " if m[1] else "") + ("Minute" if m[0][0] == "T" else "minute") + f" {m[2]}",
+                      text, flags=re.IGNORECASE)
     text = re.sub(r"\bminut[eo](?= \d)", lambda m: word.capitalize() if m.group(0)[0].isupper() else word, text,
                   flags=re.IGNORECASE)
     # the article the model drops: "ai minuto 10 e minuto 13" reads "al minuto 10 e al minuto 13"
@@ -553,10 +555,12 @@ def local_words(text, lang):
         return text
     text = re.sub(r"\b(\d+)\s+goals?\b", lambda m: f"{m[1]} {'goles' if lang == 'es' and m[1] != '1' else 'gol'}",
                   text, flags=re.IGNORECASE)
-    text = re.sub(r"\b(\d+)\s+(?:passes|pases|pass|passaggi)\b", lambda m: f"{m[1]} {'pases' if lang == 'es' else 'passaggi'}",
-                  text, flags=re.IGNORECASE)
-    if lang == "it":  # 8, 11 and 80-89 start with a vowel sound (otto, undici, ottanta)
-        text = re.sub(r"\b([Ii])l\s+(?=(?:8\d?|11)(?:,\d+)?\s*%)", lambda m: "L'" if m[1] == "I" else "l'", text)
+    words = {"es": ("pase", "pases"), "it": ("passaggio", "passaggi")}[lang]
+    text = re.sub(r"\b(\d+)\s+(?:passes|pases|pase|pass|passaggi|passaggio)\b",
+                  lambda m: f"{m[1]} {words[m[1] != '1']}", text, flags=re.IGNORECASE)
+    if lang == "it":  # 1, 8, 11 and 80-89 start with a vowel sound (uno, otto, undici, ottanta): l'80%, dell'80%
+        text = re.sub(r"\b([Ii]l|[Aa]l|[DdNnSs][eau]l)\s+(?=(?:8\d?|11|1)(?:,\d+)?\s*%)",
+                      lambda m: "L'" if m[1] == "Il" else "l'" if m[1] == "il" else m[1] + "l'", text)
     return text
 
 
@@ -736,14 +740,15 @@ _NOUN_NUMBERS = {  # "shots on target" before "shots": the longer noun takes its
     "xT": re.compile(r"\bxT\s*(?:of|di|de|:)?\s*([+-]?\d+(?:[.,]\d+)?)|" + _LB + r"([+-]?\d+(?:[.,]\d+)?)\s*xT\b"),
 }
 _PASSES = r"(?:passes|passaggi|pases)"
+_DONE = r"(?:completed|successful|completati|riusciti|completados|completos|acertados)"
+_OF = r"(?:of|out of|su|de|di|dei|de sus|de los)"
 _PAIR = re.compile(_LB + r"(\d+)\s*/\s*(\d+)(?![\d.,]*\d)|" + _LB
-                   + rf"(\d+)\s+(?:of|out of|su|de|di)\s+(\d+)\s+{_PASSES}\b|" + _LB  # "228 passaggi riusciti su 276"
-                   + rf"(\d+)\s+{_PASSES}(?:\s+(?:completed|completati|riusciti|completados|completos))?\s+(?:of|out of|su|de)\s+(\d+)(?![\d.,]*\d)",
+                   + rf"(\d+)\s+{_OF}\s+(\d+)\s+{_PASSES}\b|" + _LB  # "228 passaggi riusciti su 276", "228 completed passes out of 276"
+                   + rf"(\d+)\s+(?:{_DONE}\s+)?{_PASSES}(?:\s+{_DONE})?\s+{_OF}\s+(\d+)(?![\d.,]*\d)",
                    re.IGNORECASE)
 _LABEL_PAIR = re.compile(r"\((\d+)/(\d+)\)")
 # "139 passaggi completati": the completed count alone, the first of a label's pair (the attempts alone stay out)
-_COMPLETED = re.compile(_LB + rf"(\d+)\s+(?:{_PASSES}|pass)\s+(?:completed|completati|riusciti|completados|completos|acertados)\b",
-                        re.IGNORECASE)
+_COMPLETED = re.compile(_LB + rf"(\d+)\s+(?:(?:{_PASSES}|pass)\s+{_DONE}|{_DONE}\s+{_PASSES})\b", re.IGNORECASE)
 MAX_ASK_FACTS = 8
 
 
@@ -761,7 +766,54 @@ def _language(text, lang):
     return other == 0 or counts[lang] > other
 
 
-def check_answer(text, facts, p1, lang, ids, score=None):
+_POSSESSION_WORDS = re.compile(r"possess|posesi|of the ball|del pallone|del bal[oó]n|\bpalla\b", re.IGNORECASE)
+_PASS_WORDS = re.compile(r"\bpass|\bpases?\b|accura|precisi", re.IGNORECASE)
+_SENTENCE_END = re.compile(r"[.!?;](?=\s|$)")
+
+
+def _misattributed(rest, facts, who):
+    """Flags for a number said of the wrong team or player: its subject, the nearest name before it in its
+    sentence (or the first after, with none before), must be the team or player of a cited fact the number
+    belongs to (a player's fact may also be said of their team). A share is tied to its noun as well: next
+    to "possession" it is a possession fact, next to "passes" or "accuracy" a pass accuracy one.
+    `who` is [(name, team_id, player_id or None)]; a player is also found by surname, a team by its first word."""
+    names = []
+    for name, team, player in who:
+        parts = name.split()
+        short = parts[-1] if player else parts[0]
+        for alias in {name, short} if len(short) >= 4 else {name}:
+            names += [(mt.start(), mt.end(), team, player) for mt in re.finditer(rf"\b{re.escape(alias)}\b", rest)]
+    ends = [0] + [mt.end() for mt in _SENTENCE_END.finditer(rest)] + [len(rest)]
+    labels = {f["fact_id"]: re.findall(r"\d+(?:\.\d+)?", _LABEL_MINUTES.sub("", display_label(f))) for f in facts}
+    flags = []
+    for mt in re.finditer(_LB + r"\d+(?:[.,]\d+)?", rest):
+        raw, at = mt.group(0), mt.start()
+        mine = [f for f in facts if f.get("team_id") and (_near(raw, f["value"]) or any(_near(raw, float(x)) for x in labels[f["fact_id"]]))]
+        if not mine:
+            continue
+        start = max(e for e in ends if e <= at)
+        end = min(e for e in ends if e > at)
+        if rest[mt.end():].lstrip().startswith("%"):
+            near = rest[max(start, at - 40):min(end, mt.end() + 40)]
+            poss, passes = _POSSESSION_WORDS.search(near), _PASS_WORDS.search(near)
+            kind = "possession" if poss and not passes else "pass_accuracy" if passes and not poss else None
+            if kind and not (mine := [f for f in mine if f["unit"] != "%" or kind in f["kind"]]):
+                flags.append(f"number not in the facts: '{raw}%' is not that share")
+                continue
+        before = [n for n in names if start <= n[0] and n[1] <= at]
+        after = [n for n in names if at < n[0] and n[1] <= end]
+        # "the 2 shots of Ostwick FC", "i 2 tiri dell'Ostwick": a name owning the number comes after it
+        owner = [n for n in after if n[0] - mt.end() <= 30 and not re.search(r"\d", rest[mt.end():n[0]])
+                 and re.search(r"\b(?:of|for|by|di|del|dell'|della|da|de|del|para)\s*(?:the |il |el |l')?$", rest[mt.end():n[0]], re.IGNORECASE)]
+        subject = min(owner) if owner else max(before) if before else min(after) if after else None
+        # a team takes its players' facts; a player takes their own and their team's, never a teammate's
+        if subject and not any(subject[2] == f["team_id"] and subject[3] in (None, f.get("player_id") or subject[3])
+                               for f in mine):
+            flags.append(f"number not in the facts: '{raw}' is not about that team or player")
+    return flags
+
+
+def check_answer(text, facts, p1, lang, ids, score=None, who=()):
     """All checks on an Ask answer about `facts` (the cited ones, all at or before the question's ts).
     `score` is (home, away) at ts; without it no score may be claimed.
     On top of check_text: minutes only as minutes ("2'", "min 2", "45+2'") and only the cited facts' own;
@@ -808,6 +860,7 @@ def check_answer(text, facts, p1, lang, ids, score=None):
         quoted |= any(f["kind"] == "score" for f in facts)
         return " "
     rest = _ASK_SCORE.sub(scored, rest)
+    flags += _misattributed(rest, facts, who)
 
     def licensed(values):
         def sub(mt):

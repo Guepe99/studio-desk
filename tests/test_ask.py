@@ -809,3 +809,32 @@ def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
     assert rules.local_words("Il 11% e il 18% dei passaggi.", "it") == "L'11% e il 18% dei passaggi."
     assert rules.local_words("Ostwick tiene 80%, 139 de 174 passaggi.", "es") == "Ostwick tiene 80%, 139 de 174 pases."
     assert rules.decimal_comma("Redwick 55% and Ostwick 44,5%, 1,000 passes.", "en") == "Redwick 55% and Ostwick 44.5%, 1,000 passes."
+
+
+@pytest.mark.parametrize("answer, ids, lang, status", [
+    ("Ostwick FC have scored 2 goals.", ["F-PLAYER_GOALS-000024"], "en", "declined"),          # Okowande's, of Redwick
+    ("Hugo Okowande has scored 2 goals.", ["F-PLAYER_GOALS-000024"], "en", "answered"),
+    ("Redwick Wanderers have 4 shots to the 2 shots of Ostwick FC.", ["F-TEAM_SHOTS-000007", "F-TEAM_SHOTS-000008"], "en", "answered"),
+    ("Redwick Wanderers have 2 shots to the 4 shots of Ostwick FC.", ["F-TEAM_SHOTS-000007", "F-TEAM_SHOTS-000008"], "en", "declined"),
+    ("Okowande of Redwick Wanderers has 2 goals.", ["F-PLAYER_GOALS-000024"], "en", "answered"),
+    ("L'Ostwick FC ha completato 198 passaggi su 238, l'83%.", ["F-TEAM_PASS_ACCURACY-000015"], "it", "declined"),
+    ("Il Redwick ha completato 198 dei 238 passaggi.", ["F-TEAM_PASS_ACCURACY-000015"], "it", "answered"),
+    ("El Redwick tiene 198 pases acertados de 238.", ["F-TEAM_PASS_ACCURACY-000015"], "es", "answered"),
+    ("Redwick Wanderers have 198 completed passes out of 238.", ["F-TEAM_PASS_ACCURACY-000015"], "en", "answered"),
+    ("Redwick Wanderers have had 83% possession.", ["F-TEAM_PASS_ACCURACY-000015"], "en", "declined"),  # a share, not that one
+    ("Redwick Wanderers have a pass accuracy of 56%.", ["F-TEAM_POSSESSION-000015"], "en", "declined"),
+    ("Redwick Wanderers have 44.5% possession, Ostwick FC have 55.5% possession.",
+     ["F-TEAM_POSSESSION-000015", "F-TEAM_POSSESSION-000016"], "en", "declined"),
+    ("Redwick Wanderers have 55.5% possession, Ostwick FC have 44.5% possession.",
+     ["F-TEAM_POSSESSION-000015", "F-TEAM_POSSESSION-000016"], "en", "answered"),
+])
+def test_a_number_belongs_to_the_team_or_player_it_is_said_of(m001, answer, ids, lang, status):
+    assert m001(answer, ids, ts=2400.0, lang=lang) == status, reason()
+
+
+def test_italian_articles_and_ordinal_minutes():
+    assert rules.local_words("Pari al 80%, dal 11% al 1%, nel 85%, del 18%, il 79,9%.", "it") == \
+        "Pari all'80%, dall'11% all'1%, nell'85%, del 18%, il 79,9%."
+    assert rules.local_words("1 pass e 2 pases.", "it") == "1 passaggio e 2 passaggi."
+    assert rules.local_words("1 pass y 2 passaggi.", "es") == "1 pase y 2 pases."
+    assert rules.minute_word("The 10th minute, then in the 45+2nd minute.", "en") == "Minute 10, then in minute 45+2."
