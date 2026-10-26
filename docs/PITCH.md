@@ -17,7 +17,7 @@ The Microsoft technologies:
 - **Azure Speech in Foundry Tools** voices the verified stories in three languages.
 - **Azure Monitor Application Insights** receives the agents' traces.
 - **Bicep and the Azure CLI** deploy the Container App and its monitoring.
-- **GitHub Actions** runs the 550 Python and 179 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
+- **GitHub Actions** runs the 556 Python and 181 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
 
 Also built on:
 
