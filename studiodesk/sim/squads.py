@@ -47,7 +47,7 @@ def _own_surname(name, taken, names):
             taken.add(cand)
             names.add(full)
             return full
-    raise ValueError("surname pool too small for one fixture")
+    raise ValueError(f"no surname left for {first}: the fixture took them all, or a listed name blocks every candidate")
 
 
 def crest(rng, c1, c2, cid) -> str:

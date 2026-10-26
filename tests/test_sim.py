@@ -113,6 +113,13 @@ def test_a_listed_short_name_stops_the_build(monkeypatch):
         make_league(np.random.default_rng(7), load_calibration())
 
 
+def test_a_listed_first_name_says_it_blocked_every_surname(monkeypatch):
+    from studiodesk.sim import squads
+    monkeypatch.setattr(squads, "is_forbidden", lambda t: t.split(" ")[0] in squads.FIRST)  # as if "Diego" were listed
+    with pytest.raises(ValueError, match="a listed name blocks every candidate"):
+        make_league(np.random.default_rng(7), load_calibration())
+
+
 def test_no_two_players_of_a_fixture_share_a_surname(built):
     from studiodesk.sim.squads import LAST
     _, conn = built
