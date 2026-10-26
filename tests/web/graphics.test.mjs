@@ -34,6 +34,9 @@ test("pass and shot card: the big value and the quality numbers follow the langu
     assert.equal(text(".qval"), q, lang);
   }
   assert.equal(render(PassShot, { ...data, value: 112.6 }, "it")(".big"), "113", "no decimals from 100 up");
+  assert.equal(render(PassShot, { ...data, value: 99.96 }, "it")(".big"), "100", "rounded before the 100 test");
+  assert.equal(render(PassShot, { ...data, value: 99.94 }, "it")(".big"), "99,9");
+  assert.equal(render(PassShot, { ...data, value: null }, "it")(".big"), "", "no value, no number");
 });
 
 test("name plate: the speed follows the language", () => {

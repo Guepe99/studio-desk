@@ -116,14 +116,21 @@ export class Ask {
   // every frame: while the panel is open the suggestions follow the clock, rebuilt only when one of their
   // first fact times is crossed (a few comparisons a frame)
   update() {
-    if (this.panel.hidden) return;
-    const now = Math.min(this.state.ts, this.maxTs), n = this.suggestAt.filter((t) => t <= now).length;
-    if (n !== this.suggestN) { this.suggestN = n; this.renderSuggestions(); }
+    if (!this.panel.hidden && this.suggestCount() !== this.suggestN) this.renderSuggestions();
+  }
+
+  // how many of those first fact times the clock has passed
+  suggestCount() {
+    const now = Math.min(this.state.ts, this.maxTs);
+    let n = 0;
+    for (const t of this.suggestAt) if (t <= now) n++;
+    return n;
   }
 
   // rebuilt only when the list changes, so a focused suggestion keeps its focus
   renderSuggestions() {
     if (!this.suggestEl) return;
+    this.suggestN = this.suggestCount();
     const keys = suggestions(this.facts, Math.min(this.state.ts, this.maxTs));
     const sig = `${this.state.lang}|${keys.join()}`;
     if (sig === this.suggestSig) return;

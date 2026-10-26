@@ -30,12 +30,17 @@ test("open panel, replay playing: the suggestions appear as their facts come in,
   globalThis.document = { querySelector: () => node(), createElement: () => ({ dataset: {} }) };
   const state = { ts: 0, lang: "en" };
   const f = (kind, ts) => ({ kind, ts });
-  const ask = new Ask(panel, { state, t: (k) => k, button: node(), facts: [f("team_shots", 120), f("team_shots", 400), f("team_possession", 300)], maxTs: 5400 });
+  // suggestions() reads the ledger with one facts.filter per call: counting those counts its calls
+  let reads = 0;
+  const ledger = [f("team_shots", 120), f("team_shots", 400), f("team_possession", 300)];
+  const facts = new Proxy(ledger, { get: (a, k, r) => { if (k === "filter") reads++; return Reflect.get(a, k, r); } });
+  const ask = new Ask(panel, { state, t: (k) => k, button: node(), facts, maxTs: 5400 });
   ask.renderSuggestions(); // as opening the panel at 0' does: nothing to suggest yet
   assert.equal(box.hidden, true);
   for (let ts = 0; ts <= 600; ts += 1 / 60) { state.ts = ts; ask.update(); }
   assert.deepEqual(box.chips, ["askSugShots", "askSugControl"]);
   assert.equal(box.hidden, false);
+  assert.equal(reads, 3, "the ledger read on opening, at 120 s and at 300 s, not on each of the 36,000 frames");
   assert.equal(box.built, 3, "built on opening, at 120 s and at 300 s, not every frame");
   panel.hidden = true;
   state.ts = 0;

@@ -767,16 +767,26 @@ async function main() {
     const third = [...host.live.values()].some((i) => i.cue.graphic === "pass_shot");
     return ball.visible && ball.x > STAGE_W / 2 && !third ? "left" : "right";
   };
-  // a graphic that fails to register, or throws on air, is named on screen; its cues are skipped
+  // a graphic that fails to register is named on screen and its cues are skipped; one that throws on air
+  // is named too, and that cue is not tried again (ograf-host.js _fail)
   const broken = new Set();
   const noGraphic = (g) => {
     if (broken.has(g)) return;
     broken.add(g);
-    const text = t("nographic").replace("{g}", [...broken].join(", "));
     // over the 3D view's own notice, this one waits: it comes back when that clears (view3d.js _notice)
-    if (view3d?.notice) view3d.prior = text;
-    else { $("#notice").textContent = text; $("#notice").hidden = false; }
+    const fill = () => {
+      const text = t("nographic").replace("{g}", [...broken].join(", "));
+      if (view3d?.notice) view3d.prior = text;
+      else { $("#notice").textContent = text; $("#notice").hidden = false; }
+      layout();
+    };
+    const n = $("#notice");
+    if (view3d?.notice || !n.hidden) return fill();
+    // an alert region that shows already filled is not read out: it shows empty, then gets the words (as view3d.js)
+    n.textContent = "";
+    n.hidden = false;
     layout();
+    setTimeout(fill, 100);
   };
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },

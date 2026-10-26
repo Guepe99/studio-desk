@@ -21,7 +21,7 @@ class FakeGraphic {
   async dispose() { return {}; }
   async setActionsSchedule() { return {}; }
   async goToTime() { return {}; }
-  customAction() {}
+  customAction() { if (this.tag === "ograf-pin") return Promise.reject(new Error("no position")); }
 }
 globalThis.document = { createElement: (tag) => new FakeGraphic(tag) };
 const { OGrafHost } = await import("../../web/js/ograf-host.js");
@@ -73,7 +73,8 @@ test("chain settles once the graphic has been played, not before", async () => {
   assert.equal(inst.el.played, true, "played when the chain settles");
 });
 
-test("a graphic that throws on load is reported, taken off, and its slot goes to the next cue", async () => {
+// runs fn(host, errors) with console.error and unhandled rejections recorded; returns what was recorded
+const capture = async (fn) => {
   const unhandled = [], errors = [], logged = [];
   const onUnhandled = (e) => unhandled.push(e);
   process.on("unhandledRejection", onUnhandled);
@@ -82,22 +83,45 @@ test("a graphic that throws on load is reported, taken off, and its slot goes to
   try {
     const h = host();
     h.opts.onError = (g, e) => errors.push([g, e.message]);
-    h.graphics.bad = { manifest: { id: "bad" }, tag: "ograf-bad", inS: 0, outS: 0 };
-    h.setCues([cue("x", 1, 6, "bad"), cue("y", 1.5, 6), cue("w", 2, 3, "strap")], 0);
-    run(h, 0, 1.6);
-    const bad = h.live.get("x").el;
+    await fn(h, errors);
     await tick(30);
-    run(h, 1.7, 2.1);
-    await tick(30);
-    assert.deepEqual(errors, [["bad", "render failed"]], "named to the page once");
-    assert.equal(logged.length, 1, "logged once");
-    assert.equal(bad.attached, false, "off the screen");
-    assert.deepEqual([...h.live.keys()], ["y", "w"], "w takes the failed graphic's slot");
-    assert.deepEqual(unhandled, [], "no unhandled rejection");
   } finally {
     console.error = quiet;
     process.off("unhandledRejection", onUnhandled);
   }
+  return { unhandled, errors, logged };
+};
+
+test("a graphic that throws on load is reported, taken off, its slot goes to the next cue, and it is not retried", async () => {
+  let bad;
+  const { unhandled, errors, logged } = await capture(async (h) => {
+    h.graphics.bad = { manifest: { id: "bad" }, tag: "ograf-bad", inS: 0, outS: 0 };
+    h.setCues([cue("x", 1, 6, "bad"), cue("y", 1.5, 6), cue("w", 2, 3, "strap")], 0);
+    run(h, 0, 1.6);
+    bad = h.live.get("x").el;
+    await tick(30);
+    run(h, 1.7, 2.1);
+    await tick(30);
+    assert.equal(bad.attached, false, "off the screen");
+    assert.deepEqual([...h.live.keys()], ["y", "w"], "w takes the failed graphic's slot");
+    h.sync(1.6, true); // a seek back into the failed cue: rebuilt without it
+    await tick(30);
+    assert.deepEqual([...h.live.keys()], ["y"], "the failed cue is not loaded again after a rebuild");
+  });
+  assert.deepEqual(errors, [["bad", "render failed"]], "named to the page once");
+  assert.equal(logged.length, 1, "logged once");
+  assert.deepEqual(unhandled, [], "no unhandled rejection");
+});
+
+test("a positioned graphic whose first position action rejects is reported, with no unhandled rejection", async () => {
+  const { unhandled, errors } = await capture(async (h) => {
+    h.graphics.pin = { manifest: { id: "pin", customActions: [{ id: "position" }] }, tag: "ograf-pin", inS: 0, outS: 0 };
+    h.setCues([cue("p", 1, 6, "pin")], 0);
+    run(h, 0, 1.1); // the load starts; its chain sends the first position, before any frame does
+    await tick(30);
+  });
+  assert.deepEqual(unhandled, [], "no unhandled rejection");
+  assert.deepEqual(errors, [["pin", "no position"]]);
 });
 
 test("team colours reach a style attribute only as #rgb or #rrggbb", async () => {
