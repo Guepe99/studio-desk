@@ -55,6 +55,15 @@
 "voice": "am_fenrir"
 },
 {
+"key": "co|Ekwueme.",
+"lang": "en",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/en/797b0bf22af6.mp3",
+"duration_s": 0.635,
+"voice": "am_fenrir"
+},
+{
 "key": "co|Fontaine.",
 "lang": "en",
 "role": "co",
@@ -187,15 +196,6 @@
 "text": "Mensah.",
 "file": "booth/en/f21e00aa1fc1.mp3",
 "duration_s": 0.635,
-"voice": "am_fenrir"
-},
-{
-"key": "co|Morales.",
-"lang": "en",
-"role": "co",
-"text": "Morales.",
-"file": "booth/en/bfb35be601fa.mp3",
-"duration_s": 0.683,
 "voice": "am_fenrir"
 },
 {
@@ -556,6 +556,33 @@
 "text": "Dunmarrow...",
 "file": "booth/en/6e371aa05395.mp3",
 "duration_s": 0.851,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/en/69a48ebb2fee.mp3",
+"duration_s": 0.731,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/en/96c7b986bbc4.mp3",
+"duration_s": 0.707,
+"voice": "am_michael"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "en",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/en/4d12263a3b0a.mp3",
+"duration_s": 0.755,
 "voice": "am_michael"
 },
 {
@@ -1258,33 +1285,6 @@
 "text": "Mensah...",
 "file": "booth/en/1a95e21d2d20.mp3",
 "duration_s": 0.755,
-"voice": "am_michael"
-},
-{
-"key": "pbp|Morales!",
-"lang": "en",
-"role": "pbp",
-"text": "Morales!",
-"file": "booth/en/1b3ac41dfba1.mp3",
-"duration_s": 0.827,
-"voice": "am_michael"
-},
-{
-"key": "pbp|Morales.",
-"lang": "en",
-"role": "pbp",
-"text": "Morales.",
-"file": "booth/en/51514a123a4b.mp3",
-"duration_s": 0.803,
-"voice": "am_michael"
-},
-{
-"key": "pbp|Morales...",
-"lang": "en",
-"role": "pbp",
-"text": "Morales...",
-"file": "booth/en/def4422d8684.mp3",
-"duration_s": 0.827,
 "voice": "am_michael"
 },
 {
@@ -2269,6 +2269,15 @@
 "voice": "em_alex"
 },
 {
+"key": "co|Ekwueme.",
+"lang": "es",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/es/ca451484c395.mp3",
+"duration_s": 0.707,
+"voice": "em_alex"
+},
+{
 "key": "co|Fontaine.",
 "lang": "es",
 "role": "co",
@@ -2356,15 +2365,6 @@
 "text": "Mensah.",
 "file": "booth/es/e5c4f08df06c.mp3",
 "duration_s": 0.659,
-"voice": "em_alex"
-},
-{
-"key": "co|Morales.",
-"lang": "es",
-"role": "co",
-"text": "Morales.",
-"file": "booth/es/dd943cc90fd9.mp3",
-"duration_s": 0.707,
 "voice": "em_alex"
 },
 {
@@ -2842,6 +2842,33 @@
 "text": "Dunmarrow...",
 "file": "booth/es/0bbfbc5010bb.mp3",
 "duration_s": 0.707,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/es/e2cd92e27f79.mp3",
+"duration_s": 0.731,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/es/cf799a31feb1.mp3",
+"duration_s": 0.659,
+"voice": "ef_dora"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "es",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/es/b2f034003bb3.mp3",
+"duration_s": 0.731,
 "voice": "ef_dora"
 },
 {
@@ -3655,33 +3682,6 @@
 "voice": "ef_dora"
 },
 {
-"key": "pbp|Morales!",
-"lang": "es",
-"role": "pbp",
-"text": "Morales!",
-"file": "booth/es/48379e77f331.mp3",
-"duration_s": 0.731,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Morales.",
-"lang": "es",
-"role": "pbp",
-"text": "Morales.",
-"file": "booth/es/5ed720de8538.mp3",
-"duration_s": 0.659,
-"voice": "ef_dora"
-},
-{
-"key": "pbp|Morales...",
-"lang": "es",
-"role": "pbp",
-"text": "Morales...",
-"file": "booth/es/9703864030ae.mp3",
-"duration_s": 0.707,
-"voice": "ef_dora"
-},
-{
 "key": "pbp|Novak!",
 "lang": "es",
 "role": "pbp",
@@ -4393,6 +4393,15 @@
 "voice": "im_nicola"
 },
 {
+"key": "co|Ekwueme.",
+"lang": "it",
+"role": "co",
+"text": "Ekwueme.",
+"file": "booth/it/6e51924af621.mp3",
+"duration_s": 0.731,
+"voice": "im_nicola"
+},
+{
 "key": "co|Fontaine.",
 "lang": "it",
 "role": "co",
@@ -4479,15 +4488,6 @@
 "role": "co",
 "text": "Mensah.",
 "file": "booth/it/1bc4f0c4b03a.mp3",
-"duration_s": 0.707,
-"voice": "im_nicola"
-},
-{
-"key": "co|Morales.",
-"lang": "it",
-"role": "co",
-"text": "Morales.",
-"file": "booth/it/222ac73e0a5b.mp3",
 "duration_s": 0.707,
 "voice": "im_nicola"
 },
@@ -4930,6 +4930,33 @@
 "text": "Dunmarrow...",
 "file": "booth/it/1916cd4a974c.mp3",
 "duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme!",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme!",
+"file": "booth/it/347594cfe2e5.mp3",
+"duration_s": 0.971,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme.",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme.",
+"file": "booth/it/aed4230d7f1c.mp3",
+"duration_s": 0.899,
+"voice": "if_sara"
+},
+{
+"key": "pbp|Ekwueme...",
+"lang": "it",
+"role": "pbp",
+"text": "Ekwueme...",
+"file": "booth/it/179298d4f137.mp3",
+"duration_s": 0.923,
 "voice": "if_sara"
 },
 {
@@ -5704,33 +5731,6 @@
 "text": "Momento importante per il Tarnby.",
 "file": "booth/it/bc84f0c934fe.mp3",
 "duration_s": 2.171,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Morales!",
-"lang": "it",
-"role": "pbp",
-"text": "Morales!",
-"file": "booth/it/ef78843cc8f0.mp3",
-"duration_s": 0.971,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Morales.",
-"lang": "it",
-"role": "pbp",
-"text": "Morales.",
-"file": "booth/it/34184fbc1bbd.mp3",
-"duration_s": 0.899,
-"voice": "if_sara"
-},
-{
-"key": "pbp|Morales...",
-"lang": "it",
-"role": "pbp",
-"text": "Morales...",
-"file": "booth/it/956c2f25085a.mp3",
-"duration_s": 0.947,
 "voice": "if_sara"
 },
 {
