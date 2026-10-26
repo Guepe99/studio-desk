@@ -18,7 +18,8 @@ import { Cameras, REPLAY_ANGLES } from "./scene3d/camera.js";
 import { setupAnimations, animatePlayer, scheduleActions, actionDriver, scheduleThrows, throwDriver, throwAt, THROW, resolve, facing, wantFacing, offset, applyUpper, settleFeet, warpStride } from "./scene3d/players.js";
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
-import { loadFootballer, dressFootballer, keeperKits } from "./players3d.js";
+import { loadFootballer, dressFootballer } from "./players3d.js";
+import { keeperKits } from "./pitch.js";
 import { smoothMatch, rootAt, velocityAt } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
 import { buildScreens } from "./scene3d/screen.js";
@@ -39,6 +40,13 @@ const ROOT_OMEGA = 20;      // rad/s, the shown root's lag-free critically dampe
 const YAW_SETTLE = 1;
 
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+
+// What player pid's kit is made from (dressFootballer, or the mannequin's): his team, whether he is
+// the keeper, his side's keeper shirt (keepers: keeperKits) and his number.
+export function dressOf(match, keepers, pid) {
+  const pl = match.players[pid], team = match.teams[pl.team_id];
+  return { team, gk: pl.position === "GK", keeper: keepers[team.side], shirt: pl.shirt };
+}
 
 function canvasTexture(scene, name, w, h, draw, opts = {}) {
   const tex = new B.DynamicTexture(name, { width: w, height: h }, scene, opts.mipmaps ?? true);
@@ -180,10 +188,10 @@ export class Scene3D {
     const container = lib?.container ?? await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
     const kits = {}, keepers = keeperKits(match.teams);
-    const kit = (team, gk) => {
+    const kit = ({ team, gk, keeper }) => {
       const id = `${team.team_id}${gk ? "gk" : ""}`;
       if (!kits[id]) {
-        const body = pbr(scene, `${id}-body`, gk ? keepers[team.side] : team.color_primary, { roughness: 0.7 });
+        const body = pbr(scene, `${id}-body`, gk ? keeper : team.color_primary, { roughness: 0.7 });
         const joints = pbr(scene, `${id}-joints`, gk ? "#15171f" : team.color_secondary, { roughness: 0.6 });
         kits[id] = { body, joints };
       }
@@ -201,15 +209,15 @@ export class Scene3D {
     this.players = [];
     for (const i of this.entities) {
       const pid = match.meta.entities[i];
-      const pl = match.players[pid], team = match.teams[pl.team_id];
-      const inst = lib ? dressFootballer(lib, pid, { team, gk: pl.position === "GK", keeper: keepers[team.side], shirt: pl.shirt })
+      const dress = dressOf(match, keepers, pid);
+      const inst = lib ? dressFootballer(lib, pid, dress)
         : container.instantiateModelsToScene((n) => `${pid}-${n}`, false, { doNotInstantiate: true });
       const holder = new B.TransformNode(`player-${pid}`, scene);
       const root = inst.rootNodes[0];
       root.parent = holder;
       root.scaling.scaleInPlace(scale * (inst.height ?? 1));
       if (!lib) {
-        const k = kit(team, pl.position === "GK");
+        const k = kit(dress);
         for (const m of root.getChildMeshes()) {
           m.material = /joint/i.test(m.material?.name ?? "") ? k.joints : k.body;
           m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated

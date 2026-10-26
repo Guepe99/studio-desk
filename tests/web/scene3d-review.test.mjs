@@ -1,11 +1,11 @@
 // The 3D scene's review fixes: the drivers are asked once per player and time in a frame and
 // the picture is the same, a 64x frame puts the facing spring at rest instead of thousands of
-// steps, the keepers' shirts stand apart from both teams, a keeper rig on a match without players
-// and a failed 3D load leave nothing broken behind.
+// steps, the keepers' shirts stand apart from both teams and the grass and are the same in 2D and
+// 3D, a keeper rig on a match without players and a failed 3D load leave nothing broken behind.
 //   node --test tests/web/scene3d-review.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,9 +14,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(H
 // the real Babylon in node: math, nodes and a NullEngine, nothing drawn
 globalThis.window ??= { BABYLON: createRequire(import.meta.url)("../../web/vendor/babylonjs/9.29.0/babylon.js") };
 const B = window.BABYLON;
-const { Scene3D } = await import("../../web/js/scene3d.js");
+const S3 = await import("../../web/js/scene3d.js"), { Scene3D } = S3;
 const P = await import("../../web/js/scene3d/players.js");
 const K = await import("../../web/js/players3d.js");
+const PT = await import("../../web/js/pitch.js");
 const { AwarenessRig } = await import("../../web/js/awareness-rig.js");
 const { KeeperRig } = await import("../../web/js/keeper3d-rig.js");
 const { CLIPS } = await import("../../web/js/keeper3d.js");
@@ -138,23 +139,46 @@ test("M001: frames up to 1 s step the facing spring, a 64x frame puts it at its 
   assert.ok(slow > 1000 && fast > 30, `${slow} stepped, ${fast} settled`);
 });
 
-for (const id of ["M001", "M002", "M003", "M004"]) {
+// every match of web/data, the DEMO fixture too
+const MATCHES = existsSync(path.join(ROOT, "web/data")) ? readdirSync(path.join(ROOT, "web/data")).filter((id) => meta(id)) : [];
+for (const id of MATCHES) {
   const m = meta(id);
-  test(`${id}: each keeper's shirt stands apart from both teams and the other keeper`, { skip: !m && `no web/data/${id}` }, () => {
-    const kits = K.keeperKits(m.teams);
-    assert.deepEqual(K.keeperKits(m.teams), kits, "the same every time");
-    const shirts = Object.values(m.teams).flatMap((t) => [t.color_primary, t.color_secondary]);
+  test(`${id}: each keeper's shirt stands apart from both teams, the other keeper and the grass`, () => {
+    const kits = PT.keeperKits(m.teams);
+    assert.deepEqual(PT.keeperKits(m.teams), kits, "the same every time");
+    const avoid = [...m.teams.flatMap((t) => [t.color_primary, t.color_secondary]), ...PT.GRASS];
     for (const [side, other] of [["home", "away"], ["away", "home"]]) {
-      const gap = Math.min(...[...shirts, kits[other]].map((c) => K.deltaE(kits[side], c)));
+      const gap = Math.min(...[...avoid, kits[other]].map((c) => PT.deltaE(kits[side], c)));
       assert.ok(gap >= 25, `${side} keeper ${kits[side]}: ${gap.toFixed(1)} from the nearest`);
-      assert.ok(K.GK_PALETTE.includes(kits[side]));
+      assert.ok(PT.GK_PALETTE.includes(kits[side]));
     }
-    // the old shirts where they already stood apart
-    if (id === "M003") assert.deepEqual(kits, { home: "#1f9d6b", away: "#7a3fb8" });
-    const team = Object.values(m.teams).find((t) => t.side === "home");
+    const team = m.teams.find((t) => t.side === "home");
     assert.deepEqual(K.kitColours(team, true), K.kitColours(team, true, "#1f9d6b"), "default: the home keeper's old shirt");
   });
+
+  // the 2D pitch (also the minimap over the 3D view) and the 3D kits show the same keeper colour,
+  // and _loadPlayers dresses each keeper (footballer or mannequin) from dressOf
+  test(`${id}: the 2D pitch and the 3D dress each keeper in the same colour`, () => {
+    const match = { players: Object.fromEntries(m.players.map((p) => [p.player_id, p])), teams: Object.fromEntries(m.teams.map((t) => [t.team_id, t])) };
+    const flat = PT.keeperColours(m.teams), kits = PT.keeperKits(match.teams);
+    const keepers = m.players.filter((p) => p.position === "GK");
+    assert.ok(keepers.length >= 2);
+    for (const p of keepers) {
+      const d = S3.dressOf(match, kits, p.player_id);
+      assert.equal(d.gk, true);
+      assert.equal(d.keeper, flat[p.team_id], `${p.player_id}: 3D ${d.keeper}, 2D ${flat[p.team_id]}`);
+      assert.deepEqual(K.kitColours(d.team, d.gk, d.keeper).shirt, K.kitColours(d.team, true, flat[p.team_id]).shirt);
+    }
+  });
 }
+
+test("team colours that are not #rrggbb are left out of the keepers' pick", () => {
+  const teams = [{ team_id: "A", side: "home", color_primary: "#fff", color_secondary: "#c00" }, { team_id: "B", side: "away", color_primary: "#7a3fb8", color_secondary: "navy" }];
+  const kits = PT.keeperKits(teams);
+  assert.notEqual(kits.home, kits.away);
+  assert.ok(PT.GK_PALETTE.includes(kits.home) && PT.GK_PALETTE.includes(kits.away));
+  assert.ok(PT.deltaE(kits.away, "#7a3fb8") >= 25, "away keeper apart from the valid away colour");
+});
 
 test("a keeper rig on a match without players builds, with the procedural poses", { skip: (!raw || !motion) && "no web/data/M001 or motion clips" }, () => {
   const scene3 = new B.Scene(new B.NullEngine());

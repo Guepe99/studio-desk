@@ -33,18 +33,38 @@ export const textOn = (hex) => {
 const TRAIL = [1, 2, 3, 4, 5].map((j) => `rgba(255,255,255,${(0.6 * (1 - (j - 1) / 5)).toFixed(2)})`);
 const SIGNAL = "#00ff87";   // the house accent on the picture (--green in broadcast.css)
 const AIR = "#ffd23f";      // the ball's ring when it is above head height
-// Keepers wear a colour of their own: the first of these far enough from both kits of both teams.
-const KEEPER = ["#f2c14e", "#e05fd0", "#22d3b5", "#f2f2f2", "#111111"];
+// Keeper shirts (Law 4: colours that set them apart from the other players), the same on the 2D
+// pitch and on the 3D kits. Each keeps the old one of his side while it stands at least GK_CLASH
+// (CIE76 delta E) from both teams' colours, the other keeper's shirt and the grass, else takes the
+// palette colour farthest from those (the first on a tie). Colours that are not #rrggbb are left out.
+// shortcut: keeper colours picked here; upgrade when the export carries the keepers' own kits
+export const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
+export const GK_PALETTE = [GK_KIT.home, GK_KIT.away, "#f2c230", "#f07a1f", "#22b8cf", "#e0457b", "#16161a"];
+// the 3D grass (scene3d/pitch.js, linear 0.052, 0.155, 0.040) and the 2D pitch's two stripes
+export const GRASS = ["#406e38", "#2a7536", "#2e7d3b"];
+const GK_CLASH = 25;
+const HEX = /^#[0-9a-f]{6}$/i;
+// CIE L*a*b* of #rrggbb (D65)
+function lab(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
+  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+export const deltaE = (a, b) => { const p = lab(a), q = lab(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+// {home, away}: each keeper's shirt; teams: the match's two teams (an array or keyed by id)
+export function keeperKits(teams) {
+  const avoid = [...Object.values(teams).flatMap((t) => [t.color_primary, t.color_secondary]).filter((c) => HEX.test(c)), ...GRASS];
+  const gap = (c, other) => Math.min(...[...avoid, other].map((o) => deltaE(c, o)));
+  const pick = (side, other) => (gap(GK_KIT[side], other) >= GK_CLASH ? GK_KIT[side]
+    : GK_PALETTE.reduce((best, c) => (gap(c, other) > gap(best, other) ? c : best)));
+  const home = pick("home", GK_KIT.away);
+  return { home, away: pick("away", home) };
+}
+// team_id -> the keeper's colour on the 2D pitch
 export function keeperColours(teams) {
-  const kits = teams.flatMap((t) => [t.color_primary, t.color_secondary]).filter((c) => /^#[0-9a-f]{6}$/i.test(c)).map(rgb);
-  const far = (c) => kits.every((k) => Math.hypot(...k.map((v, i) => v - rgb(c)[i])) >= 120);
-  const out = {}, used = new Set();
-  for (const t of teams) {
-    const c = KEEPER.find((x) => !used.has(x) && far(x)) ?? KEEPER.find((x) => !used.has(x));
-    used.add(c);
-    out[t.team_id] = c;
-  }
-  return out;
+  const kits = keeperKits(teams);
+  return Object.fromEntries(Object.values(teams).map((t) => [t.team_id, kits[t.side]]));
 }
 
 // Ids of the players the cues name: payload.player_id, or the players of the facts they cite.

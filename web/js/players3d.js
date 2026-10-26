@@ -14,6 +14,7 @@
 
 const B = window.BABYLON;
 import { toon, outlineMaterial } from "./toon3d.js";
+import { GK_KIT } from "./pitch.js";   // the keepers' shirts: keeperKits there
 const SKIN_LEVEL = 0.6, HAIR_LEVEL = 0.5;
 export const REGIONS = ["skin", "kit_shirt", "kit_shorts", "kit_socks", "boots", "forearms", "hands"];
 export const SKIN_TONES = ["#f2cfb3", "#e3b08c", "#c98f68", "#a86d4b", "#7d4b31", "#57321f"];
@@ -22,31 +23,6 @@ export const HAIR_STYLES = ["hair_buzzed", "hair_parted", "shaved"];
 export const BOOT_COLOURS = ["#16161a", "#f2f2f2", "#ff5fa2", "#2f7bff", "#ffcf1a", "#ff6b1f"];
 // kit texture layout of build_footballer.kit_uv: UV units per metre, the same both ways
 const UV_PER_M = 0.8;
-// Keeper shirts (Law 4: colours that set them apart from the other players). Each keeps the old
-// one of his side while it stands at least GK_CLASH (CIE76 delta E) from both teams' colours and
-// the other keeper's shirt, else takes the palette colour farthest from those (the first on a tie).
-// M001's home keeper green and its home green #1b7f3b are 16 apart; purple and navy, 32.
-// shortcut: keeper colours picked here; upgrade when the export carries the keepers' own kits
-const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
-export const GK_PALETTE = [GK_KIT.home, GK_KIT.away, "#f2c230", "#f07a1f", "#22b8cf", "#e0457b", "#16161a"];
-const GK_CLASH = 25;
-// CIE L*a*b* of #rrggbb (D65)
-function lab(hex) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
-  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
-  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
-}
-export const deltaE = (a, b) => { const p = lab(a), q = lab(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
-// {home, away}: each keeper's shirt for the match's two teams (match.teams)
-export function keeperKits(teams) {
-  const shirts = Object.values(teams).flatMap((t) => [t.color_primary, t.color_secondary]);
-  const gap = (c, other) => Math.min(...[...shirts, other].map((o) => deltaE(c, o)));
-  const pick = (side, other) => (gap(GK_KIT[side], other) >= GK_CLASH ? GK_KIT[side]
-    : GK_PALETTE.reduce((best, c) => (gap(c, other) > gap(best, other) ? c : best)));
-  const home = pick("home", GK_KIT.away);
-  return { home, away: pick("away", home) };
-}
 // screen share (bounding sphere area over viewport area) under which the body switches to the far
 // one, which has no shirt number: about 45 px of player height in a 720 px frame, so the wide
 // broadcast shot keeps the numbers (at 120 px it lost them)
