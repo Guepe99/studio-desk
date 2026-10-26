@@ -96,3 +96,16 @@ def test_a_failed_export_leaves_the_old_folder_as_it_was(match_db, tmp_path, mon
     except KeyError:
         pass
     assert {p.name: p.read_bytes() for p in out.iterdir()} == before
+
+
+def test_the_template_recap_rounds_half_up_as_the_labels_do():
+    from studiodesk.export import recap
+    match = {"teams": [{"team_id": "T01", "short_name": "HOM"}, {"team_id": "T02", "short_name": "AWA"}],
+             "players": [{"player_id": "T01-9", "name": "Ann Varga"}]}
+
+    def fact(fid, kind, team, value, pid=None):
+        return {"fact_id": fid, "kind": kind, "ts": 2700.0, "team_id": team, "player_id": pid, "value": value}
+    facts = [fact("F1", "pass_accuracy", "T01", 82.5), fact("F2", "pass_accuracy", "T02", 76.5),
+             fact("F3", "distance_covered", "T01", 1650.0, "T01-9")]
+    body = recap(match, facts, 2700.0, "Half-time")["body"]
+    assert "Pass accuracy: HOM 83%, AWA 77%." in body and "Ann Varga, 1.7 km." in body

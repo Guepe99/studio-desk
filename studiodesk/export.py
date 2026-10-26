@@ -13,6 +13,7 @@ from contextlib import closing
 from pathlib import Path
 
 from . import config, db
+from .facts.engine import half_up
 
 DURATION = {"nameplate": 6.0, "pass_shot": 6.0, "momentum": 8.0, "why_card": 12.0}
 TOP_SPRINTS = {"analyst": 5, "casual": 3}
@@ -73,7 +74,7 @@ def recap(match, facts, cp, title):
     parts.append(f"{short[home]} {h:.0f}-{a:.0f} {short[away]}.")
     acc = {f["team_id"]: f for f in by_kind.get("pass_accuracy", []) if f["ts"] == cp and f["player_id"] is None}
     if home in acc and away in acc:
-        parts.append(f"Pass accuracy: {short[home]} {acc[home]['value']:.0f}%, {short[away]} {acc[away]['value']:.0f}%.")
+        parts.append(f"Pass accuracy: {short[home]} {half_up(acc[home]['value'])}%, {short[away]} {half_up(acc[away]['value'])}%.")
         used += [acc[home]["fact_id"], acc[away]["fact_id"]]
     sprints = [f for f in by_kind.get("sprint_speed", []) if f["ts"] <= cp]
     if sprints:
@@ -84,7 +85,7 @@ def recap(match, facts, cp, title):
     if dist:
         top = max(dist, key=lambda f: f["value"])
         parts.append(f"Most ground covered: {players.get(top['player_id'], {}).get('name')}, "
-                     f"{top['value'] / 1000:.1f} km.")
+                     f"{half_up(top['value'] / 1000 * 10) / 10:.1f} km.")  # as the label and the booth round it
         used.append(top["fact_id"])
     return {"kind": "recap", "title": title, "body": " ".join(parts), "fact_ids": used}
 

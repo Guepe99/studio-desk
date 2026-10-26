@@ -77,7 +77,7 @@ def test_player_goals_and_team_pass_accuracy_count_from_kick_off(match_db):
     assert acc and {r["ts"] for r in acc} <= windows and all(r["player_id"] is None and r["unit"] == "%" for r in acc)
     last = max((r for r in acc if r["team_id"] == HOME), key=lambda r: r["ts"])
     ok, n = map(int, re.search(r"\((\d+)/(\d+)\)", last["label_en"]).groups())
-    assert n == len(json.loads(last["source_event_ids"])) and abs(last["value"] - 100 * ok / n) < 0.06
+    assert n == len(json.loads(last["source_event_ids"])) and last["value"] == math.floor(100 * ok / n + 0.5)  # whole, half up
 
 
 def test_goal_shot_and_sprint(match_db):
@@ -182,9 +182,21 @@ def test_a_label_rounds_half_up_as_the_phrasebook_says_it(tmp_path):
         conn.execute("UPDATE events SET result_name = ? WHERE event_id = ?", ("success" if k < 5 else "fail", eid))
     conn.commit()
     build(conn, info["match_id"], xt_grid=None)
-    (label,) = [r["label_en"] for r in facts(conn, "pass_accuracy") if (r["team_id"], r["player_id"], r["period"])
-                == (away, None, 2)]
-    assert label == "Pass accuracy 63% (5/8) at full time"
+    (row,) = [r for r in facts(conn, "pass_accuracy") if (r["team_id"], r["player_id"], r["period"]) == (away, None, 2)]
+    assert row["label_en"] == "Pass accuracy 63% (5/8) at full time"
+    assert row["value"] == 63  # the whole per cent the label states, so the desk and the AI writers never show 62.5
+    conn.close()
+
+
+def test_a_possession_label_says_its_stored_value(tmp_path):
+    """5146 of 10000 owned frames is 51.46%, stored 51.5 and shown 51.5 on the team stats: the label says 52%, not 51."""
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    m = Match(conn, info["match_id"])
+    m.owner = np.r_[np.full(5146, m.cols[m.home][0]), np.full(4854, m.cols[m.away][0])]
+    m.possession(1, 60.0, (0, 9999))
+    got = {f["team_id"]: (f["value"], f["label_en"]) for f in m.facts if f["kind"] == "team_possession"}
+    assert got == {m.home: (51.5, "Possession 52% since kick-off"), m.away: (48.5, "Possession 49% since kick-off")}
     conn.close()
 
 

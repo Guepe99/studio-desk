@@ -165,7 +165,8 @@ export function factValue(f, match, lang) {
 }
 
 const SHOWN_UNITS = new Set(["km/h", "km", "m", "%", "/10"]);   // the units a line writes after the number
-const near = (v, n, d) => Math.abs(v - n) <= 0.5 * 10 ** -d + 1e-9;
+// n on screen is v rounded half up to d decimals (engine.half_up): -tol < n - v <= tol, so 17.5 is "18", never "17"
+const near = (v, n, d) => { const tol = 0.5 * 10 ** -d, x = n - v; return x > -tol + 1e-9 && x <= tol + 1e-9; };
 const sameScore = (p, [a, b]) => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a);
 
 // Where one number on screen comes from: {fact} | {event} | {story} | {zero} | null (not in the story's facts).

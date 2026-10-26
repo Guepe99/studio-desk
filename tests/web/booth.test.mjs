@@ -190,10 +190,6 @@ test("pieces and number match studiodesk/booth.py", () => {
     { facts: { distance_covered: { fact_id: "F", value } } });
   assert.equal(say(10450)?.text, "10,5 chilometri.");
   assert.equal(say(14550), null);
-  // a per cent is said as its label shows it: 201/238 is 84.45%, stored 84.5, labelled and said "84"
-  const pct = b.render("co", ["{fact:pass_accuracy}."],
-    { facts: { pass_accuracy: { fact_id: "F", value: 84.5, label_en: "Pass accuracy 84% (201/238) at half-time" } } });
-  assert.match(pct?.text, /^84 /);
   assert.equal(number(433, null, "en"), "4-3-3");
   assert.equal(clipKey("co", "Dan."), "co|Dan.");
 });

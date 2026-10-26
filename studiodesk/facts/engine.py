@@ -251,7 +251,7 @@ class Match:
             if kind not in PASS_TYPES:
                 continue
             dist = math.hypot(e["end_x"] - e["start_x"], e["end_y"] - e["start_y"])
-            # a label says the stored value, as the booth and the graphics do: 14.46 m is stored 14.5, so "15 m"
+            # a label says the stored value, as the pass graphic shows it: 14.46 m is stored 14.5, so "15 m"
             self.add("pass_distance", ts, round(dist, 1), "m", f"Pass of {half_up(round(dist, 1))} m", team, pid, [eid])
             gain = (e["end_x"] - e["start_x"]) * sign
             pressure = bypass = 0.0
@@ -300,8 +300,9 @@ class Match:
                 groups.setdefault((e["team_id"], e["player_id"]), []).append(e)
             for (team, pid), es in groups.items():
                 ok = sum(e["result_name"] == "success" for e in es)
-                pct = 100 * ok / len(es)
-                self.add("pass_accuracy", cp, round(pct, 1), "%", f"Pass accuracy {half_up(pct)}% ({ok}/{len(es)}) {when}",
+                # the whole per cent the label states, from the exact count: 201/238 (84.45%) is 84, never a stored 84.5
+                pct = half_up(100 * ok / len(es))
+                self.add("pass_accuracy", cp, pct, "%", f"Pass accuracy {pct}% ({ok}/{len(es)}) {when}",
                          team, pid, [e["event_id"] for e in es], period=period)
 
     def start_formation(self):
@@ -369,8 +370,8 @@ class Match:
             if not es:
                 continue
             ok = sum(e["result_name"] == "success" for e in es)
-            pct = 100 * ok / len(es)
-            self.add("team_pass_accuracy", b, round(pct, 1), "%", f"Pass accuracy {half_up(pct)}% ({ok}/{len(es)}) since kick-off",
+            pct = half_up(100 * ok / len(es))  # whole, as pass_accuracy
+            self.add("team_pass_accuracy", b, pct, "%", f"Pass accuracy {pct}% ({ok}/{len(es)}) since kick-off",
                      team, None, [e["event_id"] for e in es], period=period)
 
     def possession(self, period, b, frames):
