@@ -462,3 +462,25 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - Generated graphics (cues from `studiodesk/agents/audiences.py`) appear on the desk as `G-<cue_id>`
   pseudo-stories. They are decided in the browser tab only and never sent to `/api/decisions`, which
   takes `S-` ids.
+
+## Judge fixes (fix/judge-desk, additive)
+
+- Fact kinds: `team_shots`, `team_shots_on_target`, `team_corners` (a running count per team since
+  kick-off: one fact at 0 at kick-off and one at every change, `source_event_ids` the events counted)
+  and `team_possession` (a team's share of the ball, %, at each 5-minute window end, as `momentum`).
+- MCP tool `get_team_totals(match_id)`: the latest fact of each of those four kinds per team, up to the
+  clock. The `studio_host` may cite a count with its noun ("4 shots"); every number is still a fact id.
+- `GET /api/ask` -> `{available}`, always 200: the page's probe, after the same checks as a question
+  (it replaces probing with a POST that answered 422).
+- `POST /api/decisions` with `edited_text`: each text and headline meets `rules.check_text` against
+  the story's facts (its numbers, minute and score, its own fact ids, no real name), then Content Safety
+  when `AZURE_CONTENT_SAFETY_ENDPOINT` is set. A refusal answers 422 `{detail: "<reason>. It stays off
+  air."}`, keeps the story's last decision, spends one action and writes the audit action
+  `edit_refused` (`detail.reason`). Anything that cannot be checked is refused.
+- The `why_card` kicker of a story card reads `KEY MOMENT` / `MOMENTO CHIAVE` / `MOMENTO CLAVE`.
+- Desk: an agents' story still `needs_review` 300 match seconds after its slot ends (its last cue's
+  end, else its first cue or `ts`) is `expired` and listed under "Missed: n", as a generated graphic is
+  once its slot ends.
+- Next key moment also stops at a cue of a story that waits for review on this visitor's desk.
+- The desk's audit total from a replay counts agent steps that used the model (the traces); the
+  audit table, and so docs/MEASURES.md, counts model calls.

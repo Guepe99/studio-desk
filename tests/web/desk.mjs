@@ -102,12 +102,17 @@ async function structure(page, all, storyIds, ts, tag) {
   // live, a story exists once the match has passed its facts (its ts): a goal is never listed before it is scored
   const tsOf = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.studioDesk.desk.byId.get(id)?.ts])), storyIds);
   const want = new Set(storyIds.filter((id) => tsOf[id] <= ts && firstCue(all, id) <= ts + LOOKAHEAD));
-  const listed = secs.flatMap((s) => s.items).filter((i) => i.id.startsWith("story-S-")).map((i) => i.id.slice(6));
+  // a story nobody decided on, 5 match minutes past its slot, is listed under Missed, below the three sections
+  const missed = await page.$$eval("#desk .missed [data-item]", (n) => n.map((x) => x.id));
+  const listed = [...secs.flatMap((s) => s.items).map((i) => i.id), ...missed].filter((i) => i.startsWith("story-S-")).map((i) => i.slice(6));
   // generated graphics (G- ids) go through the desk too, and at most one waits at a time
   const gensWaiting = secs.find((s) => s.id === "needs")?.items.filter((i) => i.id.startsWith("story-G-")).length ?? 0;
   expect(gensWaiting <= 1, `${tag} @${ts}: ${gensWaiting} generated graphics waiting`);
   expect(listed.length === new Set(listed).size && listed.length === want.size && listed.every((id) => want.has(id)),
     `${tag} @${ts}: listed ${JSON.stringify(listed)}, reached ${JSON.stringify([...want])}`);
+  const late = await page.evaluate(([ids, now]) => { const d = window.studioDesk.desk; return ids.filter((id) => d.byId.get(id) && d.status(d.byId.get(id)) === "expired"
+    && !(now >= (d.slotEnd.get(id) ?? d.firstOf(d.byId.get(id))) + 300)); }, [missed.filter((i) => i.startsWith("story-S-")).map((i) => i.slice(6)), ts]);
+  expect(!late.length, `${tag} @${ts}: missed before 5 minutes past the slot ${JSON.stringify(late)}`);
   for (const s of secs) {
     expect(String(s.items.length) === s.count, `${tag} @${ts}: ${s.id} says ${s.count} for ${s.items.length} items`);
     expect(s.items.length ? s.empty === null : (s.empty ?? "").length > 5, `${tag} @${ts}: ${s.id} empty state ${JSON.stringify(s.empty)}`);
@@ -152,7 +157,7 @@ async function scenario(browser, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone });
   const page = await ctx.newPage();
   // voice.json and booth.json are optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
-  // api/ask too: the page probes it with an empty body (422 with a model behind it, 503 without, as here).
+  // api/ask too: the static server here has no API, so the page's GET probe gets a 404 (the real API answers 200).
   const optional = (u) => /\/(voice|booth)\.json$/.test(u) || u.endsWith("/api/ask");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
@@ -234,7 +239,7 @@ async function scenario(browser, w, h) {
     });
     expect(c.parts.join() === "story-head,tally,kicker,headline,story-text,actions,more" && c.open === false && c.built === false,
       `${tag}: closed card ${s.story_id} ${JSON.stringify(c)}`);
-    expect(c.headline === whyCue(s).payload.title && c.kicker === "WHY IT MATTERS", `${tag}: card ${s.story_id} headline ${JSON.stringify([c.kicker, c.headline])}`);
+    expect(c.headline === whyCue(s).payload.title && c.kicker === "KEY MOMENT", `${tag}: card ${s.story_id} headline ${JSON.stringify([c.kicker, c.headline])}`);
     if (phone) expect(c.h <= 360, `${tag}: closed card ${s.story_id} is ${c.h} px tall at 390x844`);
   }
   await shoot("closed", null);
@@ -352,7 +357,8 @@ async function scenario(browser, w, h) {
     `${tag}: approved story off screen ${await page.$eval(card(SWING), (el) => el.textContent)}`);
   await seekTo(page, whyCue(SWING).ts + 2);
   const lines = await page.evaluate(([a, b]) => [document.querySelector(`#story-${a} .tally`)?.textContent, document.querySelector(`#story-${b} .outcome`)?.textContent], [SWING.story_id, HELD.story_id]);
-  expect(lines[0] === "On air, approved by you" && lines[1] === "approved by you", `${tag}: on screen, the status lines read ${JSON.stringify(lines)}`);
+  // the key pass, approved in its slot, aired: its row says when; the swing, approved after its slot, claims nothing
+  expect(lines[0] === "On air, approved by you" && /^aired at \d+', approved by you$/.test(lines[1]), `${tag}: on screen, the status lines read ${JSON.stringify(lines)}`);
 
   // 5b. the AI proposal sits in Details; "Use proposal" puts it on air (from its Done row: on a phone the
   // On air now strip is compact, without Details)
@@ -462,6 +468,12 @@ async function scenario(browser, w, h) {
   const sids = await page.$$eval(".log .sid", (n) => n.map((x) => x.textContent));
   expect(sids.length && sids.every((x) => !/S-\d{6}/.test(x)) && sids.some((x) => /^Goal \d+'$/.test(x)), `${tag}: audit names stories ${JSON.stringify(sids.slice(0, 4))}`);
   expect(await page.$$eval(".log tr.a-agent", (n) => n.length) > 0, `${tag}: audit has no agent rows`);
+  // the replay's traces are steps, not calls (M001: 115 steps, 132 calls in MEASURES.md): the total says so
+  const steps = await page.evaluate(() => {
+    const t = document.querySelector("#desk .totals div"), d = window.studioDesk.desk;
+    return { text: t.textContent, tip: t.title, n: d.traces.filter((x) => x.model).length };
+  });
+  expect(steps.text === `${steps.n} agent steps that used the model` && /more than once/.test(steps.tip), `${tag}: audit total ${JSON.stringify(steps)}`);
   await shoot("audit", null);
   // early in the match neither the audit nor the traces name a story the match has not reached
   await seekTo(page, 30);
@@ -535,6 +547,14 @@ async function lookahead(browser) {
   await structure(page, m2, s2.map((s) => s.story_id), chance.ts + 1, "M002");
   expect(await page.$eval(card(chance), (el) => !!el.querySelector(".tag")).catch(() => false), "M002 after the shot: the 17' story is not listed as Next");
   await structure(page, m2, s2.map((s) => s.story_id), at + 1, "M002");
+  // at 22' the held stories whose slot ended 5 minutes before (the 11' pressing spell among them) are missed, not waiting
+  const slotEnd = (id) => Math.max(...m2.filter((c) => c.story_id === id).map((c) => c.ts + c.duration_s));
+  const stale = s2.filter((s) => s.default_status === "needs_review" && slotEnd(s.story_id) + 300 <= 22 * 60).map((s) => `story-${s.story_id}`);
+  await structure(page, m2, s2.map((s) => s.story_id), 22 * 60, "M002");
+  const missedAt22 = await page.$$eval("#desk .missed [data-item]", (n) => n.map((x) => x.id));
+  const waitingAt22 = await page.$$eval("#desk .sec-needs [data-item]", (n) => n.map((x) => x.id));
+  expect(stale.length > 0 && stale.every((id) => missedAt22.includes(id) && !waitingAt22.includes(id)) && /^Missed: \d+$/.test(await page.$eval("#desk .missed > summary", (el) => el.textContent)),
+    `M002 at 22': stale ${JSON.stringify(stale)}, missed ${JSON.stringify(missedAt22)}, waiting ${JSON.stringify(waitingAt22)}`);
   await page.screenshot({ path: `${shots}/desk-lookahead-M002.png` });
   await page.context().close();
 }
@@ -591,18 +611,18 @@ async function generated(page, all, match) {
   await seekTo(page, b.ts + 1);
   expect(!(await panelOn(b)), `${match}: a skipped team shape panel is on air`);
   expect(await text(`.sec-done #story-${gb} .outcome`) === "skipped by you", `${match}: skipped row ${await text(`#story-${gb} .outcome`)}`);
-  // nobody decided: off air, then expired into Done with no actions left
+  // nobody decided: off air, then missed: counted under Done, its row with no actions left
   const end = await page.evaluate((id) => window.studioDesk.desk.slotEnd.get(id), gc);
   await seekTo(page, c.ts + 1);
   expect(!(await panelOn(c)), `${match}: an undecided team shape panel is on air`);
   await seekTo(page, end + 1);
-  const row = await page.$eval(`.sec-done #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
-  expect(JSON.stringify(row) === '["expired, its moment passed",0]', `${match}: expired panel row ${JSON.stringify(row)}`);
+  const row = await page.$eval(`.missed #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
+  expect(JSON.stringify(row) === '["missed, nobody put it on air in time",0]', `${match}: missed panel row ${JSON.stringify(row)}`);
   // the risk rule's panel airs by itself and says who put it there
   const mom = all.find((x) => x.story_id === null && x.graphic === "momentum" && x.audience === "analyst" && x.lang === "en");
   await seekTo(page, mom.ts + 1);
   const gm = await gid(mom);
-  expect(/approved by the risk rule/.test(await text(`#story-${gm} .tally`)), `${match}: momentum panel says ${await text(`#story-${gm} .tally`)}`);
+  expect(/approved automatically \(low risk\)/.test(await text(`#story-${gm} .tally`)), `${match}: momentum panel says ${await text(`#story-${gm} .tally`)}`);
 }
 
 // Edges at 1440: an API that hangs, a refused edit, a language switch while editing, the on-air

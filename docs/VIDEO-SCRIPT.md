@@ -1,6 +1,6 @@
 # Video script
 
-A 108-second demo, under the two-minute limit. It follows one producer through one match, M001: the problem, one story with its explanation and the facts behind it, her decision, the controls, the cost and the honest limit.
+A 110-second demo, under the two-minute limit. It follows one producer through one match, M001: the problem, one story with its explanation and the facts behind it, her decision, the controls, the cost and the honest limit.
 
 ## Voice
 
@@ -28,6 +28,6 @@ The timings use a measured speaking rate of 2.18 words a second: the 83 English 
 | 57.5 to 66 s | 17 | 7.8 | Press **Use proposal**: the agents' line ("Duarte heads wide from the six-yard box in the 8th minute, a 9.3 m effort at 67.2 km/h.") goes on air. Open the **Audit log** tab and hold on the new row. | She puts the agents' line on air with one click, and the audit log records her decision. |
 | 66 to 80 s | 29 | 13.3 | Turn off the **AI graphics** switch: the story leaves the air, the desk says only template graphics are on air. Turn it back on, then open the **Traces** tab and scroll through the steps of this story. | If anything looks wrong, one switch takes every AI story off air, and the template graphics carry on. The traces show each step, with its model, tokens and cost. |
 | 80 to 92 s | 24 | 11.0 | `?match=M001&t=2400&speed=1&view=split`. Open **Ask the studio**, type "How many shots has each team had?" and let the answer appear with its facts. | Viewers can ask the studio too. The answer uses only facts up to that minute, and Content Safety checks the question and the answer. |
-| 92 to 108 s | 33 | 15.1 | `?match=M001&t=5630&speed=1&view=split`, the **Audit log** tab scrolled to **What the agents cost**, for 6 s. Then `?match=M001&t=4906&speed=1&play=1&view=split`: Duarte makes it 2-2 in the 81st minute and the comeback graphic comes up. Hold on it to the end. | A match costs six to ten cents in model calls. The honest limit: the matches are synthetic, and the rules alone find the same moments. The agents add the analysis; the producer decides. |
+| 92 to 110.5 s | 39 | 17.9 | `?match=M001&t=5630&speed=1&view=split`, the **Audit log** tab scrolled to **What the agents cost**, for 6 s. Then `?match=M001&t=4906&speed=1&play=1&view=split`: Duarte makes it 2-2 in the 81st minute and the comeback graphic comes up. Hold on it to the end. | A match costs six to ten cents in model calls. The honest limit: the matches are synthetic, and the rules alone find nine of the fourteen hidden storylines. The agents find eleven and write the analysis; the producer decides. |
 
-The voice-over is 221 words, about 101 seconds of speech at the measured rate. Its numbers come from [docs/MEASURES.md](MEASURES.md) and the [README](../README.md#limits): $0.060 to $0.102 a match in model calls, and the rule fallback on M001 finding the same 15 moments as the run with the model.
+The voice-over is 227 words, about 104 seconds of speech at the measured rate. Its numbers come from [docs/MEASURES.md](MEASURES.md) and the [README](../README.md#limits): $0.060 to $0.102 a match in model calls, and the hidden storylines found: 11 of 14 with the agents, 9 of 14 with the rules alone.

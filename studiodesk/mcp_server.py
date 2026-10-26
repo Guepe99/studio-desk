@@ -117,7 +117,8 @@ def get_facts(match_id: str, kind: str | None = None, player_id: str | None = No
     shot_distance, sprint_speed, sprint_count, distance_covered, ball_speed, pass_distance, pass_difficulty,
     pass_accuracy, xt_added, momentum, press_intensity, formation, start_formation (the team sheet's, at
     kick-off), line_height, team_length, team_width, and a player's totals since the period's kick-off every 15 minutes: checkin_touches, checkin_passes,
-    checkin_distance (km), checkin_sprints, checkin_top_speed."""
+    checkin_distance (km), checkin_sprints, checkin_top_speed; a team's totals since kick-off: team_shots,
+    team_shots_on_target, team_corners, team_possession (get_team_totals gives the latest of each)."""
     sql, args = "SELECT * FROM facts WHERE match_id = ? AND ts <= ?", [match_id, _now()]
     for col, op, val in (("kind", "=", kind), ("player_id", "=", player_id), ("team_id", "=", team_id),
                          ("ts", ">=", from_ts), ("ts", "<=", to_ts)):
@@ -150,7 +151,20 @@ def get_momentum(match_id: str, team_id: str | None = None) -> list[dict]:
     return get_facts(match_id, kind="momentum", team_id=team_id)
 
 
-TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum)
+TEAM_TOTALS = ("team_shots", "team_shots_on_target", "team_corners", "team_possession")
+
+
+def get_team_totals(match_id: str) -> list[dict]:
+    """Each team's totals since kick-off, counted by code: shots, shots on target, corners and possession (the
+    share of the ball, at the latest 5-minute window end). The latest fact of each kind per team."""
+    latest = {}
+    for r in _rows(f"SELECT * FROM facts WHERE match_id = ? AND ts <= ? AND kind IN ({', '.join('?' * len(TEAM_TOTALS))}) "
+                   "ORDER BY ts, fact_id", (match_id, _now(), *TEAM_TOTALS)):
+        latest[(r["kind"], r["team_id"])] = r  # in ts order: the last one is the latest
+    return [_fact(latest[k]) for k in sorted(latest)]
+
+
+TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum, get_team_totals)
 server = FastMCP("studiodesk")
 for _fn in TOOLS:
     server.add_tool(_fn, annotations=ToolAnnotations(readOnlyHint=True))

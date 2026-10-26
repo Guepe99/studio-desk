@@ -112,7 +112,8 @@ export class Activity {
     }
     if (agent === "analyst") return this.t("didExplain");
     if (agent === "commentator") return this.t(r.step === "rewrite" ? "didRewrite" : "didWrite");
-    if (agent === "verifier") return this.t(/^pass/.test(out) ? "didPass" : /^template/.test(out) ? "didTemplate" : /rewritten|^fail/.test(out) ? "didRewritten" : "didCheck");
+    // the check's final outcome: "rewritten" means the rewrite passed every check
+    if (agent === "verifier") return this.t(/^pass/.test(out) ? "didPass" : /^template/.test(out) ? "didTemplate" : /rewritten/.test(out) ? "didPassRewrite" : /^fail/.test(out) ? "didRewritten" : "didCheck");
     return this.t(agent === "director" ? "didCue" : "didHand");
   }
 

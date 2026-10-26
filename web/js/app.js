@@ -8,7 +8,7 @@ import { BoothAudio } from "./booth-audio.js";
 import { View3D, probe, defaultView, warm3d, RADAR, replays, holdForReplays, viewAt } from "./view3d.js";
 import { Ask } from "./ask.js";
 import { Proof } from "./proof.js";
-import { Moments, LEAD_S } from "./moments.js";
+import { Moments, LEAD_S, keyCues } from "./moments.js";
 import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
@@ -25,7 +25,10 @@ const STRINGS = {
     myteam: "My team", player: "Player",
     ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
     askHint: "Answers use only the match data up to the replay time.", askWait: "The studio is checking the match data.",
-    askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts",
+    askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts", askTry: "Try one of these",
+    askSugShots: "How many shots has each team had?", askSugControl: "Which team has controlled the match so far, and why?",
+    askSugGoals: "Who has scored so far?", askSugSprint: "Who has made the fastest sprint so far?",
+    askSugPass: "What has been the hardest pass so far?",
     askLimit: "No more questions for now: the limit has been reached. Try again tomorrow.",
     askPaused: "Questions are paused for now: the safety check has reached its limit. Try again later.",
     askOff: "Questions are not available on this site.", askNet: "The studio could not be reached. Check the connection and try again.",
@@ -36,8 +39,8 @@ const STRINGS = {
     actNone: "No agent traces in this replay", actSum: "Hand-offs so far: {n}, {tokens} tokens, {usd}",
     actMade: "How the graphic on air was made: {n} hand-offs, {tokens} tokens, {usd}",
     actRules: "rules, no model", actCode: "code, no model",
-    didPick: "Picked: {what}", didPickAny: "Picked a moment", didExplain: "Explained why it matters", didWrite: "Wrote the line",
-    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didTemplate: "Used the fact-only line",
+    didPick: "Picked: {what}", didPickAny: "Picked a moment", didExplain: "Wrote the analysis", didWrite: "Wrote the line",
+    didRewrite: "Rewrote the line", didPass: "All numbers check out", didRewritten: "Asked for a rewrite", didPassRewrite: "Passed after a rewrite", didTemplate: "Used the fact-only line",
     didCheck: "Checked the numbers", didCue: "Put it in the rundown", didFail: "Model call failed", didHand: "Passed its work on",
     replay: "Replay", swap3d: "Show the 3D view large", swap2d: "Show the 2D pitch large", load3d: "Loading the 3D view",
     fail3d: "The 3D view could not start ({e}). Showing the 2D pitch.", lost3d: "The browser stopped the 3D view. Showing the 2D pitch.",
@@ -55,7 +58,10 @@ const STRINGS = {
     audience: "Pubblico", analyst: "Analista", casual: "Spettatore", kids: "Bambini", myteam: "La mia squadra", player: "Giocatore",
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
-    askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti",
+    askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti", askTry: "Prova una di queste",
+    askSugShots: "Quanti tiri ha fatto ogni squadra?", askSugControl: "Quale squadra ha controllato la partita finora, e perché?",
+    askSugGoals: "Chi ha segnato finora?", askSugSprint: "Chi ha fatto lo scatto più veloce finora?",
+    askSugPass: "Qual è stato il passaggio più difficile finora?",
     askLimit: "Per ora non si possono fare altre domande: il limite è stato raggiunto. Riprova domani.",
     askPaused: "Per ora le domande sono sospese: il controllo di sicurezza ha raggiunto il suo limite. Riprova più tardi.",
     askOff: "Le domande non sono disponibili su questo sito.", askNet: "Lo studio non risponde. Controlla la connessione e riprova.",
@@ -67,8 +73,8 @@ const STRINGS = {
     actNone: "Nessuna traccia degli agenti in questo replay", actSum: "Passaggi di consegne finora: {n}, {tokens} token, {usd}",
     actMade: "Come è nata la grafica in onda: {n} passaggi di consegne, {tokens} token, {usd}",
     actRules: "solo regole", actCode: "solo codice",
-    didPick: "Ha scelto: {what}", didPickAny: "Ha scelto un momento", didExplain: "Ha spiegato perché conta", didWrite: "Ha scritto la frase",
-    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didTemplate: "Ha usato la frase con i soli fatti",
+    didPick: "Ha scelto: {what}", didPickAny: "Ha scelto un momento", didExplain: "Ha scritto l'analisi", didWrite: "Ha scritto la frase",
+    didRewrite: "Ha riscritto la frase", didPass: "Tutti i numeri tornano", didRewritten: "Ha chiesto di riscrivere", didPassRewrite: "Tutto torna dopo una riscrittura", didTemplate: "Ha usato la frase con i soli fatti",
     didCheck: "Ha controllato i numeri", didCue: "L'ha messa in scaletta", didFail: "Errore del modello", didHand: "Ha passato le consegne",
     replay: "Replay", swap3d: "Mostra in grande la vista 3D", swap2d: "Mostra in grande il campo 2D", load3d: "Caricamento della vista 3D",
     fail3d: "Impossibile avviare la vista 3D ({e}): resta il campo 2D.", lost3d: "Il browser ha fermato la vista 3D: torna il campo 2D.",
@@ -84,7 +90,10 @@ const STRINGS = {
     audience: "Público", analyst: "Analista", casual: "Espectador", kids: "Niños", myteam: "Mi equipo", player: "Jugador",
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
-    askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos",
+    askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos", askTry: "Prueba una de estas",
+    askSugShots: "¿Cuántos tiros ha hecho cada equipo?", askSugControl: "¿Qué equipo ha controlado el partido hasta ahora, y por qué?",
+    askSugGoals: "¿Quién ha marcado hasta ahora?", askSugSprint: "¿Quién ha hecho el sprint más rápido hasta ahora?",
+    askSugPass: "¿Cuál ha sido el pase más difícil hasta ahora?",
     askLimit: "Por ahora no se pueden hacer más preguntas: se ha alcanzado el límite. Inténtalo mañana.",
     askPaused: "Por ahora las preguntas están en pausa: el control de seguridad ha alcanzado su límite. Inténtalo más tarde.",
     askOff: "Las preguntas no están disponibles en este sitio.", askNet: "No se ha podido contactar con el estudio. Revisa la conexión e inténtalo de nuevo.",
@@ -96,8 +105,8 @@ const STRINGS = {
     actNone: "No hay trazas de los agentes en esta repetición", actSum: "Relevos hasta ahora: {n}, {tokens} tokens, {usd}",
     actMade: "Cómo se hizo el gráfico en pantalla: {n} relevos, {tokens} tokens, {usd}",
     actRules: "reglas, sin modelo", actCode: "código, sin modelo",
-    didPick: "Eligió: {what}", didPickAny: "Eligió un momento", didExplain: "Explicó por qué importa", didWrite: "Escribió la frase",
-    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didTemplate: "Usó la frase solo con datos",
+    didPick: "Eligió: {what}", didPickAny: "Eligió un momento", didExplain: "Escribió el análisis", didWrite: "Escribió la frase",
+    didRewrite: "Reescribió la frase", didPass: "Todos los números cuadran", didRewritten: "Pidió reescribirla", didPassRewrite: "Todo cuadra tras una reescritura", didTemplate: "Usó la frase solo con datos",
     didCheck: "Comprobó los números", didCue: "La puso en la escaleta", didFail: "Error del modelo", didHand: "Pasó el relevo",
     replay: "Repetición", swap3d: "Mostrar en grande la vista 3D", swap2d: "Mostrar en grande el campo 2D", load3d: "Cargando la vista 3D",
     fail3d: "No se pudo iniciar la vista 3D ({e}): se muestra el campo 2D.", lost3d: "El navegador detuvo la vista 3D: se muestra el campo 2D.",
@@ -398,7 +407,10 @@ function refreshCues() {
   // has the net across the foot of the picture, where the card sits
   host.setCues(holdForReplays(sheet, replays(match)), state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
-  moments.setSheet(sheet, desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
+  const mine = match.cues.filter((c) => c.audience === state.audience && c.lang === state.lang);
+  // waiting at its own moment, whatever the clock says now: a story missed by now is held again before its slot
+  const waiting = (id) => desk.byId.get(id) && (desk.decisions.get(id)?.decision ?? desk.defaultStatus(desk.byId.get(id))) === "needs_review";
+  moments.setSheet(keyCues(sheet, mine, waiting), desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
     (c) => playStart(c.ts, desk.byId.get(c.story_id)?.evidence_event_ids));
   ask?.render();
 }
@@ -786,7 +798,7 @@ async function main() {
   buildSeekMarks();
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
-  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout });
+  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts });
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts

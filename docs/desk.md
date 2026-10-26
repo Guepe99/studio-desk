@@ -24,7 +24,10 @@ desk that showed the 23' goal at 11' would spoil the replay and could never happ
   remaining time ([Program Window](https://docs.vizrt.com/viz-mosart-users-guide/5.5/Program_Window.html)).
 - **Needs you**: the held stories, oldest first, each with the time to its slot. These are the only
   full cards.
-- **Done**: one line per story, "23' Goal · approved by the risk rule · Reject Edit". NN/g finds
+- **Done**: one line per story, "23' Goal · aired at 23', approved automatically (low risk) · Reject
+  Edit": once a story's first graphic has played, its row says when, so Done is also the history of
+  what aired. Under it, "Missed: n" counts the stories and graphics nobody put on air before their
+  slot ended (below); their rows open from it. NN/g finds
   cards less scannable than a list for items of the same kind
   ([cards](https://www.nngroup.com/articles/cards-component/)), and a dashboard should be one
   glanceable view ([dashboards](https://www.nngroup.com/articles/dashboards-preattentive/)).
@@ -50,11 +53,16 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   screen, labelled "template graphic, no approval needed", as the proof panel says.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
   at a time, and the analyst sheet alone has 17 Team shape panels a match.
-- One nobody decided on before its slot ended has expired: it never airs, and Done says "expired,
-  its moment passed", with no action left. Done says what happened to each: approved by you, by the
-  risk rule, skipped by you, or expired.
+- One nobody decided on before its slot ended is missed: it never airs, it leaves Needs you for the
+  "Missed" count under Done, and its row says "missed, nobody put it on air in time", with no action
+  left. The agents' stories get a limit too: 5 match minutes after the slot the director gave a held
+  story (after its moment, when it has no cue), it stops asking and is missed. Approving it in those
+  5 minutes records the decision, but its slot has passed, so it airs only if you go back in the match. Done says what happened to each: approved by you, approved automatically, skipped by
+  you, or missed. Each status has a one-line tooltip that says what it means.
 - The AI switch holds the agents' stories only: a generated graphic is code from the facts, so the
-  rule above still decides it when the AI is off.
+  rule above still decides it when the AI is off. A story stays off air with the AI off even when its
+  words on air are the code's phrasebook, because an AI agent (the story finder) picked the moment;
+  its tooltip says so.
 - Decisions on generated graphics stay in the tab, and in the tab's audit lines, even with the API:
   the API keeps decisions for story ids (`S-` followed by six digits) only.
 

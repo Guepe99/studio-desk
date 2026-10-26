@@ -1,4 +1,4 @@
-// "Why it matters" card and recap, top right.
+// Key moment card and recap, top right.
 import { SdGraphic } from "../shared/sd-graphic.mjs";
 import { KICKER } from "./kicker.mjs";
 

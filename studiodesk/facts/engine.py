@@ -33,6 +33,11 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   written only after a first sprint), all counted from kick-off to the check-in.
 - start_formation: the team sheet's shape at kick-off (ts 0), from the starters' positions: defenders,
   midfielders and forwards, stored as the value 433 for 4-3-3. Known before kick-off, so no events.
+- Team totals since kick-off, a fact per team at ts 0 (value 0) and again each time the count changes:
+  team_shots (at the shot), team_shots_on_target (a goal or a saved shot, when the ball crosses the line or
+  the keeper saves), team_corners (at the corner); source events all the team's counted events so far.
+  team_possession: the team's share of the frames in which either team owns the ball, from kick-off to the
+  end of every 5-minute window (ts = the window end, source frames 0 to that end).
 """
 import json
 import math
@@ -57,6 +62,9 @@ MAX_PLAYER_KMH = 45.0
 MAX_BALL_KMH = 220.0  # faster steps are restarts (ball put back on the spot), not kicks
 FORMATION_GAP_M = 6.0
 FORMATION_RATIO = 1.5
+# kind: (unit, label for 1, label for n); the unit is the noun an answer writes after the count
+TOTALS = {"team_shots": ("shots", "1 shot", "{} shots"), "team_shots_on_target": ("shots on target", "1 shot on target",
+          "{} shots on target"), "team_corners": ("corners", "1 corner", "{} corners")}
 
 
 def half_up(v):
@@ -192,6 +200,7 @@ class Match:
         self.passes_and_shots()
         self.pass_accuracy()
         self.score()
+        self.team_totals()
         if self.pos is not None:
             self.sprints_and_distance()
         self.windows_facts()
@@ -311,6 +320,42 @@ class Match:
             self.add("score", e["ts"], goals[team], "goal", f"Goal {goals[self.home]}-{goals[self.away]}",
                      team, e["player_id"], [e["event_id"]], frames=None if f is None else (f, f))
 
+    def team_totals(self):
+        """Running counts per team (module docstring): a fact at kick-off and one at every change."""
+        known = {k: {self.home: [], self.away: []} for k in TOTALS}
+        for i, e in enumerate(self.events):
+            if e["type_name"].startswith("corner_"):
+                known["team_corners"][e["team_id"]].append((e["ts"], e["event_id"]))
+            if e["type_name"] not in SHOT_TYPES:
+                continue
+            known["team_shots"][e["team_id"]].append((e["ts"], e["event_id"]))
+            saves = self.saves_after(i)
+            out = shot_outcome(e, saves)
+            if out == "goal":  # known when the ball is in, as the score fact
+                f = self.line_frame(e["ts"]) if self.pos is not None else None
+                known["team_shots_on_target"][e["team_id"]].append((e["ts"] if f is None else f / self.fps, e["event_id"]))
+            elif out == "saved":
+                at = min(s["ts"] for s in saves if s.get("related_player_id") == e["player_id"] and s["ts"] >= e["ts"])
+                known["team_shots_on_target"][e["team_id"]].append((at, e["event_id"]))
+        for kind, (unit, one, many) in TOTALS.items():
+            for team, got in known[kind].items():
+                self.add(kind, 0.0, 0, unit, many.format(0) + " since kick-off", team, period=1)
+                got.sort()
+                for n, (ts, _) in enumerate(got, 1):
+                    self.add(kind, ts, n, unit, (one if n == 1 else many.format(n)) + " since kick-off", team, None,
+                             [eid for _, eid in got[:n]])
+
+    def possession(self, period, b, frames):
+        """Each team's share of the owned frames from kick-off to the end of this window."""
+        owner = self.owner[:frames[1] + 1]
+        n = {t: int(np.isin(owner, self.cols[t]).sum()) for t in (self.home, self.away)}
+        if not sum(n.values()):
+            return
+        for team in (self.home, self.away):
+            v = 100 * n[team] / sum(n.values())
+            self.add("team_possession", b, round(v, 1), "%", f"Possession {v:.0f}% since kick-off", team, None,
+                     frames=(0, frames[1]), period=period)
+
     def line_frame(self, ts):
         """First frame in the 3 s after a goal kick with the ball at a goal line, or None: the goal
         is known when the ball is in, not when it is struck. The simulated ball stops in the net
@@ -415,6 +460,7 @@ class Match:
             self.momentum(period, b, evs, ids, frames, mins)
             if frames is None:
                 continue
+            self.possession(period, b, frames)
             sl = slice(frames[0], frames[1] + 1)
             for team in (self.home, self.away):
                 self.press(team, period, sl, b, ids, frames, mins)

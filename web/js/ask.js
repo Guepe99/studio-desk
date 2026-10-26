@@ -2,15 +2,32 @@
 // The server checks every answer against the facts; the page only shows it. The question echo and the
 // answer are untrusted text: they are set with textContent, never as markup.
 const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (config.ASK_TIMEOUT_S)
+// Suggested questions, each shown only once the ledger up to the replay time holds the facts that answer it.
+const SUGGEST = [["askSugShots", ["team_shots"]], ["askSugControl", ["team_possession", "team_shots"]],
+  ["askSugGoals", ["score"]], ["askSugSprint", ["sprint_speed"]], ["askSugPass", ["pass_difficulty"]]];
+const MAX_SUGGEST = 4;
+
+// the suggestion keys the facts with ts <= now support, in SUGGEST order, at most MAX_SUGGEST
+export function suggestions(facts, now) {
+  const kinds = new Set(facts.filter((f) => f.ts <= now).map((f) => f.kind));
+  return SUGGEST.filter(([, need]) => need.every((k) => kinds.has(k))).map(([key]) => key).slice(0, MAX_SUGGEST);
+}
 
 export class Ask {
-  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout }) {
-    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout });
+  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [] }) {
+    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts });
     this.form = panel.querySelector("form");
     this.input = panel.querySelector("#ask-q");
     this.send = this.form.querySelector('[type="submit"]');
     this.statusEl = panel.querySelector("#ask-status");
     this.logEl = panel.querySelector("#ask-log");
+    this.suggestEl = panel.querySelector("#ask-suggest");
+    this.suggestEl?.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-q]");
+      if (!b || this.busy) return;
+      this.input.value = this.t(b.dataset.q);
+      this.submit();
+    });
     // outside the panel: an answer that comes after the panel is closed, and askOff as the box goes, are still announced
     this.live = document.querySelector("#ask-live");
     this.log = [];
@@ -23,12 +40,12 @@ export class Ask {
     this.form.addEventListener("submit", (e) => { e.preventDefault(); this.submit(); });
   }
 
-  // A 422 to an empty body means the endpoint is there with a model behind it; anything else keeps the box hidden.
+  // GET api/ask says whether a model and Content Safety are there. It is always a 200, so the probe leaves no
+  // error in the console; anything but {available: true} keeps the box hidden.
   async probe() {
     try {
-      const r = await fetch("api/ask", { method: "POST", credentials: "same-origin", signal: AbortSignal.timeout(4000),
-        headers: { "content-type": "application/json" }, body: "{}" });
-      if (r.status !== 422) return;
+      const r = await fetch("api/ask", { credentials: "same-origin", signal: AbortSignal.timeout(4000) });
+      if (!r.ok || (await r.json()).available !== true) return;
     } catch { return; }
     this.button.hidden = false;
     this.onLayout();
@@ -91,6 +108,26 @@ export class Ask {
     this.render();
   }
 
+  // rebuilt only when the list changes, so a focused suggestion keeps its focus
+  renderSuggestions() {
+    if (!this.suggestEl) return;
+    const keys = suggestions(this.facts, Math.min(this.state.ts, this.maxTs));
+    const sig = `${this.state.lang}|${keys.join()}`;
+    if (sig === this.suggestSig) return;
+    this.suggestSig = sig;
+    this.suggestEl.hidden = !keys.length;
+    const head = document.createElement("p");
+    head.textContent = this.t("askTry");
+    this.suggestEl.replaceChildren(head, ...keys.map((k) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ctl";
+      b.dataset.q = k;
+      b.textContent = this.t(k);
+      return b;
+    }));
+  }
+
   // emptied first, so the same sentence twice (two declines) is still announced
   announce(text, lang) {
     this.live.textContent = "";
@@ -105,6 +142,7 @@ export class Ask {
     const left = this.status || this.left === null ? "" : this.t("askLeft").replace("{n}", this.left);
     const status = this.status ? this.t(this.status) : left;
     if (this.statusEl.textContent !== status) this.statusEl.textContent = status; // a rewrite would be announced again
+    this.renderSuggestions();
     const analyst = this.state.audience === "analyst";
     this.logEl.replaceChildren(...this.log.map((q) => {
       const li = document.createElement("li");

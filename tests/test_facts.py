@@ -14,7 +14,8 @@ from studiodesk.facts.engine import formation_name, shot_detail
 
 KINDS = {"pass_distance", "pass_difficulty", "pass_accuracy", "ball_speed", "shot_speed", "sprint_speed",
          "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score",
-         "shot_distance", "team_width", "team_length", "formation", "start_formation"}
+         "shot_distance", "team_width", "team_length", "formation", "start_formation", "team_shots",
+         "team_shots_on_target", "team_corners", "team_possession"}
 
 
 def facts(conn, kind=None):
@@ -40,6 +41,25 @@ def test_all_kinds_ids_and_sources(match_db):
             assert b / FPS <= r["ts"] + 1e-9, r  # never released before the frames it was measured on
     passes = facts(conn, "ball_speed")
     assert passes and all(abs(r["value"] - PASS_MS * 3.6) < 2 for r in passes)
+
+
+def test_team_totals_count_from_kick_off_and_wait_for_the_ball_to_cross(match_db):
+    info, conn = match_db
+    home = {r["kind"]: r for r in facts(conn) if r["team_id"] == HOME and r["kind"].startswith("team_")}
+    zero = [r for r in facts(conn, "team_shots") if r["ts"] == 0]
+    assert len(zero) == 2 and all(r["value"] == 0 and r["label_en"] == "0 shots since kick-off" for r in zero)
+    shots = [r for r in facts(conn, "team_shots") if r["team_id"] == HOME and r["ts"] > 0]
+    on = [r for r in facts(conn, "team_shots_on_target") if r["team_id"] == HOME and r["ts"] > 0]
+    (score,) = facts(conn, "score")
+    assert [r["value"] for r in shots] == [1] and shots[0]["label_en"] == "1 shot since kick-off"
+    assert json.loads(shots[0]["source_event_ids"]) == [info["goal_event_id"]]
+    assert on[0]["ts"] == score["ts"] and on[0]["value"] == 1  # the goal is on target once the ball is in
+    poss = facts(conn, "team_possession")
+    by_ts = {}
+    for r in poss:
+        by_ts.setdefault(r["ts"], []).append(r["value"])
+    assert by_ts and all(len(v) == 2 and abs(sum(v) - 100) < 0.2 for v in by_ts.values())
+    assert home["team_possession"]["unit"] == "%" and json.loads(home["team_possession"]["source_frames"])[0] == 0
 
 
 def test_goal_shot_and_sprint(match_db):

@@ -68,15 +68,26 @@ def test_gz_lookup_stays_inside_the_directory(tmp_path):
 
 # --- control desk: sessions, decisions, kill switch, audit -----------------------------------------
 
+DEMO_META = {"match_id": "DEMO", "period1_s": 2700.0, "home_score": 0, "away_score": 0,
+             "teams": [{"team_id": "T01", "name": "Home FC", "side": "home"}, {"team_id": "T02", "name": "Away FC", "side": "away"}],
+             "players": [{"player_id": "T02-9", "team_id": "T02", "name": "Tariq Duarte"}]}
+DEMO_SHOT = {"fact_id": "F-SHOT_SPEED-000001", "kind": "shot_speed", "ts": 470.6, "period": 1, "team_id": "T02",
+             "player_id": "T02-9", "value": 67.2, "unit": "km/h", "label_en": "Shot speed 67.2 km/h", "source_event_ids": [150]}
+
+
 @pytest.fixture
 def desk(tmp_path, monkeypatch):
     """A client per visitor against an empty runtime.sqlite and a replay with two stories."""
     from studiodesk import config
     monkeypatch.setattr(config, "RUNTIME_DB", tmp_path / "runtime.sqlite")
-    (tmp_path / "web" / "data" / "DEMO").mkdir(parents=True)
-    (tmp_path / "web" / "data" / "DEMO" / "stories.json").write_text(
-        json.dumps([{"story_id": "S-000001"}, {"story_id": "S-000002"}]))
+    demo = tmp_path / "web" / "data" / "DEMO"
+    demo.mkdir(parents=True)
+    (demo / "stories.json").write_text(json.dumps([{"story_id": "S-000001", "ts": 470.6, "fact_ids": ["F-SHOT_SPEED-000001"]},
+                                                   {"story_id": "S-000002", "ts": 900.0, "fact_ids": []}]))
+    (demo / "meta.json").write_text(json.dumps(DEMO_META))
+    (demo / "facts.json").write_text(json.dumps([DEMO_SHOT]))
     monkeypatch.setattr(api, "WEB", tmp_path / "web")
+    monkeypatch.setattr(api, "SAFETY_ENDPOINT", "")
     monkeypatch.setattr(api, "_new_sessions", {"day": "", "by_client": {}})
     return lambda: TestClient(api.app)
 
@@ -128,6 +139,78 @@ def test_an_edit_can_change_the_headline(desk):
     assert row["detail"]["langs"] == ["es"] and set(row["detail"]["sha1"]) == {"title_es", "es"}
     title_only = {"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"title_en": "x" * 80}}
     assert c.post("/api/decisions", json=title_only).status_code == 200
+
+
+def _edit(c, text, story="S-000001"):
+    return c.post("/api/decisions", json={"match_id": "DEMO", "story_id": story, "decision": "edited", "edited_text": text})
+
+
+def test_an_edit_meets_the_checks_the_agents_drafts_meet(desk):
+    c = desk()
+    ok = _edit(c, {"en": "Duarte hits it at 67.2 km/h in the 8th minute (F-SHOT_SPEED-000001).", "title_it": "Duarte, 67,2 km/h"})
+    assert ok.status_code == 200
+    for text, why in [({"it": "Duarte calcia a 35 km/h."}, "the Italian text has a number the facts do not give (35 km/h)"),
+                      ({"title_en": "Three shots in a row"}, "the English headline has a number written in words"),
+                      ({"es": "Como en la Premier League."}, "the Spanish text has a real person's or club's name"),
+                      ({"en": "See F-SCORE-000001."}, "the English text has a fact from another moment of the match"),
+                      ({"en": "A 67.2 km/h shot."}, None)]:
+        r = _edit(c, text, "S-000002" if why and "another" in why else "S-000001")
+        if why is None:
+            assert r.status_code == 200, r.json()
+            continue
+        assert r.status_code == 422 and r.json()["detail"].startswith(why) and r.json()["detail"].endswith("It stays off air."), r.json()
+    # a refused edit is never on air: the story keeps the last decision that passed, and the audit says why
+    mine = {d["story_id"]: d for d in c.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"]}
+    assert mine["S-000001"]["edited_text"] == {"en": "A 67.2 km/h shot."} and "S-000002" not in mine
+    rows = [r for r in c.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] if r["actor"] == "human"]
+    refused = [r for r in rows if r["action"] == "edit_refused"]
+    assert len(refused) == 4 and refused[-1]["detail"]["langs"] == ["it"] and "35 km/h" in refused[-1]["detail"]["reason"]
+    assert c.get("/api/session").json()["actions_left"] == api.MAX_ACTIONS_PER_SESSION - 6  # refused edits count too
+
+
+def test_a_refused_first_edit_still_gets_its_session_cookie(desk):
+    c = desk()
+    r = _edit(c, {"en": "35 km/h."})
+    assert r.status_code == 422 and "sd_session=" in r.headers["set-cookie"]
+    assert c.get("/api/session").json()["actions_left"] == api.MAX_ACTIONS_PER_SESSION - 1
+
+
+def test_an_edit_the_desk_cannot_check_stays_off_air(desk, tmp_path):
+    (tmp_path / "web" / "data" / "DEMO" / "facts.json").write_text("[]")
+    r = _edit(desk(), {"en": "New text"})
+    assert r.status_code == 422 and r.json()["detail"].startswith("the facts of this story could not be read")
+    (tmp_path / "web" / "data" / "DEMO" / "meta.json").unlink()
+    assert _edit(desk(), {"en": "New text"}, "S-000002").json()["detail"].startswith("the match data could not be read")
+    assert _edit(desk(), {"en": "x"}, "S-000009").status_code == 404
+
+
+def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypatch):
+    from studiodesk.agents import safety
+    seen = []
+
+    class Fake:
+        def __init__(self, endpoint, timeout):
+            assert endpoint == "https://cs.example"
+
+        def __call__(self, text):
+            seen.append(text)
+            if "boom" in text:
+                raise OSError("network")
+            return {"Hate": 4 if "nasty" in text else 0, "Violence": 0}
+
+    monkeypatch.setattr(safety, "AzureSafety", Fake)
+    c = desk()
+    assert _edit(c, {"en": "New text"}).status_code == 200  # not configured: no call
+    assert seen == []
+    monkeypatch.setattr(api, "SAFETY_ENDPOINT", "https://cs.example")
+    monkeypatch.setattr(api, "_edit_safety", None)
+    assert _edit(c, {"en": "Kind words", "title_en": "Headline"}).status_code == 200 and seen == ["Kind words\nHeadline"]
+    r = _edit(c, {"en": "nasty words"})
+    assert r.status_code == 422 and r.json()["detail"] == "content safety did not pass the text. It stays off air."
+    assert _edit(c, {"en": "boom"}).json()["detail"].startswith("the content safety check could not run")
+    assert _edit(c, {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number") and len(seen) == 3
+    assert c.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"][0]["edited_text"] == {
+        "en": "Kind words", "title_en": "Headline"}
 
 
 def test_undo_drops_only_this_visitors_decision(desk):

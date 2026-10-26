@@ -1,5 +1,5 @@
 // "Next key moment" (docs/CONTRACT.md, Page additions): seeks to LEAD_S before the next story graphic
-// on the sheet of the audience on screen, or before the play it is about (a shot's card comes up to 5 s after it). Template cues (story_id null) are not key moments. With the AI
+// on the sheet of the audience on screen, on air or waiting for the producer, or before the play it is about (a shot's card comes up to 5 s after it). Template cues (story_id null) are not key moments. With the AI
 // graphics off there are no story graphics: the button goes from goal to goal (score facts are not AI) and says so.
 
 import { inScope } from "./keys.js";
@@ -15,6 +15,11 @@ export function momentTargets(sheet, start = (c) => c.ts) {
   return cues.filter((c, i) => !cues.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1))
     .map((c) => Math.max(0, Math.min(c.ts, start(c)) - LEAD_S)).sort((a, b) => a - b);
 }
+
+/** The story cues a press stops at: the ones on air for this visitor (the sheet) and, from all the cues of
+ *  the same audience and language, the ones whose story still waits for a decision: a held story is a key
+ *  moment too, and the producer goes there to decide on it. */
+export const keyCues = (sheet, cues, waiting) => sheet.concat(cues.filter((c) => c.story_id && waiting(c.story_id)));
 
 /** With the AI off: LEAD_S before each goal (its shot, when the caller knows it), ascending. */
 export const goalTargets = (goalTs) => [...goalTs].sort((a, b) => a - b).map((ts) => Math.max(0, ts - LEAD_S));

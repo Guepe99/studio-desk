@@ -20,6 +20,10 @@
 #ask .ctl[type="submit"]:hover { background: var(--purple-500); }
 #ask .ctl[aria-disabled="true"] { cursor: progress; }
 #ask-hint { margin: 6px 0 0; color: var(--purple-400); font-size: 14px; }
+#ask-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#ask-suggest[hidden] { display: none; }
+#ask-suggest p { flex: 1 0 100%; margin: 0; color: var(--purple-400); font-size: 14px; font-weight: 600; }
+#ask-suggest .ctl { height: auto; min-height: 32px; padding: 4px 10px; font-size: 14px; line-height: 1.25; text-align: left; white-space: normal; }
 #ask-status { margin: 8px 0 0; font-weight: 700; }
 #ask-status:empty { display: none; }
 #ask-log { list-style: none; margin: 0; padding: 0; }

@@ -158,8 +158,13 @@ def test_per_session_and_site_caps_and_the_cost_stop(studio, monkeypatch):
 
 def test_503_without_a_model_and_the_probe(studio, monkeypatch):
     c = studio.visitor()
-    assert c.post("/api/ask", json={}).status_code == 422  # the page's probe: a model is there
+    assert c.post("/api/ask", json={}).status_code == 422
+    assert c.get("/api/ask").json() == {"available": True}  # the page's probe: a model is there, and a 200
+    monkeypatch.setattr(ask, "safety_down", lambda: True)
+    assert (c.get("/api/ask").status_code, c.get("/api/ask").json()) == (200, {"available": False})
+    monkeypatch.setattr(ask, "safety_down", lambda: False)
     monkeypatch.setattr(api, "ENDPOINT", "")
+    assert (c.get("/api/ask").status_code, c.get("/api/ask").json()) == (200, {"available": False})
     assert c.post("/api/ask", json={}).status_code == 503
     assert c.post("/api/ask", json=body()).status_code == 503
     assert not studio.fake.calls and "sd_session" not in c.cookies
@@ -418,7 +423,8 @@ def test_the_storylines_table_is_never_read(studio, monkeypatch):
         return conn
     monkeypatch.setattr(db, "connect", watched)
     calls = {"get_match_info": {}, "get_events": {"from_ts": 0, "to_ts": 100}, "get_facts": {},
-             "get_fact": {"fact_id": SPRINT}, "get_player": {"player_id": "T01-1"}, "get_momentum": {}}
+             "get_fact": {"fact_id": SPRINT}, "get_player": {"player_id": "T01-1"}, "get_momentum": {},
+             "get_team_totals": {}}
     assert sorted(calls) == sorted(fn.__name__ for fn in srv.TOOLS)
     for name, args in calls.items():
         studio.fake.responder = lambda schema, p, n=name, a=args: {"tool_call": {"name": n, "arguments": {"match_id": "M001", **a}}}
@@ -507,6 +513,53 @@ def test_review_2_probes_are_declined(m001, answer, ids, lang):
 ])
 def test_review_2_good_answers_from_m001_pass(m001, answer, ids, lang):
     assert m001(answer, ids, lang=lang) == "answered", reason()
+
+
+# --- judge, 25/10: the showcase questions at ?match=M001&t=2400 are answered from code-counted totals ----------
+
+TOTALS_2400 = {("team_shots", "T01"): 4, ("team_shots", "T02"): 2, ("team_shots_on_target", "T01"): 3,
+               ("team_shots_on_target", "T02"): 0, ("team_corners", "T01"): 3, ("team_corners", "T02"): 0}
+
+
+def totals_at(ts):
+    held = {t.name: t.func for t in ask.tools("M001", ts)}
+    return {(f["kind"], f["team_id"]): f for f in held["get_team_totals"](match_id="M001")}
+
+
+def test_m001_team_totals_exist_at_2400_and_only_up_to_the_clock(m001):
+    got = totals_at(2400.0)
+    assert {k: f["value"] for k, f in got.items() if k in TOTALS_2400} == TOTALS_2400
+    assert {k for k in got if k[0] == "team_possession"} == {("team_possession", "T01"), ("team_possession", "T02")}
+    with closing(db.connect(config.MATCHES_DB, readonly=True)) as conn:
+        shots = {r[0]: r[1] for r in conn.execute(
+            "SELECT team_id, count(*) FROM events WHERE match_id = 'M001' AND type_name LIKE 'shot%' AND ts <= 2400 "
+            "GROUP BY team_id")}
+    for team in ("T01", "T02"):  # counted by code from the events, and the events are the fact's sources
+        f = got[("team_shots", team)]
+        assert f["value"] == shots[team] == len(f["source_event_ids"]) and f["ts"] <= 2400
+    early = totals_at(100.0)
+    assert all(f["ts"] <= 100.0 for f in early.values()) and early[("team_shots", "T02")]["value"] == 0
+
+
+def test_m001_shots_question_at_2400_is_answered_from_the_totals(m001):
+    got = totals_at(2400.0)
+    ids = [got[(k, t)]["fact_id"] for k in ("team_shots", "team_shots_on_target") for t in ("T01", "T02")]
+    assert m001("Redwick Wanderers have had 4 shots, 3 on target, and Ostwick FC 2 shots, 0 on target.", ids,
+                ts=2400.0) == "answered", reason()
+    assert m001("Il Redwick Wanderers ha fatto 4 tiri, 3 in porta, e l'Ostwick FC 2 tiri, 0 in porta.", ids,
+                ts=2400.0, lang="it") == "answered", reason()
+    assert m001("Redwick Wanderers have had 5 shots and Ostwick FC 2 shots.", ids, ts=2400.0) == "declined"
+    assert m001("Redwick Wanderers have had 4 shots and Ostwick FC 2.", ids, ts=2400.0) == "declined"  # a bare count
+    assert m001("Redwick Wanderers have had 4 shots.", [got[("team_corners", "T01")]["fact_id"]], ts=2400.0) == "declined"
+
+
+def test_m001_control_question_at_2400_is_answered_from_the_totals(m001):
+    got = totals_at(2400.0)
+    ids = [got[("team_possession", "T01")]["fact_id"], got[("team_shots", "T01")]["fact_id"],
+           got[("team_shots", "T02")]["fact_id"]]
+    pct = round(got[("team_possession", "T01")]["value"])
+    assert m001(f"Redwick Wanderers have controlled it, with {pct}% possession and 4 shots to the 2 shots of Ostwick FC.",
+                ids, ts=2400.0) == "answered", reason()
 
 
 def test_the_score_is_read_at_the_question_ts(m001):

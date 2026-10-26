@@ -3,7 +3,8 @@
 //   node --test tests/web/moments.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey } from "../../web/js/moments.js";
+import { readFileSync } from "node:fs";
+import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey, keyCues } from "../../web/js/moments.js";
 import { reached, latestPerAgent, Activity } from "../../web/js/activity.js";
 import { agentName, TEXT, tr, riskBand, deskKey } from "../../web/js/desk.js";
 import { shortcut } from "../../web/js/keys.js";
@@ -22,6 +23,19 @@ test("a shot's card comes up after the shot: the moment is 6 s before the shot, 
   assert.deepEqual(momentTargets([cue(475.1, "S-1"), cue(596.02, "S-2")], (c) => shots[c.story_id]), [464.1, 589.02]);
   // a start after the cue is ignored: never later than 6 s before the card
   assert.deepEqual(momentTargets([cue(100, "S-1")], () => 120), [94]);
+});
+
+test("M001 from kick-off: the first stop is the 8' big chance that waits for review, not the 10' goal", () => {
+  const data = (f) => JSON.parse(readFileSync(new URL(`../../web/data/M001/${f}`, import.meta.url)));
+  const status = new Map(data("stories.json").map((s) => [s.story_id, s.default_status]));
+  const mine = data("cues.json").filter((c) => c.audience === "casual" && c.lang === "en");
+  const onAir = mine.filter((c) => c.story_id && status.get(c.story_id) === "auto_approved");
+  assert.equal(status.get("S-000001"), "needs_review");
+  assert.ok(nextTarget(momentTargets(onAir), 0) > 580); // the on-air sheet alone skips it
+  const first = nextTarget(momentTargets(keyCues(onAir, mine, (id) => status.get(id) === "needs_review")), 0);
+  assert.equal(first, 475.1 - 6);
+  // a story this visitor rejected is not a stop
+  assert.ok(nextTarget(momentTargets(keyCues(onAir, mine, () => false)), 0) > 580);
 });
 
 test("a story graphic that starts while another story's graphic is on air is the same moment", () => {
@@ -138,7 +152,7 @@ test("the strip says what each agent did in a sentence of the page strings, neve
   assert.equal(row("commentator_it", "draft", "1 line"), "didWrite");
   assert.equal(row("commentator_es", "rewrite", "1 line"), "didRewrite");
   assert.equal(row("verifier", "check", "pass"), "didPass");
-  assert.equal(row("verifier", "check", "rewritten 1"), "didRewritten");
+  assert.equal(row("verifier", "check", "rewritten 1"), "didPassRewrite");
   assert.equal(row("verifier", "check", 'fail: "a 52 m ball", the ledger value differs'), "didRewritten");
   assert.equal(row("verifier", "check", "template 1"), "didTemplate");
   assert.equal(row("verifier", "fallback", "template line from the facts"), "didTemplate");

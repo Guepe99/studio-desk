@@ -16,6 +16,7 @@ https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=
 
 - The strip under the picture, **Agents at work**, shows which agent is busy and what it passed on.
 - The big chance reaches the **Desk** beside the picture, under **Needs you**. Its risk is medium, so it waits for the producer, which is you.
+- **Next key moment** (or N) jumps to just before the next moment and plays it at 1x.
 
 ## 2. Make a decision (1 minute)
 

@@ -52,8 +52,8 @@ const open = async (browser, [width, height], phone, query = `?match=${MATCH}`) 
   const optional = (m) => /\/api\/|\/(voice|booth)\.json$/.test(m.location()?.url ?? "");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m)) fail(`${width}x${height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${width}x${height} page error: ${e.message}`));
-  // the static site has no API: an empty question answered 422 is the probe that shows the Ask button
-  await page.route("**/api/ask", (r) => r.fulfill({ status: 422, json: { detail: [] } }));
+  // the static site has no API: the probe (GET api/ask) answered available shows the Ask button
+  await page.route("**/api/ask", (r) => r.fulfill({ json: { available: true } }));
   await page.goto(new URL(query, base).href);
   await page.waitForFunction(() => window.studioDesk?.match && window.studioDesk.desk.ready, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
@@ -116,7 +116,9 @@ const busiest = (cues) => {
 // these checks are about where the cards sit, and a card left waiting is never on screen
 const approveWaiting = (page) => page.evaluate(() => {
   const d = window.studioDesk.desk;
-  for (const s of [...d.stories, ...d.gens]) if (d.status(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved" });
+  // every agents' story that waits by default, also one already missed at this minute: the checks seek back to it
+  for (const s of d.stories) if (!d.decisions.has(s.story_id) && d.defaultStatus(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved", ts: 0 });
+  for (const s of d.gens) if (d.status(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved" });
   d.changed();
 });
 const showFirst = async (page, tag, cues) => {

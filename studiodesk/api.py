@@ -30,6 +30,7 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.openai.azure.com
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-5-mini")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+SAFETY_ENDPOINT = os.environ.get("AZURE_CONTENT_SAFETY_ENDPOINT", "")  # unset: edits get the fact checks only
 
 @asynccontextmanager
 async def _startup(app):
@@ -307,6 +308,58 @@ def _replay(match_id: str, name: str) -> tuple:
         return ()
 
 
+@lru_cache(maxsize=8)
+def _meta_file(path: Path, mtime_ns: int) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _story_row(conn, match_id: str, story_id: str) -> dict | None:
+    """The story's ts and fact ids, from a live run's `stories` row or else the replay's stories.json."""
+    row = conn.execute("SELECT ts, fact_ids FROM stories WHERE match_id = ? AND story_id = ?", (match_id, story_id)).fetchone()
+    if row:
+        return {"ts": row["ts"], "fact_ids": json.loads(row["fact_ids"])}
+    return next((s for s in _replay(match_id, "stories.json") if s.get("story_id") == story_id), None)
+
+
+_edit_safety = None  # the Content Safety client for edits, built on the first edit
+
+
+def _edit_refused(match_id: str, story: dict, edited: dict) -> str | None:
+    """Why an edited text may not go on air, or None. The checks the agents' drafts meet (rules.check_text:
+    every number one of this story's facts, its minute or the score then; cited fact ids its own; no real
+    name), then Content Safety when the site has it. Anything that cannot be checked is refused."""
+    from .agents import rules
+    try:
+        path = WEB / "data" / match_id / "meta.json"
+        m = rules.Match(_meta_file(path, path.stat().st_mtime_ns))
+        ts, ids = float(story["ts"]), [i for i in story.get("fact_ids") or [] if isinstance(i, str)]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration):
+        return "the match data could not be read, so the edit could not be checked"
+    m.facts = {f["fact_id"]: f for f in _replay(match_id, "facts.json") if "fact_id" in f}
+    s = {"facts": [m.facts[i] for i in ids if i in m.facts], "ts": ts,
+         "minute": rules.minute(ts, m.period_of(ts), m.p1 or float("inf"))}
+    if len(s["facts"]) < len(ids):
+        return "the facts of this story could not be read, so the edit could not be checked"
+    allowed, own = rules.story_allowed(m, s), rules.story_ids(s)
+    for key, text in edited.items():
+        if flags := rules.check_text(m.without_names(text), allowed, key.removeprefix("title_"), own):
+            what = f"the {rules.LANGUAGES[key.removeprefix('title_')]} {'headline' if key.startswith('title_') else 'text'}"
+            shown = re.search(r"'([^']+)'", flags[0])
+            return f"{what} has {rules.reason(flags[0])}" + (f" ({shown.group(1)})" if shown else "")
+    if not SAFETY_ENDPOINT:
+        return None
+    from .agents.safety import AzureSafety, verdict
+    global _edit_safety
+    try:
+        _edit_safety = _edit_safety or AzureSafety(SAFETY_ENDPOINT, timeout=config.ASK_SAFETY_TIMEOUT_S)
+        analysis = _edit_safety("\n".join(edited.values()))
+    except Exception:  # noqa: BLE001 - quota, network or auth: not checked is not passed
+        return "the content safety check could not run, try again later"
+    if not analysis or verdict(analysis) != "passed":
+        return "content safety did not pass the text"
+    return None
+
+
 def _story_known(conn, match_id: str, story_id: str) -> bool:
     if conn.execute("SELECT 1 FROM stories WHERE match_id = ? AND story_id = ?", (match_id, story_id)).fetchone():
         return True
@@ -364,6 +417,11 @@ def get_decisions(request: Request, match_id: str = Query(pattern=MATCH_PATTERN)
             "decisions": [{**dict(r), "edited_text": json.loads(r["edited_text"]) if r["edited_text"] else None} for r in rows]}
 
 
+def _cookie(response: Response) -> dict:
+    """The session cookie set on `response`, for a JSONResponse returned in its place."""
+    return {"set-cookie": v.decode("latin-1") for k, v in response.raw_headers if k == b"set-cookie"}
+
+
 def _detail(edited: dict | None) -> dict:
     """Audit detail of a decision: for an edit, the languages and the SHA-1 of each text (body or title_<lang>) that went on air."""
     if not edited:
@@ -373,6 +431,20 @@ def _detail(edited: dict | None) -> dict:
 
 @app.post("/api/decisions")
 def post_decision(d: Decision, request: Request, response: Response):
+    if d.edited_text:
+        with _runtime() as conn:
+            story = _story_row(conn, d.match_id, d.story_id)
+        if story is None:
+            raise HTTPException(404, "unknown story for this match")
+        # checked outside the write lock: Content Safety is a network call
+        if why := _edit_refused(d.match_id, story, d.edited_text):
+            with _runtime(write=True) as conn:  # a refused edit is an action too: the cap bounds the safety calls
+                sid = _session(conn, request, response)
+                _spend(conn, sid)
+                conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
+                             "VALUES (?, ?, 'human', 'edit_refused', ?, ?, ?)",
+                             (sid, _now(), d.match_id, d.story_id, json.dumps({**_detail(d.edited_text), "reason": why})))
+            return JSONResponse({"detail": f"{why}. It stays off air."}, status_code=422, headers=_cookie(response))
     with _runtime(write=True) as conn:
         sid = _session(conn, request, response)
         if not _story_known(conn, d.match_id, d.story_id):
@@ -456,7 +528,7 @@ class Question(BaseModel):
 
 
 def _ask_ready():
-    # A dependency runs before the body is read: the page probes with {} and shows the box only on a 422.
+    # A dependency runs before the body is read: a question to a site without a model is a 503, never counted.
     if not ENDPOINT:
         raise HTTPException(503, "no model on this site")
     try:
@@ -524,6 +596,17 @@ def _record_answer(sid: str, q: Question, out: dict, day: str) -> None:
                        "reason": out["reason"], "fact_ids": out["fact_ids"]}})
         conn.execute("INSERT INTO usage_daily (day, session_id, cost_usd) VALUES (?, '*', ?) ON CONFLICT (day, session_id) "
                      "DO UPDATE SET cost_usd = cost_usd + excluded.cost_usd", (day, u["cost_usd"]))
+
+
+@app.get("/api/ask")
+def get_ask():
+    """The page's probe: {"available"} after the same checks as a question (_ask_ready), always a 200, since a
+    4xx or 5xx shows as an error in the browser console of every visitor."""
+    try:
+        _ask_ready()
+    except HTTPException:
+        return {"available": False}
+    return {"available": True}
 
 
 @app.post("/api/ask", dependencies=[Depends(_ask_ready)])
