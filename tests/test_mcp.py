@@ -78,7 +78,11 @@ def test_lists_tools_through_the_sdk(server_db):
 
 def test_never_reads_the_answer_key():
     word = "story" + "lines"
-    for path in [ROOT / "studiodesk" / "mcp_server.py", *(ROOT / "studiodesk" / "facts").glob("*.py")]:
+    # the agents and the API too; scripts/measures.py and scripts/eval_stories.py grade against it, so they may
+    paths = [ROOT / "studiodesk" / "mcp_server.py", ROOT / "studiodesk" / "api.py",
+             *(ROOT / "studiodesk" / "facts").glob("*.py"), *(ROOT / "studiodesk" / "agents").glob("*.py")]
+    assert len(paths) > 10
+    for path in paths:
         assert word not in path.read_text().lower(), path
 
 

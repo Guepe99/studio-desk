@@ -12,6 +12,12 @@
 # SwiftShader gives WebGL 2 with 4x MSAA: the 3D scene's high quality profile is tested there.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+# wait_for URL TRIES WHAT: polls every 0.5 s, and stops the run with a message when WHAT never answers
+wait_for() {
+  for _ in $(seq "$2"); do curl -sf --max-time 2 -o /dev/null "$1" && return 0; sleep 0.5; done
+  echo "run-smoke: $3 did not answer at $1 within $(($2 / 2)) s" >&2
+  exit 1
+}
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
 
 # rebuild the fixture when it is missing or older than its script; a failure stops the run
@@ -54,8 +60,8 @@ if [ "${CDP:-1}" = 1 ]; then
   docker run -d --rm --name "$CONT" --shm-size=1g --network host "$IMAGE" \
     "$BIN" --headless --no-sandbox --hide-scrollbars "${GL[@]}" \
     --remote-debugging-address=127.0.0.1 --remote-debugging-port="$CDPPORT" about:blank >/dev/null
-  for _ in $(seq 60); do curl -sf -o /dev/null "http://127.0.0.1:$CDPPORT/json/version" && break; sleep 0.5; done
+  wait_for "http://127.0.0.1:$CDPPORT/json/version" 60 "Chromium in $IMAGE"
   export CDP_URL="http://127.0.0.1:$CDPPORT"
 fi
-for _ in $(seq 20); do curl -sf -o /dev/null "http://127.0.0.1:$WEB/index.html" && break; sleep 0.25; done
+wait_for "http://127.0.0.1:$WEB/index.html" 20 "the web server"
 node "$ROOT/tests/web/$SCRIPT" "http://127.0.0.1:$WEB/" "$@"

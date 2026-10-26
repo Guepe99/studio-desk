@@ -35,6 +35,9 @@ mkdirSync(shots, { recursive: true });
 
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
+// a check the replay gives nothing to test: not a failure, but the summary says so
+const skips = [];
+const skip = (msg) => { skips.push(msg); console.log(`SKIP ${msg}`); };
 const check = async (name, fn) => {
   try { await fn(); } catch (e) { fail(`${name}: ${e.message.split("\n")[0]}`); }
 };
@@ -811,13 +814,14 @@ try {
       ["es", "Los agentes en acción", "Relevos hasta ahora: ", "Cómo se hizo el gráfico en pantalla: "], ["en", "Agents at work", "Hand-offs so far: ", "How the graphic on air was made: "]]) {
       await setLang(page, lang);
       for (const [ts, start] of [[quiet, sum], [onAir?.ts + 1, made]]) {
-        if (!Number.isFinite(ts)) continue;
+        if (!Number.isFinite(ts)) { skip(`activity in ${lang}: no ${start === sum ? "quiet time" : "story graphic with a chain"} to check the strip at`); continue; }
         await seekTo(page, ts);
         const got = await strip();
         if (got.title !== title || got.lang !== lang || !got.sum.startsWith(start)) fail(`activity in ${lang} at ${ts} s: ${JSON.stringify(got)}`);
         // one plain sentence per agent in the page language: no story or fact ids, no step names, nothing cut
         const said = await page.$$eval("#activity .act-out", (n) => n.map((el) => ({ text: el.textContent, lang: el.closest("[lang]")?.lang,
           cut: el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1, title: el.closest("li").title })));
+        if (!said.length) fail(`activity in ${lang} at ${ts} s: no agent sentence on the strip to check`);
         const english = /\b(Picked|Explained|Wrote|Rewrote|Asked|Checked|Put it|Used|Passed|story|stories|line|lines|cues?|rewritten|analysis|pass|fail|fallback)\b/;
         for (const x of said) {
           if (/\b[SF]-[A-Z_]*\d{6}\b|[a-z]_[a-z]/.test(x.text + x.title) || x.cut || x.lang !== lang || (lang !== "en" && english.test(x.text)))
@@ -825,11 +829,14 @@ try {
         }
       }
     }
-    const failed = rows.find((r) => r.step === "fallback" || /(^| )fallback: /.test(r.output_summary));
-    if (failed) {
+    // a fallback step on the strip at its own time carries the mark
+    const fallbacks = rows.filter((r) => r.step === "fallback" || /(^| )fallback: /.test(r.output_summary));
+    const failed = fallbacks.find((r) => want(r.ts).split(",").includes(String(r.seq)));
+    if (!failed) skip(`activity: ${fallbacks.length ? "no fallback step is on the strip at its own time" : "no fallback step in the traces"}, the mark is not checked`);
+    else {
       await seekTo(page, failed.ts);
       const mark = await page.evaluate((seq) => document.querySelector(`#activity li[data-seq="${seq}"]`)?.className, failed.seq);
-      if (mark !== undefined && !/fallback/.test(mark)) fail(`activity: fallback step ${failed.seq} not marked`);
+      if (!/fallback/.test(mark ?? "")) fail(`activity: fallback step ${failed.seq} ${mark === undefined ? "not on the strip" : "not marked"}`);
     }
     const from = Math.max(0, rows[0].ts - 20);
     await page.evaluate(() => {
@@ -1100,6 +1107,7 @@ try {
   await browser.close();
 }
 
+if (skips.length) console.log(`${skips.length} check(s) skipped:\n${skips.map((m) => `  ${m}`).join("\n")}`);
 if (failures.length) {
   console.log(`${failures.length} failure(s)`);
   process.exit(1);

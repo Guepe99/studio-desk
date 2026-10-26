@@ -91,15 +91,19 @@ args.push("-stream_loop", "-1", "-i", web("vendor/crowd-audio/bed.mp3"));
 graph.push(`[${bed}:a]aresample=24000,atrim=0:${len},asetpts=N/SR/TB[bed]`);
 const vs = kept.map((c, i) => (c.bus === "voice" ? `[c${i}]` : "")).join(""), cs = kept.map((c, i) => (c.bus === "crowd" ? `[c${i}]` : "")).join("");
 const nv = kept.filter((c) => c.bus === "voice").length, nc = kept.filter((c) => c.bus === "crowd").length;
-graph.push(`${vs}amix=inputs=${nv}:normalize=0:duration=longest,atrim=0:${len}[voice]`);
+// amix needs one input at least: a stretch with no voice gets a silent voice stem
+graph.push(nv ? `${vs}amix=inputs=${nv}:normalize=0:duration=longest,atrim=0:${len}[voice]` : `anullsrc=r=24000:cl=mono,atrim=0:${len}[voice]`);
 graph.push(`[bed]${cs}amix=inputs=${nc + 1}:normalize=0:duration=first,volume=${MIX.crowd},asetnsamples=240,volume='${duckExpr}':eval=frame[crowd]`);
 graph.push("[voice]asplit[v1][v2]", "[crowd]asplit[k1][k2]", "[v1][k1]amix=inputs=2:normalize=0[out]");
 const script = path.join(tmp, "graph.txt");
-writeFileSync(script, graph.join(";\n"));
 const stems = path.join(path.dirname(out), path.basename(out, ".mp3"));
 args.push("-filter_complex_script", script,
   "-map", "[out]", "-ac", "1", "-ar", "24000", "-b:a", "96k", out,
   "-map", "[v2]", "-ac", "1", `${stems}.voice.wav`, "-map", "[k2]", "-ac", "1", `${stems}.crowd.wav`);
-execFileSync("ffmpeg", args, { stdio: "inherit" });
-rmSync(tmp, { recursive: true, force: true });
+try {
+  writeFileSync(script, graph.join(";\n"));
+  execFileSync("ffmpeg", args, { stdio: "inherit" });
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+}
 console.log(`${out}: ${len} s, ${kept.filter((c) => c.bus === "voice").length} voice clips, ${nc} crowd sounds; stems ${stems}.voice.wav, ${stems}.crowd.wav`);

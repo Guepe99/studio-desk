@@ -505,7 +505,10 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - Each audit write of a desk decision (`approved`/`edited`/`killed`, `used_proposal`, `edit_refused`, `undo`, `ai_off`/`ai_on`) also
   logs an Application Insights custom event `studiodesk.decision` on the `studiodesk.decision` logger,
   with `decision_action`, `decision_match_id`, `decision_story_id`, `decision_langs` and
-  `decision_session` (a salted hash of the session id). No text and no client address.
+  `decision_session` (a salted hash of the session id). No text and no client address. At most 5,000
+  events a UTC day and 300 per client address (`DECISION_EVENTS_PER_DAY`, `..._PER_CLIENT_PER_DAY` in
+  `studiodesk/api.py`), so the agents' traces keep their share of the 0.1 GB daily cap; past them the
+  action is still audited, only the event is not sent.
 - Next key moment on a paused replay jumps and plays at 1x.
 - Desk: the audit table also lists the visitor's own decisions (class `a-human`), in time order.
 - Ask the studio in Analyst mode lists the cited facts by their `label_en`, the ids in the tooltip.

@@ -94,6 +94,9 @@ def test_demo_stories_cues_and_traces_follow_the_contract(tmp_path):
         assert re.fullmatch(r"S-\d{6}", s["story_id"]) and 0 <= s["risk"] <= 1
         assert (s["default_status"] == "auto_approved") == (s["risk"] < 0.35)
         assert set(s["texts"]) == {"en", "it", "es"} and s["verifier"]["status"] in {"pass", "rewritten", "template"}
+        notes = s["verifier"]["flagged"]  # plain sentences, as the agents write them (docs/CONTRACT.md)
+        assert all(isinstance(n, str) and n.endswith(".") and len(n) <= 160 for n in notes) and bool(notes) == (s["verifier"]["status"] != "pass")
+        assert "_drafts" not in s
         assert s["safety"] in {"passed", "flagged", "not_checked"}
         assert set(s["fact_ids"]) <= facts and set(s["evidence_event_ids"]) <= event_ids
         assert len(set(s["evidence_event_ids"])) == len(s["evidence_event_ids"])

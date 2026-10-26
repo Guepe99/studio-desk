@@ -39,8 +39,9 @@ def build(meta, events, facts, cues):
 
     stories, story_cues = [], []
 
-    def story(kind, ts, team, player, risk, fact_list, evidence, analysis, texts, verifier, safety):
-        s = {"match_id": meta["match_id"], "story_id": f"S-{len(stories) + 1:06d}", "ts": round(ts, 2), "kind": kind,
+    def story(kind, ts, team, player, risk, fact_list, evidence, analysis, texts, verifier, safety, drafts=()):
+        # drafts: what each failed attempt got wrong, for the traces only; the desk's notes are verifier.flagged
+        s = {"_drafts": list(drafts), "match_id": meta["match_id"], "story_id": f"S-{len(stories) + 1:06d}", "ts": round(ts, 2), "kind": kind,
              "team_id": team, "player_id": player, "risk": risk,
              "default_status": "auto_approved" if risk < AUTO_APPROVE_RISK else "needs_review",
              "fact_ids": [f["fact_id"] for f in fact_list], "evidence_event_ids": evidence, "analysis_en": analysis,
@@ -99,9 +100,8 @@ def build(meta, events, facts, cues):
                {"en": f"{p2['name']} found the run with a {num(dist['value'], 'en')} m ball, difficulty {num(diff['value'], 'en')}/10.",
                 "it": f"{p2['name']} ha pescato lo scatto con un pallone di {num(dist['value'], 'it')} m, difficoltà {num(diff['value'], 'it')}/10.",
                 "es": f"{p2['name']} encontró la carrera con un balón de {num(dist['value'], 'es')} m, dificultad {num(diff['value'], 'es')}/10."},
-               {"status": "rewritten", "attempts": 2,
-                "flagged": [{"claim": "a 52 m ball", "fact_id": dist["fact_id"], "reason": "the ledger value differs; rewritten from the fact"}]},
-               "passed")
+               {"status": "rewritten", "attempts": 2, "flagged": ["Earlier English draft: a number the facts do not give."]},
+               "passed", [{"claim": "a 52 m ball", "fact_id": dist["fact_id"], "reason": "the ledger value differs; rewritten from the fact"}])
     why(s2, round(shot1["ts"] + 17.5, 1), 7.0, ("analyst",),
         {"en": "The pass behind the goal", "it": "Il passaggio dietro al gol", "es": "El pase detrás del gol"})
 
@@ -117,14 +117,13 @@ def build(meta, events, facts, cues):
                {"en": f"Momentum: {short[away]} {num(ma['value'], 'en')}, {short[home]} {num(mh['value'], 'en')} over the last window.",
                 "it": f"Inerzia: {short[away]} {num(ma['value'], 'it')}, {short[home]} {num(mh['value'], 'it')} nell'ultima finestra.",
                 "es": f"Impulso: {short[away]} {num(ma['value'], 'es')}, {short[home]} {num(mh['value'], 'es')} en la última ventana."},
-               {"status": "template", "attempts": 2,
-                "flagged": [{"claim": "their best spell of the match", "fact_id": None, "reason": "no fact supports it"},
-                            {"claim": "they have taken over", "fact_id": None, "reason": "judged unsupported on the second attempt"}],
+               {"status": "template", "attempts": 2, "flagged": ["English draft not used: a claim the facts do not support."],
                 "on_air": "phrasebook", "opener": None,
                 "proposals": {"en": f"{short[away]} take over: momentum {num(ma['value'], 'en')} against {num(mh['value'], 'en')}.",
                               "it": f"L'{short[away]} prende in mano la partita: inerzia {num(ma['value'], 'it')} contro {num(mh['value'], 'it')}.",
                               "es": f"El {short[away]} manda: inercia de {num(ma['value'], 'es')} contra {num(mh['value'], 'es')}."}},
-               "not_checked")
+               "not_checked", [{"claim": "their best spell of the match", "fact_id": None, "reason": "no fact supports it"},
+                               {"claim": "they have taken over", "fact_id": None, "reason": "judged unsupported on the second attempt"}])
     why(s3, round(w + 8, 1), 8.0, ("analyst", "casual"),
         {"en": "Momentum swing", "it": "Cambio di inerzia", "es": "Cambio de inercia"})
 
@@ -191,7 +190,7 @@ def traces_for(stories, cues, players, short, p1_s):
             row(s, "verifier", "check", "3 lines against the fact ledger and the forbidden names",
                 "pass: every number matches its fact, no forbidden name", f, 610, 38, 940)
         else:
-            for a, flag in enumerate(v["flagged"][: v["attempts"]], 1):
+            for a, flag in enumerate(s["_drafts"][: v["attempts"]], 1):
                 row(s, "verifier", "check", f"Attempt {a}: 3 lines against the fact ledger",
                     f"fail: \"{flag['claim']}\", {flag['reason']}", [flag["fact_id"]] if flag["fact_id"] else f, 610, 52, 960)
                 if v["status"] == "rewritten" or a < v["attempts"]:
@@ -208,4 +207,6 @@ def traces_for(stories, cues, players, short, p1_s):
             [], 0, 0, 3)
     for r in rows:
         del r["_wall"]
+    for s in stories:
+        del s["_drafts"]
     return rows
