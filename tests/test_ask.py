@@ -789,3 +789,12 @@ def test_a_goal_ordinal_passes_only_for_a_cited_goal():
     # a level score now is no equaliser claim: at 0-0 "still level" passes, "parità" is not an equaliser word
     zero = rules.check_answer("Ancora in parità, ancora pareggio al minuto 25.", facts[1:], 2700, "it", {facts[1]["fact_id"]}, (0, 0))
     assert zero == ["equaliser not in the facts: 'pareggio'"], zero
+
+
+def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
+    assert rules.strip_citations("Okowande scored twice, as analysed in the on-air story; see F-SCORE-000001 and "
+                                 "F-SCORE-000002.") == "Okowande scored twice, as analysed in the on-air story."
+    assert rules.strip_citations("Vedi i dati.") == "Vedi i dati."
+    assert rules.goal_word("Hugo Okowande ha marcado 2 goals.", "es") == "Hugo Okowande ha marcado 2 goles."
+    assert rules.goal_word("Okowande ha segnato 2 goals.", "it") == "Okowande ha segnato 2 gol."
+    assert rules.goal_word("Okowande has 2 goals.", "en") == "Okowande has 2 goals."

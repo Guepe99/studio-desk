@@ -537,7 +537,18 @@ def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
     text = _FACT_ID.sub("", _CITATION.sub("", _CITED_AS.sub("", text)))
     text = re.sub(r"\s*[,;]\s*(?=\))", "", text)  # "(minuto 10, )" reads "(minuto 10)"
+    # "..., see F-1 and F-2." loses its ids above; the "see and" left behind goes too
+    text = re.sub(r"[,;]?\s*\b(?:see|vedi|ver|véase)\b(?:\s*(?:and|e|y|,))*\s*(?=[.;:!?)]|$)", "", text,
+                  flags=re.IGNORECASE)
     return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
+
+
+def goal_word(text, lang):
+    """An Italian or Spanish answer counts goals as gol or goles, never with the English word."""
+    if lang == "en":
+        return text
+    return re.sub(r"\b(\d+)\s+goals?\b", lambda m: f"{m[1]} {'goles' if lang == 'es' and m[1] != '1' else 'gol'}",
+                  text, flags=re.IGNORECASE)
 
 
 def allowed_numbers(facts, minutes=()):

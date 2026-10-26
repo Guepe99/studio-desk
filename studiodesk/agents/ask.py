@@ -259,7 +259,7 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
         usage.pop("pending_chars", None)
         return declined(lang, rules.brief_error(e), usage)
 
-    text = rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang)
+    text = rules.goal_word(rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang), lang)
     ids = list(dict.fromkeys(i.strip().upper() for i in out.fact_ids))
     reason = check(match_id, ts, text, ids, lang, p1)
     if reason:
