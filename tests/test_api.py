@@ -93,6 +93,7 @@ def desk(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "SAFETY_ENDPOINT", "")
     monkeypatch.setattr(api, "_new_sessions", {"day": "", "by_client": {}})
     monkeypatch.setattr(api, "_edit_checks", {"day": "", "all": 0, "by_client": {}})
+    monkeypatch.setattr(api, "_decision_events", {"day": "", "all": 0, "by_client": {}})
     return lambda: TestClient(api.app)
 
 
@@ -461,3 +462,39 @@ def test_an_edit_with_a_lone_surrogate_is_refused_not_a_500(desk):
     raw = json.dumps({"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "ab"}})
     r = desk().post("/api/decisions", content=raw.replace('"ab"', '"a\\ud800b"'), headers={"content-type": "application/json"})
     assert r.status_code == 422
+
+
+def test_decision_events_are_capped_per_client_and_per_day(desk, monkeypatch, caplog):
+    import logging
+    monkeypatch.setattr(api, "DECISION_EVENTS_PER_CLIENT_PER_DAY", 2)
+    monkeypatch.setattr(api, "DECISION_EVENTS_PER_DAY", 3)
+    kill = lambda c, fwd: c.post("/api/kill", json={"on": True}, headers={"x-forwarded-for": fwd}).status_code  # noqa: E731
+    a, b = desk(), desk()
+    with caplog.at_level(logging.INFO, logger="studiodesk.decision"):
+        assert [kill(a, "203.0.113.7") for _ in range(3)] == [200] * 3  # over a cap the action still works
+        assert [kill(b, "198.51.100.2") for _ in range(2)] == [200] * 2
+    events = [r for r in caplog.records if r.name == "studiodesk.decision"]
+    assert len(events) == 3  # two for the first address, then the day's cap
+    assert len(a.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"]) == 3  # every action is still audited
+
+
+def test_frame_rate_counters_hold_under_concurrent_requests(monkeypatch):
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    class Slow(dict):  # a thread switch between reading a count and writing it back, as a busy pool can make
+        def get(self, *a):
+            value = super().get(*a)
+            time.sleep(0.001)
+            return value
+    monkeypatch.setattr(api, "_perf_sent", {"day": api._now()[:10], "all": 0, "by_client": Slow()})
+    monkeypatch.setattr(api._perf_log, "info", lambda *a, **k: None)
+    p = api.Perf(match_id="M001", fps_median=40.0, screen_w=1280, screen_h=720, dpr=1.0)
+    request = SimpleNamespace(headers={"x-forwarded-for": "203.0.113.9"}, client=None)  # what _client reads
+    threads = [threading.Thread(target=lambda: [api.post_perf(p, request) for _ in range(4)]) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert api._perf_sent["by_client"]["203.0.113.9"] == api.PERF_PER_CLIENT_PER_DAY == 20  # 20 sent, none lost

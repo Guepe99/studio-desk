@@ -330,21 +330,29 @@ EDIT_CHECKS_PER_DAY = 20
 EDIT_CHECKS_PER_CLIENT_PER_DAY = 10
 # shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
 _edit_checks = {"day": "", "all": 0, "by_client": {}}
-_edit_checks_lock = threading.Lock()
+# the in-memory daily counters (edit checks, frame-rate reports, decision events): sync routes run on pool threads
+_counters_lock = threading.Lock()
+
+
+def _take(counter: dict, client: str, per_day: int, per_client: int) -> str | None:
+    """Counts one use for `client` and returns None, or "day" / "client": the cap of today it would pass."""
+    with _counters_lock:
+        day = _now()[:10]
+        if counter["day"] != day:
+            counter.update(day=day, all=0, by_client={})
+        by_client = counter["by_client"]
+        if counter["all"] >= per_day:
+            return "day"
+        if by_client.get(client, 0) >= per_client:
+            return "client"
+        counter["all"] += 1
+        by_client[client] = by_client.get(client, 0) + 1
+        return None
 
 
 def _edit_check_allowed(client: str) -> bool:
     """Counts one Content Safety check of an edit for `client`, or False when today's caps are reached."""
-    with _edit_checks_lock:
-        day = _now()[:10]
-        if _edit_checks["day"] != day:
-            _edit_checks.update(day=day, all=0, by_client={})
-        by_client = _edit_checks["by_client"]
-        if _edit_checks["all"] >= EDIT_CHECKS_PER_DAY or by_client.get(client, 0) >= EDIT_CHECKS_PER_CLIENT_PER_DAY:
-            return False
-        _edit_checks["all"] += 1
-        by_client[client] = by_client.get(client, 0) + 1
-        return True
+    return _take(_edit_checks, client, EDIT_CHECKS_PER_DAY, EDIT_CHECKS_PER_CLIENT_PER_DAY) is None
 
 
 SAFETY_CATEGORIES = {"Hate": "hate", "SelfHarm": "self-harm", "Sexual": "sexual content", "Violence": "violence"}
@@ -464,9 +472,18 @@ def _detail(edited: dict | None) -> dict:
 # "studiodesk" logger tree, telemetry.py) as a custom event, without any text, reason or client address
 _decision_log = logging.getLogger("studiodesk.decision")
 _decision_log.setLevel(logging.INFO)
+# Application Insights stops at 0.1 GB a day (infra/monitoring.bicep) and the agents' traces share it: 50 sessions of
+# 300 actions are 15,000 events from one address. Over a cap the action still counts and is audited, only the event goes.
+DECISION_EVENTS_PER_DAY = 5000
+DECISION_EVENTS_PER_CLIENT_PER_DAY = 300
+# shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
+_decision_events = {"day": "", "all": 0, "by_client": {}}
 
 
-def _decision_event(sid: str, action: str, match_id: str | None = None, story_id: str | None = None, langs=()) -> None:
+def _decision_event(client: str, sid: str, action: str, match_id: str | None = None, story_id: str | None = None,
+                    langs=()) -> None:
+    if _take(_decision_events, client, DECISION_EVENTS_PER_DAY, DECISION_EVENTS_PER_CLIENT_PER_DAY):
+        return
     _decision_log.info("studiodesk.decision %s", action, extra={
         "microsoft.custom_event.name": "studiodesk.decision", "decision_action": action,
         "decision_match_id": match_id or "", "decision_story_id": story_id or "", "decision_langs": ",".join(langs),
@@ -490,7 +507,7 @@ def post_decision(d: Decision, request: Request, response: Response):
                 conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                              "VALUES (?, ?, 'human', 'edit_refused', ?, ?, ?)",
                              (sid, _now(), d.match_id, d.story_id, json.dumps({**_detail(d.edited_text), "reason": why})))
-            _decision_event(sid, "edit_refused", d.match_id, d.story_id, _detail(d.edited_text)["langs"])
+            _decision_event(_client(request), sid, "edit_refused", d.match_id, d.story_id, _detail(d.edited_text)["langs"])
             return JSONResponse({"detail": f"{why}. It stays off air."}, status_code=422, headers=_cookie(response))
         # the AI's own line, put on air as it is: its own audit action, still an edit for what goes on air
         if d.decision == "edited" and d.edited_text == (story.get("verifier") or {}).get("proposals"):
@@ -508,7 +525,7 @@ def post_decision(d: Decision, request: Request, response: Response):
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', ?, ?, ?, ?)",
                      (sid, at, action, d.match_id, d.story_id, json.dumps(_detail(d.edited_text))))
-    _decision_event(sid, action, d.match_id, d.story_id, _detail(d.edited_text)["langs"])
+    _decision_event(_client(request), sid, action, d.match_id, d.story_id, _detail(d.edited_text)["langs"])
     return {"story_id": d.story_id, "decision": d.decision, "edited_text": d.edited_text, "at": at}
 
 
@@ -526,7 +543,7 @@ def delete_decision(request: Request, response: Response, match_id: str = Query(
                      (sid, match_id, story_id))
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', 'undo', ?, ?, ?)", (sid, at, match_id, story_id, json.dumps(_detail(None))))
-    _decision_event(sid, "undo", match_id, story_id)
+    _decision_event(_client(request), sid, "undo", match_id, story_id)
     return {"story_id": story_id, "decision": None, "at": at}
 
 
@@ -538,7 +555,7 @@ def post_kill(k: Kill, request: Request, response: Response):
         conn.execute("UPDATE sessions SET kill_switch = ? WHERE session_id = ?", (int(k.on), sid))
         conn.execute("INSERT INTO audit (session_id, at, actor, action) VALUES (?, ?, 'human', ?)",
                      (sid, _now(), "ai_off" if k.on else "ai_on"))
-    _decision_event(sid, "ai_off" if k.on else "ai_on")
+    _decision_event(_client(request), sid, "ai_off" if k.on else "ai_on")
     return {"kill_switch": k.on}
 
 
@@ -732,16 +749,11 @@ class Perf(BaseModel):
 
 @app.post("/api/perf", status_code=204)
 def post_perf(p: Perf, request: Request):
-    day, client = _now()[:10], _client(request)
-    if _perf_sent["day"] != day:
-        _perf_sent.update(day=day, all=0, by_client={})
-    by_client = _perf_sent["by_client"]
-    if _perf_sent["all"] >= PERF_PER_DAY:
+    over = _take(_perf_sent, _client(request), PERF_PER_DAY, PERF_PER_CLIENT_PER_DAY)
+    if over == "day":
         return _limit("the studio has all the frame-rate reports it needs today")
-    if by_client.get(client, 0) >= PERF_PER_CLIENT_PER_DAY:
+    if over == "client":
         return _limit(f"this address has sent its {PERF_PER_CLIENT_PER_DAY} frame-rate reports today")
-    by_client[client] = by_client.get(client, 0) + 1
-    _perf_sent["all"] += 1
     fields = p.model_dump()
     _perf_log.info("perf_3d %s", json.dumps(fields, sort_keys=True), extra={f"perf_{k}": v for k, v in fields.items()})
     return Response(status_code=204)
