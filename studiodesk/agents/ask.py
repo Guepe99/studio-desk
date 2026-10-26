@@ -49,7 +49,7 @@ INSTRUCTIONS = (
     "number in words. A team's shots, shots on target, corners and possession so far are facts counted by code: read "
     "them with get_team_totals and write each count with its noun, for both teams (\"9 shots, 4 on target\", "
     "\"55% possession\"); a team's pass accuracy is there too, written as its share and the count in its label (\"83%, 228 "
-    "of 276 passes\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
+    "of 276 passes\"), also when the question asks how many passes: never the attempts alone (\"276 passes\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
     "its noun (\"2 goals\"). To say which team has controlled the match, cite those totals and the latest momentum. "
     "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the verified analysis "
     "of the stories already on air: answer from the analysis of the story the question is about, in the answer's "
