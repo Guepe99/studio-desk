@@ -838,3 +838,40 @@ def test_italian_articles_and_ordinal_minutes():
     assert rules.local_words("1 pass e 2 pases.", "it") == "1 passaggio e 2 passaggi."
     assert rules.local_words("1 pass y 2 passaggi.", "es") == "1 pase y 2 pases."
     assert rules.minute_word("The 10th minute, then in the 45+2nd minute.", "en") == "Minute 10, then in minute 45+2."
+
+
+def test_get_stories_serves_only_an_analysis_the_judge_passed(m001, monkeypatch, tmp_path):
+    pack = json.loads((config.ROOT / "replays" / "M001" / "stories.json").read_text())
+    for s in pack:
+        if s["story_id"] == "S-000002":
+            s["verifier"]["analysis_judged"] = False
+    (tmp_path / "M001").mkdir()
+    (tmp_path / "M001" / "stories.json").write_text(json.dumps(pack))
+    monkeypatch.setattr(ask, "STORIES_DIR", tmp_path)
+    got = {s["story_id"]: s for s in {t.name: t.func for t in ask.tools("M001", 2400.0)}["get_stories"](match_id="M001")}
+    assert set(got) == {"S-000002", "S-000003"} and "analysis" not in got["S-000002"] and got["S-000003"]["analysis"]
+
+
+def test_ask_flags_a_question_or_answer_from_medium_severity(fake_safety, monkeypatch):
+    monkeypatch.setattr(FakeSafety, "__call__", lambda self, text: {"Hate": 0, "Violence": 2})
+    assert REAL_SAFETY_CHECK("A strike from close range at 92.1 km/h.")  # football words read as low violence
+    assert REAL_SAFETY_CHECK("Who hit the strike from close range?", True)
+    monkeypatch.setattr(FakeSafety, "__call__", lambda self, text: {"Hate": 0, "Violence": 4})
+    assert not REAL_SAFETY_CHECK("A strike from close range at 92.1 km/h.")
+
+
+def test_a_minute_written_min_dot_stays_in_its_sentence():
+    goal = lambda i, a, b, ts: {"fact_id": f"F-SCORE-00000{i}", "kind": "score", "value": float(max(a, b)), "unit": "goal",
+                                 "label_en": f"Goal {a}-{b}", "ts": ts, "period": 1, "player": None, "team": None}
+    two = [goal(3, 2, 1, 1500), goal(4, 2, 2, 1800)]
+    ids = {f["fact_id"] for f in two}
+    assert rules.check_answer("Al min. 25 il 2-1, al min. 30 il 2-2.", two, 2700, "it", ids, (2, 2)) == []
+
+
+def test_an_ordinal_minute_in_an_answer_is_a_cited_minute():
+    goal = lambda i, a, b, ts: {"fact_id": f"F-SCORE-00000{i}", "kind": "score", "value": float(max(a, b)), "unit": "goal",
+                                 "label_en": f"Goal {a}-{b}", "ts": ts, "period": 1, "player": None, "team": None}
+    first, later = goal(1, 1, 0, 600), goal(3, 2, 1, 1500)
+    assert rules.check_answer("Goal 1-0 by the 10th.", [first], 2700, "en", {first["fact_id"]}, (1, 0)) == []
+    assert any("'10th'" in f for f in rules.check_answer("Goal 2-1 by the 10th.", [later], 2700, "en",
+                                                          {later["fact_id"]}, (2, 1)))

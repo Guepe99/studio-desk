@@ -18,7 +18,7 @@ import json
 import time
 import uuid
 from collections import Counter, defaultdict
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -207,7 +207,10 @@ def _tool_text(result):
         text = json.dumps(data, ensure_ascii=False)
     else:
         text = "".join(getattr(c, "text", "") for c in result.content)
-    return text if len(text) <= TOOL_RESULT_CHARS else text[:TOOL_RESULT_CHARS] + " ... [truncated: narrow the query]"
+    text = text if len(text) <= TOOL_RESULT_CHARS else text[:TOOL_RESULT_CHARS] + " ... [truncated: narrow the query]"
+    if (u := _ASK_USAGE.get()) is not None:  # sent back to the model: a call cut after it is billed for it too
+        u["pending_chars"] = u.get("pending_chars", 0) + len(text)
+    return text
 
 
 @asynccontextmanager
@@ -297,6 +300,8 @@ class Desk:
         self.slots = asyncio.Semaphore(config.MAX_PARALLEL_CALLS)
         self.first = asyncio.Semaphore(1)    # the story finder's own slot: on air does not queue behind a round's tail
         self.tails = []                      # live: the rounds' AI work still running after they went on air
+        self.flying = 0                      # agent runs holding a slot: the call ceiling counts them before they end
+        self.prompt_chars = {}               # agent -> length of its instructions, for a cut call's estimate
 
     async def mcp(self, tool, **args):
         return await mcp_call(self.session, tool, match_id=self.match_id, **args)
@@ -354,7 +359,10 @@ class Desk:
         self.rt.commit()
 
     def over_budget(self):
-        return self.cost >= config.RUN_MAX_COST_USD or self.calls >= config.RUN_MAX_CALLS
+        """Past a ceiling, counting the runs in flight: each as one call at the mean cost of a call so far."""
+        flying_cost = self.flying * self.cost / self.calls if self.calls else 0.0
+        return (self.cost + flying_cost >= config.RUN_MAX_COST_USD
+                or self.calls + self.flying >= config.RUN_MAX_CALLS)
 
     async def ask(self, agent, payload, schema):
         """One agent run with a timeout, at most MAX_PARALLEL_CALLS at once, retried after a rate limit
@@ -365,27 +373,35 @@ class Desk:
         try:
             out = await self._ask(agent, payload, schema)
         except Exception as e:
+            mine.pop("pending_chars", None)
             e.usage = {**mine, "latency_ms": round((time.perf_counter() - t0) * 1000)}  # its failed calls were paid too
             raise
         finally:
             _ASK_USAGE.reset(token)
+        mine.pop("pending_chars", None)
         return out, {**mine, "latency_ms": round((time.perf_counter() - t0) * 1000)}
 
     async def _ask(self, agent, payload, schema):
         text = json.dumps(payload, ensure_ascii=False)
         timeouts = 0
+        mine = _ASK_USAGE.get()
         for pause in (*RETRY_PAUSES_S, None):
-            if self.over_budget():
-                raise RuntimeError("run budget reached")
             try:
                 async with self.first if agent == "story_finder" else self.slots:
-                    resp = await asyncio.wait_for(self.agents[agent].run(text, options={"response_format": schema}),
-                                                  config.AGENT_TIMEOUT_S)
+                    if self.over_budget():  # checked in the slot, with the runs still in flight counted
+                        raise RuntimeError("run budget reached")
+                    mine["pending_chars"] = self.prompt_chars.get(agent, 0) + len(text)  # what the call is sent
+                    self.flying += 1
+                    try:
+                        resp = await asyncio.wait_for(self.agents[agent].run(text, options={"response_format": schema}),
+                                                      config.AGENT_TIMEOUT_S)
+                    finally:
+                        self.flying -= 1
                 break
             except Exception as e:  # noqa: BLE001 - retried or raised to the caller's fallback
                 why = rules.brief_error(e)
                 if why == "timed out" and isinstance(e, (asyncio.TimeoutError, TimeoutError)):
-                    self.record_timeout(agent, len(text) // 4)
+                    self.record_timeout(agent, mine.pop("pending_chars", 0) // 4)  # instructions, input, tool results
                     timeouts += 1
                 if pause is None or why not in ("timed out", "rate limited") or timeouts > 1:
                     raise
@@ -602,7 +618,7 @@ def template_story(desk, s, reason, air=None):
     s["analysis_en"] = s["analysis_en"] or rules.analysis_template(desk.m, s)
     what = "Phrasebook line used, no AI proposal" if air["on_air"] == "phrasebook" else "Fact-only sentence used"
     s["verifier"] = {"status": "template", "attempts": 0,
-                     "flagged": [rules.note(f"{what}: {rules.reason(reason)}.")], **air}
+                     "flagged": [rules.note(f"{what}: {rules.reason(reason)}.")], **air, "analysis_judged": False}
     return desk.finish(s)
 
 
@@ -679,14 +695,18 @@ def build_workflow(desk):
         for s in rnd.stories:
             a = got.get(s["story_id"])
             if a:
-                for fid in a.fact_ids:  # a fact the analyst looked up through MCP joins the evidence
-                    if fid not in s["fact_ids"] and fid in m().facts and m().facts[fid]["ts"] <= desk.now:
-                        s["cited"].append(m().facts[fid])
-                        s["fact_ids"].append(fid)
+                # a fact the analyst looked up through MCP joins the evidence, if the analysis is kept; only
+                # facts known when the batch was read (live, the MCP clock has moved on since)
+                cited = [m().facts[fid] for fid in dict.fromkeys(a.fact_ids) if fid not in s["fact_ids"]
+                         and fid in m().facts and m().facts[fid]["ts"] <= rnd.batch.ts]
+                trial = {**s, "cited": s["cited"] + cited}
                 text = rules.tidy(a.analysis_en)
-                bad = rules.check_text(m().without_names(text), rules.story_allowed(m(), s, cited=True), "en",
-                                       rules.story_ids(s)) + rules.story_issues(
-                    m(), s, text, "en", on_air=False) + rules.analysis_issues(text)  # may quote "who lead 1-0"
+                bad = rules.check_text(m().without_names(text), rules.story_allowed(m(), trial, cited=True), "en",
+                                       rules.story_ids(trial)) + rules.story_issues(
+                    m(), trial, text, "en", on_air=False) + rules.analysis_issues(rules.strip_citations(text))  # may quote "who lead 1-0"
+                if not bad:
+                    s["cited"] += cited
+                    s["fact_ids"] += [f["fact_id"] for f in cited]
                 s["analysis_en"] = rules.strip_citations(text) if not bad else rules.analysis_template(desk.m, s)
                 fallback += bool(bad)
             else:
@@ -764,7 +784,7 @@ def build_workflow(desk):
                 else:
                     problems[(sid, d.lang)].append(f"no text: {d.error or 'missing'}")
         judged_ok, usage_all, judge_error = set(), Counter(), None  # texts the judge passed; a rewrite takes a text out
-        analysis_judged = set()
+        analysis_judged, analysis_ok = set(), set()  # analyses the judge saw; those it passed (Ask serves only these)
         for round_no in range(config.MAX_REWRITES + 1):
             last = round_no == config.MAX_REWRITES
             pending = {k: t for k, t in texts.items() if k not in problems}
@@ -793,9 +813,13 @@ def build_workflow(desk):
             usage_all.update(usage or {})
             judge_error = judge_error or failed
             analysis_judged |= {sid for sid, lang in judged if lang == "analysis"}
+            analysis_ok |= {sid for sid, lang in judged if lang == "analysis" and (sid, lang) not in issues}
             judged_ok |= {k for k in judged if k in to_judge and k not in issues}
             for sid, lang in [k for k in issues if k[1] == "analysis"]:  # a wrong analysis falls back to the facts
-                by_sid[sid]["analysis_en"] = rules.analysis_template(desk.m, by_sid[sid])
+                s = by_sid[sid]
+                cut = {f["fact_id"] for f in s["cited"]}  # the template quotes none of the analyst's facts
+                s["cited"], s["fact_ids"] = [], [i for i in s["fact_ids"] if i not in cut]
+                s["analysis_en"] = rules.analysis_template(desk.m, s)
                 issues.pop((sid, lang))
             for k, issue in issues.items():
                 problems[k].append(f"claim: {issue}")
@@ -844,7 +868,8 @@ def build_workflow(desk):
                                             {lang: [rules.reason(p) for p in problems.get((sid, lang), [])]
                                              for lang in rules.LANGS})
             s["verifier"] = {"status": status, "attempts": max(attempts[(sid, lang)] for lang in rules.LANGS),
-                             "flagged": s["flagged"], **air, **({"proposals": proposals} if proposals else {})}
+                             "flagged": s["flagged"], **air, "analysis_judged": sid in analysis_ok,
+                             **({"proposals": proposals} if proposals else {})}
             desk.finish(s)
             statuses[status] += 1
         usage_all["calls"] = usage_all.get("calls", 0)
@@ -872,6 +897,7 @@ def build_agents(desk, client, tools):
             "{style}", STYLE[name[-2:]]) if role == "commentator" else INSTRUCTIONS[role]
         # the judge reasons a little: at minimal effort it argued itself in circles in its issues
         o = {**opts, "reasoning": {"effort": "low"}} if name == "verifier" else opts
+        desk.prompt_chars[name] = len(text)
         desk.agents[name] = Agent(client, text, name=name, tools=tools.get(name), default_options=o,
                                   middleware=[desk.audit_middleware(name)])
 
@@ -919,14 +945,43 @@ async def run_batch(desk, batch, wait=True):
     """One batch on air; then its AI tail, awaited (replays stay the same run to run) or, live, left running."""
     if batch.candidates:
         air, tail = build_workflow(desk)  # a workflow runs one input at a time, and live tails overlap
+        # what a round spends: the director's slots and audiences, the phrasebook's openers and style rations
+        before = copy.deepcopy(({k: getattr(desk.director, k) for k in ("placed", "whistles", "audiences")},
+                                desk.spent, desk.used))
+
+        def restore(director_only=False):
+            slots, spent, used = copy.deepcopy(before)
+            vars(desk.director).update(slots)
+            if not director_only:
+                desk.spent, desk.used = spent, used
         try:
             rnd = (await air.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
-            stories = [desk.new_story(c, 0.5, c["note"]) for c in _rule_picks(batch.candidates)]
-            stories = [template_story(desk, s, f"workflow error: {rules.brief_error(e)}") for s in stories]
-            rnd = Round(batch, stories, desk.director.plan(stories, batch.ts))
-            desk.trace("director", "fallback", "workflow failed", _n(len(stories), "template story", "template stories"),
-                       [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
+            restore()  # a round that failed spent nothing: no graphics slot, no opener
+            try:
+                stories = []
+                for c in _rule_picks(rules.before_the_whistle(batch.candidates)):  # the candidates the finder had
+                    s = desk.new_story(c, 0.5, c["note"])
+                    try:
+                        aired = desk.on_air(s)
+                    except Exception:  # noqa: BLE001 - the phrasebook failed again: the template's lines
+                        s["texts"] = {lang: rules.template(desk.m, s, lang) for lang in rules.LANGS}
+                        aired = {"on_air": "template", "opener": None}
+                    stories.append(template_story(desk, s, f"workflow error: {rules.brief_error(e)}", aired))
+                try:
+                    cues = desk.director.plan(stories, batch.ts)
+                except Exception:  # noqa: BLE001 - the director failed again: the stories go on without cues
+                    restore(director_only=True)  # the stories aired: their openers stay spent
+                    cues = []
+                rnd = Round(batch, stories, cues)
+                desk.trace("director", "fallback", "workflow failed",
+                           _n(len(stories), "template story", "template stories"),
+                           [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
+            except Exception as e2:  # noqa: BLE001 - the fallback failed too: this batch airs nothing, the match goes on
+                restore()
+                rnd = Round(batch, [], [])
+                with suppress(Exception):  # the failure may be the trace or the database itself
+                    desk.trace("director", "fallback", "workflow failed", f"fallback failed: {rules.brief_error(e2)}", [])
         desk.save(rnd)
         if any(s["verifier"]["status"] == "pending" for s in rnd.stories):
             job = run_tail(desk, tail, rnd)

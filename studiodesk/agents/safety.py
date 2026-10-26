@@ -23,8 +23,8 @@ API_VERSION = "2024-09-01"
 RESOURCE = ("studiodesk-safety", "rg-studiodesk")  # account, resource group
 MAX_CALLS = 100
 FLAG_SEVERITY = 2
-# A producer's edit is flagged only from severity 4 (medium): at 2, the lowest, football words ("close range",
-# "strike") read as violence. The agents' drafts keep FLAG_SEVERITY.
+# A producer's edit, and a visitor's question or answer in Ask, is flagged only from severity 4 (medium): at 2, the
+# lowest, football words ("close range", "strike") read as violence. The agents' drafts keep FLAG_SEVERITY.
 EDIT_FLAG_SEVERITY = 4
 MIN_INTERVAL_S = 0.25   # under the F0 limit of 5 calls a second
 MAX_FAILURES = 3        # consecutive failed calls before the step gives up

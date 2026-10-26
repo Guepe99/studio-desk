@@ -20,7 +20,7 @@ from opentelemetry import trace
 from .. import config, db, mcp_server
 from . import rules
 from .llm import Answer, azure_client, cost_usd
-from .safety import AzureSafety, Throttled, verdict
+from .safety import EDIT_FLAG_SEVERITY, AzureSafety, Throttled, verdict
 
 MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored the brief
 TOOL_RESULT_CHARS = 6000
@@ -53,9 +53,10 @@ INSTRUCTIONS = (
     "in a full sentence that names the team (\"Redwick have completed 228 of 276 passes, 83%.\", "
     "\"Il Redwick ha completato 228 passaggi su 276, l'83%.\", \"El Redwick ha completado 228 de 276 pases, el 83%.\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
     "its noun (\"2 goals\"). To say which team has controlled the match or had more of the ball, cite those totals, and the latest momentum only when you read it. "
-    "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the verified analysis "
-    "of the stories already on air: answer from the analysis of the story the question is about, in the answer's "
-    "language, citing that story's fact_ids, and give no cause the analysis does not give. Quote the value of at least one fact you cite; for a goal that is its scorer "
+    "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the stories already "
+    "on air with the analysis the desk's judge passed: answer from the analysis of the story the question is about, in "
+    "the answer's language, citing that story's fact_ids, and give no cause the analysis does not give (a story without "
+    "an analysis gives none). Quote the value of at least one fact you cite; for a goal that is its scorer "
     "and minute, never its value (1.0 is the goal count, not something to write). A goal is an equaliser only when its label leaves the score level (\"Goal 2-2\"). Write a minute only as 'minute N' in English, 'minuto N' in Italian or Spanish, "
     "or N', with N the `minute` of a fact you cite, never worked out from ts. Give a score only when the question asks for it, "
     "as get_match_info gives it, home side first (2-1 when the home side leads 2-1). "
@@ -85,7 +86,8 @@ def safety_down():
 
 
 def safety_check(text, shield=False):
-    """True only when Content Safety analysed the text and passed it: not checked counts as not passed.
+    """True only when Content Safety analysed the text and passed it (no category at EDIT_FLAG_SEVERITY or more):
+    not checked counts as not passed.
     With `shield`, Prompt Shields must also have found no attack in it (the visitor's question).
     Raises Throttled when the resource is out of quota or rate limited (the page says questions are paused)."""
     global _safety, _safety_failed
@@ -99,7 +101,7 @@ def safety_check(text, shield=False):
                 _safety, _safety_failed = False, time.monotonic()
                 raise
         analysis = _safety(text)
-        return bool(analysis) and verdict(analysis) == "passed" and (not shield or _safety.shield(text) is False)
+        return bool(analysis) and verdict(analysis, EDIT_FLAG_SEVERITY) == "passed" and (not shield or _safety.shield(text) is False)
     except Throttled:
         raise
     except Exception:  # noqa: BLE001 - no endpoint, network or auth: the answer is declined
@@ -158,14 +160,15 @@ def tools(match_id, ts, usage=None):
 
     def get_stories(match_id: str) -> list[dict]:
         """The stories already on air (put there by the risk rule, not flagged by Content Safety), oldest first:
-        kind, minute, team, player, the analysis the verifier passed and the story's fact_ids. For why and how."""
+        kind, minute, team, player, the story's fact_ids and, when the AI judge passed it, its analysis. For why and how."""
         return stories_on_air(match_id, ts, times[0] if times else math.inf, names)
     return [capped(fn) for fn in (*mcp_server.TOOLS, get_stories)]
 
 
 def stories_on_air(match_id, ts, p1, names):
     """The replay's stories that a visitor sees on air by default at ts (as api._auto_rows: `auto_approved` and
-    not `flagged`), with every fact id known at ts. Read from the replay the page shows; [] without one."""
+    not `flagged`), with every fact id known at ts, and the analysis only when the judge passed it (verifier
+    `analysis_judged`). Read from the replay the page shows; [] without one."""
     try:
         rows = json.loads((STORIES_DIR / match_id / "stories.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -173,18 +176,22 @@ def stories_on_air(match_id, ts, p1, names):
     out = []
     with mcp_server.clock_at(ts):
         for s in rows if isinstance(rows, list) else []:
+            verifier = s.get("verifier") if isinstance(s, dict) and isinstance(s.get("verifier"), dict) else {}
             if not (isinstance(s, dict) and s.get("default_status") == "auto_approved" and s.get("safety") != "flagged"
-                    and isinstance(s.get("ts"), (int, float)) and s["ts"] <= ts and s.get("analysis_en")
-                    and (s.get("verifier") or {}).get("status") != "pending"):
+                    and isinstance(s.get("ts"), (int, float)) and s["ts"] <= ts and verifier.get("status") != "pending"):
                 continue
             ids = [i for i in s.get("fact_ids") or [] if isinstance(i, str)]
             if not ids or any("error" in mcp_server.get_fact(match_id, i) for i in ids):
                 continue
             period = 1 if s["ts"] <= p1 else 2
-            out.append({"story_id": s.get("story_id"), "kind": s.get("kind"),
-                        "minute": rules.stoppage(rules.minute(s["ts"], period, p1), period),
-                        "team": names.get(s.get("team_id")), "player": names.get(s.get("player_id")),
-                        "analysis": s["analysis_en"], "fact_ids": ids})
+            story = {"story_id": s.get("story_id"), "kind": s.get("kind"),
+                     "minute": rules.stoppage(rules.minute(s["ts"], period, p1), period),
+                     "team": names.get(s.get("team_id")), "player": names.get(s.get("player_id")), "fact_ids": ids}
+            # only an analysis the AI judge passed; a pack from before `analysis_judged` has none unjudged
+            # (the judge answered every round of the committed packs, traces.json, checked 26/10)
+            if s.get("analysis_en") and verifier.get("analysis_judged", True) is True:
+                story["analysis"] = s["analysis_en"]
+            out.append(story)
     return out  # stories.json is sorted by ts
 
 

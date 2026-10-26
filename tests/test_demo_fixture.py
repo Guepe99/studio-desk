@@ -97,6 +97,7 @@ def test_demo_stories_cues_and_traces_follow_the_contract(tmp_path):
         notes = s["verifier"]["flagged"]  # plain sentences, as the agents write them (docs/CONTRACT.md)
         assert all(isinstance(n, str) and n.endswith(".") and len(n) <= 160 for n in notes) and bool(notes) == (s["verifier"]["status"] != "pass")
         assert "_drafts" not in s
+        assert s["verifier"]["analysis_judged"] is True
         assert s["safety"] in {"passed", "flagged", "not_checked"}
         assert set(s["fact_ids"]) <= facts and set(s["evidence_event_ids"]) <= event_ids
         assert len(set(s["evidence_event_ids"])) == len(s["evidence_event_ids"])

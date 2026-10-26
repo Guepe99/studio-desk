@@ -2,6 +2,7 @@
 import asyncio
 import json
 from collections import Counter
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -107,7 +108,7 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values())
         v = s["verifier"]
         assert v["status"] == "pass" and v["on_air"] == "phrasebook" and set(v["proposals"]) == set(s["texts"]), (s["texts"], v)
-        assert set(v) == {"status", "attempts", "flagged", "on_air", "opener", "proposals"}
+        assert set(v) == {"status", "attempts", "flagged", "on_air", "opener", "proposals", "analysis_judged"}
         assert s["default_status"] == "needs_review" and s["safety"] == "not_checked" and s["fact_ids"]  # no Content Safety yet
     # one trace per hand-off, in workflow order, for every batch
     tr = rows(rt, "traces")
@@ -644,7 +645,8 @@ def test_numbers_in_words_glued_or_in_foreign_units_are_flagged():
                        ("ninety-six kilometres an hour", "en"), ("Novantasei all'ora", "it"), ("Veintiséis", "es"),
                        ("He hit it at 96kmh.", "en"), ("A sprint at 34 mph", "en"), ("3 goals now", "en")]:
         assert rules.check_text(text, allowed, lang), text
-    assert rules.check_text("A 96 kilometres per hour drive, then a 34 km/h sprint in the 3rd minute.", allowed) == []
+    assert rules.check_text("A 96 kilometres per hour drive, then a 34 km/h sprint in the 3rd minute.",
+                            allowed + [(3.0, "minute")]) == []
     assert rules.check_text("Once more he tries.", allowed) == []  # "once" is eleven only in Spanish
 
 
@@ -834,6 +836,7 @@ def test_cited_facts_never_reach_graphics_templates_or_texts(desk_db):
     run(rt, FakeChatClient(analyst))
     st = stories(rt)
     assert st and all(extra in s["fact_ids"] and "F-" not in s["analysis_en"] + json.dumps(s["texts"]) for s in st)
+    assert all(s["analysis_en"] == "A move that mattered." for s in st)  # a cited note is kept, its citation stripped
     assert not any(extra in c["payload"] for c in rows(rt, "cues"))
     desk = workflow.Desk("M001", None, rt, "R", "fake")
     c = {"kind": "top_sprint", "facts": [SHAPE[1]], "ts": 3000.0, "team_id": "T01", "player_id": None}
@@ -954,3 +957,239 @@ def test_a_round_is_on_air_before_its_ai_tail_and_live_the_tail_runs_on_its_own(
     assert all((t in main) == (not speed) for _, t in seen)  # live, the tail is its own task
     assert "pending" not in summary["verifier"] and {s["verifier"]["status"] for s in stories(rt)} == {"pass"}
     assert all(s["analysis_en"] for s in stories(rt))
+
+
+def test_ordinals_only_as_minutes_and_counts_only_from_a_fact():
+    allowed = [(2.0, None), (1.0, None), (96.4, "speed"), (1.0, "minute"), (35.0, "minute"), (41.0, "minute")]
+    for text in ("Duarte scores his 2nd goal of the game.", "It was his 41st touch.",
+                 "Redwick have made 2 tackles in a row.", "He has 2 sprints.",
+                 "Duarte scores in the 2nd minute, 2-1.", "In the 3rd half."):  # 2 is the score, not a minute
+        assert rules.check_text(text, allowed), text
+    for text in ("In the 41st minute Duarte scores, 2-1.", "Redwick lead 2-1 in the 41st minute.",
+                 "A 41st-minute goal.", "From the 1st minute to the 41st.", "A shot at 96.4 km/h made it 2-1.",
+                 "Up from 2-1 in the 1st to 2-1 by the 35th.", "Momentum climbs by the 35th as Redwick push.",
+                 "In the 41st Duarte scores.", "Rising from the 1st, at the 35th, until the 41st.",
+                 "In the 2nd half Redwick press.", "Nel 2° tempo cresce."):
+        assert rules.check_text(text, allowed) == [], text
+    assert rules.check_text("Al 41° Duarte segna, 2-1.", allowed, "it") == []
+    assert rules.check_text("Al 41º Duarte marca, 2-1.", allowed, "es") == []
+    for text, lang in (("Al minuto 41 tiro di Duarte.", "it"), ("Al minuto 41 gol di Duarte, 2-1.", "it"),
+                       ("En el minuto 41 remate de Duarte.", "es")):  # a number after "minute" is a minute
+        assert rules.check_text(text, allowed, lang) == [], text
+    passes = rules.allowed_numbers([{"fact_id": "F-TEAM_PASS_ACCURACY-000001", "kind": "team_pass_accuracy",
+                                     "value": 83.0, "unit": "%", "label_en": "Pass accuracy 83% (228/276)", "period": 1}])
+    assert rules.check_text("All'83%, 228 passaggi su 276.", passes, "it") == []
+    assert rules.check_text("Al 83%, 228 pases de 276.", passes, "es") == []
+    assert rules.check_text("228 passaggi su 300.", passes, "it")
+    sprints = rules.allowed_numbers([{"fact_id": "F-SPRINT_COUNT-000001", "kind": "sprint_count", "value": 7.0,
+                                      "unit": "sprints", "label_en": "7 sprints", "period": 1}])
+    assert rules.check_text("He made 7 sprints.", sprints) == []
+    assert rules.check_text("He made 7 tackles.", sprints) == ["number not in the facts: '7 tackles' is a count no fact gives"]
+
+
+def test_a_cited_fact_joins_the_evidence_only_when_the_analysis_is_kept(desk_db):
+    _, _, rt = desk_db
+    extra = min((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])["fact_id"]
+
+    def analyst(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [extra],
+                                 "analysis_en": f"A shot at 999 km/h [{extra}]."} for s in p["stories"]]}
+
+    run(rt, FakeChatClient(analyst))
+    st = stories(rt)
+    assert st and all(extra not in s["fact_ids"] and "999" not in s["analysis_en"] for s in st)
+
+
+def test_the_analyst_cites_no_fact_read_after_its_round(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    late = max((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])
+    tail, early = workflow.run_tail, set()
+
+    async def moved_on(desk, wf, rnd):  # live, the desk reads on while a round's tail is still running
+        if rnd.batch.ts < late["ts"]:
+            early.update(s["story_id"] for s in rnd.stories)
+            desk.m.facts.setdefault(late["fact_id"], late)
+            desk.now = max(desk.now, late["ts"])
+        await tail(desk, wf, rnd)
+    monkeypatch.setattr(workflow, "run_tail", moved_on)
+
+    def analyst(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [late["fact_id"]],
+                                 "analysis_en": f"A move that mattered [{late['fact_id']}]."} for s in p["stories"]]}
+
+    run(rt, FakeChatClient(analyst))
+    st = stories(rt)
+    assert early and all(late["fact_id"] not in s["fact_ids"] for s in st if s["story_id"] in early)
+    assert any(late["fact_id"] in s["fact_ids"] for s in st if s["story_id"] not in early)  # a later round may cite it
+
+
+def test_a_director_that_fails_twice_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+
+    def down(self, stories, now):
+        raise RuntimeError("director down")
+    monkeypatch.setattr(rules.Director, "plan", down)
+    summary = run(rt, FakeChatClient())
+    st = stories(rt)
+    assert st and summary["stories"] == len(st) and all(s["verifier"]["status"] == "template" for s in st)
+    assert any(t["step"] == "fallback" for t in rows(rt, "traces"))
+
+
+def test_calls_in_flight_count_toward_the_ceiling(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    monkeypatch.setattr(config, "RUN_MAX_CALLS", 4)  # the finder, the analyst, then three writers at once
+    summary = run(rt, FakeChatClient(delay_s=0.05))
+    assert summary["model_calls"] == 4
+
+
+def test_a_call_cut_by_the_timeout_is_billed_for_its_instructions_too(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    monkeypatch.setattr(workflow, "RETRY_PAUSES_S", (0.0, 0.0))
+    monkeypatch.setattr(config, "AGENT_TIMEOUT_S", 0.05)
+    run(rt, FakeChatClient(delay_s=1.0))
+    cut = [a for a in rows(rt, "audit") if a["action"] == "model_call_timeout"]
+    role = lambda actor: "commentator" if actor.startswith("commentator") else actor  # noqa: E731
+    assert cut and all(a["tokens_in"] > len(workflow.INSTRUCTIONS[role(a["actor"])]) // 4 for a in cut)
+
+
+def test_the_verifier_record_says_whether_the_judge_passed_the_analysis(desk_db, tmp_path):
+    _, _, rt = desk_db
+    run(rt, FakeChatClient())
+    assert all(s["verifier"]["analysis_judged"] is True for s in stories(rt))
+    with closing(db.connect(tmp_path / "unjudged.sqlite")) as rt2:
+        run(rt2, FakeChatClient(lambda schema, p: {"verdicts": []} if schema == "Verdicts" else None))
+        assert stories(rt2) and all(s["verifier"]["analysis_judged"] is False for s in stories(rt2))
+
+
+def test_an_analysis_the_judge_rejects_takes_its_cited_facts_with_it(desk_db):
+    _, _, rt = desk_db
+    extra = min((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])["fact_id"]
+
+    def model(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [extra],
+                                 "analysis_en": f"A move that mattered [{extra}]."} for s in p["stories"]]}
+        if schema == "Verdicts":
+            return {"verdicts": [{"story_id": t["story_id"], "lang": t["lang"], "ok": t["lang"] != "analysis",
+                                  "issue": "" if t["lang"] != "analysis" else "Says the move mattered; no fact shows it."}
+                                 for t in p["texts"]]}
+
+    run(rt, FakeChatClient(model))
+    st = stories(rt)
+    assert st and all(extra not in s["fact_ids"] and s["analysis_en"] != "A move that mattered." for s in st)
+
+
+def test_a_fallback_that_fails_too_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+
+    def down(*a, **k):
+        raise RuntimeError("down")
+    monkeypatch.setattr(rules.Director, "plan", down)
+    monkeypatch.setattr(workflow, "template_story", down)
+    run(rt, FakeChatClient())
+    assert stories(rt) == [] and any("fallback failed" in t["output_summary"] for t in rows(rt, "traces"))
+
+
+def test_a_discarded_plan_holds_no_graphics_slot(desk_db, monkeypatch, tmp_path):
+    _, _, rt = desk_db
+    plan, failed = rules.Director.plan, []
+
+    def once(placing):
+        def flaky(self, stories, now):
+            if stories and not failed:
+                failed.append(1)
+                if placing:
+                    plan(self, stories, now)  # the plan takes its slots, then the round fails
+                raise RuntimeError("down")
+            return plan(self, stories, now)
+        return flaky
+
+    def cues(conn):
+        return [(c["ts"], c["graphic"], c["audience"], c["lang"]) for c in rows(conn, "cues")]
+    monkeypatch.setattr(rules.Director, "plan", once(False))
+    run(rt, FakeChatClient())
+    failed.clear()
+    monkeypatch.setattr(rules.Director, "plan", once(True))
+    with closing(db.connect(tmp_path / "placed.sqlite")) as rt2:
+        run(rt2, FakeChatClient())
+        assert cues(rt) and cues(rt2) == cues(rt)
+
+
+def test_an_ordinal_before_a_counted_noun_is_no_minute_and_a_total_is_no_count():
+    allowed = [(1.0, "minute"), (2.0, "minute"), (35.0, "minute"), (41.0, "minute")]
+    for text, lang in (("El 1º gol.", "es"), ("At the 1st attempt.", "en"), ("In the 41st game.", "en"),
+                       ("Del 2° gol.", "it")):
+        assert rules.check_text(text, allowed, lang), text
+    assert rules.check_text("Momentum climbs by the 35th as Redwick push.", allowed) == []
+    passes = rules.allowed_numbers([{"fact_id": "F-TEAM_PASS_ACCURACY-000001", "kind": "team_pass_accuracy",
+                                     "value": 83.0, "unit": "%", "label_en": "Pass accuracy 83% (228/276)", "period": 1}])
+    assert rules.check_text("Redwick hanno completato 276 passaggi.", passes, "it")  # 276 were tried, not completed
+    for text, lang in (("228 passaggi su 276.", "it"), ("228 de 276 pases.", "es"), ("Completati 228 passaggi.", "it")):
+        assert rules.check_text(text, passes, lang) == [], text
+
+
+def test_a_value_on_the_half_reads_only_as_its_label_rounds_it(desk_db):
+    allowed = rules.allowed_numbers([
+        {"fact_id": "F-SHOT_DISTANCE-000002", "kind": "shot_distance", "value": 17.5, "unit": "m",
+         "label_en": "Shot from 18 m", "period": 1},
+        {"fact_id": "F-SHOT_SPEED-000001", "kind": "shot_speed", "value": 69.5, "unit": "km/h",
+         "label_en": "Shot at 70 km/h", "period": 1}])
+    assert rules.check_text("From 18 m, at 70 km/h, really 17.5 m and 69.5 km/h.", allowed) == []
+    assert rules.check_text("From 17 m.", allowed) and rules.check_text("At 69 km/h.", allowed)
+    assert rules._near("18", 17.5) and rules._near("17.5", 17.5) and not rules._near("17", 17.5)
+    m = rules.Match(srv.get_match_info("M001"))
+    run_ = {"fact_id": "F-DISTANCE_COVERED-000001", "kind": "distance_covered", "value": 1650.0, "unit": "m",
+            "label_en": "1.7 km covered", "ts": 600.0, "period": 1}
+    story = lambda f: {"kind": "top_sprint", "facts": [f], "ts": 600.0, "minute": 10}  # noqa: E731
+    assert "1.7 km" in rules.number_list(m, story(run_))  # the writer gets the label's km, either way it rounded
+    assert "1.6 km" in rules.number_list(m, story({**run_, "label_en": "1.6 km covered"}))
+
+
+def test_a_discarded_round_spends_no_opener_and_adds_no_audience(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    on_air, batch, failed, seen = workflow.Desk.on_air, workflow.run_batch, [], []
+
+    async def watch(desk, b, wait=True):
+        await batch(desk, b, wait)
+        seen.append(("MARK" in desk.spent, "mark" in desk.used["en"]["loud"], "player:MARK" in desk.director.audiences))
+
+    def spends_then_fails(self, s):
+        if not failed:  # the round spends an opener and a loud word, its plan takes an audience, then it fails
+            failed.append(1)
+            self.spent.add("MARK")
+            self.used["en"]["loud"].add("mark")
+            self.director.audiences.append("player:MARK")
+            raise RuntimeError("down")
+        return on_air(self, s)
+    monkeypatch.setattr(workflow, "run_batch", watch)
+    monkeypatch.setattr(workflow.Desk, "on_air", spends_then_fails)
+    run(rt, FakeChatClient())
+    assert failed and seen and not any(any(s) for s in seen)
+
+
+def test_a_fallback_whose_trace_fails_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    trace = workflow.Desk.trace
+
+    def down(*a, **k):
+        raise RuntimeError("down")
+
+    def no_fallback_trace(self, agent, step, *a, **k):
+        if step == "fallback":
+            raise RuntimeError("database locked")
+        return trace(self, agent, step, *a, **k)
+    monkeypatch.setattr(rules.Director, "plan", down)
+    monkeypatch.setattr(workflow.Desk, "trace", no_fallback_trace)
+    summary = run(rt, FakeChatClient())
+    assert summary["stories"] == 0 and stories(rt) == []
+
+
+def test_a_tool_result_counts_toward_the_call_it_feeds():
+    token = workflow._ASK_USAGE.set({"pending_chars": 10})
+    try:
+        text = workflow._tool_text(SimpleNamespace(structuredContent={"result": {"a": 1}}, content=[]))
+        assert workflow._ASK_USAGE.get()["pending_chars"] == 10 + len(text)
+    finally:
+        workflow._ASK_USAGE.reset(token)
