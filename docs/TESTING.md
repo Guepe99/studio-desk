@@ -23,7 +23,7 @@ https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=
 On the big chance in **Needs you**:
 
 1. Open **Details**. It shows the facts the story cites from the fact ledger, each with what it measures and its value, the event they come from on a small pitch, the verifier's verdict and the Content Safety result.
-2. Press **Put on air**, **Edit** or **Reject** on the story, or **Use proposal** in Details (the agents' own line). Pause first if you need time: the story is due on air at 7:56 (the shot card first, then the big chance card at 8:01), and your choice decides what airs then. The confirmation that appears has an **Undo** button.
+2. Press **Put on air**, **Edit** or **Reject** on the story, or **Use proposal** in Details (the agents' own line). Pause first if you need time: the story is due on air at 7:55 (the shot card first, then the big chance card at 8:01), and your choice decides what airs then. The confirmation that appears has an **Undo** button.
 3. Now open the first goal, in the 10th minute. Redwick Wanderers score; a goal is low risk, so its graphics go on air by themselves: a shot card, then the goal card, for about 18 seconds:
 
    https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1

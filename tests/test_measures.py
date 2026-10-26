@@ -28,7 +28,8 @@ def test_blocked_counts_drafts_with_a_number_or_a_name():
 
 def test_on_air_and_proposals():
     stories = [story("S-000001", 1), story("S-000002", 2, on_air="template", proposals=False), story("S-000003", 3, on_air=None)]
-    assert measures.on_air(stories) == {"stories": 3, "phrasebook": 1, "template": 1, "ai": 1, "proposals": 2}
+    stories[0]["default_status"] = "auto_approved"
+    assert measures.on_air(stories) == {"stories": 3, "phrasebook": 1, "template": 1, "ai": 1, "proposals": 2, "auto": 1}
 
 
 def test_storylines_found_uses_the_eval_rule():

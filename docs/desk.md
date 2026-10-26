@@ -49,10 +49,10 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   and follows its stories. The fillers (`payload.filler`, see No empty minutes) never wait, on any
   sheet the kids' one included: they exist so that a visitor who never opens the desk always has a
   graphic on air. They are not listed in Needs you or Done (a sheet has
-  90 to 130 of them, which would bury the decided stories): one shows in On air now while it is on
+  79 to 104 of them, which would bury the decided stories): one shows in On air now while it is on
   screen, labelled "template graphic, no approval needed", as the proof panel says.
 - At most one generated graphic waits at a time: the soonest. A broadcast desk takes one decision
-  at a time, and the analyst sheet alone has 17 Team shape panels a match.
+  at a time, and the analyst sheet alone has 17 to 18 Team shape panels a match.
 - One nobody decided on before its slot ended is missed: it never airs, it leaves Needs you for the
   "Missed" count under Done, and its row says "missed, nobody put it on air in time", with no action
   left. The agents' stories get a limit too: 5 match minutes after the slot the director gave a held

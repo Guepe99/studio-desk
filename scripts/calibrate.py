@@ -42,8 +42,8 @@ FILES = {
     "competitions.json": (15073685, "3dc210a4805dda5337b0ff9f7eaa407a"),
 }
 
-# The hackathon is run with the Premier League: we do not reuse its data, so the
-# English first division 2017/18 (Wyscout competition 364) is excluded here, in code.
+# We do not reuse the data of the hackathon's partner league, so the English first
+# division 2017/18 (competition 364) is excluded here, in code.
 EXCLUDED_COMPETITIONS = {364}
 
 # Source texts never name the data vendor: data/forbidden_names.txt lists it, and the simulator

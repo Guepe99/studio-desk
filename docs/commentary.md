@@ -198,17 +198,19 @@ machine. A name that is not ready is skipped: its line does not play.
 
 ## Crowd sounds
 
-Five CC0 1.0 sounds from Freesound (`THIRD_PARTY.md`). `scripts/booth-crowd.sh` reads them with ffmpeg only,
-trims and levels them, and writes them into `web/vendor/crowd-audio/` (24 kHz mono, 48 kbit/s, 704 kB in
-all).
+Six CC0 1.0 sounds from Freesound (`THIRD_PARTY.md`). `scripts/booth-crowd.sh` reads them with ffmpeg only,
+trims and levels them, and writes seven files into `web/vendor/crowd-audio/` (24 kHz mono, 48 kbit/s, 711 kB
+in all).
 
 | file | source | cut | loudness |
 |---|---|---|---|
 | `bed.mp3` | habbis92, 206003 | 2 to 80 s, crossfaded loop | -27.3 LUFS |
 | `anticipation.mp3` | itmightgetloud, 829453 | 44 to 54 s | -24.3 LUFS |
 | `ooh.mp3` | Sandermotions, 494362 | 2.5 to 8 s | -22.4 LUFS |
-| `roar.mp3` | D.jones, 528799 | 2 to 24 s, 6 s fade | -20.4 LUFS |
+| `roar.mp3` | D.jones, 528799 | 2 to 24 s, 6 s fade | -24.4 LUFS |
 | `whistle.mp3` | SpliceSound, 218318 | 0 to 1.6 s | -16.4 LUFS |
+| `kick.mp3` | padpad, 515908 | 2.18 to 2.53 s | peak -20 dBFS (too short for LUFS) |
+| `strike.mp3` | padpad, 515908 | 18.95 to 19.35 s, bass lift | peak -9 dBFS |
 
 ## Tests
 

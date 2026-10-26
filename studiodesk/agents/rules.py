@@ -1856,6 +1856,7 @@ def risk(story):
         return round(r + (0.3 if not story["fact_ids"] else 0.0), 2)
     if story.get("kind") == "recap" and story["verifier"]["status"] == "template":
         return r  # the score and pass accuracy written by code: the half-time and full-time card always airs
+    r += config.AUTO_APPROVE_RISK if story.get("kind") in JUDGEMENT_KINDS else 0.0  # a reading waits, whatever text airs
     r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
           "template": 0.3, "pending": 0.3}[story["verifier"]["status"]]  # pending: on air, not yet verified  # a rewrite for style alone fixed no fact
     r += config.AUTO_APPROVE_RISK if story.get("unjudged") else 0.0  # claims without numbers not checked

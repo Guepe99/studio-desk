@@ -67,8 +67,9 @@ def blocked(stories):
 
 def on_air(stories):
     """Who wrote the text on air, and the AI lines that passed every check but stayed on the desk."""
-    out = {"stories": len(stories), "phrasebook": 0, "template": 0, "ai": 0, "proposals": 0}
+    out = {"stories": len(stories), "phrasebook": 0, "template": 0, "ai": 0, "proposals": 0, "auto": 0}
     for s in stories:
+        out["auto"] += s.get("default_status") == "auto_approved"
         v = s.get("verifier") or {}
         out[v.get("on_air") if v.get("on_air") in ("phrasebook", "template") else "ai"] += 1
         out["proposals"] += bool(v.get("proposals"))
@@ -198,7 +199,7 @@ def measure(match_id, pack, runtime, mconn):
 
 
 def total(rows):
-    keys = ("found", "planted", "numbers", "names", "stories", "phrasebook", "template", "ai", "proposals",
+    keys = ("found", "planted", "numbers", "names", "stories", "phrasebook", "template", "ai", "proposals", "auto",
             "calls", "steps", "tokens_in", "tokens_out", "cost_usd", "model_s", "trace_tokens", "trace_cost_usd",
             "rounds", "minutes", "wall_total_s")
     return {k: sum(r[k] for r in rows) for k in keys}
@@ -279,10 +280,11 @@ same reason counts once, so these are lower bounds.
 
 ## Phrasebook on air, proposals on the desk
 
-Every one of the {t['stories']} stories went on air with code-written text: {t['phrasebook']} from the
-commentator phrasebook, {t['template']} from the fact-only template, {t['ai']} with the AI's own line. In
+Every one of the {t['stories']} stories carries code-written text for air: {t['phrasebook']} from the
+commentator phrasebook, {t['template']} from the fact-only template, {t['ai']} with the AI's own line. The risk
+rule puts {t['auto']} of them on air by themselves and holds {t['stories'] - t['auto']} for the producer. In
 {t['proposals']} stories the AI's line passed every check in all three languages and waits on the desk as
-a proposal; it goes on air only when a person edits the story.
+a proposal; it goes on air only when the producer presses **Use proposal** or edits the story.
 
 ## Tokens and cost
 
@@ -310,7 +312,7 @@ a round (story finder, director, analyst, three commentators, verifier, rewrites
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of {statistics.median(w for _, w in waits):.1f} seconds of match time before its round (goals at most
-{goal_max:.1f} seconds, other stories at most {max(w for _, w in waits):.1f} seconds).
+{goal_max:.1f} seconds, other stories at most {max((w for k, w in waits if k != 'goal'), default=0.0):.1f} seconds).
 """
 
 

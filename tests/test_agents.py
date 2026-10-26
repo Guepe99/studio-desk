@@ -85,6 +85,9 @@ def test_risk_maps_to_default_status():
     assert rules.default_status(rules.risk({**phrase, "kind": "big_chance"})) == "needs_review"
     assert rules.default_status(rules.risk({**phrase, "kind": "tactical_shift", "player_id": None})) == "needs_review"
     assert rules.default_status(rules.risk({**phrase, "kind": "goal", "fact_ids": []})) == "needs_review"
+    # the code's template on air: a reading of the game still waits, even with a clean verdict
+    assert rules.default_status(rules.risk({**clean, "kind": "tactical_shift"})) == "needs_review"
+    assert rules.default_status(rules.risk({**clean, "kind": "goal"})) == "auto_approved"
 
 
 def test_cost_from_tokens():
@@ -863,6 +866,20 @@ def test_desk_notes_carry_a_fixed_reason_never_the_judges_words(desk_db):
         ["Earlier Italian draft: a trend the values do not show."]
     assert rules.desk_notes("template", {"it": ["x"]}, {"en": [], "es": ["jargon"]}) == \
         ["Spanish draft not used: jargon."]
+
+
+def test_a_text_judged_twice_passes_only_when_both_verdicts_pass(desk_db):
+    _, _, rt = desk_db
+
+    def judge(schema, p):
+        if schema == "Verdicts":  # the model contradicts itself: the "not ok" holds
+            return {"verdicts": [v for t in p["texts"] for v in (
+                {"story_id": t["story_id"], "lang": t["lang"], "ok": False, "issue": "The shot was saved, not scored."},
+                {"story_id": t["story_id"], "lang": t["lang"], "ok": True, "issue": ""})]}
+
+    run(rt, FakeChatClient(judge))
+    st = stories(rt)
+    assert st and all(s["verifier"]["status"] == "template" for s in st)
 
 
 def test_a_failed_judge_leaves_a_short_reason_in_the_trace(desk_db, monkeypatch):

@@ -725,8 +725,10 @@ def build_workflow(desk):
             return {}, set(), getattr(e, "usage", None), rules.brief_error(e)
         # a verdict counts as ok only when its issue is empty or "none": "ok: true" with a named problem
         # is not ok; a "not ok" that argues itself out of its issue is no verdict (unjudged, review)
-        ok = {(v.story_id, v.lang): rules.no_issue(v.issue) or (v.ok and not (v.issue or "").strip())
-              for v in out.verdicts if (v.story_id, v.lang) in texts}
+        ok = {}
+        for v in out.verdicts:  # two verdicts on one text: it is ok only when both are
+            if (key := (v.story_id, v.lang)) in texts:
+                ok[key] = ok.get(key, True) and (rules.no_issue(v.issue) or (v.ok and not (v.issue or "").strip()))
         verdicts = [v for v in out.verdicts if (v.story_id, v.lang) in ok and (ok[(v.story_id, v.lang)]
                                                                                or not rules.retracts(v.issue))]
         return ({(v.story_id, v.lang): v.issue or "unsupported claim" for v in verdicts

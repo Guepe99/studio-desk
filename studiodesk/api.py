@@ -7,6 +7,7 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 from contextlib import asynccontextmanager, closing, contextmanager
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -323,10 +324,33 @@ def _story_row(conn, match_id: str, story_id: str) -> dict | None:
 
 
 _edit_safety = None  # the Content Safety client for edits, built on the first edit
+# An edit check costs 1 to 4 of the F0 tier's 5,000 text records a month (config.py, next to Ask's 40 questions a
+# day), so it is counted before the call: an edit the cap stops is refused, never put on air unchecked
+EDIT_CHECKS_PER_DAY = 20
+EDIT_CHECKS_PER_CLIENT_PER_DAY = 10
+# shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
+_edit_checks = {"day": "", "all": 0, "by_client": {}}
+_edit_checks_lock = threading.Lock()
+
+
+def _edit_check_allowed(client: str) -> bool:
+    """Counts one Content Safety check of an edit for `client`, or False when today's caps are reached."""
+    with _edit_checks_lock:
+        day = _now()[:10]
+        if _edit_checks["day"] != day:
+            _edit_checks.update(day=day, all=0, by_client={})
+        by_client = _edit_checks["by_client"]
+        if _edit_checks["all"] >= EDIT_CHECKS_PER_DAY or by_client.get(client, 0) >= EDIT_CHECKS_PER_CLIENT_PER_DAY:
+            return False
+        _edit_checks["all"] += 1
+        by_client[client] = by_client.get(client, 0) + 1
+        return True
+
+
 SAFETY_CATEGORIES = {"Hate": "hate", "SelfHarm": "self-harm", "Sexual": "sexual content", "Violence": "violence"}
 
 
-def _edit_refused(match_id: str, story: dict, edited: dict) -> str | None:
+def _edit_refused(match_id: str, story: dict, edited: dict, client: str = "") -> str | None:
     """Why an edited text may not go on air, or None. The checks the agents' drafts meet (rules.check_text:
     every number one of this story's facts, its minute or the score then; cited fact ids its own; no real
     name), then Content Safety when the site has it. Anything that cannot be checked is refused."""
@@ -350,6 +374,8 @@ def _edit_refused(match_id: str, story: dict, edited: dict) -> str | None:
             return f"{what} has {rules.reason(flags[0])}" + (f" ({shown.group(1)})" if shown else "")
     if not SAFETY_ENDPOINT:
         return None
+    if not _edit_check_allowed(client):
+        return "the content safety check has reached today's limit for edits, try again tomorrow"
     from .agents.safety import EDIT_FLAG_SEVERITY, AzureSafety
     global _edit_safety
     try:
@@ -457,8 +483,8 @@ def post_decision(d: Decision, request: Request, response: Response):
         if story is None:
             raise HTTPException(404, "unknown story for this match")
         # checked outside the write lock: Content Safety is a network call
-        if why := _edit_refused(d.match_id, story, d.edited_text):
-            with _runtime(write=True) as conn:  # a refused edit is an action too: the cap bounds the safety calls
+        if why := _edit_refused(d.match_id, story, d.edited_text, _client(request)):
+            with _runtime(write=True) as conn:  # a refused edit is an action too
                 sid = _session(conn, request, response)
                 _spend(conn, sid)
                 conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "

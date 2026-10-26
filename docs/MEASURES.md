@@ -31,8 +31,9 @@ same reason counts once, so these are lower bounds.
 
 ## Phrasebook on air, proposals on the desk
 
-Every one of the 83 stories went on air with code-written text: 83 from the
-commentator phrasebook, 0 from the fact-only template, 0 with the AI's own line. In
+Every one of the 83 stories carries code-written text for air: 83 from the
+commentator phrasebook, 0 from the fact-only template, 0 with the AI's own line. The risk
+rule puts 26 of them on air by themselves and holds 57 for the producer. In
 67 stories the AI's line passed every check in all three languages and waits on the desk as
 a proposal; it goes on air only when the producer presses **Use proposal** or edits the story.
 

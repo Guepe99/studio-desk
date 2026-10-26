@@ -92,6 +92,7 @@ def desk(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "WEB", tmp_path / "web")
     monkeypatch.setattr(api, "SAFETY_ENDPOINT", "")
     monkeypatch.setattr(api, "_new_sessions", {"day": "", "by_client": {}})
+    monkeypatch.setattr(api, "_edit_checks", {"day": "", "all": 0, "by_client": {}})
     return lambda: TestClient(api.app)
 
 
@@ -427,3 +428,36 @@ def test_matches_lists_exports(desk, tmp_path):
     (tmp_path / "web" / "data" / "junk" / "meta.json").write_text("{}")
     assert desk().get("/api/matches").json() == [{"match_id": "DEMO", "home": "Home FC", "away": "Away FC",
                                                   "home_score": 1, "away_score": 1}]
+
+
+def test_content_safety_on_edits_is_capped_before_the_call(desk, monkeypatch):
+    from studiodesk.agents import safety
+    seen = []
+
+    class Fake:
+        def __init__(self, endpoint, timeout):
+            pass
+
+        def __call__(self, text):
+            seen.append(text)
+            return {"Hate": 0}
+
+    monkeypatch.setattr(safety, "AzureSafety", Fake)
+    monkeypatch.setattr(api, "SAFETY_ENDPOINT", "https://cs.example")
+    monkeypatch.setattr(api, "_edit_safety", None)
+    monkeypatch.setattr(api, "EDIT_CHECKS_PER_CLIENT_PER_DAY", 2)
+    monkeypatch.setattr(api, "EDIT_CHECKS_PER_DAY", 3)
+    for _ in range(2):  # a fresh cookie each time does not reset the address's count
+        assert _edit(desk(), {"en": "Kind words"}).status_code == 200
+    r = _edit(desk(), {"en": "Kind words"})
+    assert r.status_code == 422 and "reached today's limit" in r.json()["detail"] and len(seen) == 2
+    assert _edit(desk(), {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number")  # no call spent
+    api._edit_checks["by_client"].clear()  # another address: the day's cap for everyone still holds
+    assert _edit(desk(), {"en": "Kind words"}).status_code == 200
+    assert "reached today's limit" in _edit(desk(), {"en": "Kind words"}).json()["detail"] and len(seen) == 3
+
+
+def test_an_edit_with_a_lone_surrogate_is_refused_not_a_500(desk):
+    raw = json.dumps({"match_id": "DEMO", "story_id": "S-000001", "decision": "edited", "edited_text": {"en": "ab"}})
+    r = desk().post("/api/decisions", content=raw.replace('"ab"', '"a\\ud800b"'), headers={"content-type": "application/json"})
+    assert r.status_code == 422
