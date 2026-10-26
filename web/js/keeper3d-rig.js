@@ -32,7 +32,8 @@ export class KeeperRig {
     this.real = {};
     for (const name of new Set(Object.values(CLIPS).flat())) {
       const c = s.motion?.clips?.[name], g = c?.root && s.container.animationGroups.find((a) => a.name === name);
-      if (g) this.real[name] = { ...c, fps: s.motion.fps, ...measureClip(s, probe.rootNodes[0], P, g, c, s.motion.fps, kindOf(name)) };
+      // measured on the first player's scale: a match without players has no keeper to pose
+      if (g && s.players.length) this.real[name] = { ...c, fps: s.motion.fps, ...measureClip(s, probe.rootNodes[0], P, g, c, s.motion.fps, kindOf(name)) };
     }
     probe.rootNodes.forEach((n) => n.dispose());
     probe.skeletons.forEach((k) => k.dispose());
@@ -103,14 +104,15 @@ export class KeeperRig {
       const w = smooth((ts - r.start) / (r.tc - r.start)) * (1 - smooth((ts - r.tc - 0.2) / 0.4));
       if (w <= 0) continue;
       if (r.kind === "catch" && r.h < 0.6) this._stoop(p, r, w);
-      const target = new B.Vector3(r.ball[0] - HALF_L, r.ball[2], r.ball[1] - HALF_W);
+      const target = (this._target ??= new B.Vector3()).set(r.ball[0] - HALF_L, r.ball[2], r.ball[1] - HALF_W);
+      const dir = (this._dir ??= new B.Vector3());   // aimPart reads it and keeps nothing
       for (const side of ["l", "r"]) {
         const up = p.anim.node(`upperarm_${side}`), lo = p.anim.node(`lowerarm_${side}`), hand = p.anim.node(`hand_${side}`);
         if (!up || !lo || !hand) continue;
         chain(lo);
-        aimPart(up, lo, target.subtract(up.getAbsolutePosition()), w);
+        aimPart(up, lo, target.subtractToRef(up.getAbsolutePosition(), dir), w);
         chain(hand);
-        aimPart(lo, hand, target.subtract(lo.getAbsolutePosition()), w);
+        aimPart(lo, hand, target.subtractToRef(lo.getAbsolutePosition(), dir), w);
       }
     }
     for (const p of this.s.players) this._grip(p, ts);   // after the arms moved

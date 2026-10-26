@@ -91,12 +91,12 @@ try {
 
   // kit logic (players3d.js), on the fixture's teams
   const kits = await page.evaluate(async () => {
-    const m = await import("./js/players3d.js");
-    const t = window.sample3d.match.teams;
+    const m = await import("./js/players3d.js"), { keeperKits } = await import("./js/pitch.js");
+    const t = window.sample3d.match.teams, keepers = keeperKits(t);
     const ids = Object.keys(t);
     const looks = Object.keys(window.sample3d.match.players).map((pid) => m.playerLook(pid));
     return {
-      out: ids.map((id) => m.kitColours(t[id], false)), gk: ids.map((id) => m.kitColours(t[id], true)),
+      out: ids.map((id) => m.kitColours(t[id], false)), gk: ids.map((id) => m.kitColours(t[id], true, keepers[t[id].side])),
       contrast: ids.map((id) => { const k = m.kitColours(t[id], false); return m.contrast(k.shirt, k.number); }),
       same: JSON.stringify(m.playerLook("P01")) === JSON.stringify(m.playerLook("P01")),
       skins: new Set(looks.map((l) => l.skin)).size, hairs: new Set(looks.map((l) => l.hair)).size,

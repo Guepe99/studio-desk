@@ -470,7 +470,7 @@ export class BallPlan {
     const w = this._net(ts);
     if (w) {
       const a = w.n.s[w.k], b = w.n.s[w.k + 1] ?? a;
-      [x, y, h] = [0, 1, 2].map((j) => a[j] + (b[j] - a[j]) * w.u);
+      x = a[0] + (b[0] - a[0]) * w.u; y = a[1] + (b[1] - a[1]) * w.u; h = a[2] + (b[2] - a[2]) * w.u;
       const p = ts > w.n.th && this.raw(this.bent(ts));
       if (p) {   // out of the goal onto the tracking ball
         const u = smooth((ts - w.n.th) / NET_OUT);
@@ -479,7 +479,7 @@ export class BallPlan {
     } else {
       const p = this.raw(this.bent(ts));
       if (!p) return null;
-      [x, y, h] = [p[0], p[1], Math.max(0, p[2] - this.zGround)];
+      x = p[0]; y = p[1]; h = Math.max(0, p[2] - this.zGround);
       const mv = this._moved(ts);
       if (mv) { x += mv[0]; y += mv[1]; }
       const hd = this._hold(ts), K = hd && this.match.at(hd.i, ts);
@@ -497,12 +497,12 @@ export class BallPlan {
         if (fl) h = Math.max(h, fl.h - (G / 2) * (ts - fl.t0) ** 2);
       }
     }
-    let q = [0, 0, 0, 1];
+    let q;
     if (this.quats) {
       const f = Math.min(Math.max(ts / STEP - this.qk0, 0), this.quats.length / 4 - 1.001);
       const k = Math.floor(f), u = f - k;
-      q = nlerp(this.quats.subarray(4 * k, 4 * k + 4), this.quats.subarray(4 * k + 4, 4 * k + 8), u);
-    }
+      q = nlerp(this.quats, 4 * k, u);
+    } else q = [0, 0, 0, 1];
     return { x, y, h, q };
   }
 
@@ -582,11 +582,13 @@ function qmul(a, b) {
     a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
 }
 
-function nlerp(a, b, u) {
-  const sg = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
-  const q = [0, 1, 2, 3].map((k) => a[k] * (1 - u) + sg * b[k] * u);
-  const l = Math.hypot(...q);
-  return q.map((c) => c / l);
+// quaternions Q[j..j+3] and the next one, u of the way from the first (called once a frame: no copies)
+function nlerp(Q, j, u) {
+  const sg = Q[j] * Q[j + 4] + Q[j + 1] * Q[j + 5] + Q[j + 2] * Q[j + 6] + Q[j + 3] * Q[j + 7] < 0 ? -1 : 1;
+  const q0 = Q[j] * (1 - u) + sg * Q[j + 4] * u, q1 = Q[j + 1] * (1 - u) + sg * Q[j + 5] * u;
+  const q2 = Q[j + 2] * (1 - u) + sg * Q[j + 6] * u, q3 = Q[j + 3] * (1 - u) + sg * Q[j + 7] * u;
+  const l = Math.hypot(q0, q1, q2, q3);
+  return [q0 / l, q1 / l, q2 / l, q3 / l];
 }
 
 // --- leg poses for the actions, as joint angles in degrees on a planar leg:

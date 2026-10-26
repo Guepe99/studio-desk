@@ -84,8 +84,13 @@ Considered and not used:
 - Law 4 of the Laws of the Game asks that each goalkeeper wears colours that distinguish them
   from the other players and the officials
   ([FA copy of Law 4, 2026-27](https://www.thefa.com/-/media/files/thefaportal/governance-docs/laws-of-the-game/2026-27/law-4-the-players-equipment.ashx)).
-  Our keepers wear a fixed green (home) or purple (away), since the export carries no keeper
-  colours; a team whose primary colour is close to these would clash.
+  The export carries no keeper colours, so each keeper keeps the old green (home) or purple
+  (away) unless that shirt is within 25 (CIE76 delta E) of either team's two colours, the other
+  keeper's or the grass (3D and 2D); then he takes the colour of a fixed palette farthest from
+  those (`keeperKits` in web/js/pitch.js, which the 2D pitch and minimap use too). The green is
+  always too close to the grass: home keepers wear yellow on M001 to M004 and cyan on DEMO, and
+  M004's away keeper wears orange. The palette has no near black, which on the small
+  see-through minimap reads as a dark team's disc.
 - In the wide frame a player is 30 to 60 px tall: what reads is the shirt and shorts colour
   blocks and the socks, so the far body keeps those as flat colours and drops everything else.
 - Numbers are readable only in replays and close-ups; there the back number is the one that

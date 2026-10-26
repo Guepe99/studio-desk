@@ -406,7 +406,7 @@ export function buildStadium(scene, match, profile, rnd) {
     // the 3D spectators, after the players so the page shows the pitch first
     async load() { stadium.crowd3d = await buildCrowd3D(scene, near, goals, rnd, { outline: profile.crowdOutline, lightsOf: first }); },
     update(ts) {
-      const g = goals.filter((x) => x.ts <= ts && ts - x.ts < 12).pop();   // the last goal drives the cards
+      const g = goals.findLast((x) => x.ts <= ts && ts - x.ts < 12);   // the last goal drives the cards
       cheer.since = g ? ts - g.ts : 99;
       cheer.side = g ? (g.side === "home" ? 1 : -1) : 0;
       cheer.time = ts;

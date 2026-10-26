@@ -19,6 +19,7 @@ import { setupAnimations, animatePlayer, scheduleActions, actionDriver, schedule
 export { clipWeights } from "./scene3d/players.js";
 import { BallRig, ballTexture } from "./ball3d-rig.js";
 import { loadFootballer, dressFootballer } from "./players3d.js";
+import { keeperKits } from "./pitch.js";
 import { smoothMatch, rootAt, velocityAt } from "./scene3d/track.js";
 import { GoalNets } from "./scene3d/net.js";
 import { buildScreens } from "./scene3d/screen.js";
@@ -34,8 +35,18 @@ const YAW_OMEGA = 12;       // rad/s, the facing spring: critically damped, half
 const YAW_RATE_MAX = 8;     // rad/s, cap on the target's own turn rate fed forward to the spring
 const VEL_H = 0.05;         // s, half-window of the speed estimate on the smooth path
 const ROOT_OMEGA = 20;      // rad/s, the shown root's lag-free critically damped smoothing (track.js rootAt)
+// s: a frame longer than this (64x) puts the facing spring at its resting point at once instead of
+// taking dt / 0.01 steps (6,400 a player for a 1 s frame); the steps would have settled it within 1e-3 rad
+const YAW_SETTLE = 1;
 
 const angleDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+
+// What player pid's kit is made from (dressFootballer, or the mannequin's): his team, whether he is
+// the keeper, his side's keeper shirt (keepers: keeperKits) and his number.
+export function dressOf(match, keepers, pid) {
+  const pl = match.players[pid], team = match.teams[pl.team_id];
+  return { team, gk: pl.position === "GK", keeper: keepers[team.side], shirt: pl.shirt };
+}
 
 function canvasTexture(scene, name, w, h, draw, opts = {}) {
   const tex = new B.DynamicTexture(name, { width: w, height: h }, scene, opts.mipmaps ?? true);
@@ -55,7 +66,8 @@ function flatMat(scene, name, color, emissive = null) {
 export class Scene3D {
   static async create(canvas, match, opts) {
     const s = new Scene3D(canvas, match, opts);
-    await s._loadPlayers();
+    // a player file that fails to load leaves no live engine behind the fallback to 2D
+    await s._loadPlayers().catch((e) => { s.engine.dispose(); throw e; });
     await s.crowd.load().catch((e) => console.warn(`3D crowd not loaded, cards only: ${e.message}`));
     return s;
   }
@@ -175,11 +187,11 @@ export class Scene3D {
     const lib = look === "mannequin" ? null : await loadFootballer(scene, { anime: look !== "footballer" });
     const container = lib?.container ?? await B.LoadAssetContainerAsync("vendor/quaternius/mannequin.glb", scene);
     // kit materials: primary on the body, secondary on the joints; goalkeepers in their own kit
-    const kits = {};
-    const kit = (team, gk) => {
+    const kits = {}, keepers = keeperKits(match.teams);
+    const kit = ({ team, gk, keeper }) => {
       const id = `${team.team_id}${gk ? "gk" : ""}`;
       if (!kits[id]) {
-        const body = pbr(scene, `${id}-body`, gk ? (team.side === "home" ? "#1f9d6b" : "#7a3fb8") : team.color_primary, { roughness: 0.7 });
+        const body = pbr(scene, `${id}-body`, gk ? keeper : team.color_primary, { roughness: 0.7 });
         const joints = pbr(scene, `${id}-joints`, gk ? "#15171f" : team.color_secondary, { roughness: 0.6 });
         kits[id] = { body, joints };
       }
@@ -197,15 +209,15 @@ export class Scene3D {
     this.players = [];
     for (const i of this.entities) {
       const pid = match.meta.entities[i];
-      const pl = match.players[pid], team = match.teams[pl.team_id];
-      const inst = lib ? dressFootballer(lib, pid, { team, gk: pl.position === "GK", shirt: pl.shirt })
+      const dress = dressOf(match, keepers, pid);
+      const inst = lib ? dressFootballer(lib, pid, dress)
         : container.instantiateModelsToScene((n) => `${pid}-${n}`, false, { doNotInstantiate: true });
       const holder = new B.TransformNode(`player-${pid}`, scene);
       const root = inst.rootNodes[0];
       root.parent = holder;
       root.scaling.scaleInPlace(scale * (inst.height ?? 1));
       if (!lib) {
-        const k = kit(team, pl.position === "GK");
+        const k = kit(dress);
         for (const m of root.getChildMeshes()) {
           m.material = /joint/i.test(m.material?.name ?? "") ? k.joints : k.body;
           m.alwaysSelectAsActiveMesh = true;   // the bind-pose bounding box is wrong once animated
@@ -237,6 +249,7 @@ export class Scene3D {
   update(view, dt) {
     const { match } = this;
     const ts = this.ts = Math.min(view.ts, match.duration);
+    this.poseFrame = {};   // the drivers' answers are kept from here to the end of render() (addDriver)
     const bp = this.rig.ball(ts), b = bp && [bp.x, bp.y, bp.h];
     if (b) {
       const z = b[2];
@@ -276,7 +289,9 @@ export class Scene3D {
       if (p.yaw === null || dt === 0 || !Number.isFinite(p.yaw) || !Number.isFinite(p.yawV)) { p.yaw = target; p.yawV = 0; }
       else {
         const tv = Math.max(-YAW_RATE_MAX, Math.min(YAW_RATE_MAX, angleDiff(p.target, target) / dt));
-        for (let left = dt; left > 1e-6; left -= 0.01) {
+        // the steps' resting point: ahead of the target by the fed-forward turn, not moving
+        if (dt > YAW_SETTLE) { p.yaw += angleDiff(p.yaw, target) + (2 * tv) / YAW_OMEGA; p.yawV = 0; }
+        else for (let left = dt; left > 1e-6; left -= 0.01) {
           const h = Math.min(0.01, left);
           p.yawV += (YAW_OMEGA * YAW_OMEGA * angleDiff(p.yaw, target) + 2 * YAW_OMEGA * (tv - p.yawV)) * h;
           p.yaw += p.yawV * h;
@@ -350,12 +365,28 @@ export class Scene3D {
 
   // the page drives frames from its own requestAnimationFrame: beginFrame and endFrame let Babylon
   // measure the real frame rate, which the fps readout reads (else 60 forever)
-  render() { this.engine.beginFrame(); this.scene.render(); this.engine.endFrame(); }
+  render() { this.engine.beginFrame(); this.scene.render(); this.engine.endFrame(); this.poseFrame = null; }
 
   // Plug a driver in: {priority, pose(i, ts)}, see web/js/scene3d/players.js. Awareness modules
   // take priority 10, so the ball rig (20) and the event actions (30) win over them.
+  // The scene asks a driver about a player about six times a frame (resolve, the speed window at
+  // ts +- VEL_H, the awareness layer's _held): from update() to the end of render() each (i, ts) is
+  // answered once and kept, pose() being a pure function of them. Outside a frame it asks the driver.
   addDriver(d) {
-    this.drivers.push(d);
+    const kept = new Map();   // i -> {f: the frame, t: [ts], p: [answer]}
+    const pose = (i, ts) => {
+      const f = this.poseFrame;
+      if (!f) return d.pose(i, ts);
+      let c = kept.get(i);
+      if (!c) kept.set(i, (c = { f, t: [], p: [] }));
+      else if (c.f !== f) { c.f = f; c.t.length = 0; c.p.length = 0; }
+      const k = c.t.indexOf(ts);
+      if (k >= 0) return c.p[k];
+      const p = d.pose(i, ts);
+      c.t.push(ts); c.p.push(p);
+      return p;
+    };
+    this.drivers.push({ ...d, pose });
     this.drivers.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
   }
 

@@ -83,11 +83,13 @@ export function setupLighting(scene, profile, mode = "night") {
     csm.transparencyShadow = false;
   }
   const flood = night ? buildFloodlights(scene) : null;
+  const blobs = { mapped: night ? MASTS.slice(1) : [], none: night ? MASTS.slice() : null };
   return {
     mode, sun: key, key, fills, csm, flood,
     // directions (x, z on the ground, unit) and elevation of the lights without a shadow map:
     // grounding.js draws their shadows as faint blobs
-    blobLights: () => (night ? MASTS.slice(csm ? 1 : 0) : (csm ? [] : null)),
+    // (the same arrays every frame, read only; dropShadows can take the shadow map away)
+    blobLights: () => (csm ? blobs.mapped : blobs.none),
     addCaster(mesh) { if (csm) csm.addShadowCaster(mesh, true); },
     // at night the floodlights are aimed at the pitch and the stands sit outside their beams: they
     // only get a dim spill, so the bright pitch stands out from darker surroundings as on TV

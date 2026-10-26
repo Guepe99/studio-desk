@@ -4,7 +4,7 @@
 // dresses each instance: kit colours, number, skin tone, hair, and the far body as a LOD level.
 //
 //   const lib = await loadFootballer(scene);
-//   const inst = dressFootballer(lib, pid, { team, gk, shirt, captain });
+//   const inst = dressFootballer(lib, pid, { team, gk, keeper, shirt, captain });   // keeper: keeperKits(teams)[side]
 //   // inst: what instantiateModelsToScene returns, plus casters (the meshes that cast shadows)
 //
 // Materials in the GLB: skin, kit_shirt, kit_shorts, kit_socks, boots, forearms, hands, eyes,
@@ -14,6 +14,7 @@
 
 const B = window.BABYLON;
 import { toon, outlineMaterial } from "./toon3d.js";
+import { keeperKits } from "./pitch.js";   // the keepers' shirts
 const SKIN_LEVEL = 0.6, HAIR_LEVEL = 0.5;
 export const REGIONS = ["skin", "kit_shirt", "kit_shorts", "kit_socks", "boots", "forearms", "hands"];
 export const SKIN_TONES = ["#f2cfb3", "#e3b08c", "#c98f68", "#a86d4b", "#7d4b31", "#57321f"];
@@ -22,8 +23,6 @@ export const HAIR_STYLES = ["hair_buzzed", "hair_parted", "shaved"];
 export const BOOT_COLOURS = ["#16161a", "#f2f2f2", "#ff5fa2", "#2f7bff", "#ffcf1a", "#ff6b1f"];
 // kit texture layout of build_footballer.kit_uv: UV units per metre, the same both ways
 const UV_PER_M = 0.8;
-// shortcut: two keeper kits picked by side, as the mannequin look did; upgrade when the export carries keeper colours
-const GK_KIT = { home: "#1f9d6b", away: "#7a3fb8" };
 // screen share (bounding sphere area over viewport area) under which the body switches to the far
 // one, which has no shirt number: about 45 px of player height in a 720 px frame, so the wide
 // broadcast shot keeps the numbers (at 120 px it lost them)
@@ -80,8 +79,8 @@ const readable = (bg, pref) => (contrast(bg, pref) >= 2.5 ? pref : luminance(bg)
 // Team colours are muted on the 3D kits (a quarter less saturation, 12% darker): at full strength
 // flat toon shading under the broadcast grade reads as plastic. The 2D page keeps the team colours.
 const mute = (hex) => { const c = B.Color3.FromHexString(hex).toHSV(); return B.Color3.FromHSV(c.r, c.g * 0.75, c.b * 0.88).toHexString(); };
-export function kitColours(team, gk) {
-  const shirt = mute(gk ? GK_KIT[team.side] ?? GK_KIT.home : team.color_primary);
+export function kitColours(team, gk, keeper = keeperKits([team])[team.side === "away" ? "away" : "home"]) {
+  const shirt = mute(gk ? keeper : team.color_primary);
   const second = mute(gk ? "#15171f" : team.color_secondary);
   return {
     shirt, shorts: second, socks: shirt, band: second, number: readable(shirt, second), shortsNumber: readable(second, shirt),
@@ -207,11 +206,11 @@ const socksMaterial = (lib, kit) => shared(lib, `socks|${kit.socks}|${kit.band}`
   return kitMaterial(lib, "kit_socks", `fb-socks-${lib.mats.size}`, tex);
 });
 
-export function dressFootballer(lib, pid, { team, gk = false, shirt = null, captain = false, look = playerLook(pid) }) {
-  if (lib.anime) return dressAnime(lib, pid, { team, gk, shirt, captain, look: animeLook(pid) });
+export function dressFootballer(lib, pid, { team, gk = false, keeper, shirt = null, captain = false, look = playerLook(pid) }) {
+  if (lib.anime) return dressAnime(lib, pid, { team, gk, keeper, shirt, captain, look: animeLook(pid) });
   const prefix = `${pid}-`;
   const inst = lib.container.instantiateModelsToScene((n) => prefix + n, false, { doNotInstantiate: true });
-  const kit = kitColours(team, gk);
+  const kit = kitColours(team, gk, keeper);
   const skin = tinted(lib, "skin", look.skin, SKIN_LEVEL);
   const mats = {
     skin,
@@ -280,10 +279,10 @@ export function animeLook(pid) {
 // Face: the expression from the drivers' emotion (players.js resolve) and the running speed.
 // face(r, v, ts): r the resolved drivers, v the ground speed in m/s, ts the match time.
 function animeFace(managers, look, relax) {
-  const last = new Float32Array(EXPRESSIONS.length);
+  const last = new Float32Array(EXPRESSIONS.length), w = new Float32Array(EXPRESSIONS.length);
   return (r, v, ts) => {
     relax(r);
-    const w = new Float32Array(EXPRESSIONS.length);
+    w.fill(0);
     const k = r.emotion?.kind, e = Math.min(1, r.emotion?.weight ?? 0);
     if (k === "celebrate" || k === "join") w[0] = e;                   // joy
     else if (k === "dejected" || k === "near_miss") w[1] = e;          // frustration
@@ -298,10 +297,10 @@ function animeFace(managers, look, relax) {
 
 const toonOnce = (m, opts) => { if (!m.pluginManager?.getPlugin("Toon")) toon(m, opts); return m; };
 
-function dressAnime(lib, pid, { team, gk, shirt, captain, look }) {
+function dressAnime(lib, pid, { team, gk, keeper, shirt, captain, look }) {
   const prefix = `${pid}-`;
   const inst = lib.container.instantiateModelsToScene((n) => prefix + n, false, { doNotInstantiate: true });
-  const kit = kitColours(team, gk);
+  const kit = kitColours(team, gk, keeper);
   const skin = tinted(lib, "skin", look.skin, SKIN_LEVEL);
   const lin = (hex, f) => B.Color3.FromHexString(hex).toLinearSpace().scale(f);
   const face = shared(lib, `face|${look.eyes}|${look.hairColour}`, () => {

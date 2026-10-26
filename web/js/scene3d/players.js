@@ -468,6 +468,7 @@ export function settleFeet(p, sole = Infinity) {
   if (drop > 0) p.holder.position.y -= drop;
 }
 
+const WANT = new Map();   // animatePlayer's clips of the frame, one map for every player
 // One frame of animation for player p (ground speed v m/s, dt match seconds since the last
 // frame) from the resolved driver answers r. r.runL: the run direction in the character's frame
 // (motion loops). motion: the loaded clips.json, or null for the procedural stand-ins. p.h: the
@@ -535,7 +536,8 @@ export function animatePlayer(p, v, dt, r, motion = null) {
     if (wj > 0) g.goToFrame(g.from + (j === 0 ? p.idle : p.phase) * (g.to - g.from), true);
   });
   // clips other than locomotion: only the ones asked for this frame carry weight
-  const want = new Map();
+  const want = WANT;
+  want.clear();
   if (r.action) want.set(r.action.clip, [r.action.time, r.action.weight]);
   // the motion loops by their shares (wl fades the last one out)
   if (wl > 1e-3) for (const n in p.lw) if (p.anim.get(n)) want.set(n, [p.lphase * motion.clips[n].len, wl * p.lw[n] * (1 - full)]);
@@ -550,7 +552,8 @@ export function animatePlayer(p, v, dt, r, motion = null) {
   if (e && !up && p.anim.get(e.clip)) want.set(e.clip, [e.t, eFull ? e.weight : e.weight * (1 - full)]);
   if (uw > 0 && p.anim.get(hand.clip)) want.set(hand.clip, [hand.t, uw]);
   if (r.action) p.anim.get(r.action.clip);
-  for (const [key, g] of Object.entries(p.anim.cache)) {
+  for (const key in p.anim.cache) {
+    const g = p.anim.cache[key];
     if (!g) continue;
     const [t, wa] = want.get(key) ?? [0, 0];
     if (wa !== (p.aw[key] ?? 0)) g.setWeightForAllAnimatables(wa);
@@ -558,5 +561,5 @@ export function animatePlayer(p, v, dt, r, motion = null) {
     if (wa > 0) g.goToFrame(Math.min(g.to, g.from + Math.max(0, t) * p.anim.fps), true);
   }
   if (p.upper) p.aw[`${p.upper.clip}^`] = p.upper.weight;   // what the tests read
-  for (const k of Object.keys(p.aw)) if (k.endsWith("^") && (!p.upper || k !== `${p.upper.clip}^`)) p.aw[k] = 0;
+  for (const k in p.aw) if (k.endsWith("^") && (!p.upper || k !== `${p.upper.clip}^`)) p.aw[k] = 0;
 }

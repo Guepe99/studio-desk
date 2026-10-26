@@ -36,11 +36,13 @@ function blobMesh(scene, name, tex, alpha) {
 }
 
 // Shadow on the ground of a player standing at (x, z) lit from a mast at m (world metres):
-// direction away from the mast, length from the light's elevation, capped at 6 m.
-export function castBlob(x, z, m) {
+// direction away from the mast, length from the light's elevation, capped at 6 m. Written into
+// out when given (Grounding.set, up to 4 a player a frame), else into a new {dir, len}.
+export function castBlob(x, z, m, out = { dir: [0, 0], len: 0 }) {
   const dx = x - m.x, dz = z - m.z, flat = Math.hypot(dx, dz);
-  const len = Math.min(6, Math.max(1.2, PLAYER_H * flat / Math.max(m.y, 1)));
-  return { dir: [dx / flat, dz / flat], len };
+  out.len = Math.min(6, Math.max(1.2, PLAYER_H * flat / Math.max(m.y, 1)));
+  out.dir[0] = dx / flat; out.dir[1] = dz / flat;
+  return out;
 }
 
 export class Grounding {
@@ -84,7 +86,7 @@ export class Grounding {
     m.copyToArray(this.contactBuf, k * 16);
     for (let j = 0; j < 4; j++) {
       if (this.lights && j < this.lights.length) {
-        const { dir, len } = castBlob(x, z, this.lights[j]);
+        const { dir, len } = castBlob(x, z, this.lights[j], (this._blob ??= { dir: [0, 0], len: 0 }));
         // the mask's v axis is local z: turn it onto the shadow's direction
         B.Quaternion.RotationYawPitchRollToRef(Math.atan2(dir[0], dir[1]), 0, 0, q);
         B.Matrix.ComposeToRef(s.set(CAST_W, 1, len), q, p.set(x + dir[0] * len * 0.45, 0.02, z + dir[1] * len * 0.45), m);
