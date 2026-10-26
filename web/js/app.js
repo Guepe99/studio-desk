@@ -408,7 +408,8 @@ function refreshCues() {
   host.setCues(holdForReplays(sheet, replays(match)), state.ts);
   // AI off: the score facts are not AI, so the button goes from goal to goal
   const mine = match.cues.filter((c) => c.audience === state.audience && c.lang === state.lang);
-  const waiting = (id) => desk.byId.get(id) && desk.status(desk.byId.get(id)) === "needs_review";
+  // waiting at its own moment, whatever the clock says now: a story missed by now is held again before its slot
+  const waiting = (id) => desk.byId.get(id) && (desk.decisions.get(id)?.decision ?? desk.defaultStatus(desk.byId.get(id))) === "needs_review";
   moments.setSheet(keyCues(sheet, mine, waiting), desk.loaded, desk.kill ? match.goals.map((f) => playStart(f.ts, f.source_event_ids)) : null,
     (c) => playStart(c.ts, desk.byId.get(c.story_id)?.evidence_event_ids));
   ask?.render();

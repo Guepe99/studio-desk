@@ -46,7 +46,10 @@ const pos = new Float32Array(await (await fetch(`${dataUrl}tracking.f32`)).array
 // On air for a visitor who has not touched the desk: template cues and auto-approved stories, in
 // English (tests/web/desk.mjs covers the other languages and the desk's decisions).
 const storiesRes = await fetch(`${dataUrl}stories.json`);
-const autoApproved = new Set((storiesRes.ok ? await storiesRes.json() : []).filter((s) => s.default_status === "auto_approved").map((s) => s.story_id));
+const stories = storiesRes.ok ? await storiesRes.json() : [];
+const autoApproved = new Set(stories.filter((s) => s.default_status === "auto_approved").map((s) => s.story_id));
+// Next key moment also stops at a story that waits for the producer (M001: the 8' big chance)
+const heldIds = new Set(stories.filter((s) => s.default_status === "needs_review").map((s) => s.story_id));
 const onAir = (c) => c.lang === "en" && (c.story_id === null || autoApproved.has(c.story_id));
 const N = meta.entities.length, P1 = meta.period1_s, DUR = meta.period1_s + meta.period2_s;
 const PX = (1080 - 130 - 70) / 68, LEFT = (1920 - 105 * PX) / 2;
@@ -637,7 +640,7 @@ try {
     const storyCount = (a) => cues.filter((c) => c.audience === a && c.story_id).length;
     const team = [...new Set(all.map((c) => c.audience).filter((a) => a.startsWith("team:")))].sort((a, b) => storyCount(b) - storyCount(a))[0];
     const stopsFor = (aud) => {
-      const story = cues.filter((c) => c.audience === aud && c.story_id).sort((a, b) => a.ts - b.ts);
+      const story = all.filter((c) => c.lang === "en" && c.audience === aud && (autoApproved.has(c.story_id) || heldIds.has(c.story_id))).sort((a, b) => a.ts - b.ts);
       return story.filter((c, i) => !story.slice(0, i).some((p) => c.ts <= p.ts + p.duration_s + 1));
     };
     // web/js/moments.js: 6 s before the play the story is about (its last evidence event up to 10 s before the cue)

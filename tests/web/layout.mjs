@@ -116,7 +116,9 @@ const busiest = (cues) => {
 // these checks are about where the cards sit, and a card left waiting is never on screen
 const approveWaiting = (page) => page.evaluate(() => {
   const d = window.studioDesk.desk;
-  for (const s of [...d.stories, ...d.gens]) if (d.status(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved" });
+  // every agents' story that waits by default, also one already missed at this minute: the checks seek back to it
+  for (const s of d.stories) if (!d.decisions.has(s.story_id) && d.defaultStatus(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved", ts: 0 });
+  for (const s of d.gens) if (d.status(s) === "needs_review") d.decisions.set(s.story_id, { story_id: s.story_id, decision: "approved" });
   d.changed();
 });
 const showFirst = async (page, tag, cues) => {
