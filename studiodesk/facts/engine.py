@@ -250,14 +250,15 @@ class Match:
             if kind not in PASS_TYPES:
                 continue
             dist = math.hypot(e["end_x"] - e["start_x"], e["end_y"] - e["start_y"])
-            self.add("pass_distance", ts, round(dist, 1), "m", f"Pass of {dist:.0f} m", team, pid, [eid])
+            self.add("pass_distance", ts, round(dist, 1), "m", f"Pass of {half_up(dist)} m", team, pid, [eid])
             gain = (e["end_x"] - e["start_x"]) * sign
             pressure = bypass = 0.0
             frames = None
             if f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = self.peak_ball_kmh(f0, f1)
-                self.add("ball_speed", ts, round(v, 1), "km/h", f"Pass at {v:.0f} km/h", team, pid, [eid], (f0, f1))
+                if math.isfinite(v):  # nan: no tracked ball for this pass, so no fact (as add() would drop it)
+                    self.add("ball_speed", ts, round(v, 1), "km/h", f"Pass at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
                 pressure, bypass = self.pressure_and_bypass(e, f0, sign)
                 frames = (f0, f0)
             score = 10 * (0.35 * min(dist / 40, 1) + 0.25 * pressure + 0.2 * clip01(gain / 30) + 0.2 * bypass)
@@ -298,7 +299,7 @@ class Match:
             for (team, pid), es in groups.items():
                 ok = sum(e["result_name"] == "success" for e in es)
                 pct = 100 * ok / len(es)
-                self.add("pass_accuracy", cp, round(pct, 1), "%", f"Pass accuracy {pct:.0f}% ({ok}/{len(es)}) {when}",
+                self.add("pass_accuracy", cp, round(pct, 1), "%", f"Pass accuracy {half_up(pct)}% ({ok}/{len(es)}) {when}",
                          team, pid, [e["event_id"] for e in es], period=period)
 
     def start_formation(self):
@@ -367,7 +368,7 @@ class Match:
                 continue
             ok = sum(e["result_name"] == "success" for e in es)
             pct = 100 * ok / len(es)
-            self.add("team_pass_accuracy", b, round(pct, 1), "%", f"Pass accuracy {pct:.0f}% ({ok}/{len(es)}) since kick-off",
+            self.add("team_pass_accuracy", b, round(pct, 1), "%", f"Pass accuracy {half_up(pct)}% ({ok}/{len(es)}) since kick-off",
                      team, None, [e["event_id"] for e in es], period=period)
 
     def possession(self, period, b, frames):
@@ -378,7 +379,7 @@ class Match:
             return
         for team in (self.home, self.away):
             v = 100 * n[team] / sum(n.values())
-            self.add("team_possession", b, round(v, 1), "%", f"Possession {v:.0f}% since kick-off", team, None,
+            self.add("team_possession", b, round(v, 1), "%", f"Possession {half_up(v)}% since kick-off", team, None,
                      frames=(0, frames[1]), period=period)
 
     def line_frame(self, ts):

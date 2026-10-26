@@ -169,6 +169,25 @@ def test_cli_build(tmp_path):
     assert out.stdout.startswith("M001: ")
 
 
+def test_a_label_rounds_half_up_as_the_phrasebook_says_it(tmp_path):
+    """5 of 8 passes is 62.5%: the label says 63%, not the 62% of Python's half-to-even format."""
+    from studiodesk.facts.engine import PASS_TYPES
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    away = next(t for (t,) in conn.execute("SELECT team_id FROM teams") if t != HOME)
+    ids = [r[0] for r in conn.execute(f"SELECT event_id FROM events WHERE team_id = ? AND type_name IN "
+                                      f"({','.join('?' * len(PASS_TYPES))}) ORDER BY ts", (away, *PASS_TYPES))]
+    assert len(ids) == 8  # the fixture's away passes over the match
+    for k, eid in enumerate(ids):
+        conn.execute("UPDATE events SET result_name = ? WHERE event_id = ?", ("success" if k < 5 else "fail", eid))
+    conn.commit()
+    build(conn, info["match_id"], xt_grid=None)
+    (label,) = [r["label_en"] for r in facts(conn, "pass_accuracy") if (r["team_id"], r["player_id"], r["period"])
+                == (away, None, 2)]
+    assert label == "Pass accuracy 63% (5/8) at full time"
+    conn.close()
+
+
 def test_window_labels_never_overlap_and_name_stoppage_time():
     from studiodesk.facts.engine import window_label
     p1 = 2763.4
