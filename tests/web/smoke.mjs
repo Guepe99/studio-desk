@@ -669,8 +669,10 @@ try {
         else if (i % 2) { await page.focus("#frame"); await page.keyboard.press("n"); }
         else await page.click("#next-moment");
         await nextFrame(page);
-        const ts = await clock(), want = target(c);
-        if (Math.abs(ts - want) > 0.01) { fail(`next ${aud}: landed at ${ts.toFixed(2)} s, wanted ${want.toFixed(2)} s for ${c.cue_id}`); break; }
+        // it plays from the moment at 1x: paused at once, the clock is a frame or two past it
+        const [ts, playing] = await page.evaluate(() => { const s = window.studioDesk.state, p = s.playing; window.studioDesk.setPlaying(false); return [s.ts, p]; });
+        const want = target(c);
+        if (ts < want - 0.01 || ts > want + 0.5 || !playing) { fail(`next ${aud}: landed at ${ts.toFixed(2)} s (playing ${playing}), wanted ${want.toFixed(2)} s for ${c.cue_id}`); break; }
       }
       const at = await clock();
       const b = await nextBtn();
@@ -724,7 +726,9 @@ try {
     await nextFrame(page);
     const sp = await page.evaluate(() => ({ speed: window.studioDesk.state.speed, pressed: document.querySelector('[data-speed="1"]').getAttribute("aria-checked") }));
     if (sp.speed !== 1 || sp.pressed !== "true") fail(`next: after a jump at 64x the speed is ${JSON.stringify(sp)}, wanted 1x`);
-    if (first !== undefined && Math.abs(await clock() - first) > 0.01) fail("next: N with the focus on the frame did not jump");
+    // the jump plays from the moment: paused at once, the clock is a frame or two past it
+    const landed = await page.evaluate(() => { window.studioDesk.setPlaying(false); return window.studioDesk.state.ts; });
+    if (first !== undefined && (landed < first - 0.01 || landed > first + 0.5)) fail("next: N with the focus on the frame did not jump");
     await pick(page, '[data-speed="1"]');
 
     // the Ask box is outside the broadcast: a typed n is text, not a jump

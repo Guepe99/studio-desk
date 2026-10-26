@@ -786,7 +786,7 @@ async function main() {
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   desk.render();
-  moments = new Moments($("#next-moment"), { state, seek, setSpeed, t, live: $("#moments-live") });
+  moments = new Moments($("#next-moment"), { state, seek, setSpeed, play: () => setPlaying(true), t, live: $("#moments-live") });
   activity = new Activity(strip, desk, t);
   // the menu's name for an audience: a player by his name, a team by its full name; null when not on the menu
   const audLabel = (aud) => {
