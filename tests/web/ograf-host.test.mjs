@@ -10,7 +10,12 @@ const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
 class FakeGraphic {
   constructor(tag) { Object.assign(this, { tag, style: {}, attached: false, played: false }); }
   remove() { this.attached = false; }
-  async load(p) { await tick(); this.data = p.data; return { statusCode: 200 }; }   // a real load awaits fonts
+  async load(p) {   // a real load awaits fonts; "bad" throws as a render() that throws would
+    await tick();
+    if (this.tag === "ograf-bad") throw new Error("render failed");
+    this.data = p.data;
+    return { statusCode: 200 };
+  }
   async playAction() { this.played = true; log.push(["play", this.data.id]); return {}; }
   async stopAction() { log.push(["stop", this.data.id]); return {}; }
   async dispose() { return {}; }
@@ -66,6 +71,33 @@ test("chain settles once the graphic has been played, not before", async () => {
   assert.equal(inst.el.played, false, "still loading");
   await inst.chain;
   assert.equal(inst.el.played, true, "played when the chain settles");
+});
+
+test("a graphic that throws on load is reported, taken off, and its slot goes to the next cue", async () => {
+  const unhandled = [], errors = [], logged = [];
+  const onUnhandled = (e) => unhandled.push(e);
+  process.on("unhandledRejection", onUnhandled);
+  const quiet = console.error;
+  console.error = (...a) => logged.push(a);
+  try {
+    const h = host();
+    h.opts.onError = (g, e) => errors.push([g, e.message]);
+    h.graphics.bad = { manifest: { id: "bad" }, tag: "ograf-bad", inS: 0, outS: 0 };
+    h.setCues([cue("x", 1, 6, "bad"), cue("y", 1.5, 6), cue("w", 2, 3, "strap")], 0);
+    run(h, 0, 1.6);
+    const bad = h.live.get("x").el;
+    await tick(30);
+    run(h, 1.7, 2.1);
+    await tick(30);
+    assert.deepEqual(errors, [["bad", "render failed"]], "named to the page once");
+    assert.equal(logged.length, 1, "logged once");
+    assert.equal(bad.attached, false, "off the screen");
+    assert.deepEqual([...h.live.keys()], ["y", "w"], "w takes the failed graphic's slot");
+    assert.deepEqual(unhandled, [], "no unhandled rejection");
+  } finally {
+    console.error = quiet;
+    process.off("unhandledRejection", onUnhandled);
+  }
 });
 
 test("team colours reach a style attribute only as #rgb or #rrggbb", async () => {

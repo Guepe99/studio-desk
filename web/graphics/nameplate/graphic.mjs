@@ -1,5 +1,5 @@
 // Nameplate: a tag attached to a player on the pitch, with name and speed.
-import { SdGraphic } from "../shared/sd-graphic.mjs";
+import { SdGraphic, decimal } from "../shared/sd-graphic.mjs";
 
 export default class Nameplate extends SdGraphic {
   css() {
@@ -38,7 +38,7 @@ export default class Nameplate extends SdGraphic {
     num.style.color = p.text ?? "#37003c";
     $(".name").textContent = d.name ?? d.player_id ?? "";
     $(".team").textContent = d.team_short ?? "";
-    $(".speed").textContent = Number.isFinite(d.speed_kmh) ? `${d.speed_kmh.toFixed(1)} km/h` : "";
+    $(".speed").textContent = Number.isFinite(d.speed_kmh) ? `${decimal(d.speed_kmh, 1, this.lang)} km/h` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_id);
     this.anchor = $(".anchor");
     this.boxW = 0;   // measured on screen, with the loaded font (position)

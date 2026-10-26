@@ -17,6 +17,10 @@ export class Ask {
   constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [], match = null }) {
     Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts, match });
     this.factById = new Map(facts.map((f) => [f.fact_id, f]));
+    // when each fact kind a suggestion needs is first in the ledger: the only times the suggestions can change
+    const first = new Map();
+    for (const f of facts) if (!(first.get(f.kind) <= f.ts)) first.set(f.kind, f.ts);
+    this.suggestAt = SUGGEST.flatMap(([, need]) => need.map((k) => first.get(k))).filter(Number.isFinite);
     this.form = panel.querySelector("form");
     this.input = panel.querySelector("#ask-q");
     this.send = this.form.querySelector('[type="submit"]');
@@ -107,6 +111,14 @@ export class Ask {
       this.announce(data.answer, lang);
     }
     this.render();
+  }
+
+  // every frame: while the panel is open the suggestions follow the clock, rebuilt only when one of their
+  // first fact times is crossed (a few comparisons a frame)
+  update() {
+    if (this.panel.hidden) return;
+    const now = Math.min(this.state.ts, this.maxTs), n = this.suggestAt.filter((t) => t <= now).length;
+    if (n !== this.suggestN) { this.suggestN = n; this.renderSuggestions(); }
   }
 
   // rebuilt only when the list changes, so a focused suggestion keeps its focus

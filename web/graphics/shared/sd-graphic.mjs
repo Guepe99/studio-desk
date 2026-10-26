@@ -41,6 +41,9 @@ const BASE_CSS = `
 .compact .facts span { padding: 2px 8px; }
 `;
 
+// A decimal as the page language writes it, as the booth reads it: "48.2" in English, "48,2" in Italian and Spanish.
+export const decimal = (v, digits, lang) => { const s = v.toFixed(digits); return lang === "it" || lang === "es" ? s.replace(".", ",") : s; };
+
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export class SdGraphic extends HTMLElement {

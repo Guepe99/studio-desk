@@ -1,5 +1,5 @@
 // Pass / shot lower third: the player, the measured value (shot speed, pass length) and a quality bar.
-import { SdGraphic } from "../shared/sd-graphic.mjs";
+import { SdGraphic, decimal } from "../shared/sd-graphic.mjs";
 
 const KICKER = { en: { shot: "SHOT SPEED", pass: "PASS" }, it: { shot: "VELOCITÀ DEL TIRO", pass: "PASSAGGIO" }, es: { shot: "VELOCIDAD DEL TIRO", pass: "PASE" } };
 const QUALITY = { en: "QUALITY", it: "QUALITÀ", es: "CALIDAD" };
@@ -9,7 +9,7 @@ const GOAL = ["Goal", "Gol"]; // the export's quality text for a goal: "Goal" in
 // {value, max} drawn as a bar of value / max; null hides the row. A bare number has no scale, so
 // it is shown as text, never guessed into a bar.
 const scaled = (q) => q && typeof q === "object" && Number.isFinite(q.value) && Number.isFinite(q.max) && q.max > 0;
-const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+const fmt = (v, lang) => (Number.isInteger(v) ? String(v) : decimal(v, 1, lang));
 // the name on one line from 46 px down to 36 px, else on two lines at 40 px
 const NAME_PX = 46, NAME_MIN = 36, TWO_PX = 40;
 
@@ -58,7 +58,7 @@ export default class PassShot extends SdGraphic {
     num.style.color = p.text ?? "#37003c";
     $(".name").textContent = p.name ?? d.player_id ?? "";
     $(".team").textContent = p.team_name ?? p.team_short ?? "";
-    $(".big").textContent = Number.isFinite(d.value) ? (d.value >= 100 ? d.value.toFixed(0) : d.value.toFixed(1)) : "";
+    $(".big").textContent = Number.isFinite(d.value) ? decimal(d.value, d.value >= 100 ? 0 : 1, this.lang) : "";
     $(".unit").textContent = d.unit ?? "";
     const q = d.quality, row = $(".q"), bar = scaled(q);
     row.classList.toggle("none", q == null || q === "");
@@ -66,7 +66,7 @@ export default class PassShot extends SdGraphic {
     row.classList.toggle("goal", GOAL.includes(q));
     $(".qlabel").textContent = bar ? QUALITY[this.lang] ?? QUALITY.en : typeof q === "object" ? "" : String(q ?? "");
     $(".bar").style.width = `${bar ? Math.round(Math.min(100, Math.max(0, (q.value / q.max) * 100))) : 0}%`;
-    $(".qval").textContent = bar ? `${fmt(q.value)}/${fmt(q.max)}` : "";
+    $(".qval").textContent = bar ? `${fmt(q.value, this.lang)}/${fmt(q.max, this.lang)}` : "";
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
     this.fit();
   }

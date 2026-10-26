@@ -29,7 +29,8 @@ export class OGrafHost {
    * @param {HTMLElement} layer  overlay element, sized like the renderer resolution
    * @param {{resolution: {width: number, height: number}, frameRate: number,
    *          locate: (playerId: string, now: number) => {x: number, y: number, visible: boolean},
-   *          vendorParams: () => object, compact?: () => ({deck: HTMLElement | null, magnify: number} | null)}} opts
+   *          vendorParams: () => object, compact?: () => ({deck: HTMLElement | null, magnify: number} | null),
+   *          onError?: (graphic: string, err: Error) => void}} opts
    */
   constructor(layer, opts) {
     this.layer = layer;
@@ -73,8 +74,9 @@ export class OGrafHost {
     this.last = now;
     for (const inst of this.live.values()) {
       if (!inst.ready || inst.gone) continue;
-      if (inst.mode === "non-realtime") inst.el.goToTime({ timestamp: (now - inst.cue.ts) * 1000 });
-      if (inst.positioned) inst.el.customAction({ id: "position", payload: this.opts.locate(inst.cue.payload.player_id, now) });
+      const fail = (e) => this._fail(inst, e);
+      if (inst.mode === "non-realtime") Promise.resolve(inst.el.goToTime({ timestamp: (now - inst.cue.ts) * 1000 })).catch(fail);
+      if (inst.positioned) Promise.resolve(inst.el.customAction({ id: "position", payload: this.opts.locate(inst.cue.payload.player_id, now) })).catch(fail);
     }
   }
 
@@ -169,8 +171,18 @@ export class OGrafHost {
           { timestamp: Math.max(0, end - g.outS * 1000), action: { type: "stopAction", params: {} } },
         ],
       }).then(() => inst.gone || el.goToTime({ timestamp: (now - cue.ts) * 1000 }));
-    });
+    }).catch((e) => this._fail(inst, e));
     this.live.set(cue.cue_id, inst);
+  }
+
+  // A graphic that throws (load, render, play) is logged, named to the page once (opts.onError) and taken
+  // off, so its slot frees; its cue is not tried again until the next rebuild.
+  _fail(inst, err) {
+    if (inst.failed) return;
+    inst.failed = true;
+    console.error(`OGraf graphic ${inst.cue.graphic} failed on cue ${inst.cue.cue_id}:`, err);
+    this.opts.onError?.(inst.cue.graphic, err);
+    if (this.live.get(inst.cue.cue_id) === inst) this._remove(inst.cue.cue_id, false);
   }
 
   // The stop follows the load, not the in animation, so it can cut a running in animation short.
@@ -185,6 +197,7 @@ export class OGrafHost {
     inst.loaded
       .then(() => inst.el.stopAction(animate && inst.ready ? {} : { skipAnimation: true }))
       .then(() => inst.el.dispose({}))
+      .catch((e) => this._fail(inst, e))
       .finally(() => { inst.node.remove(); this.leaving.delete(inst); });
   }
 }
