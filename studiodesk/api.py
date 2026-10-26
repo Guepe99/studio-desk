@@ -434,6 +434,20 @@ def _detail(edited: dict | None) -> dict:
     return {"langs": sorted({k.removeprefix("title_") for k in edited}), "sha1": {k: hashlib.sha1(v.encode("utf-8")).hexdigest() for k, v in sorted(edited.items())}}
 
 
+# runtime.sqlite starts empty on every deploy: each human audit row also goes to Application Insights (the
+# "studiodesk" logger tree, telemetry.py) as a custom event, without any text, reason or client address
+_decision_log = logging.getLogger("studiodesk.decision")
+_decision_log.setLevel(logging.INFO)
+
+
+def _decision_event(sid: str, action: str, match_id: str | None = None, story_id: str | None = None, langs=()) -> None:
+    _decision_log.info("studiodesk.decision %s", action, extra={
+        "microsoft.custom_event.name": "studiodesk.decision", "decision_action": action,
+        "decision_match_id": match_id or "", "decision_story_id": story_id or "", "decision_langs": ",".join(langs),
+        # the same visitor's decisions tie together; the cookie itself never leaves
+        "decision_session": hashlib.sha256((ADDRESS_SALT + sid).encode()).hexdigest()[:16]})
+
+
 @app.post("/api/decisions")
 def post_decision(d: Decision, request: Request, response: Response):
     action = d.decision
@@ -450,6 +464,7 @@ def post_decision(d: Decision, request: Request, response: Response):
                 conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                              "VALUES (?, ?, 'human', 'edit_refused', ?, ?, ?)",
                              (sid, _now(), d.match_id, d.story_id, json.dumps({**_detail(d.edited_text), "reason": why})))
+            _decision_event(sid, "edit_refused", d.match_id, d.story_id, _detail(d.edited_text)["langs"])
             return JSONResponse({"detail": f"{why}. It stays off air."}, status_code=422, headers=_cookie(response))
         # the AI's own line, put on air as it is: its own audit action, still an edit for what goes on air
         if d.decision == "edited" and d.edited_text == (story.get("verifier") or {}).get("proposals"):
@@ -467,6 +482,7 @@ def post_decision(d: Decision, request: Request, response: Response):
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', ?, ?, ?, ?)",
                      (sid, at, action, d.match_id, d.story_id, json.dumps(_detail(d.edited_text))))
+    _decision_event(sid, action, d.match_id, d.story_id, _detail(d.edited_text)["langs"])
     return {"story_id": d.story_id, "decision": d.decision, "edited_text": d.edited_text, "at": at}
 
 
@@ -484,6 +500,7 @@ def delete_decision(request: Request, response: Response, match_id: str = Query(
                      (sid, match_id, story_id))
         conn.execute("INSERT INTO audit (session_id, at, actor, action, match_id, story_id, detail) "
                      "VALUES (?, ?, 'human', 'undo', ?, ?, ?)", (sid, at, match_id, story_id, json.dumps(_detail(None))))
+    _decision_event(sid, "undo", match_id, story_id)
     return {"story_id": story_id, "decision": None, "at": at}
 
 
@@ -495,6 +512,7 @@ def post_kill(k: Kill, request: Request, response: Response):
         conn.execute("UPDATE sessions SET kill_switch = ? WHERE session_id = ?", (int(k.on), sid))
         conn.execute("INSERT INTO audit (session_id, at, actor, action) VALUES (?, ?, 'human', ?)",
                      (sid, _now(), "ai_off" if k.on else "ai_on"))
+    _decision_event(sid, "ai_off" if k.on else "ai_on")
     return {"kill_switch": k.on}
 
 
