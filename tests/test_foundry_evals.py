@@ -71,7 +71,8 @@ def test_items_from_the_replay_packs():
 
 
 def test_two_stories_with_the_same_text_and_context_each_get_their_scores(monkeypatch):
-    """Foundry stubbed: its output items carry only what the judge read (response, context), one per item sent."""
+    """Foundry stubbed: its output items carry only what the judge read (query, response, context), one per item
+    sent, in any order; each item's score is its position in the batch."""
     import asyncio
     from types import SimpleNamespace
 
@@ -79,7 +80,8 @@ def test_two_stories_with_the_same_text_and_context_each_get_their_scores(monkey
     import azure.ai.projects.aio
     import azure.identity.aio
     same = {"kind": "big_chance", "lang": "en", "query": "q", "response": "A shot.", "context": "Minute 8."}
-    items = [{**same, "match_id": "M001", "story_id": "S-000001"}, {**same, "match_id": "M001", "story_id": "S-000002"}]
+    items = [{**same, "match_id": "M001", "story_id": "S-000001"}, {**same, "match_id": "M001", "story_id": "S-000002"},
+             {**same, "query": "another q", "match_id": "M001", "story_id": "S-000003"}]
 
     class Ctx:
         def __init__(self, *a, **k):
@@ -93,9 +95,9 @@ def test_two_stories_with_the_same_text_and_context_each_get_their_scores(monkey
 
         def get_openai_client(self):
             async def output_items():
-                for it in items:
-                    yield SimpleNamespace(datasource_item={"response": it["response"], "context": it["context"]},
-                                          results=[SimpleNamespace(name="fluency", score=4.0, passed=True, sample={})])
+                for n, it in reversed(list(enumerate(items))):
+                    yield SimpleNamespace(datasource_item={"query": it["query"], "response": it["response"], "context": it["context"]},
+                                          results=[SimpleNamespace(name="fluency", score=float(n), passed=True, sample={})])
 
             async def listed(**k):
                 return output_items()
@@ -111,7 +113,8 @@ def test_two_stories_with_the_same_text_and_context_each_get_their_scores(monkey
     monkeypatch.setattr(azure.ai.projects.aio, "AIProjectClient", Ctx)
     monkeypatch.setattr(agent_framework.foundry, "FoundryEvals", Evals)
     rows, _ = asyncio.run(fe.run(items))
-    assert sorted(r["story_id"] for r in rows) == ["S-000001", "S-000002"]
+    assert sorted(r["story_id"] for r in rows) == ["S-000001", "S-000002", "S-000003"]
+    assert {r["story_id"]: r["score"] for r in rows}["S-000003"] == 2.0  # the other query's score, not one of the first two
 
 
 def test_sample_is_fixed_and_keeps_order():

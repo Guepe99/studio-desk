@@ -11,9 +11,8 @@ param aiName string = 'studiodesk-ai-89965b'
 // Role assignment names (GUIDs) that already exist, by role; a fresh environment leaves this empty and gets
 // guid() names. Role assignment names are unique in the tenant, so they cannot be reused elsewhere.
 param roleAssignmentNames object = {}
-// Content Safety's custom subdomain (<name>.cognitiveservices.azure.com): Entra ID tokens need one, regional
-// endpoints refuse them. Unique across Azure and permanent once set. Empty: no subdomain, for an account made
-// without one, whose endpoint Azure generated (the live one, rg-studiodesk.bicepparam).
+// Content Safety's custom subdomain (<name>.cognitiveservices.azure.com), unique across Azure, for a new account.
+// Empty: the template sends no customSubDomainName at all (the live account, rg-studiodesk.bicepparam).
 param safetySubdomain string = 'studiodesk-safety-${uniqueString(resourceGroup().id)}'
 
 var insightsName = 'studiodesk-insights'
@@ -66,7 +65,7 @@ resource model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   sku: { name: 'GlobalStandard', capacity: 100 } // 100k tokens and 100 requests a minute
   properties: {
     model: { format: 'OpenAI', name: 'gpt-5-mini', version: '2025-08-07' }
-    versionUpgradeOption: 'NoAutoUpgrade' // a new model version only by a change here, never under the app
+    versionUpgradeOption: 'OnceCurrentVersionExpired' // keeps the pinned version until it expires, then the default one
     raiPolicyName: 'Microsoft.DefaultV2'
   }
   dependsOn: [project] // one change at a time on the account
@@ -81,10 +80,7 @@ resource safety 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   location: location
   kind: 'ContentSafety'
   sku: { name: 'F0' }
-  properties: {
-    customSubDomainName: empty(safetySubdomain) ? null : safetySubdomain
-    publicNetworkAccess: 'Enabled'
-  }
+  properties: union({ publicNetworkAccess: 'Enabled' }, empty(safetySubdomain) ? {} : { customSubDomainName: safetySubdomain })
 }
 
 // Speech on the free tier, used only offline by studiodesk/voice.py to record the replay voice-over; the
@@ -110,8 +106,8 @@ resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// The Content Safety host: the custom subdomain, or the one Azure generated (studiodesk-safety-e2606 on the live
-// account); the app wants it with no trailing slash.
+// The Content Safety host, from the endpoint the account reports (on the live account
+// https://studiodesk-safety-e2606.cognitiveservices.azure.com/); the app wants it with no trailing slash.
 var safetyEndpoint = 'https://${split(safety.properties.endpoint, '/')[2]}'
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
@@ -144,7 +140,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           ]
         }
       ]
-      // one replica always on: the desk's caps and runtime.sqlite live in it and reset when it scales to zero
+      // one replica always on for the judging period, until 11 Nov 2026 (the desk's caps and runtime.sqlite live in it and
+      // reset when it scales to zero); on 11 Nov 2026 a scheduled job outside this template scales it to zero
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }

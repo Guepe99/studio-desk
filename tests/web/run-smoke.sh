@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 # wait_for URL TRIES WHAT: polls every 0.5 s, and stops the run with a message when WHAT never answers
 wait_for() {
-  for _ in $(seq "$2"); do curl -sf -o /dev/null "$1" && return 0; sleep 0.5; done
+  for _ in $(seq "$2"); do curl -sf --max-time 2 -o /dev/null "$1" && return 0; sleep 0.5; done
   echo "run-smoke: $3 did not answer at $1 within $(($2 / 2)) s" >&2
   exit 1
 }

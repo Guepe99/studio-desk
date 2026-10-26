@@ -11,6 +11,6 @@ param adminToken = readEnvironmentVariable('ADMIN_TOKEN')
 param roleAssignmentNames = {
   openAiUser: '2df303a0-8a97-493e-bcab-003f317cf7a3'
 }
-// The live Content Safety account was made without a custom subdomain and Azure generated its endpoint
-// (studiodesk-safety-e2606); setting one now would change that endpoint, and it could never be removed.
+// The live Content Safety account reports no customSubDomainName; its endpoint is
+// https://studiodesk-safety-e2606.cognitiveservices.azure.com/. Empty keeps the property out of the request.
 param safetySubdomain = ''

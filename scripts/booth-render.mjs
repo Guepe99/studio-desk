@@ -96,12 +96,12 @@ graph.push(nv ? `${vs}amix=inputs=${nv}:normalize=0:duration=longest,atrim=0:${l
 graph.push(`[bed]${cs}amix=inputs=${nc + 1}:normalize=0:duration=first,volume=${MIX.crowd},asetnsamples=240,volume='${duckExpr}':eval=frame[crowd]`);
 graph.push("[voice]asplit[v1][v2]", "[crowd]asplit[k1][k2]", "[v1][k1]amix=inputs=2:normalize=0[out]");
 const script = path.join(tmp, "graph.txt");
-writeFileSync(script, graph.join(";\n"));
 const stems = path.join(path.dirname(out), path.basename(out, ".mp3"));
 args.push("-filter_complex_script", script,
   "-map", "[out]", "-ac", "1", "-ar", "24000", "-b:a", "96k", out,
   "-map", "[v2]", "-ac", "1", `${stems}.voice.wav`, "-map", "[k2]", "-ac", "1", `${stems}.crowd.wav`);
 try {
+  writeFileSync(script, graph.join(";\n"));
   execFileSync("ffmpeg", args, { stdio: "inherit" });
 } finally {
   rmSync(tmp, { recursive: true, force: true });

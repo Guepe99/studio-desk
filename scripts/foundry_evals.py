@@ -145,14 +145,14 @@ async def run(items):
             if res.status != "completed":
                 raise SystemExit(f"eval run {res.run_id} for {lang}: {res.status} {res.error or ''}")
             runs.append(res)
-            # an output item carries only what the judge read: two stories with the same text and context each
-            # take one of the two results, so neither story is lost and none is scored twice
+            # an output item carries only what the judge read: two stories with the same query, text and context
+            # each take one of the two results, so neither story is lost and none is scored twice
             by_text = {}
             for it in batch:
-                by_text.setdefault((it["response"], it["context"]), []).append(it)
+                by_text.setdefault((it["query"], it["response"], it["context"]), []).append(it)
             async for oi in await oai.evals.runs.output_items.list(run_id=res.run_id, eval_id=res.eval_id):
                 ds = oi.datasource_item or {}
-                it = by_text[(ds["response"], ds["context"])].pop(0)
+                it = by_text[(ds["query"], ds["response"], ds["context"])].pop(0)
                 for r in oi.results or []:
                     s = r.sample or {}
                     usage = _get(s, "usage") or {}

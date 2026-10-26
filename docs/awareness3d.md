@@ -17,13 +17,13 @@ is taken from five minutes later. A team that reacts shows a clear gap between t
 
 | Measure (M001, seed 7) | Real ball | Control |
 |---|---|---|
-| Nearest defender to the carrier, median | 4.28 m | 8.39 m |
-| Share of carrier frames with a defender within 5 m | 57% | 27% |
+| Nearest defender to the carrier, median | 4.29 m | 7.70 m |
+| Share of carrier frames with a defender within 5 m | 57% | 28% |
 | Block shift: slope of defending centroid y on ball y | 0.29 (corr 0.72) | 0.02 (corr 0.05) |
 | Line height: slope of back-four depth on ball depth | 0.51 (corr 0.77) | -0.02 (corr -0.04) |
 | Lag of the block shift behind the ball (on real timestamps) | 2.4 s | |
-| Attack runs (carrier over 3 m/s at goal, inside 35 m): nearest defender, median | 1.86 m | 11.46 m |
-| Same, nearest defender's speed towards the carrier (below 0: drops off) | -1.18 m/s | |
+| Attack runs (carrier over 3 m/s at goal, inside 35 m): nearest defender, median | 1.84 m | 10.82 m |
+| Same, nearest defender's speed towards the carrier (below 0: drops off) | -1.21 m/s | |
 | Defenders within 15 m of the ball moving over 0.7 m/s: travelling within 30 deg of the ball direction | 27% | 17% |
 | Same, travelling more than 90 deg away from the ball | 37% | 49% |
 
