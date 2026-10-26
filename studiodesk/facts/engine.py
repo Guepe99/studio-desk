@@ -246,19 +246,21 @@ class Match:
             if kind in SHOT_TYPES and f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
                 v = round(self.peak_ball_kmh(f0, f1), 1)
-                self.add("shot_speed", ts, v, "km/h", f"Shot at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
+                if math.isfinite(v):  # nan: no tracked ball for this shot, so no fact (as add() would drop it)
+                    self.add("shot_speed", ts, v, "km/h", f"Shot at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
             if kind not in PASS_TYPES:
                 continue
             dist = math.hypot(e["end_x"] - e["start_x"], e["end_y"] - e["start_y"])
-            self.add("pass_distance", ts, round(dist, 1), "m", f"Pass of {half_up(dist)} m", team, pid, [eid])
+            # a label says the stored value, as the booth and the graphics do: 14.46 m is stored 14.5, so "15 m"
+            self.add("pass_distance", ts, round(dist, 1), "m", f"Pass of {half_up(round(dist, 1))} m", team, pid, [eid])
             gain = (e["end_x"] - e["start_x"]) * sign
             pressure = bypass = 0.0
             frames = None
             if f0 is not None:
                 f1 = min(self.frame(nxt), f0 + RELEASE_FRAMES)
-                v = self.peak_ball_kmh(f0, f1)
+                v = round(self.peak_ball_kmh(f0, f1), 1)
                 if math.isfinite(v):  # nan: no tracked ball for this pass, so no fact (as add() would drop it)
-                    self.add("ball_speed", ts, round(v, 1), "km/h", f"Pass at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
+                    self.add("ball_speed", ts, v, "km/h", f"Pass at {half_up(v)} km/h", team, pid, [eid], (f0, f1))
                 pressure, bypass = self.pressure_and_bypass(e, f0, sign)
                 frames = (f0, f0)
             score = 10 * (0.35 * min(dist / 40, 1) + 0.25 * pressure + 0.2 * clip01(gain / 30) + 0.2 * bypass)
@@ -378,8 +380,8 @@ class Match:
         if not sum(n.values()):
             return
         for team in (self.home, self.away):
-            v = 100 * n[team] / sum(n.values())
-            self.add("team_possession", b, round(v, 1), "%", f"Possession {half_up(v)}% since kick-off", team, None,
+            v = round(100 * n[team] / sum(n.values()), 1)
+            self.add("team_possession", b, v, "%", f"Possession {half_up(v)}% since kick-off", team, None,
                      frames=(0, frames[1]), period=period)
 
     def line_frame(self, ts):
@@ -442,8 +444,9 @@ class Match:
                 count = int(sum(t <= cp for t in ends))
                 self.add("sprint_count", cp, count, "sprints", f"{count} sprint{'s' * (count != 1)} {when}",
                          team, pid, frames=(0, f), period=period)
-                m = float(step_m[:f + 1].sum())
-                self.add("distance_covered", cp, round(m, 1), "m", f"{m / 1000:.1f} km covered {when}",
+                m = round(float(step_m[:f + 1].sum()), 1)
+                # in km as the booth says it (studiodesk/booth.py number): 1650.0 m is "1.7", not the "1.6" of :.1f
+                self.add("distance_covered", cp, m, "m", f"{half_up(m / 1000 * 10) / 10:.1f} km covered {when}",
                          team, pid, frames=(0, f), period=period)
 
     def checkins(self, pid, team, sprints, step_m):

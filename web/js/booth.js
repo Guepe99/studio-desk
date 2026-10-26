@@ -181,7 +181,9 @@ export class Booth {
         } else if (p[0] === "fact") {
           const f = slots.facts?.[p[1]];
           if (!f) return null;
-          const v = number(f.value, UNIT[p[1]], this.lang);
+          // a per cent as its label shows it, from the exact count: 201/238 is stored 84.5 but labelled "84%"
+          const pct = UNIT[p[1]] === "%" && /(\d+)%/.exec(f.label_en ?? "");
+          const v = number(pct ? Number(pct[1]) : f.value, UNIT[p[1]], this.lang);
           factIds.push(f.fact_id);
           if (UNIT[p[1]]) { // the number, then its unit (studiodesk/booth.py fact_texts)
             const k = clipKey(role, v), d = this.durations.get(k);

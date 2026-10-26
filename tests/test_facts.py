@@ -188,6 +188,44 @@ def test_a_label_rounds_half_up_as_the_phrasebook_says_it(tmp_path):
     conn.close()
 
 
+def test_a_label_says_its_stored_value_as_the_booth_does(tmp_path, monkeypatch):
+    """14.46 m is stored 14.5 and shown "14.5" on the pass graphic: the label says 15 m, not 14; a ball at 33.46 km/h
+    is stored 33.5, said 34; 1649.98 m is stored 1650.0, said "1.7" km by the booth, not the "1.6" of :.1f."""
+    from studiodesk import booth
+    from studiodesk.facts.engine import PASS_TYPES
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    eid, x, y = conn.execute(f"SELECT event_id, start_x, start_y FROM events WHERE type_name IN ({','.join('?' * len(PASS_TYPES))}) "
+                             "AND start_x < 80 ORDER BY ts LIMIT 1", tuple(PASS_TYPES)).fetchone()
+    conn.execute("UPDATE events SET end_x = ?, end_y = ? WHERE event_id = ?", (x + 14.46, y, eid))
+    conn.commit()
+    monkeypatch.setattr(Match, "peak_ball_kmh", lambda self, f0, f1: 33.46)
+    speeds = Match.player_speeds
+
+    def steady(self):  # every player runs 1649.98 m by half-time
+        s = speeds(self)
+        s[:, 1:] = 1649.98 * 3.6 * self.fps / (self.frame(self.p1) + 1)
+        return s
+    monkeypatch.setattr(Match, "player_speeds", steady)
+    build(conn, info["match_id"], xt_grid=None)
+    (dist,) = [r["label_en"] for r in facts(conn, "pass_distance") if json.loads(r["source_event_ids"]) == [eid]]
+    assert dist == "Pass of 15 m"
+    assert {r["label_en"] for r in facts(conn, "ball_speed")} == {"Pass at 34 km/h"}
+    half = [r for r in facts(conn, "distance_covered") if r["label_en"].endswith("by half-time")]
+    assert half and all(r["value"] == 1650.0 and r["label_en"] == "1.7 km covered by half-time" for r in half)
+    assert booth.number(1650.0, "km", "en") == "1.7"
+    conn.close()
+
+
+def test_a_shot_or_pass_with_no_tracked_ball_has_no_speed_fact(tmp_path, monkeypatch):
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    monkeypatch.setattr(Match, "peak_ball_kmh", lambda self, f0, f1: math.nan)
+    build(conn, info["match_id"], xt_grid=None)
+    assert facts(conn, "shot_distance") and not facts(conn, "shot_speed") and not facts(conn, "ball_speed")
+    conn.close()
+
+
 def test_window_labels_never_overlap_and_name_stoppage_time():
     from studiodesk.facts.engine import window_label
     p1 = 2763.4
