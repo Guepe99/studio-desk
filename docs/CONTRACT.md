@@ -116,6 +116,8 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
     drafts, not the text on air. A story with `on_air: "phrasebook"` has risk 0.05 (0.3 more without
     fact ids, and 0.35 more for a reading of the game: `big_chance`, `tactical_shift`,
     `momentum_swing`, `pressing_spell`, so those wait for a person). Packs without `on_air` put the AI's lines in `texts`.
+    `analysis_judged` is true when the AI judge passed `analysis_en`; Ask the studio serves the analysis
+    only then (packs without the field were all judged, and read as true).
   - `safety` is `passed`, `flagged` or `not_checked`.
   - `fact_ids` holds the story's own facts plus the ones the analyst cited (`cited`). Templates,
     graphics and the `why_card` `fact_ids` use only the story's own facts.
@@ -494,8 +496,9 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - MCP tool `get_scorers(match_id, player_id=None)`: the latest `player_goals` fact of each player who has
   scored (with `player_id`, that player's, 0 included), up to the clock. `get_team_totals` also returns
   `team_pass_accuracy`.
-- Ask the studio: the `studio_host` has a `get_stories` tool, the verified stories already on air at the
-  visitor's clock (from `web/data/<match>/stories.json`), so a "why" question is answered from them.
+- Ask the studio: the `studio_host` has a `get_stories` tool, the stories already on air at the
+  visitor's clock (from `web/data/<match>/stories.json`), each with its analysis when the judge passed it,
+  so a "why" question is answered from them.
   The answer's numbers are still fact ids checked by `rules.check_answer`, which also accepts a goal
   count and "N passes of M".
 - `POST /api/decisions` with `edited_text`: Content Safety refuses from severity 4 in any category, and

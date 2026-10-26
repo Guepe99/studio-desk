@@ -2,6 +2,7 @@
 import asyncio
 import json
 from collections import Counter
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -107,7 +108,7 @@ def test_run_writes_stories_cues_traces_and_audit(desk_db):
         assert set(s["texts"]) == {"en", "it", "es"} and all(s["texts"].values())
         v = s["verifier"]
         assert v["status"] == "pass" and v["on_air"] == "phrasebook" and set(v["proposals"]) == set(s["texts"]), (s["texts"], v)
-        assert set(v) == {"status", "attempts", "flagged", "on_air", "opener", "proposals"}
+        assert set(v) == {"status", "attempts", "flagged", "on_air", "opener", "proposals", "analysis_judged"}
         assert s["default_status"] == "needs_review" and s["safety"] == "not_checked" and s["fact_ids"]  # no Content Safety yet
     # one trace per hand-off, in workflow order, for every batch
     tr = rows(rt, "traces")
@@ -834,6 +835,7 @@ def test_cited_facts_never_reach_graphics_templates_or_texts(desk_db):
     run(rt, FakeChatClient(analyst))
     st = stories(rt)
     assert st and all(extra in s["fact_ids"] and "F-" not in s["analysis_en"] + json.dumps(s["texts"]) for s in st)
+    assert all(s["analysis_en"] == "A move that mattered." for s in st)  # a cited note is kept, its citation stripped
     assert not any(extra in c["payload"] for c in rows(rt, "cues"))
     desk = workflow.Desk("M001", None, rt, "R", "fake")
     c = {"kind": "top_sprint", "facts": [SHAPE[1]], "ts": 3000.0, "team_id": "T01", "player_id": None}
@@ -954,3 +956,93 @@ def test_a_round_is_on_air_before_its_ai_tail_and_live_the_tail_runs_on_its_own(
     assert all((t in main) == (not speed) for _, t in seen)  # live, the tail is its own task
     assert "pending" not in summary["verifier"] and {s["verifier"]["status"] for s in stories(rt)} == {"pass"}
     assert all(s["analysis_en"] for s in stories(rt))
+
+
+def test_ordinals_only_as_minutes_and_counts_only_from_a_fact():
+    allowed = [(2.0, None), (1.0, None), (41.0, None), (96.4, "speed")]
+    for text in ("Duarte scores his 2nd goal of the game.", "It was his 41st touch.",
+                 "Redwick have made 2 tackles in a row.", "He has 2 sprints."):
+        assert rules.check_text(text, allowed), text
+    for text in ("In the 41st minute Duarte scores, 2-1.", "Redwick lead 2-1 in the 41st minute.",
+                 "A 41st-minute goal.", "From the 1st minute to the 41st.", "A shot at 96.4 km/h made it 2-1."):
+        assert rules.check_text(text, allowed) == [], text
+    sprints = rules.allowed_numbers([{"fact_id": "F-SPRINT_COUNT-000001", "kind": "sprint_count", "value": 7.0,
+                                      "unit": "sprints", "label_en": "7 sprints", "period": 1}])
+    assert rules.check_text("He made 7 sprints.", sprints) == []
+    assert rules.check_text("He made 7 tackles.", sprints) == ["number not in the facts: '7 tackles' is a count no fact gives"]
+
+
+def test_a_cited_fact_joins_the_evidence_only_when_the_analysis_is_kept(desk_db):
+    _, _, rt = desk_db
+    extra = min((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])["fact_id"]
+
+    def analyst(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [extra],
+                                 "analysis_en": f"A shot at 999 km/h [{extra}]."} for s in p["stories"]]}
+
+    run(rt, FakeChatClient(analyst))
+    st = stories(rt)
+    assert st and all(extra not in s["fact_ids"] and "999" not in s["analysis_en"] for s in st)
+
+
+def test_the_analyst_cites_no_fact_read_after_its_round(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    late = max((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])
+    tail, early = workflow.run_tail, set()
+
+    async def moved_on(desk, wf, rnd):  # live, the desk reads on while a round's tail is still running
+        if rnd.batch.ts < late["ts"]:
+            early.update(s["story_id"] for s in rnd.stories)
+            desk.m.facts.setdefault(late["fact_id"], late)
+            desk.now = max(desk.now, late["ts"])
+        await tail(desk, wf, rnd)
+    monkeypatch.setattr(workflow, "run_tail", moved_on)
+
+    def analyst(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [late["fact_id"]],
+                                 "analysis_en": f"A move that mattered [{late['fact_id']}]."} for s in p["stories"]]}
+
+    run(rt, FakeChatClient(analyst))
+    st = stories(rt)
+    assert early and all(late["fact_id"] not in s["fact_ids"] for s in st if s["story_id"] in early)
+    assert any(late["fact_id"] in s["fact_ids"] for s in st if s["story_id"] not in early)  # a later round may cite it
+
+
+def test_a_director_that_fails_twice_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+
+    def down(self, stories, now):
+        raise RuntimeError("director down")
+    monkeypatch.setattr(rules.Director, "plan", down)
+    summary = run(rt, FakeChatClient())
+    st = stories(rt)
+    assert st and summary["stories"] == len(st) and all(s["verifier"]["status"] == "template" for s in st)
+    assert any(t["step"] == "fallback" for t in rows(rt, "traces"))
+
+
+def test_calls_in_flight_count_toward_the_ceiling(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    monkeypatch.setattr(config, "RUN_MAX_CALLS", 4)  # the finder, the analyst, then three writers at once
+    summary = run(rt, FakeChatClient(delay_s=0.05))
+    assert summary["model_calls"] == 4
+
+
+def test_a_call_cut_by_the_timeout_is_billed_for_its_instructions_too(desk_db, monkeypatch):
+    _, _, rt = desk_db
+    monkeypatch.setattr(workflow, "RETRY_PAUSES_S", (0.0, 0.0))
+    monkeypatch.setattr(config, "AGENT_TIMEOUT_S", 0.05)
+    run(rt, FakeChatClient(delay_s=1.0))
+    cut = [a for a in rows(rt, "audit") if a["action"] == "model_call_timeout"]
+    role = lambda actor: "commentator" if actor.startswith("commentator") else actor  # noqa: E731
+    assert cut and all(a["tokens_in"] > len(workflow.INSTRUCTIONS[role(a["actor"])]) // 4 for a in cut)
+
+
+def test_the_verifier_record_says_whether_the_judge_passed_the_analysis(desk_db, tmp_path):
+    _, _, rt = desk_db
+    run(rt, FakeChatClient())
+    assert all(s["verifier"]["analysis_judged"] is True for s in stories(rt))
+    with closing(db.connect(tmp_path / "unjudged.sqlite")) as rt2:
+        run(rt2, FakeChatClient(lambda schema, p: {"verdicts": []} if schema == "Verdicts" else None))
+        assert stories(rt2) and all(s["verifier"]["analysis_judged"] is False for s in stories(rt2))

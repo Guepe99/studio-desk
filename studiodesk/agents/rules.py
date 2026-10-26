@@ -499,6 +499,26 @@ _CITED_AS = re.compile(r"\b(?:facts?|fatt[oi]|hechos?)\s*:?\s*(?=F-[A-Z_]+-\d+)"
 _ID_RUN = re.compile(r"\s*[,;]?\s*(?:\b(?:see|citing|cf\.?|vedi|ver|véase|cfr\.?)\s+)?F-[A-Z_]+-\d+"
                      r"(?:\s*(?:,|;|&|\band\b|\be\b|\by\b)\s*F-[A-Z_]+-\d+)*", re.IGNORECASE)
 _CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]", re.IGNORECASE)
+# an ordinal is a minute only in a minute phrase: "41st minute", "81st-minute goal", "the 70th and 80th minutes",
+# "by the 45th", "in the 50th and then" ("his 2nd goal", "his 41st touch", "the 2nd half" are not minutes)
+_ORD = r"\d+(?:st|nd|rd|th|º|ª|°)"
+_ORDINAL_MINUTE = re.compile(
+    _ORD + rf"(?=(?:\s+(?:and|to|e|y)\s+(?:the\s+)?{_ORD})?[\s-]+(?:minutes?|minut[oi]s?)\b)"
+    r"|(?<=\b(?:by|to|in) the )" + _ORD + r"(?![\s-]+(?!(?:and|then|minutes?)\b)[^\W\d_])", re.IGNORECASE)
+# a bare integer right before what it counts ("2 tackles"): the count of one of a cited fact's units, or no fact's
+_COUNT_UNITS = {"touches": "touches", "touch": "touches", "tocchi": "touches", "tocco": "touches", "toques": "touches",
+                "toque": "touches", "passes": "passes", "pass": "passes", "passaggi": "passes", "passaggio": "passes",
+                "pases": "passes", "pase": "passes", "sprints": "sprints", "sprint": "sprints", "scatti": "sprints",
+                "scatto": "sprints", "esprints": "sprints", "esprint": "sprints", "goals": "goals", "goal": "goals",
+                "gol": "goals", "reti": "goals", "rete": "goals", "goles": "goals", "corners": "corners",
+                "corner": "corners", "córners": "corners", "córner": "corners", "shots": "shots", "shot": "shots",
+                "tiri": "shots", "tiro": "shots", "tiros": "shots", "disparos": "shots", "disparo": "shots",
+                "remates": "shots", "remate": "shots"}
+_COUNT_FAMILIES = {*_COUNT_UNITS.values(), "shots on target"}
+_COUNT_NOUN = re.compile(r"\s+(" + "|".join(sorted(_COUNT_UNITS, key=len, reverse=True)) + r"|tackles?|contrasti|"
+                         r"entradas|saves?|parate|paradas|crosses|cross|centros|chances?|occasioni|ocasiones|fouls?|"
+                         r"falli|faltas|attempts?|tentativi|intentos|efforts?|interceptions?|clearances?|duels?|"
+                         r"dribbles?|headers?|blocks?|runs?|actions?|turnovers?)\b", re.IGNORECASE)
 
 
 def _family(unit):
@@ -572,7 +592,9 @@ def allowed_numbers(facts, minutes=()):
     for mi, period in minutes:
         out += [(float(x), None) for x in stoppage(mi, period).split("+")]
     for f in facts:
-        fam = "formation" if f["unit"] == "formation" else _FAMILY.get(f["unit"])
+        # a count keeps its unit as family ("sprints"): it passes as a bare number and as that count
+        fam = "formation" if f["unit"] == "formation" else _FAMILY.get(f["unit"], f["unit"] if f["unit"] in
+                                                                       _COUNT_FAMILIES else None)
         out.append((f["value"], fam))
         if fam == "m":
             out.append((f["value"] / 1000, "km"))
@@ -620,9 +642,19 @@ def check_numbers(text, allowed, lang="en", ids=(), bare=True):
         tol = 0.5 * 10 ** -decimals + 1e-9
         fam = _family(unit)
         if fam is None:  # a bare number claims nothing about what it measures: it must be one of the story's
+            shown = mt.group(0).strip()
+            if re.match(r"st|nd|rd|th|º|ª|°", text[mt.end(1):], re.IGNORECASE) and not _ORDINAL_MINUTE.match(text, mt.start()):
+                flags.append(f"number not in the facts: '{shown}' is not a minute")
+                continue
+            # "the 2-1 goal": the second half of a score is not a count
+            if (counted := _COUNT_NOUN.match(text, mt.end())) and not re.search(r"\d\s?-\s?$", text[:mt.start()]):
+                unit = _COUNT_UNITS.get(counted.group(1).lower())
+                if not (bare and unit and any(f in (unit, f"{unit} on target") and abs(x - v) < 1e-6 for v, f in allowed)):
+                    flags.append(f"number not in the facts: '{shown}{counted.group(0)}' is a count no fact gives")
+                continue
             if bare and any(f not in ("formation", "km") and abs(x - v) < 1e-6 for v, f in allowed):
                 continue
-            flags.append(f"number not in the facts: '{mt.group(0).strip()}'")
+            flags.append(f"number not in the facts: '{shown}'")
             continue
         near = [(v, f) for v, f in allowed if abs(x - v) <= tol]
         if any(f == fam for _, f in near):
@@ -768,7 +800,6 @@ def _language(text, lang):
 
 _POSSESSION_WORDS = re.compile(r"possess|posesi|of the ball|del pallone|del bal[oó]n|\bpalla\b", re.IGNORECASE)
 _PASS_WORDS = re.compile(r"\bpass|\bpases?\b|accura|precisi", re.IGNORECASE)
-_SENTENCE_END = re.compile(r"[.!?;](?=\s|$)")
 
 
 def _misattributed(rest, facts, who):
