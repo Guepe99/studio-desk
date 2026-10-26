@@ -500,11 +500,15 @@ _ID_RUN = re.compile(r"\s*[,;]?\s*(?:\b(?:see|citing|cf\.?|vedi|ver|véase|cfr\.
                      r"(?:\s*(?:,|;|&|\band\b|\be\b|\by\b)\s*F-[A-Z_]+-\d+)*", re.IGNORECASE)
 _CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]", re.IGNORECASE)
 # an ordinal is a minute only in a minute phrase: "41st minute", "81st-minute goal", "the 70th and 80th minutes",
-# "by the 45th", "in the 50th and then" ("his 2nd goal", "his 41st touch", "the 2nd half" are not minutes)
+# "by the 45th", "from the 30th", "al 41°", "el 41º" ("his 2nd goal", "his 41st touch" are not minutes)
 _ORD = r"\d+(?:st|nd|rd|th|º|ª|°)"
 _ORDINAL_MINUTE = re.compile(
     _ORD + rf"(?=(?:\s+(?:and|to|e|y)\s+(?:the\s+)?{_ORD})?[\s-]+(?:minutes?|minut[oi]s?)\b)"
-    r"|(?<=\b(?:by|to|in) the )" + _ORD + r"(?![\s-]+(?!(?:and|then|minutes?)\b)[^\W\d_])", re.IGNORECASE)
+    + "|(?:" + "|".join(rf"(?<=\b{w} the )" for w in ("by", "to", "in", "at", "from", "until")) + ")" + _ORD
+    + "|(?:" + "|".join(rf"(?<=\b{w} )" for w in ("al", "el", "dal", "del")) + r")\d+[°º]", re.IGNORECASE)
+_ORDINAL_HALF = re.compile(r"[12](?:st|nd|º|ª|°)[\s-]+(?:half|tempo|tiempo)\b", re.IGNORECASE)  # a half, not a number
+# a number right after the minute word is a minute ("al minuto 41 tiro di Duarte"), never a count
+_AFTER_MINUTE_WORD = re.compile(r"\b(?:min|minutes?|minut[oi]s?)\.?\s*$", re.IGNORECASE)
 # a bare integer right before what it counts ("2 tackles"): the count of one of a cited fact's units, or no fact's
 _COUNT_UNITS = {"touches": "touches", "touch": "touches", "tocchi": "touches", "tocco": "touches", "toques": "touches",
                 "toque": "touches", "passes": "passes", "pass": "passes", "passaggi": "passes", "passaggio": "passes",
@@ -589,8 +593,8 @@ def allowed_numbers(facts, minutes=()):
     which must match exactly; "formation" is a shape like 4-4-2 (value 442).
     `minutes` are (display minute, period); one in stoppage time is allowed as "45+2" (45 and 2), not as 47."""
     out = []
-    for mi, period in minutes:
-        out += [(float(x), None) for x in stoppage(mi, period).split("+")]
+    for mi, period in minutes:  # a minute passes as a bare number too; an ordinal must be one
+        out += [(float(x), "minute") for x in stoppage(mi, period).split("+")]
     for f in facts:
         # a count keeps its unit as family ("sprints"): it passes as a bare number and as that count
         fam = "formation" if f["unit"] == "formation" else _FAMILY.get(f["unit"], f["unit"] if f["unit"] in
@@ -603,6 +607,9 @@ def allowed_numbers(facts, minutes=()):
         label = _CHAIN.sub("", _FACT_ID.sub("", display_label(f)))  # a formation in a label is not three numbers
         for mt in _NUM.finditer(label):  # label numbers keep their own unit
             out.append((float(mt.group(1).replace(",", ".")), _family(mt.group(2))))
+        out += [(float(x), "minute") for mt in _LABEL_MINUTES.finditer(label) for g in mt.groups() for x in g.split("+")]
+        if "pass_accuracy" in f["kind"]:  # "(228/276)": passes completed of passes tried
+            out += [(float(x), "passes") for pair in re.findall(r"\((\d+)/(\d+)\)", label) for x in pair]
     return out
 
 
@@ -643,11 +650,16 @@ def check_numbers(text, allowed, lang="en", ids=(), bare=True):
         fam = _family(unit)
         if fam is None:  # a bare number claims nothing about what it measures: it must be one of the story's
             shown = mt.group(0).strip()
-            if re.match(r"st|nd|rd|th|º|ª|°", text[mt.end(1):], re.IGNORECASE) and not _ORDINAL_MINUTE.match(text, mt.start()):
-                flags.append(f"number not in the facts: '{shown}' is not a minute")
+            if re.match(r"st|nd|rd|th|º|ª|°", text[mt.end(1):], re.IGNORECASE):
+                if _ORDINAL_HALF.match(text, mt.start()):
+                    continue
+                # a minute ordinal must be a minute of the story, not any of its numbers ("in the 2nd minute", 2-1)
+                if not (_ORDINAL_MINUTE.match(text, mt.start()) and any(f == "minute" and x == v for v, f in allowed)):
+                    flags.append(f"number not in the facts: '{shown}' is not a minute")
                 continue
             # "the 2-1 goal": the second half of a score is not a count
-            if (counted := _COUNT_NOUN.match(text, mt.end())) and not re.search(r"\d\s?-\s?$", text[:mt.start()]):
+            if (counted := _COUNT_NOUN.match(text, mt.end())) and not re.search(r"\d\s?-\s?$", text[:mt.start()]) \
+                    and not _AFTER_MINUTE_WORD.search(text[:mt.start()]):
                 unit = _COUNT_UNITS.get(counted.group(1).lower())
                 if not (bare and unit and any(f in (unit, f"{unit} on target") and abs(x - v) < 1e-6 for v, f in allowed)):
                     flags.append(f"number not in the facts: '{shown}{counted.group(0)}' is a count no fact gives")
@@ -660,8 +672,8 @@ def check_numbers(text, allowed, lang="en", ids=(), bare=True):
         if any(f == fam for _, f in near):
             continue
         shown = mt.group(0).strip()
-        if any(f for _, f in near):
-            flags.append(f"unit mismatch: '{shown}' (ledger: {', '.join(sorted({f for _, f in near if f}))})")
+        if any(f and f != "minute" for _, f in near):
+            flags.append(f"unit mismatch: '{shown}' (ledger: {', '.join(sorted({f for _, f in near if f and f != 'minute'}))})")
         else:
             flags.append(f"number not in the facts: '{shown}'")
     return flags
@@ -911,7 +923,8 @@ def check_answer(text, facts, p1, lang, ids, score=None, who=()):
     goals = {int(a) + int(b) for f in facts if f["kind"] == "score" for a, b in _GOAL_LABEL.findall(f["label_en"])}
     rest = _GOAL_ORDINAL.sub(lambda mt: " " if _GOAL_ORDINALS[mt.group(0).lower()] in goals else mt.group(0), rest)
     bare = [{**f, "label_en": _LABEL_MINUTES.sub("", f["label_en"])} for f in facts]
-    flags += check_text(rest, allowed_numbers(bare), lang, ids, bare=False)
+    minute_ordinals = [(float(x), "minute") for mi in minutes for x in mi.split("+")]  # "the 10th minute"
+    flags += check_text(rest, allowed_numbers(bare) + minute_ordinals, lang, ids, bare=False)
     words = _NOT_A_NUMBER.sub("", _ASK_NOT_A_NUMBER.sub("", _FACT_ID.sub("", rest)))
     flags += [f"number in words: '{w}' (write digits from the facts)" for w in _ASK_SPELLED.findall(words)
               if w.lower() not in _FALSE_FRIENDS[lang]]

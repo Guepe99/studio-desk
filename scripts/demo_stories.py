@@ -44,7 +44,7 @@ def build(meta, events, facts, cues):
              "team_id": team, "player_id": player, "risk": risk,
              "default_status": "auto_approved" if risk < AUTO_APPROVE_RISK else "needs_review",
              "fact_ids": [f["fact_id"] for f in fact_list], "evidence_event_ids": evidence, "analysis_en": analysis,
-             "texts": texts, "verifier": verifier, "safety": safety, "run_id": RUN_ID}
+             "texts": texts, "verifier": {**verifier, "analysis_judged": True}, "safety": safety, "run_id": RUN_ID}
         stories.append(s)
         return s
 

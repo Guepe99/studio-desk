@@ -117,7 +117,7 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
     fact ids, and 0.35 more for a reading of the game: `big_chance`, `tactical_shift`,
     `momentum_swing`, `pressing_spell`, so those wait for a person). Packs without `on_air` put the AI's lines in `texts`.
     `analysis_judged` is true when the AI judge passed `analysis_en`; Ask the studio serves the analysis
-    only then (packs without the field were all judged, and read as true).
+    only then (packs without the field read as true: their traces show a judge verdict for every round).
   - `safety` is `passed`, `flagged` or `not_checked`.
   - `fact_ids` holds the story's own facts plus the ones the analyst cited (`cited`). Templates,
     graphics and the `why_card` `fact_ids` use only the story's own facts.
@@ -503,6 +503,8 @@ Agents only learn about an event when the clock releases it, in replay generatio
   count and "N passes of M".
 - `POST /api/decisions` with `edited_text`: Content Safety refuses from severity 4 in any category, and
   the refusal names it ("content safety flagged the text for violence (severity 6)").
+- Ask the studio uses the same threshold: the question and the answer are declined from severity 4 in
+  any category, and Prompt Shields on the question is unchanged.
 - An edit whose text is the verifier's proposal is written to the audit table as `used_proposal`
   (`session_decisions` keeps `edited`).
 - Each audit write of a desk decision (`approved`/`edited`/`killed`, `used_proposal`, `edit_refused`, `undo`, `ai_off`/`ai_on`) also

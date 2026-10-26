@@ -645,7 +645,8 @@ def test_numbers_in_words_glued_or_in_foreign_units_are_flagged():
                        ("ninety-six kilometres an hour", "en"), ("Novantasei all'ora", "it"), ("Veintiséis", "es"),
                        ("He hit it at 96kmh.", "en"), ("A sprint at 34 mph", "en"), ("3 goals now", "en")]:
         assert rules.check_text(text, allowed, lang), text
-    assert rules.check_text("A 96 kilometres per hour drive, then a 34 km/h sprint in the 3rd minute.", allowed) == []
+    assert rules.check_text("A 96 kilometres per hour drive, then a 34 km/h sprint in the 3rd minute.",
+                            allowed + [(3.0, "minute")]) == []
     assert rules.check_text("Once more he tries.", allowed) == []  # "once" is eleven only in Spanish
 
 
@@ -959,13 +960,27 @@ def test_a_round_is_on_air_before_its_ai_tail_and_live_the_tail_runs_on_its_own(
 
 
 def test_ordinals_only_as_minutes_and_counts_only_from_a_fact():
-    allowed = [(2.0, None), (1.0, None), (41.0, None), (96.4, "speed")]
+    allowed = [(2.0, None), (1.0, None), (96.4, "speed"), (1.0, "minute"), (35.0, "minute"), (41.0, "minute")]
     for text in ("Duarte scores his 2nd goal of the game.", "It was his 41st touch.",
-                 "Redwick have made 2 tackles in a row.", "He has 2 sprints."):
+                 "Redwick have made 2 tackles in a row.", "He has 2 sprints.",
+                 "Duarte scores in the 2nd minute, 2-1.", "In the 3rd half."):  # 2 is the score, not a minute
         assert rules.check_text(text, allowed), text
     for text in ("In the 41st minute Duarte scores, 2-1.", "Redwick lead 2-1 in the 41st minute.",
-                 "A 41st-minute goal.", "From the 1st minute to the 41st.", "A shot at 96.4 km/h made it 2-1."):
+                 "A 41st-minute goal.", "From the 1st minute to the 41st.", "A shot at 96.4 km/h made it 2-1.",
+                 "Up from 2-1 in the 1st to 2-1 by the 35th.", "Momentum climbs by the 35th as Redwick push.",
+                 "In the 41st Duarte scores.", "Rising from the 1st, at the 35th, until the 41st.",
+                 "In the 2nd half Redwick press.", "Nel 2° tempo cresce."):
         assert rules.check_text(text, allowed) == [], text
+    assert rules.check_text("Al 41° Duarte segna, 2-1.", allowed, "it") == []
+    assert rules.check_text("Al 41º Duarte marca, 2-1.", allowed, "es") == []
+    for text, lang in (("Al minuto 41 tiro di Duarte.", "it"), ("Al minuto 41 gol di Duarte, 2-1.", "it"),
+                       ("En el minuto 41 remate de Duarte.", "es")):  # a number after "minute" is a minute
+        assert rules.check_text(text, allowed, lang) == [], text
+    passes = rules.allowed_numbers([{"fact_id": "F-TEAM_PASS_ACCURACY-000001", "kind": "team_pass_accuracy",
+                                     "value": 83.0, "unit": "%", "label_en": "Pass accuracy 83% (228/276)", "period": 1}])
+    assert rules.check_text("All'83%, 228 passaggi su 276.", passes, "it") == []
+    assert rules.check_text("Al 83%, 228 pases de 276.", passes, "es") == []
+    assert rules.check_text("228 passaggi su 300.", passes, "it")
     sprints = rules.allowed_numbers([{"fact_id": "F-SPRINT_COUNT-000001", "kind": "sprint_count", "value": 7.0,
                                       "unit": "sprints", "label_en": "7 sprints", "period": 1}])
     assert rules.check_text("He made 7 sprints.", sprints) == []
@@ -1046,3 +1061,66 @@ def test_the_verifier_record_says_whether_the_judge_passed_the_analysis(desk_db,
     with closing(db.connect(tmp_path / "unjudged.sqlite")) as rt2:
         run(rt2, FakeChatClient(lambda schema, p: {"verdicts": []} if schema == "Verdicts" else None))
         assert stories(rt2) and all(s["verifier"]["analysis_judged"] is False for s in stories(rt2))
+
+
+def test_an_analysis_the_judge_rejects_takes_its_cited_facts_with_it(desk_db):
+    _, _, rt = desk_db
+    extra = min((f for f in srv.get_facts("M001") if f["kind"] == "pass_distance"), key=lambda f: f["ts"])["fact_id"]
+
+    def model(schema, p):
+        if schema == "Analyses":
+            return {"stories": [{"story_id": s["story_id"], "fact_ids": [extra],
+                                 "analysis_en": f"A move that mattered [{extra}]."} for s in p["stories"]]}
+        if schema == "Verdicts":
+            return {"verdicts": [{"story_id": t["story_id"], "lang": t["lang"], "ok": t["lang"] != "analysis",
+                                  "issue": "" if t["lang"] != "analysis" else "Says the move mattered; no fact shows it."}
+                                 for t in p["texts"]]}
+
+    run(rt, FakeChatClient(model))
+    st = stories(rt)
+    assert st and all(extra not in s["fact_ids"] and s["analysis_en"] != "A move that mattered." for s in st)
+
+
+def test_a_fallback_that_fails_too_never_stops_the_run(desk_db, monkeypatch):
+    _, _, rt = desk_db
+
+    def down(*a, **k):
+        raise RuntimeError("down")
+    monkeypatch.setattr(rules.Director, "plan", down)
+    monkeypatch.setattr(workflow, "template_story", down)
+    run(rt, FakeChatClient())
+    assert stories(rt) == [] and any("fallback failed" in t["output_summary"] for t in rows(rt, "traces"))
+
+
+def test_a_discarded_plan_holds_no_graphics_slot(desk_db, monkeypatch, tmp_path):
+    _, _, rt = desk_db
+    plan, failed = rules.Director.plan, []
+
+    def once(placing):
+        def flaky(self, stories, now):
+            if stories and not failed:
+                failed.append(1)
+                if placing:
+                    plan(self, stories, now)  # the plan takes its slots, then the round fails
+                raise RuntimeError("down")
+            return plan(self, stories, now)
+        return flaky
+
+    def cues(conn):
+        return [(c["ts"], c["graphic"], c["audience"], c["lang"]) for c in rows(conn, "cues")]
+    monkeypatch.setattr(rules.Director, "plan", once(False))
+    run(rt, FakeChatClient())
+    failed.clear()
+    monkeypatch.setattr(rules.Director, "plan", once(True))
+    with closing(db.connect(tmp_path / "placed.sqlite")) as rt2:
+        run(rt2, FakeChatClient())
+        assert cues(rt) and cues(rt2) == cues(rt)
+
+
+def test_a_tool_result_counts_toward_the_call_it_feeds():
+    token = workflow._ASK_USAGE.set({"pending_chars": 10})
+    try:
+        text = workflow._tool_text(SimpleNamespace(structuredContent={"result": {"a": 1}}, content=[]))
+        assert workflow._ASK_USAGE.get()["pending_chars"] == 10 + len(text)
+    finally:
+        workflow._ASK_USAGE.reset(token)

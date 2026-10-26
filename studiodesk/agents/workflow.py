@@ -816,7 +816,10 @@ def build_workflow(desk):
             analysis_ok |= {sid for sid, lang in judged if lang == "analysis" and (sid, lang) not in issues}
             judged_ok |= {k for k in judged if k in to_judge and k not in issues}
             for sid, lang in [k for k in issues if k[1] == "analysis"]:  # a wrong analysis falls back to the facts
-                by_sid[sid]["analysis_en"] = rules.analysis_template(desk.m, by_sid[sid])
+                s = by_sid[sid]
+                cut = {f["fact_id"] for f in s["cited"]}  # the template quotes none of the analyst's facts
+                s["cited"], s["fact_ids"] = [], [i for i in s["fact_ids"] if i not in cut]
+                s["analysis_en"] = rules.analysis_template(desk.m, s)
                 issues.pop((sid, lang))
             for k, issue in issues.items():
                 problems[k].append(f"claim: {issue}")
@@ -942,25 +945,34 @@ async def run_batch(desk, batch, wait=True):
     """One batch on air; then its AI tail, awaited (replays stay the same run to run) or, live, left running."""
     if batch.candidates:
         air, tail = build_workflow(desk)  # a workflow runs one input at a time, and live tails overlap
+        slots = copy.deepcopy({k: getattr(desk.director, k) for k in ("placed", "whistles")})
         try:
             rnd = (await air.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
-            stories = []
-            for c in _rule_picks(rules.before_the_whistle(batch.candidates)):  # the candidates the finder had
-                s = desk.new_story(c, 0.5, c["note"])
-                try:
-                    aired = desk.on_air(s)
-                except Exception:  # noqa: BLE001 - the phrasebook failed again: the template's lines
-                    s["texts"] = {lang: rules.template(desk.m, s, lang) for lang in rules.LANGS}
-                    aired = {"on_air": "template", "opener": None}
-                stories.append(template_story(desk, s, f"workflow error: {rules.brief_error(e)}", aired))
+            vars(desk.director).update(copy.deepcopy(slots))  # a plan the failed round discarded holds no slot
             try:
-                cues = desk.director.plan(stories, batch.ts)
-            except Exception:  # noqa: BLE001 - the director failed again: the stories go on without cues
-                cues = []
-            rnd = Round(batch, stories, cues)
-            desk.trace("director", "fallback", "workflow failed", _n(len(stories), "template story", "template stories"),
-                       [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
+                stories = []
+                for c in _rule_picks(rules.before_the_whistle(batch.candidates)):  # the candidates the finder had
+                    s = desk.new_story(c, 0.5, c["note"])
+                    try:
+                        aired = desk.on_air(s)
+                    except Exception:  # noqa: BLE001 - the phrasebook failed again: the template's lines
+                        s["texts"] = {lang: rules.template(desk.m, s, lang) for lang in rules.LANGS}
+                        aired = {"on_air": "template", "opener": None}
+                    stories.append(template_story(desk, s, f"workflow error: {rules.brief_error(e)}", aired))
+                try:
+                    cues = desk.director.plan(stories, batch.ts)
+                except Exception:  # noqa: BLE001 - the director failed again: the stories go on without cues
+                    vars(desk.director).update(copy.deepcopy(slots))
+                    cues = []
+                rnd = Round(batch, stories, cues)
+                desk.trace("director", "fallback", "workflow failed",
+                           _n(len(stories), "template story", "template stories"),
+                           [i for s in stories for i in s["fact_ids"]], story_ids=[s["story_id"] for s in stories])
+            except Exception as e2:  # noqa: BLE001 - the fallback failed too: this batch airs nothing, the match goes on
+                vars(desk.director).update(copy.deepcopy(slots))
+                rnd = Round(batch, [], [])
+                desk.trace("director", "fallback", "workflow failed", f"fallback failed: {rules.brief_error(e2)}", [])
         desk.save(rnd)
         if any(s["verifier"]["status"] == "pending" for s in rnd.stories):
             job = run_tail(desk, tail, rnd)
