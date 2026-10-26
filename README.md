@@ -12,13 +12,13 @@ No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a five-minute wa
 
 1. Open a match and press Play. The page opens on M001; the others are [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002), [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003) and [M004](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M004). The seek bar has a button for each goal, and **Next key moment** jumps to the next story the agents found.
 2. On a computer with a graphics card the picture is 3D, with the 2D pitch as a small, see-through live minimap at the bottom, as in a football video game. Click the minimap to swap the two, and click it again to swap them back. **Minimap** in the settings (the gear) turns it off. The 3D view runs in your browser and uses the same tracking data. A phone, or a computer that draws without a graphics card (a virtual machine or a remote desktop), starts on the 2D pitch; add `&view=split` to the link to bring the 3D view back.
-3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level (low, medium or high). Use **Put on air**, **Edit** or **Reject** on a story, or **Use proposal** to put the agents' own line on air; the confirmation that appears has an **Undo** button. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
+3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level (low, medium or high). Use **Put on air**, **Edit** or **Reject** on a story, or open **Details** and press **Use proposal** to put the agents' own line on air; the confirmation that appears has an **Undo** button. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
 4. Look at the **Agents at work** strip under the picture. It shows which agent is working and what it passed on. While a graphic is on air, it shows how that graphic was made.
 5. Switch the language to EN, IT or ES in the settings. The desk, the controls and the graphics change language. The numbers do not change, because code computes them from the fact ledger; the model never writes them.
 6. Press **Voice** under the picture to hear the stories on air read aloud, at 1x speed, in the language on screen.
 7. Open **Ask the studio** and type a question about the match so far. The answer may use only facts up to the current replay time. If an answer fails the checks, the studio shows a stock reply instead.
 8. Open the **Traces** tab on the desk. It lists each step with the agent, model, tokens, time and cost.
-9. Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics (line-ups, nameplates, shot cards, team stats) stay; **Next key moment** becomes **Next goal**.
+9. Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics (line-ups, name plates, pass and shot cards, and the Momentum and Team shape panels) stay; **Next key moment** becomes **Next goal**.
 10. Change the audience in the settings: analyst, casual fan, kids, fans of one team or fans of one player. When the speed or the audience is not the default, it appears beside the gear.
 11. Open a match at a given moment with a link: `?match=M001&t=2400&audience=casual&speed=4&play=1` starts M001 at 40:00 of match time (`t` is in seconds), at 4x speed, for a casual fan, already playing. Audiences are `analyst`, `casual`, `kids`, `team:<id>` and `player:<id>`, as in the settings; speeds are 1, 4, 16 and 64; `view` is `2d`, `3d` or `split`.
 
@@ -31,10 +31,10 @@ The replay makes no model calls, so it has no daily quota. Each session allows 3
 | Gate: theme and Microsoft technologies | A football broadcast desk built on Microsoft Agent Framework, a gpt-5-mini deployment in Microsoft Foundry, Azure Container Apps, Azure AI Content Safety, Azure Speech in Foundry Tools and Azure Monitor Application Insights, deployed with Bicep and the Azure CLI, tested and built with GitHub Actions | [Live site](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/), [pyproject.toml](pyproject.toml), [infra/main.bicep](infra/main.bicep), [.github/workflows/](.github/workflows/) |
 | Technological implementation: synthetic data | A seeded simulator writes 4 matches (5,493 events, 223,905 tracking frames at 10 fps) with 14 hidden storylines, calibrated against public event data and published physical studies. The same seed gives the same events and frames | [Synthetic data](#synthetic-data), [studiodesk/sim/](studiodesk/sim/), [docs/realism.md](docs/realism.md), [tests/test_sim.py](tests/test_sim.py) |
 | Technological implementation: software practice | 550 Python tests and 179 browser-logic tests pass offline; CI runs both on every push and builds the image only from a commit whose tests passed; pinned versions; a written data contract | [Measured numbers](#measured-numbers), [ci.yml](.github/workflows/ci.yml), [image.yml](.github/workflows/image.yml), [docs/CONTRACT.md](docs/CONTRACT.md) |
-| Agentic design and innovation | Two Agent Framework workflows. In the first, the story finder hands each story to the director, which puts it on air at once. In the second, the analyst fans out to three commentators, whose drafts fan back in to a verifier. Agents read the match only through an MCP server whose clock follows the match. If an agent fails, rules take its place | [workflow.py, the two workflows](studiodesk/agents/workflow.py#L854-L860), [mcp_server.py](studiodesk/mcp_server.py#L153-L157), [tests/test_mcp.py](tests/test_mcp.py#L36), [fallback test](tests/test_agents.py#L195-L227) |
+| Agentic design and innovation | Two Agent Framework workflows. In the first, the story finder hands each story to the director, which puts it on air at once. In the second, the analyst fans out to three commentators, whose drafts fan back in to a verifier. Agents read the match only through an MCP server whose clock follows the match. If an agent fails, rules take its place | [workflow.py, the two workflows](studiodesk/agents/workflow.py#L854-L860), [mcp_server.py, the clock](studiodesk/mcp_server.py#L35-L56), [tests/test_mcp.py](tests/test_mcp.py#L36), [fallback test](tests/test_agents.py#L195-L227) |
 | Real-world impact | The producer sees each story with its facts, risk and verdict, and puts it on air, edits or rejects it. A match costs $0.060 to $0.102 in model calls; in one real-speed run, two goals reached the director 3.7 and 5.6 s after their shots; Microsoft Foundry's evaluators gave the on-air texts a mean groundedness of 4.64 out of 5 | [A goal on the desk](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1), [docs/MEASURES.md](docs/MEASURES.md) |
 | User experience and presentation | 3D and 2D broadcast views, OGraf graphics, three languages, five kinds of audience, voice, Ask the studio, links that open any moment | [What to try](#what-to-try), [the same goal for a fan of the other team](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&audience=team:T02&speed=1&play=1), [docs/TESTING.md](docs/TESTING.md), [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md) |
-| Category: Best Enterprise Solution | Human approval above a risk threshold (0.35), an audit log of every decision and model call, Content Safety on every story the agents write and on every question and answer, a per-session AI switch, per-visitor state, caps and a daily cost stop, managed identity with no keys for the model or Content Safety, every Azure resource as Bicep, OpenTelemetry traces. What is missing is in [Limits](#limits) | [config.py](studiodesk/config.py#L11-L39), [tests/test_api.py](tests/test_api.py#L215-L259), [tests/test_safety.py](tests/test_safety.py), [studiodesk/telemetry.py](studiodesk/telemetry.py), [Deployment](#deployment) |
+| Category: Best Enterprise Solution | Human approval above a risk threshold (0.35), an audit log of every decision and agent step, Content Safety on every story the agents write and on every question and answer, a per-session AI switch, per-visitor state, caps and a daily cost stop, managed identity with no keys for the model or Content Safety, every Azure resource as Bicep, OpenTelemetry traces. What is missing is in [Limits](#limits) | [config.py](studiodesk/config.py#L11-L39), [tests/test_api.py](tests/test_api.py#L216-L255), [tests/test_safety.py](tests/test_safety.py), [studiodesk/telemetry.py](studiodesk/telemetry.py), [Deployment](#deployment) |
 
 ## How it works
 
@@ -74,7 +74,7 @@ flowchart TB
   host -. "the same tools, in process" .-> mcp
 ```
 
-As soon as the story finder chooses a story, the director puts it on air with a line from the phrasebook. The analyst, the commentators and the verifier then add the analysis and their proposals to the desk.
+As soon as the story finder chooses a story, the director puts it on air with a line from the phrasebook. The analyst, the commentators and the verifier then add the analysis and their proposals to the desk. The four replays were recorded on 20 Oct 2026, a few hours before the director moved ahead of the analysis, so in their traces and in the **Agents at work** strip the director still comes last, after the verifier.
 
 - **Agents.** Microsoft Agent Framework workflows running gpt-5-mini in Microsoft Foundry (Sweden Central). Agents read the match only through a Model Context Protocol (MCP) server whose clock follows the match, so they cannot see later events.
 - **Fact ledger.** Every number on screen is computed by code and stored as a fact with an id; models never write numbers. The desk shows which facts a story uses.
@@ -99,11 +99,11 @@ The engine is a possession state machine (possession, action, outcome) that runs
 **Hidden storylines.** The simulator also plants storylines in a `storylines` table that the agents, the MCP server and the API never read (`tests/test_mcp.py` checks the server). There are four kinds:
 
 - a tactical shift: a new formation or a higher defensive line, between the 56th and 66th minutes in these four matches;
-- a spell of high press lasting 5 to 10 minutes;
+- a spell of high press lasting 5 to 10 minutes of play (5.6 to 10.4 minutes on the match clock in these four matches);
 - a sprint above 34 km/h by the fastest forward in the starting line-ups;
 - a comeback, planted in half of the matches.
 
-The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stories.py`, the only code that reads the table, counts a storyline as found when a story of the matching kind, for the same team (and the same player, when the storyline names one), starts within 60 seconds of it.
+The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stories.py`, the only code that reads the table, counts a storyline as found when a story of the matching kind, for the same team (and the same player, when the storyline names one), starts between 60 seconds before the storyline begins and 60 seconds after it ends.
 
 | storyline | planted | found by the agents |
 |---|---|---|
@@ -125,11 +125,11 @@ The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stor
 | sprints per player | 11.2 | 9.3 |
 | distance per player (m) | 10,841 | 10,936 |
 
-**Seed and rebuild.** Seed 7 builds the four replay matches, and the same seed gives the same events and frames (`tests/test_sim.py`). CI rebuilds the data from the seed on every push, so `tests/test_replays.py` can check that every fact and event id in the committed agent replays exists in the rebuilt data. To rebuild, run the first two commands of [Run it locally](#run-it-locally). The site also serves the exported files of each match, for example the [events](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/events.json), [facts](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/facts.json), [stories](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/stories.json) and [agent traces](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/traces.json) of M001.
+**Seed and rebuild.** Seed 7 builds the four replay matches, and the same seed gives the same events and frames (`tests/test_sim.py`). CI rebuilds the data from the seed on every push, so `tests/test_replays.py` can check that every fact and event id in the committed agent replays exists in the rebuilt data. To rebuild, run the first three commands of [Run it locally](#run-it-locally). The site also serves the exported files of each match, for example the [events](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/events.json), [facts](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/facts.json), [stories](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/stories.json) and [agent traces](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/data/M001/traces.json) of M001.
 
 ## Measured numbers
 
-The test counts and the run with the model off were measured on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md).
+The test counts were measured on commit `4f50787` on 26 Oct 2026, and the run with the model off on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md).
 
 **Tests.** 550 Python tests passed in 2 min 58 s and 179 browser-logic tests in 1 min 50 s; the commands are in [Run it locally](#run-it-locally).
 
@@ -145,7 +145,7 @@ The test counts and the run with the model off were measured on commit `abd9990`
 | M004 | 229 | 402,181 / 28,181 | 0.102 |
 | all | 692 | 1,233,997 / 87,321 | 0.319 |
 
-The Content Safety checks (one call per story, 83 in all) are not in these counts.
+The Content Safety checks (one call per story, 83 in all) are not in these counts. The **Audit log** tab on the site reads the replay's traces, one row per agent step, so it counts agent steps that used the model (115 for M001, 624 in all): a step can call the model more than once, for example when the verifier checks the texts again after a rewrite.
 
 **Stories and checks.** The four replays put 83 stories on air, all with code-written phrasebook text. In 67 of them the AI's own line passed every check in all three languages and waits on the desk as a proposal. The verifier sent back or dropped 5 drafts because of a number (not in the fact ledger, spelled out in words, or with the wrong unit) and 0 because of a real name; these are lower bounds. Run again today, the verifier's code checks in `scripts/eval_stories.py` flag 0 of the 83 on-air texts in each of the three languages.
 
@@ -160,7 +160,7 @@ Five of the six groundedness failures are lines that say a player "strikes again
 Requires Python 3.12.
 
 ```
-python -m venv .venv && .venv/bin/pip install -e '.[dev]'
+python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev,agents]'
 .venv/bin/python -m studiodesk.sim build --matches 4 --seed 7
 .venv/bin/python -m studiodesk.facts build --all
 for m in M001 M002 M003 M004; do .venv/bin/python -m studiodesk.export $m; done
@@ -168,7 +168,7 @@ cp -r replays/. web/data/
 .venv/bin/uvicorn studiodesk.api:app --port 8000
 ```
 
-The export builds the tracking data and the template graphics; the copy adds the recorded agent output. Then open http://127.0.0.1:8000/. The replay needs no Azure account. To run the agents yourself, install the extras with `.venv/bin/pip install -e '.[dev,agents]'`, then use `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI to use the real one.
+The export builds the tracking data and the template graphics; the copy adds the recorded agent output. Then open http://127.0.0.1:8000/. The replay needs no Azure account. The `agents` extras installed with the first command are needed by the tests and by the agents; to run the agents yourself, use `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI to use the real one.
 
 Tests run offline and never call a paid service: `.venv/bin/pytest -q` and, after `.venv/bin/python scripts/make_demo_fixture.py`, `node --test tests/web/*.test.mjs`. The browser checks in `tests/web/` (layout, desk, 3D, voice) run with `scripts/with-lock.sh chromium tests/web/run-smoke.sh <check>.mjs`. GitHub Actions runs both test suites on every push and builds the container image from main once the tests pass.
 
@@ -192,7 +192,7 @@ To build the environment from scratch, sign in with `az login`, then run `az gro
 - **Free tiers.** Content Safety and Speech run on the F0 tier, so Ask the studio answers 40 questions a day for the whole site, and it pauses if the Content Safety quota runs out.
 - **One replica, scaled to zero.** On 25 Oct 2026 the first request after an idle spell took 31.6 s and the next ones about 0.1 s.
 - **The judge is the same model.** The Foundry evaluators used gpt-5-mini to judge gpt-5-mini's work, and fluency scored 3.47 out of 5, the lowest of the four.
-- **Three languages, 3D with a graphics card.** English, Italian and Spanish only. The 3D view needs WebGL 2 and a graphics card; phones and software renderers get the 2D pitch unless the link asks for `view=split`.
+- **Three languages, 3D with a graphics card.** English, Italian and Spanish only. The page starts in 3D only with WebGL 2 and a graphics card; phones, WebGL 1 and software renderers start on the 2D pitch, and `view=split` in the link brings the 3D view back, at a few frames a second without a graphics card.
 
 ## Roadmap
 
