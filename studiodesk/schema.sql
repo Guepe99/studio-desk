@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS cues (
   story_id   TEXT,
   ts         REAL NOT NULL,
   duration_s REAL NOT NULL,
-  graphic    TEXT NOT NULL CHECK (graphic IN ('nameplate','pass_shot','momentum','why_card')),
+  graphic    TEXT NOT NULL CHECK (graphic IN ('nameplate','pass_shot','momentum','why_card','team_stats','lineup')),
   audience   TEXT NOT NULL,
   lang       TEXT NOT NULL CHECK (lang IN ('en','it','es')),
   payload    TEXT NOT NULL,                     -- JSON, OGraf data
