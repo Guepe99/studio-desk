@@ -1,6 +1,6 @@
 # Studio Desk 3D: broadcast look, Babylon techniques, assets, plan
 
-Current state, read from `web/js/scene3d.js` (560 lines): StandardMaterial everywhere, FreeCamera, one rendering pipeline, tone mapping on, thin instances for something, no shadows, no environment texture.
+State when this research was written, read from `web/js/scene3d.js` (560 lines then): StandardMaterial everywhere, FreeCamera, one rendering pipeline, tone mapping on, thin instances for something, no shadows, no environment texture.
 
 ## A. Reference look
 
@@ -194,7 +194,7 @@ SwiftShader stays at 0.05 to 0.08 fps: its time is pixel work, which these chang
 
 ## F. Pitch and crowd (feat/pitchcrowd3d, 18 Oct 2026)
 
-The owner said the 3D match looked like a 1990s game; the ground and the crowd were two of the
+The product owner said the 3D match looked like a 1990s game; the ground and the crowd were two of the
 biggest tells. This section gives the rules the build follows, with numbers and sources.
 
 ### Mowing stripes (`web/js/scene3d/pitch.js`)
@@ -241,7 +241,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 - Hair: a weighted palette of natural colours, any of them on any skin: black 26%, dark brown
   20%, brown 20%, dark blonde 12%, blonde 10%, platinum, grey and light brown 4% each.
   A first version drew all 12 colours evenly and read as confetti; the next one kept 10% vivid
-  heads (pink, sky blue, teal, violet, silver), which the owner found too loud; one with only
+  heads (pink, sky blue, teal, violet, silver), which the product owner found too loud; one with only
   dark tones read as too uniform; copper and auburn read as unrealistic (18/10/2026).
 - Face: a round face plate (12 segments, curved back at the sides) over the body's narrow head,
   with two tall eyes and a mouth; the crown of the hair is spiky, the lower part a tighter mass.
@@ -276,7 +276,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 
 ### One bowl (`web/js/scene3d/stands.js`)
 
-The owner saw the stadium as separate blocks: open corners with dark gaps, sky between the roofs,
+The product owner saw the stadium as separate blocks: open corners with dark gaps, sky between the roofs,
 an empty near stand. The stands now form one bowl.
 
 - The two side stands run between the two end lines (123 m), the end stands between the two side

@@ -10,7 +10,7 @@ Turn it off with `sample3d.html?aware=0` to compare.
 
 ## The problem, measured on M001
 
-The owner's complaint: defenders seem to watch another ball and nobody shows any emotion.
+The product owner's complaint: defenders seem to watch another ball and nobody shows any emotion.
 `scripts/defence_reaction.py M001` measures whether the defending team in the export reacts to
 the ball. Every number is computed twice: on the real tracking, and on a control where the ball
 is taken from five minutes later. A team that reacts shows a clear gap between the two.

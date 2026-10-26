@@ -149,7 +149,8 @@ def model_ping(x_admin_token: str = Header(default="")):
     )
     t2 = time.perf_counter()
     if r.status_code != 200:
-        raise HTTPException(502, f"model returned {r.status_code}: {r.text[:300]}")
+        logging.getLogger("uvicorn.error").warning("model-ping: %s %s", r.status_code, r.text[:300])
+        raise HTTPException(502, f"model returned {r.status_code}")
     body = r.json()
     text = "".join(c.get("text", "") for o in body.get("output", []) if o.get("type") == "message"
                    for c in o.get("content", []))

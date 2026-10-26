@@ -72,7 +72,7 @@ Considered and not used:
   Its bodies and skins are closer to a real person than the UBC one, but it has its own
   skeleton and needs Blender to export and rebind, which this machine does not have. The rebind in
   `build_footballer.py` would take a MakeHuman body the same way; it is the first upgrade to try.
-- **Paid store models** (the owner's reference is one): their licences forbid redistributing the
+- **Paid store models** (the product owner's reference is one): their licences forbid redistributing the
   model in an extractable form, and this repository is public.
 - **Mixamo and AI-generated meshes**: excluded by the brief.
 - **Cloth photo textures** ([ambientCG](https://ambientcg.com/license), CC0): a knit normal map

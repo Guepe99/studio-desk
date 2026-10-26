@@ -57,4 +57,4 @@ Solution.
     docs/               CONTRACT.md and design notes
     scripts/            helper scripts
     tests/              pytest
-    infra/              Bicep / azd for Azure
+    infra/              Bicep for Azure

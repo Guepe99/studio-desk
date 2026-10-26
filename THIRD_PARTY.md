@@ -1,5 +1,7 @@
 # Third-party material
 
+The MIT licence in [LICENSE](LICENSE) covers the project's own code. It does not cover `studiodesk/sim/wyscout_averages.json`, `studiodesk/facts/xt_grid.json` and the values marked as measured in `studiodesk/sim/calibration.json`: they are aggregates derived from the Wyscout public event data set (first row below) and keep its licence and attribution.
+
 | What | Licence | Source | How we use it |
 |---|---|---|---|
 | socceraction (SPADL format, xT grid method) | MIT | https://github.com/ML-KULeuven/socceraction | Offline calibration script only; not shipped in the runtime |
@@ -18,6 +20,7 @@
 | Motion generated with NVIDIA Kimodo, model Kimodo-SOMA-RP-v1 (outputs only; the model is not redistributed) | NVIDIA Open Model License: "NVIDIA does not claim ownership to any outputs generated using the Models", "Models are commercially usable"; model card: "ready for commercial use" (`web/vendor/motion/LICENSE.txt`, `docs/motion3d.md`) | https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1, generated on https://huggingface.co/spaces/nvidia/Kimodo | 25 clips (celebrations, gestures, backpedal, side-step and jockey loops, six goalkeeper dives, catches and tips with their root curves) from text prompts, reduced to 22 joints in `scripts/motion/`, retargeted by `scripts/retarget_motion.py` into `web/vendor/motion/clips.glb` for the 3D players; they replace the procedural `SD_` gestures and the stand-in gaits unless `?motion=procedural` |
 | Spectator of the 3D crowd: the far body (`footballer_lod1`) of `web/vendor/players/footballer.glb` (Quaternius Universal Base Characters and mannequin skeleton) with its `Idle_Loop`, plus three Kimodo clips (`M_clap`, `M_celeb_arms_up`, `M_celeb_jump_fist`) of `web/vendor/motion/clips.glb` | CC0 1.0 (Quaternius parts) and NVIDIA Open Model License outputs (Kimodo clips), as the two rows above | https://quaternius.itch.io/universal-base-characters, https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1 | Merged and decimated to 361 triangles by `scripts/build_spectator.py` into `web/vendor/crowd/spectator.glb`; hair, face and scarf are added in code at load time (`web/js/scene3d/crowd.js`) |
 | Speech generated with Azure AI Speech neural text to speech, voices `en-US-Ava:DragonHDLatestNeural`, `it-IT-Isabella:DragonHDLatestNeural` and `es-ES-Ximena:DragonHDLatestNeural` (outputs only) | Generated on our own Azure subscription under the Microsoft Product Terms for Azure services; the clips are labelled as an AI voice in the page, as Microsoft's transparency guidance for synthetic voices asks | https://www.microsoft.com/licensing/terms/productoffering/MicrosoftAzure, https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech, https://learn.microsoft.com/en-us/legal/cognitive-services/speech-service/custom-neural-voice/concepts-disclosure-patterns | `replays/<match>/voice/*.mp3`, made by `python -m studiodesk.voice` from the verified story texts (`docs/voice.md`) |
+| Playwright 1.63.0 (npm package, `package.json`) | Apache 2.0 | https://github.com/microsoft/playwright | Test only: drives Chromium for the browser checks in `tests/web/`; not shipped |
 | Mesa lavapipe (`mesa-vulkan-swrast`, Alpine package) | MIT | https://www.mesa3d.org/ | Test container only (`tests/web/webgl`): software WebGL for the headless screenshots; not shipped |
 | Kokoro-82M by hexgrad, model `kokoro-v1_0.pth` and `config.json` at revision `f3ff3571791e39611d31c381e3a41a3af07b4987` (SHA256 `496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4`), with its voices `am_michael`, `am_fenrir`, `if_sara`, `im_nicola`, `ef_dora`, `em_alex` (SHA256 in `scripts/booth-kokoro-setup.sh`); run with `kokoro` 0.9.4 and `misaki` 0.9.4 (Apache 2.0) | Apache 2.0 (model card and repository) | https://huggingface.co/hexgrad/Kokoro-82M, https://github.com/hexgrad/kokoro, https://github.com/hexgrad/misaki | Renders the booth commentary clips offline, and the voice-over of the submission video (`am_michael`) (`studiodesk/booth.py`, `scripts/booth_kokoro.py`), committed in `web/booth/<lang>/` and `replays/<match>/booth/<lang>/`. Model and libraries are not shipped. The two commentators are fictional and labelled as AI voices in the page (`docs/commentary.md`) |
 | espeak-ng, through `espeakng-loader` 0.2.4 and `phonemizer-fork` 3.3.2 (Kokoro's grapheme-to-phoneme step for Italian and Spanish and for English words outside its lexicon) | GPL-3.0 (espeak-ng); `espeakng-loader` MIT; `phonemizer-fork` GPL-3.0 | https://github.com/espeak-ng/espeak-ng, https://github.com/thewh1teagle/espeakng-loader, https://github.com/thewh1teagle/phonemizer-fork | Build tool only, inside the separate `.tts/kokoro` venv; not shipped, no code copied. Only its audio output is committed |
@@ -26,7 +29,7 @@
 
 ## Runtime dependencies shipped in the container image
 
-Installed from PyPI at the versions pinned in `pyproject.toml`; not vendored in the repository.
+Installed from PyPI at the versions pinned in `pyproject.toml` and `constraints.txt`; not vendored in the repository.
 
 | What | Licence | Source |
 |---|---|---|
@@ -38,4 +41,7 @@ Installed from PyPI at the versions pinned in `pyproject.toml`; not vendored in 
 | Pydantic | MIT | https://github.com/pydantic/pydantic |
 | Azure Identity for Python | MIT | https://github.com/Azure/azure-sdk-for-python |
 | Microsoft Agent Framework (agents extra) | MIT | https://github.com/microsoft/agent-framework |
-| Python 3.12 official image on Debian bookworm (`python:3.12-slim-bookworm`) | PSF licence for Python; Debian packages under their own licences | https://hub.docker.com/_/python |
+| OpenAI Python SDK (pulled in by the Agent Framework) | Apache 2.0 | https://github.com/openai/openai-python |
+| Azure Monitor OpenTelemetry Distro and the OpenTelemetry SDK (agents extra) | MIT (Azure Monitor), Apache 2.0 (OpenTelemetry) | https://github.com/Azure/azure-sdk-for-python, https://github.com/open-telemetry/opentelemetry-python |
+| MCP Python SDK (agents extra) | MIT | https://github.com/modelcontextprotocol/python-sdk |
+| Python 3.12 official image on Debian bookworm (`python:3.12.15-slim-bookworm`, pinned by digest in the `Dockerfile`) | PSF licence for Python; Debian packages under their own licences | https://hub.docker.com/_/python |

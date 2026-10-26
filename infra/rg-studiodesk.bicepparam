@@ -6,8 +6,9 @@ using 'main.bicep'
 param image = readEnvironmentVariable('IMAGE')
 param adminToken = readEnvironmentVariable('ADMIN_TOKEN')
 // The OpenAI role assignment was made with the az CLI before this template described it. The Content Safety
-// one (Azure AI Developer) gets a guid() name; the earlier Cognitive Services User assignment on the account,
-// 02a45cd1-1cea-4642-9575-5ccb3a517851, is not removed by a deployment and is deleted by hand once the new one works.
+// one (Azure AI Developer) gets a guid() name. Today the live container still uses the earlier Cognitive Services
+// User assignment on the account, 02a45cd1-1cea-4642-9575-5ccb3a517851, made with the az CLI; a deployment of this
+// template adds the narrower role, and the earlier one is then deleted by hand.
 param roleAssignmentNames = {
   openAiUser: '2df303a0-8a97-493e-bcab-003f317cf7a3'
 }

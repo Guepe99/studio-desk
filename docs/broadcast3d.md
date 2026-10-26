@@ -77,7 +77,7 @@ shot of a match broadcast does.
 
 ### Cutaways at stoppages
 
-Feedback from the owner after watching M001 in 3D: at a throw-in or a goal kick he expected a shot
+Feedback from the product owner after watching M001 in 3D: at a throw-in or a goal kick he expected a shot
 of the crowd and the stadium, as on TV and in a football game. The rules we follow:
 
 | Rule | Number | Source |

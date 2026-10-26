@@ -1,6 +1,6 @@
 # Anime footballers (`?players=anime`)
 
-The owner asked for anime-style footballers: big eyes with highlights, a small nose, a line mouth,
+The product owner asked for anime-style footballers: big eyes with highlights, a small nose, a line mouth,
 big stylised hair in saturated colours, flat cel shading with a crisp shadow edge, clean outlines,
 faces that change with the emotion. Inazuma Eleven is the style reference only: no character,
 hairstyle-plus-colour pair, kit or face is copied from any anime, manga or game, and no real person.

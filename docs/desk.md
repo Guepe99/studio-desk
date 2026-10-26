@@ -1,7 +1,7 @@
 # Control desk
 
 The control desk is where the producer approves, edits or rejects the graphics the agents propose
-(`web/js/desk.js`, `web/css/desk.css`). The owner found the first version "a jumble of information
+(`web/js/desk.js`, `web/css/desk.css`). The product owner found the first version "a jumble of information
 and hard for the user": it listed every story of the match, future ones included, as 24 cards of the
 same shape with a filled "Keep on air" on each, a header and footer that took about a third of the
 desk, Details three levels deep with raw fact ids, and no keyboard path. This note says how the
@@ -165,7 +165,7 @@ only cue: every tally colour also says its state in words (WCAG 1.4.1).
 
 ## No empty minutes
 
-The owner watched M001 and at 8' the desk had nothing on air and nothing waiting. Measured on the
+The product owner watched M001 and at 8' the desk had nothing on air and nothing waiting. Measured on the
 committed packs (English sheet, stretches of play with no cue of the audience on screen), before
 this change:
 
@@ -197,7 +197,7 @@ How the trade fills them (for the kinds of graphic, not the target):
   and some match apps push only at kick-off, goals and full time
   ([TOK.tv](https://blog.lightstreamer.com/2014/07/meet-our-customers-toktv.html)).
 
-The target is the owner's: no clock minute without a graphic on air, on every sheet (analyst, casual,
+The target is the product owner's: no clock minute without a graphic on air, on every sheet (analyst, casual,
 kids, each team's and each player's), for a visitor who never touches the desk. A story listed under
 Needs you does not count: a viewer who never opens the desk does not see it. Two graphics less than a
 minute apart leave no minute empty, so the code aims at `MAX_GAP_S` = 55 s (in

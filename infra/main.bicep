@@ -142,7 +142,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       // one replica always on for the judging period, until 11 Nov 2026 (the desk's caps and runtime.sqlite live in it and
-      // reset when it scales to zero); on 11 Nov 2026 a scheduled job outside this template scales it to zero, and a
+      // reset when it scales to zero); on 11 Nov 2026 a scheduled job on the maintainer's machine, outside this repo, scales it to zero, and a
       // redeploy of this template after that date puts the replica back on unless minReplicas is set to 0 here
       scale: { minReplicas: 1, maxReplicas: 1 }
     }

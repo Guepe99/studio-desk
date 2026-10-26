@@ -119,12 +119,12 @@ The rules, from the research below:
   voice). Fouls, corners, free kicks and offsides are usually called (B, up to 1 s). Passes, take-ons,
   crosses, interceptions, tackles and clearances are called when the voice is free (C). Throw-ins, goal kicks
   and short free kicks are not called.
-- A4. Every pass names the receiver, own half included (the owner's rule; the research names it in the final
+- A4. Every pass names the receiver, own half included (the product owner's rule; the research names it in the final
   third, on 30 m passes and into the other half). A pass 8 m or more backwards is called as a back pass. No
   name twice within 6 s. At most 3 names in a row, then a 2 s pause [KI, QR, FT].
 - A5. The goal call is short, then the booth holds 9 to 12 s while the crowd roars [GT, BK, TR]. A
   follow-up comes after the hold (long-range goal, sprint before the goal, or a plain one).
-- A6. The owner's rule replaces the research here: "when nobody speaks, silence is really ugly", the way EA
+- A6. The product owner's rule replaces the research here: "when nobody speaks, silence is really ugly", the way EA
   FC fills a match. The booth is never silent for more than 6 s, except in the goal hold, during a studio
   clip and its 1.5 s, at half-time and after full-time. After 3.5 s of silence it fills: in play with a
   possession or build-up line ("Redwick keeping it", "Name looking for an opening"), a fresh fact or a co

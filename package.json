@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Playwright for the browser checks in tests/web/ (PLAYWRIGHT_FROM=$PWD/, see the README)",
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

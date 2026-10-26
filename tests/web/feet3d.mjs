@@ -11,7 +11,7 @@
 // grass. Floats are only printed: a jog clip stepping in place lifts slow feet by design.
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-const require = createRequire(`${homedir()}/bin/pagine/`);
+const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
 const { chromium } = require("playwright");
 
 const [base, matches = "DEMO,M001", looks = "default,anime"] = process.argv.slice(2);

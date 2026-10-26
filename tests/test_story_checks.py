@@ -1,7 +1,7 @@
 """The facts a line depends on, computed by code (club articles, shot place, value paths, defensive line
 and width), and the checks that reject words against them. The reviewer's bad lines from the committed
 replays must be rejected and a correct line must pass (positive control); those lines and story ids
-come from the packs the reviewer read, frozen in tests/review_tappa4, not from today's replays. Tests on the real facts skip
+come from the packs the reviewer read, frozen in tests/reviewed_packs, not from today's replays. Tests on the real facts skip
 when data/matches.sqlite (or STUDIODESK_MATCHES_DB) is missing, as in test_replays."""
 import json
 import math
@@ -16,7 +16,7 @@ from studiodesk import mcp_server as srv
 from studiodesk.agents import rules
 
 REPLAYS = Path(__file__).resolve().parents[1] / "replays"
-REVIEWED = Path(__file__).resolve().parent / "review_tappa4"
+REVIEWED = Path(__file__).resolve().parent / "reviewed_packs"
 
 
 # --- computations, offline -----------------------------------------------------------------------
