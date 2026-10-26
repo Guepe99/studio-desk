@@ -172,7 +172,7 @@ def test_503_without_a_model_and_the_probe(studio, monkeypatch):
 
 def test_the_tools_are_read_only_and_held_at_the_question(studio):
     tools = ask.tools("M001", 100.0)
-    assert sorted(t.name for t in tools) == sorted(fn.__name__ for fn in srv.TOOLS)
+    assert sorted(t.name for t in tools) == sorted([fn.__name__ for fn in srv.TOOLS] + ["get_stories"])
     assert all(t.annotations.readOnlyHint for t in asyncio.run(srv.server.list_tools()))
     info = next(t for t in tools if t.name == "get_match_info").func(match_id="M002")
     assert info["match_id"] == "M001" and info["clock"] == 100.0 and info["score"] == {"home": 0, "away": 0}
@@ -424,8 +424,8 @@ def test_the_storylines_table_is_never_read(studio, monkeypatch):
     monkeypatch.setattr(db, "connect", watched)
     calls = {"get_match_info": {}, "get_events": {"from_ts": 0, "to_ts": 100}, "get_facts": {},
              "get_fact": {"fact_id": SPRINT}, "get_player": {"player_id": "T01-1"}, "get_momentum": {},
-             "get_team_totals": {}}
-    assert sorted(calls) == sorted(fn.__name__ for fn in srv.TOOLS)
+             "get_team_totals": {}, "get_scorers": {}, "get_stories": {}}
+    assert sorted(calls) == sorted([fn.__name__ for fn in srv.TOOLS] + ["get_stories"])
     for name, args in calls.items():
         studio.fake.responder = lambda schema, p, n=name, a=args: {"tool_call": {"name": n, "arguments": {"match_id": "M001", **a}}}
         assert studio.visitor().post("/api/ask", json=body()).status_code == 200
@@ -560,6 +560,59 @@ def test_m001_control_question_at_2400_is_answered_from_the_totals(m001):
     pct = round(got[("team_possession", "T01")]["value"])
     assert m001(f"Redwick Wanderers have controlled it, with {pct}% possession and 4 shots to the 2 shots of Ostwick FC.",
                 ids, ts=2400.0) == "answered", reason()
+
+
+# --- judge 2, 26/10: the questions Ask refused at ?match=M001&t=2400 -------------------------------------------
+
+def held_at(ts, monkeypatch):
+    monkeypatch.setattr(ask, "STORIES_DIR", config.ROOT / "replays")  # the committed pack, as web/data ships it
+    return {t.name: t.func for t in ask.tools("M001", ts)}
+
+
+def test_m001_why_redwick_led_is_answered_from_the_goal_story_on_air(m001, monkeypatch):
+    stories = held_at(2400.0, monkeypatch)["get_stories"](match_id="M001")
+    assert [(s["story_id"], s["kind"], s["minute"]) for s in stories] == [("S-000002", "goal", "10"), ("S-000003", "goal", "13")]
+    lead = stories[0]
+    assert lead["team"] == "Redwick Wanderers" and lead["player"] == "Hugo Okowande" and "17.5 m" in lead["analysis"]
+    assert held_at(500.0, monkeypatch)["get_stories"](match_id="M001") == []  # nothing on air yet, nothing after ts
+    assert "S-000005" not in {s["story_id"] for s in held_at(2500.0, monkeypatch)["get_stories"](match_id="M001")}  # held for review
+    # the model paraphrases the analysis, minute words included; the verifier checks it against the story's facts
+    for answer in ("Redwick Wanderers took the lead when Hugo Okowande scored in minute 10, with a shot from 17.5 m at 92.1 km/h.",
+                   "Redwick Wanderers took the lead in the 10th minute: Hugo Okowande shot from 17.5 m at 92.1 km/h and scored."):
+        assert m001(answer, lead["fact_ids"], ts=2400.0) == "answered", reason()
+    assert m001("Redwick Wanderers took the lead in minute 10 with a shot at 95 km/h.", lead["fact_ids"], ts=2400.0) == "declined"
+
+
+def test_m001_okowande_goals_in_spanish_come_from_get_scorers(m001, monkeypatch):
+    scorers = held_at(2400.0, monkeypatch)["get_scorers"]
+    (oko,) = scorers(match_id="M001")
+    assert (oko["player"], oko["kind"], oko["value"], oko["unit"]) == ("Hugo Okowande", "player_goals", 2, "goals")
+    assert len(oko["source_event_ids"]) == 2 and oko["minute"] == "13"
+    assert scorers(match_id="M001", player_id="T02-9")[0]["value"] == 0  # Duarte has not scored by 40'
+    assert held_at(700.0, monkeypatch)["get_scorers"](match_id="M001")[0]["value"] == 1
+    assert m001("Hugo Okowande ha marcado 2 goles hasta ahora, el último en el minuto 13.", [oko["fact_id"]], ts=2400.0,
+                lang="es") == "answered", reason()
+    assert m001("Hugo Okowande ha marcado 3 goles hasta ahora.", [oko["fact_id"]], ts=2400.0, lang="es") == "declined"
+    assert m001("Hugo Okowande ha marcado 2 goles.", ["F-SCORE-000002"], ts=2400.0, lang="es") == "declined"  # a goal is not a count
+
+
+def test_m001_ostwick_passes_in_italian_come_from_the_team_totals(m001, monkeypatch):
+    got = {(f["kind"], f["team_id"]): f for f in held_at(2400.0, monkeypatch)["get_team_totals"](match_id="M001")}
+    acc = got[("team_pass_accuracy", "T02")]
+    with closing(db.connect(config.MATCHES_DB, readonly=True)) as conn:
+        tried, done = conn.execute(
+            "SELECT count(*), sum(result_name = 'success') FROM events WHERE match_id = 'M001' AND team_id = 'T02' "
+            "AND ts <= 2400 AND type_name IN ('pass', 'cross', 'throw_in', 'freekick_short', 'freekick_crossed', "
+            "'corner_short', 'corner_crossed', 'goalkick')").fetchone()
+    assert acc["label_en"] == f"Pass accuracy {100 * done / tried:.0f}% ({done}/{tried}) since kick-off" == \
+        "Pass accuracy 80% (139/174) since kick-off"
+    assert acc["ts"] == 2400.0 and len(acc["source_event_ids"]) == tried
+    for answer in ("L'Ostwick FC ha completato 139 passaggi su 174, con una precisione dell'80%.",
+                   "L'Ostwick FC ha completato 139 su 174 passaggi, l'80%."):
+        assert m001(answer, [acc["fact_id"]], ts=2400.0, lang="it") == "answered", reason()
+    for answer in ("L'Ostwick FC ha completato 140 passaggi su 174, con una precisione dell'80%.",
+                   "L'Ostwick FC ha fatto 174 passaggi, con una precisione dell'80%."):
+        assert m001(answer, [acc["fact_id"]], ts=2400.0, lang="it") == "declined"
 
 
 def test_the_score_is_read_at_the_question_ts(m001):

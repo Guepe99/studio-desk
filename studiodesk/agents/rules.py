@@ -518,6 +518,8 @@ def normalise(text):
 def minute_word(text, lang):
     """The minute word in the answer's language: the model writes "minuto 10" in English now and then."""
     word = "minute" if lang == "en" else "minuto"
+    if lang == "en":  # "in the 10th minute", as the stories' analysis says it (get_stories), is "in minute 10"
+        text = re.sub(r"\bthe (\d{1,3})(?:st|nd|rd|th) minute\b", r"minute \1", text)
     text = re.sub(r"\bminut[eo](?= \d)", lambda m: word.capitalize() if m.group(0)[0].isupper() else word, text,
                   flags=re.IGNORECASE)
     # the article the model drops: "ai minuto 10 e minuto 13" reads "al minuto 10 e al minuto 13"
@@ -710,10 +712,14 @@ _NOUN_NUMBERS = {  # "shots on target" before "shots": the longer noun takes its
     "corners": re.compile(_LB + r"(\d+)\s+(?:corners?|calci d'angolo|angoli|c[oó]rners?|saques de esquina)\b",
                           re.IGNORECASE),
     "sprints": re.compile(_LB + r"(\d+)\s+(?:sprints?|scatt[oi]|esprints?)\b", re.IGNORECASE),
+    "goals": re.compile(_LB + r"(\d+)\s+(?:goals?|goles|gol|reti|rete)\b", re.IGNORECASE),
     "xT": re.compile(r"\bxT\s*(?:of|di|de|:)?\s*([+-]?\d+(?:[.,]\d+)?)|" + _LB + r"([+-]?\d+(?:[.,]\d+)?)\s*xT\b"),
 }
+_PASSES = r"(?:passes|passaggi|pases)"
 _PAIR = re.compile(_LB + r"(\d+)\s*/\s*(\d+)(?![\d.,]*\d)|" + _LB
-                   + r"(\d+)\s+(?:of|out of|su|de|di)\s+(\d+)\s+(?:passes|passaggi|pases)\b", re.IGNORECASE)
+                   + rf"(\d+)\s+(?:of|out of|su|de|di)\s+(\d+)\s+{_PASSES}\b|" + _LB  # "228 passaggi riusciti su 276"
+                   + rf"(\d+)\s+{_PASSES}(?:\s+(?:completed|completati|riusciti|completados|completos))?\s+(?:of|out of|su|de)\s+(\d+)(?![\d.,]*\d)",
+                   re.IGNORECASE)
 _LABEL_PAIR = re.compile(r"\((\d+)/(\d+)\)")
 MAX_ASK_FACTS = 8
 
