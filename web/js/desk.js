@@ -176,7 +176,7 @@ export const TEXT = {
     role_verifier: "Controlla ogni numero sul registro dei fatti; riscrive al massimo due volte, poi usa una frase modello.",
     role_director: "Sceglie grafica, momento e pubblico; mai più di 2 sullo schermo.",
     sec_air: "In onda ora", sec_needs: "Aspettano te", sec_done: "Già decise",
-    missed: "Perse: {n}", row_aired: "in onda al {m}', {by}",
+    missed: "Perse: {n}", row_aired: ({ m, by }) => `in onda ${alMinute(m)}, ${by}`,
     tip_st_auto_approved: "Rischio basso: va in onda da sola. Respingila se qualcosa non torna.",
     tip_st_needs_review: "Va in onda solo se la mandi tu: il rischio non è basso, oppure Content Safety l'ha segnalata.",
     tip_st_approved: "L'hai mandata in onda tu.", tip_st_edited: "Hai cambiato il testo e l'hai mandata in onda. Il nuovo testo ha superato il controllo di numeri e nomi.",
@@ -185,7 +185,7 @@ export const TEXT = {
     tip_st_template: "Fatta dal codice a partire dai fatti: niente IA, non serve approvazione.",
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
-    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: "doveva andare in onda al {m}'", left: "ancora {s} s",
+    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
     done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
@@ -291,6 +291,9 @@ export const TEXT = {
 };
 
 /** A desk string in a page language, English when that language lacks it. */
+/** Italian "al 10'" but "all'8'", "all'11'", "all'80'": the article elides before a vowel sound (otto, undici, uno). */
+export function alMinute(m) { return /^(8|11?(?!\d))/.test(String(m)) ? `all'${m}'` : `al ${m}'`; }
+
 export function tr(lang, key, vars = {}) {
   const v = TEXT[lang]?.[key] ?? TEXT.en[key];
   if (typeof v === "function") return v(vars);
@@ -755,8 +758,17 @@ export class Desk {
     this.tab = "traces";
     this.render();
     const g = this.root.querySelector(`[data-trace="${CSS.escape(storyId)}"]`);
-    g?.scrollIntoView({ block: "start" });
+    this.scrollToTop(g);
     g?.focus({ preventScroll: true });
+  }
+
+  // Brings el to the top of the desk's own scrolling list: scrollIntoView would scroll the page too, and the
+  // masthead and the picture would leave the screen. Without a scrolling box in the desk (the page scrolls), as before.
+  scrollToTop(el) {
+    let box = el?.parentElement;
+    while (box && box !== this.root.parentElement && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+    if (!el || !box || box === this.root.parentElement) return el?.scrollIntoView({ block: "start" });
+    box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
   }
 
   // ---- keys -----------------------------------------------------------------------------------
@@ -994,7 +1006,8 @@ export class Desk {
       section("needs", needs.map((s) => this.renderCard(s)), needsEmpty),
       section("done", done.map((s) => this.renderRow(s)), tx("doneEmpty")),
       // the missed ones are counted, not listed among the decisions; their rows open on demand
-      missed.length ? h("details", { className: "missed", "data-focus": "sec:missed" },
+      // open stays open across the redraws a playing replay makes (each new cue redraws the list)
+      missed.length ? h("details", { className: "missed", "data-focus": "sec:missed", open: this.missedOpen, ontoggle: (e) => { this.missedOpen = e.target.open; } },
         h("summary", { title: tx("tip_st_expired") }, tx("missed", { n: int(missed.length, this.state.lang) })),
         h("ul", { className: "items" }, missed.map((s) => h("li", {}, this.renderRow(s))))) : null,
     ];
@@ -1285,7 +1298,8 @@ export class Desk {
     const humans = [...(this.online ? this.auditRows.filter((r) => r.actor === "human") : []), ...this.localAudit];
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
     const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
-    return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
+    // the table is the whole trail: the producer's decisions too, among the agents' steps
+    return { rows: [...auto, ...agents, ...humans].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
   }
 
   renderAudit() {
@@ -1320,7 +1334,7 @@ export class Desk {
       rows.length ? [h("h3", { className: "audit-head" }, tx("logCaption")), h("div", { className: "log-wrap", role: "region", tabindex: 0, "aria-label": tx("logCaption") }, h("table", { className: "log" },
         h("caption", { className: "sr" }, tx("logCaption")),
         h("thead", {}, h("tr", {}, ["colMinute", "colWho", "colWhat", "colCost"].map((c) => h("th", { scope: "col" }, tx(c))))),
-        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" ? "auto" : "agent"}` },
+        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" || r.actor === "human" ? r.actor : "agent"}` },
           h("td", { className: "num", title: utc(r) }, minute(r)),
           // the model under its agent, and the story by its name and minute
           h("td", {}, agentName(r.actor, lang), r.model ? h("span", { className: "model", lang: "en" }, r.model) : null),
@@ -1404,7 +1418,7 @@ export class Desk {
     this.tab = "stories";
     this.render();
     const el = this.root.querySelector(`#story-${CSS.escape(id)}`);
-    el?.scrollIntoView({ block: "start" });
+    this.scrollToTop(el);
     el?.querySelector(".minute")?.focus({ preventScroll: true });
   }
 

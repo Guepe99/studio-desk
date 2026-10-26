@@ -205,3 +205,10 @@ test("Next key moment on a paused replay jumps to the moment and plays it at 1x"
   m.go(); // already playing: it only jumps
   assert.deepEqual(calls, [["seek", 894]]);
 });
+
+test("Italian elides the article before a minute said with a vowel: all'8', all'11', al 10'", () => {
+  const said = ["1", "8", "10", "11", "18", "80", "45+2"].map((m) => tr("it", "toAirPast", { m }));
+  assert.deepEqual(said, ["doveva andare in onda all'1'", "doveva andare in onda all'8'", "doveva andare in onda al 10'", "doveva andare in onda all'11'",
+    "doveva andare in onda al 18'", "doveva andare in onda all'80'", "doveva andare in onda al 45+2'"]);
+  assert.equal(tr("it", "row_aired", { m: "8", by: "approvata da te" }), "in onda all'8', approvata da te");
+});

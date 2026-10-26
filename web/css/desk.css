@@ -215,6 +215,7 @@ body { display: flex; }
 .log td:nth-child(1) { white-space: nowrap; }
 .log th:nth-child(3) { min-width: 112px; } /* "What" keeps room for a few words a line, the other columns give way */
 .log tr.a-auto td:nth-child(2) { color: var(--purple-400); }
+.log tr.a-human td:nth-child(2) { font-weight: 600; }
 
 
 .pipeline { list-style: none; margin: 0 0 14px; padding: 0; counter-reset: step; }
