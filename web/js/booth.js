@@ -53,7 +53,7 @@ export const clipKey = (role, text) => `${role}|${text}`;
 /** A fact value as the co says it; the same rounding as studiodesk/booth.py's clip ranges. */
 export function number(v, unit, lang) {
   if (unit === null) return String(Math.trunc(v)).split("").join("-");
-  if (unit === "km" && v > 200) v /= 1000;
+  if (unit === "km") v /= 1000; // distance_covered is stored in metres
   const tenths = unit === "/10" || unit === "km";
   const x = tenths ? Math.round(v * 10) / 10 : Math.round(v);
   const s = Number.isInteger(x) ? String(x) : x.toFixed(1);

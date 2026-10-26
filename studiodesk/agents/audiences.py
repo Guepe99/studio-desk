@@ -183,12 +183,13 @@ def chance(m, s, role, lang):
         return [{"en": f"{P} has a go{end}.", "it": f"Ci prova {P}: {end}.", "es": f"Lo intenta {P}: {end}."}[lang]]
     if role in ("own", "other"):
         T = team(m, s["team_id"] if role == "own" else _other(m, s["team_id"]), lang)
-        return [{"en": f"{'Unlucky for' if role == 'own' else 'Let off for'} {T}: {P} {verb} {w} {at}{end}.",
+        # no place, distance or speed leaves w empty: squeeze the double space it would leave
+        return [re.sub("  +", " ", {"en": f"{'Unlucky for' if role == 'own' else 'Let off for'} {T}: {P} {verb} {w} {at}{end}.",
                  "it": f"{'Peccato per' if role == 'own' else 'Pericolo scampato per'} {T}: {P} {verb} {closed(w, lang)} {at}{tail}.",
-                 "es": f"{'¡Qué pena para' if role == 'own' else '¡Se salva'} {T}! {P} {verb} {closed(w, lang)} {at}{tail}."}[lang]]
+                 "es": f"{'¡Qué pena para' if role == 'own' else '¡Se salva'} {T}! {P} {verb} {closed(w, lang)} {at}{tail}."}[lang])]
     hw = {"en": f"with a header {w}", "it": f"di testa {w}", "es": f"de cabeza {w}"}[lang].strip() if head else w
-    return [{"en": f"{P} has a go {hw} {at}{end}.", "it": f"{P} cerca il gol {closed(hw, lang)} {at}: {end}.",
-             "es": f"{P} busca el gol {closed(hw, lang)} {at}: {end}."}[lang]]
+    return [re.sub("  +", " ", {"en": f"{P} has a go {hw} {at}{end}.", "it": f"{P} cerca il gol {closed(hw, lang)} {at}: {end}.",
+             "es": f"{P} busca el gol {closed(hw, lang)} {at}: {end}."}[lang])]
 
 
 # --- the other stories ----------------------------------------------------------------------------

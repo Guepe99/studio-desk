@@ -251,3 +251,6 @@ Castellanos
 Marchetti
 Benali
 Petrov
+
+# Real footballers whose names the simulator once drew
+Diego Morales

@@ -107,3 +107,23 @@ def test_the_finder_choice_leads(packs):
 def test_the_recap_airs_after_the_stories_of_its_moment():
     stories = [{"ts": 2700.0, "kind": "recap"}, {"ts": 2700.0, "kind": "momentum_swing"}, {"ts": 2600.0, "kind": "goal"}]
     assert [s["kind"] for s in sorted(stories, key=rules.air_order)] == ["goal", "momentum_swing", "recap"]
+
+
+def _recap(goals):
+    """recap_line at full time on a hand-made match: goals are (ts, scoring team, player)."""
+    m = rules.Match({"period1_s": 2700.0, "teams": [{"team_id": "T01", "name": "Harbour Vale Rovers", "side": "home"},
+                                                    {"team_id": "T02", "name": "Kestrel Bay Town", "side": "away"}],
+                     "players": [{"player_id": "T01-9", "team_id": "T01", "name": "Kofi Varga"},
+                                 {"player_id": "T02-4", "team_id": "T02", "name": "Emil Novak"}]})
+    for k, (ts, tid, pid) in enumerate(goals):
+        m.facts[f"F{k}"] = {"fact_id": f"F{k}", "kind": "score", "ts": ts, "period": 1 + (ts > 2700), "team_id": tid,
+                            "player_id": pid, "value": k + 1, "label_en": "Goal"}
+    return {lang: pb.recap_line(m, {"ts": 5400.0, "phase": "ft", "facts": []}, lang, None, None, None)
+            for lang in rules.LANGS}
+
+
+def test_the_recap_counts_scorers_and_leaves_out_own_goals():
+    twice = _recap([(600.0, "T01", "T01-9"), (780.0, "T01", "T01-9")])
+    assert "Scorer: Varga (10', 13')." in twice["en"] and "Marcatore: Varga" in twice["it"] and "Goleador: Varga" in twice["es"]
+    og = _recap([(600.0, "T01", "T01-9"), (3600.0, "T01", "T02-4")])  # Novak of T02 puts it in his own net
+    assert "Scorer: Varga (10')." in og["en"] and "Novak" not in og["en"] + og["it"] + og["es"]

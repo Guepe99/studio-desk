@@ -485,16 +485,18 @@ def recap_line(m, story, lang, tone, focus, opener, form=0):  # noqa: ARG001
                   (f"Finisce {s}." if ft else f"Fine primo tempo: {s}."),
             "es": (f"Final del partido: {L} gana {s}." if ft else f"Descanso: {L} gana {s}.") if leader else
                   (f"Final del partido: empate, {s}." if ft else f"Descanso: empate, {s}.")}[lang]
-    goals = [f for f in m.score_at(ts)[1] if f["player_id"]]
+    # an own goal's score fact carries the benefiting team and the other side's player: not a scorer
+    goals = [f for f in m.score_at(ts)[1]
+             if f["player_id"] and m.players.get(f["player_id"], {}).get("team_id", f["team_id"]) == f["team_id"]]
     scorers = {}
     for f in goals:
         scorers.setdefault(m.required_name(f["player_id"]), []).append(f"{m.minute_label(f['ts'])}'")
     if scorers:
         parts = [f"{name} ({', '.join(mins)})" for name, mins in scorers.items()]
         joined = ", ".join(parts[:-1]) + (" {} ".format(("and", "e", "y")[rules.LANGS.index(lang)]) if len(parts) > 1 else "") + parts[-1]
-        many = len(goals) > 1
+        many = len(scorers) > 1
         head += " " + {"en": "Scorers: " if many else "Scorer: ", "it": "Marcatori: " if many else "Marcatore: ",
-                       "es": "Goles: " if many else "Gol: "}[lang] + joined + "."
+                       "es": "Goleadores: " if many else "Goleador: "}[lang] + joined + "."
     acc = {f["team_id"]: mt.group(1) for f in story["facts"]
            if f["kind"] == "pass_accuracy" and (mt := re.search(r"(\d+)%", f["label_en"]))}
     h, a = m.home["team_id"], m.away["team_id"]

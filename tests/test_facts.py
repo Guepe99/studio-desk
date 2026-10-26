@@ -77,7 +77,7 @@ def test_player_goals_and_team_pass_accuracy_count_from_kick_off(match_db):
     assert acc and {r["ts"] for r in acc} <= windows and all(r["player_id"] is None and r["unit"] == "%" for r in acc)
     last = max((r for r in acc if r["team_id"] == HOME), key=lambda r: r["ts"])
     ok, n = map(int, re.search(r"\((\d+)/(\d+)\)", last["label_en"]).groups())
-    assert n == len(json.loads(last["source_event_ids"])) and abs(last["value"] - 100 * ok / n) < 0.06
+    assert n == len(json.loads(last["source_event_ids"])) and last["value"] == math.floor(100 * ok / n + 0.5)  # whole, half up
 
 
 def test_goal_shot_and_sprint(match_db):
@@ -167,6 +167,75 @@ def test_cli_build(tmp_path):
     out = subprocess.run([sys.executable, "-m", "studiodesk.facts", "build", "--all", "--db", str(info["path"])],
                          cwd=root, capture_output=True, text=True, check=True)
     assert out.stdout.startswith("M001: ")
+
+
+def test_a_label_rounds_half_up_as_the_phrasebook_says_it(tmp_path):
+    """5 of 8 passes is 62.5%: the label says 63%, not the 62% of Python's half-to-even format."""
+    from studiodesk.facts.engine import PASS_TYPES
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    away = next(t for (t,) in conn.execute("SELECT team_id FROM teams") if t != HOME)
+    ids = [r[0] for r in conn.execute(f"SELECT event_id FROM events WHERE team_id = ? AND type_name IN "
+                                      f"({','.join('?' * len(PASS_TYPES))}) ORDER BY ts", (away, *PASS_TYPES))]
+    assert len(ids) == 8  # the fixture's away passes over the match
+    for k, eid in enumerate(ids):
+        conn.execute("UPDATE events SET result_name = ? WHERE event_id = ?", ("success" if k < 5 else "fail", eid))
+    conn.commit()
+    build(conn, info["match_id"], xt_grid=None)
+    (row,) = [r for r in facts(conn, "pass_accuracy") if (r["team_id"], r["player_id"], r["period"]) == (away, None, 2)]
+    assert row["label_en"] == "Pass accuracy 63% (5/8) at full time"
+    assert row["value"] == 63  # the whole per cent the label states, so the desk and the AI writers never show 62.5
+    conn.close()
+
+
+def test_a_possession_label_says_its_stored_value(tmp_path):
+    """5146 of 10000 owned frames is 51.46%, stored 51.5 and shown 51.5 on the team stats: the label says 52%, not 51."""
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    m = Match(conn, info["match_id"])
+    m.owner = np.r_[np.full(5146, m.cols[m.home][0]), np.full(4854, m.cols[m.away][0])]
+    m.possession(1, 60.0, (0, 9999))
+    got = {f["team_id"]: (f["value"], f["label_en"]) for f in m.facts if f["kind"] == "team_possession"}
+    assert got == {m.home: (51.5, "Possession 52% since kick-off"), m.away: (48.5, "Possession 49% since kick-off")}
+    conn.close()
+
+
+def test_a_label_says_its_stored_value_as_the_booth_does(tmp_path, monkeypatch):
+    """14.46 m is stored 14.5 and shown "14.5" on the pass graphic: the label says 15 m, not 14; a ball at 33.46 km/h
+    is stored 33.5, said 34; 1649.98 m is stored 1650.0, said "1.7" km by the booth, not the "1.6" of :.1f."""
+    from studiodesk import booth
+    from studiodesk.facts.engine import PASS_TYPES
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    eid, x, y = conn.execute(f"SELECT event_id, start_x, start_y FROM events WHERE type_name IN ({','.join('?' * len(PASS_TYPES))}) "
+                             "AND start_x < 80 ORDER BY ts LIMIT 1", tuple(PASS_TYPES)).fetchone()
+    conn.execute("UPDATE events SET end_x = ?, end_y = ? WHERE event_id = ?", (x + 14.46, y, eid))
+    conn.commit()
+    monkeypatch.setattr(Match, "peak_ball_kmh", lambda self, f0, f1: 33.46)
+    speeds = Match.player_speeds
+
+    def steady(self):  # every player runs 1649.98 m by half-time
+        s = speeds(self)
+        s[:, 1:] = 1649.98 * 3.6 * self.fps / (self.frame(self.p1) + 1)
+        return s
+    monkeypatch.setattr(Match, "player_speeds", steady)
+    build(conn, info["match_id"], xt_grid=None)
+    (dist,) = [r["label_en"] for r in facts(conn, "pass_distance") if json.loads(r["source_event_ids"]) == [eid]]
+    assert dist == "Pass of 15 m"
+    assert {r["label_en"] for r in facts(conn, "ball_speed")} == {"Pass at 34 km/h"}
+    half = [r for r in facts(conn, "distance_covered") if r["label_en"].endswith("by half-time")]
+    assert half and all(r["value"] == 1650.0 and r["label_en"] == "1.7 km covered by half-time" for r in half)
+    assert booth.number(1650.0, "km", "en") == "1.7"
+    conn.close()
+
+
+def test_a_shot_or_pass_with_no_tracked_ball_has_no_speed_fact(tmp_path, monkeypatch):
+    info = write_fixture(tmp_path / "m.sqlite")
+    conn = db.connect(info["path"])
+    monkeypatch.setattr(Match, "peak_ball_kmh", lambda self, f0, f1: math.nan)
+    build(conn, info["match_id"], xt_grid=None)
+    assert facts(conn, "shot_distance") and not facts(conn, "shot_speed") and not facts(conn, "ball_speed")
+    conn.close()
 
 
 def test_window_labels_never_overlap_and_name_stoppage_time():

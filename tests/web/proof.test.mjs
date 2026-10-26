@@ -274,3 +274,11 @@ test("M001 goal at 10' after Use proposal: the AI wrote it and the producer put 
   assert.ok(!w.checks.some(([k]) => k === "Verifier"));
   for (const lang of ["it", "es"]) assert.notEqual(proofWords(pr, { match: P.match, minute: P.minute, lang, what: "" }).checks.at(-1)[1], "ap_proposal");
 });
+
+test("a number on screen is its fact rounded half up: a stored 17.5 is 18, not 17, and 1650 m is 1.7 km, not 1.6", () => {
+  const facts = [{ fact_id: "F1", kind: "pass_distance", value: 17.5, unit: "m", source_event_ids: [] },
+    { fact_id: "F2", kind: "distance_covered", value: 1650, unit: "m", source_event_ids: [] }];
+  const ctx = { story: null, factIndex: new Map(facts.map((f) => [f.fact_id, f])), eventIndex: new Map(), match: { players: {} }, minute: () => "1" };
+  const ok = (body) => proofOf({ graphic: "why_card", payload: { title: "", body, fact_ids: ["F1", "F2"] } }, ctx).numbersOk;
+  assert.deepEqual(["A pass of 18 m.", "A pass of 17 m.", "He ran 1.7 km.", "He ran 1.6 km."].map(ok), [true, false, true, false]);
+});
