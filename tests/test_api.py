@@ -196,7 +196,10 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
             seen.append(text)
             if "boom" in text:
                 raise OSError("network")
-            return {"Hate": 4 if "nasty" in text else 0, "Violence": 0}
+            if "empty" in text:
+                return {}
+            # the judge's headline: football words read as violence at the lowest severity, 2
+            return {"Hate": 4 if "nasty" in text else 0, "Violence": 6 if "gore" in text else 2 if "close range" in text else 0}
 
     monkeypatch.setattr(safety, "AzureSafety", Fake)
     c = desk()
@@ -206,11 +209,15 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
     monkeypatch.setattr(api, "_edit_safety", None)
     assert _edit(c, {"en": "Kind words", "title_en": "Headline"}).status_code == 200 and seen == ["Kind words\nHeadline"]
     r = _edit(c, {"en": "nasty words"})
-    assert r.status_code == 422 and r.json()["detail"] == "content safety did not pass the text. It stays off air."
+    assert r.status_code == 422 and r.json()["detail"] == "content safety flagged the text for hate (severity 4). It stays off air."
+    assert _edit(c, {"en": "nasty gore"}).json()["detail"].startswith("content safety flagged the text for hate and violence (severity 6)")
+    assert _edit(c, {"en": "empty"}).json()["detail"] == "content safety did not pass the text. It stays off air."
+    assert _edit(c, {"title_en": "Duarte heads wide from close range"}).status_code == 200  # severity 2 passes an edit
+    assert safety.verdict({"Violence": 2}) == "flagged"  # and still holds an agents' draft
     assert _edit(c, {"en": "boom"}).json()["detail"].startswith("the content safety check could not run")
-    assert _edit(c, {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number") and len(seen) == 3
+    assert _edit(c, {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number") and len(seen) == 6
     assert c.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"][0]["edited_text"] == {
-        "en": "Kind words", "title_en": "Headline"}
+        "title_en": "Duarte heads wide from close range"}
 
 
 def test_undo_drops_only_this_visitors_decision(desk):

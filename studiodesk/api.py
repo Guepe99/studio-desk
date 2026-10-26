@@ -322,6 +322,7 @@ def _story_row(conn, match_id: str, story_id: str) -> dict | None:
 
 
 _edit_safety = None  # the Content Safety client for edits, built on the first edit
+SAFETY_CATEGORIES = {"Hate": "hate", "SelfHarm": "self-harm", "Sexual": "sexual content", "Violence": "violence"}
 
 
 def _edit_refused(match_id: str, story: dict, edited: dict) -> str | None:
@@ -348,15 +349,18 @@ def _edit_refused(match_id: str, story: dict, edited: dict) -> str | None:
             return f"{what} has {rules.reason(flags[0])}" + (f" ({shown.group(1)})" if shown else "")
     if not SAFETY_ENDPOINT:
         return None
-    from .agents.safety import AzureSafety, verdict
+    from .agents.safety import EDIT_FLAG_SEVERITY, AzureSafety
     global _edit_safety
     try:
         _edit_safety = _edit_safety or AzureSafety(SAFETY_ENDPOINT, timeout=config.ASK_SAFETY_TIMEOUT_S)
         analysis = _edit_safety("\n".join(edited.values()))
     except Exception:  # noqa: BLE001 - quota, network or auth: not checked is not passed
         return "the content safety check could not run, try again later"
-    if not analysis or verdict(analysis) != "passed":
+    if not analysis:
         return "content safety did not pass the text"
+    if flagged := sorted(k for k, v in analysis.items() if v >= EDIT_FLAG_SEVERITY):
+        names = " and ".join(SAFETY_CATEGORIES.get(k, k.lower()) for k in flagged)
+        return f"content safety flagged the text for {names} (severity {max(analysis[k] for k in flagged)})"
     return None
 
 
