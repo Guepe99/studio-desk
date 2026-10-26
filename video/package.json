@@ -1,0 +1,15 @@
+{
+  "name": "studio-desk-video",
+  "private": true,
+  "description": "The submission video: the shot list in docs/VIDEO-SCRIPT.md, edited with Remotion.",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.535"
+  }
+}
