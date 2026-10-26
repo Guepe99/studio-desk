@@ -11,7 +11,8 @@ param aiName string = 'studiodesk-ai-89965b'
 // Role assignment names (GUIDs) that already exist, by role; a fresh environment leaves this empty and gets
 // guid() names. Role assignment names are unique in the tenant, so they cannot be reused elsewhere.
 param roleAssignmentNames object = {}
-// Content Safety's custom subdomain (<name>.cognitiveservices.azure.com), unique across Azure, for a new account.
+// Content Safety's custom subdomain (<name>.cognitiveservices.azure.com), unique across Azure, for a new account:
+// the app signs in with its managed identity, and Entra ID tokens need a custom subdomain endpoint, so keep it set.
 // Empty: the template sends no customSubDomainName at all (the live account, rg-studiodesk.bicepparam).
 param safetySubdomain string = 'studiodesk-safety-${uniqueString(resourceGroup().id)}'
 
@@ -141,7 +142,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       // one replica always on for the judging period, until 11 Nov 2026 (the desk's caps and runtime.sqlite live in it and
-      // reset when it scales to zero); on 11 Nov 2026 a scheduled job outside this template scales it to zero
+      // reset when it scales to zero); on 11 Nov 2026 a scheduled job outside this template scales it to zero, and a
+      // redeploy of this template after that date puts the replica back on unless minReplicas is set to 0 here
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }

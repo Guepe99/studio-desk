@@ -207,6 +207,8 @@ const overflow = (page) => page.evaluate(() => {
 
 // api/ask stubbed (the static site has no API): GET is the page's probe; "limit", "offline", "broken" (500)
 // and "gone" (503) the error paths; "paused" Content Safety out of quota; "slow" answers after a second.
+// The answer cites the match's first sprint fact: fact ids differ from match to match.
+const SPRINT = () => window.studioDesk.match.facts.find((f) => f.fact_id.startsWith("F-SPRINT_SPEED"));
 const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   if (r.request().method() === "GET") return r.fulfill({ json: { available: true } });
   const b = JSON.parse(r.request().postData() || "{}");
@@ -219,7 +221,7 @@ const askStub = (sent = []) => (p) => p.route("**/api/ask", async (r) => {
   if (b.question === "paused") return r.fulfill({ json: { status: "paused", answer: "", fact_ids: [], questions_left: 5 } });
   if (b.question === "slow") await new Promise((done) => setTimeout(done, 1000));
   return r.fulfill({ json: { status: "answered", answer: '<img src=x onerror="window.__xss=2">The quickest sprint was 32 km/h.',
-    fact_ids: ["F-SPRINT_SPEED-000001"], questions_left: 9 } });
+    fact_ids: [await p.evaluate(SPRINT).then((f) => f?.fact_id)], questions_left: 9 } });
 });
 // The Ask panel inside the viewport (the page scrolls to it, give or take a pixel of rounding), its question
 // box the topmost element at its centre: "" when it is, else what is wrong.
@@ -991,7 +993,7 @@ try {
     if (!got.answer.startsWith("<img") || got.live !== got.answer) fail(`ask: answer "${got.answer}", live region "${got.live}"`);
     if (!got.you.endsWith("Who is the fastest so far?")) fail(`ask: question echo "${got.you}"`);
     // in Analyst mode the cited facts by their label, never as raw ids
-    const cited = await p.evaluate(() => window.studioDesk.match.facts.find((f) => f.fact_id === "F-SPRINT_SPEED-000001")?.label_en);
+    const cited = await p.evaluate(SPRINT).then((f) => f?.label_en);
     if (!cited || !got.facts.includes(cited) || /F-[A-Z_]+-\d+/.test(got.facts)) fail(`ask: Analyst facts "${got.facts}", wanted the label "${cited}"`);
     if (!/9/.test(got.status)) fail(`ask: questions left not shown ("${got.status}")`);
     await pick(p, '[data-audience="casual"]');
