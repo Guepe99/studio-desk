@@ -371,6 +371,10 @@ async function scenario(browser, w, h) {
   expect(await page.evaluate((id) => window.studioDesk.desk.text(window.studioDesk.desk.byId.get(id), "en"), SWING.story_id) === SWING.verifier.proposals.en,
     `${tag}: Use proposal did not put it on air`);
   expect(!(await page.$(`${card(SWING)} .proposal button`)), `${tag}: Use proposal button still there once used`);
+  // said and logged as the AI's line, not as an edit; Details says in words what it was before
+  const used = await page.evaluate((id) => ({ msg: document.querySelector("#desk .done-msg")?.textContent, was: document.querySelector(`#story-${id} .default`)?.textContent,
+    action: window.studioDesk.desk.auditData().humans[0]?.action }), SWING.story_id);
+  expect(/: AI proposal on air$/.test(used.msg) && /^Before your decision/.test(used.was ?? "") && used.action === "used_proposal", `${tag}: Use proposal reads ${JSON.stringify(used)}`);
 
   // 6. the keys, with the focus in the desk
   await seekTo(page, ALL);
@@ -468,6 +472,7 @@ async function scenario(browser, w, h) {
   const sids = await page.$$eval(".log .sid", (n) => n.map((x) => x.textContent));
   expect(sids.length && sids.every((x) => !/S-\d{6}/.test(x)) && sids.some((x) => /^Goal \d+'$/.test(x)), `${tag}: audit names stories ${JSON.stringify(sids.slice(0, 4))}`);
   expect(await page.$$eval(".log tr.a-agent", (n) => n.length) > 0, `${tag}: audit has no agent rows`);
+  expect(await page.$$eval(".log tr.a-human", (n) => n.length) > 0, `${tag}: the audit table leaves out your decisions`);
   // the replay's traces are steps, not calls (M001: 115 steps, 132 calls in MEASURES.md): the total says so
   const steps = await page.evaluate(() => {
     const t = document.querySelector("#desk .totals div"), d = window.studioDesk.desk;
@@ -487,6 +492,21 @@ async function scenario(browser, w, h) {
   });
   expect(early.ahead > 0 && early.audit === 0 && early.traces === 0, `${tag}: spoilers at 0:30 ${JSON.stringify(early)}`);
   await seekTo(page, ALL);
+  // Show story, from the last trace group: the desk's list scrolls to the story, the page stays where it was
+  if (!phone) {
+    const shown = await page.evaluate(async () => {
+      document.querySelector("#tab-traces").click();
+      await new Promise((r) => setTimeout(r, 50));
+      const b = [...document.querySelectorAll('#desk [data-focus$=":show"]')].at(-1);
+      if (!b) return null;
+      const y = window.scrollY, id = b.dataset.focus.split(":")[0];
+      b.click();
+      await new Promise((r) => setTimeout(r, 50));
+      const r = document.querySelector(`#story-${id}`)?.getBoundingClientRect();
+      return { moved: window.scrollY - y, inView: !!r && r.top >= 0 && r.top < window.innerHeight, tab: document.querySelector("#tab-stories")?.getAttribute("aria-selected") };
+    });
+    expect(shown && shown.moved === 0 && shown.inView && shown.tab === "true", `${tag}: Show story ${JSON.stringify(shown)}`);
+  }
 
   // 10. languages: desk text, headline and graphic
   await page.click("#tab-stories");
@@ -618,6 +638,11 @@ async function generated(page, all, match) {
   await seekTo(page, end + 1);
   const row = await page.$eval(`.missed #story-${gc}`, (el) => [el.querySelector(".outcome").textContent, el.querySelectorAll("button:not(.minute)").length]).catch(() => null);
   expect(JSON.stringify(row) === '["missed, nobody put it on air in time",0]', `${match}: missed panel row ${JSON.stringify(row)}`);
+  // opened, the missed list stays open while the desk redraws
+  await page.click("#desk .missed > summary");
+  await seekTo(page, end + 30);
+  expect(await page.$eval("#desk .missed", (el) => el.open), `${match}: the missed list closed itself on a redraw`);
+  await page.click("#desk .missed > summary");
   // the risk rule's panel airs by itself and says who put it there
   const mom = all.find((x) => x.story_id === null && x.graphic === "momentum" && x.audience === "analyst" && x.lang === "en");
   await seekTo(page, mom.ts + 1);

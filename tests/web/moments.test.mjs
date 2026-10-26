@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey, keyCues } from "../../web/js/moments.js";
+import { momentTargets, goalTargets, nextTarget, momentKey, isMomentKey, keyCues, Moments } from "../../web/js/moments.js";
 import { reached, latestPerAgent, Activity } from "../../web/js/activity.js";
 import { agentName, TEXT, tr, riskBand, deskKey } from "../../web/js/desk.js";
 import { shortcut } from "../../web/js/keys.js";
@@ -189,4 +189,26 @@ test("desk strings: every language has every key, no em dash", () => {
 
 test("risk bands", () => {
   assert.deepEqual([0, 0.34, 0.35, 0.59, 0.6, 1, NaN].map(riskBand), ["low", "low", "mid", "mid", "high", "high", "high"]);
+});
+
+test("Next key moment on a paused replay jumps to the moment and plays it at 1x", () => {
+  globalThis.window ??= { addEventListener() {} };
+  const button = { setAttribute() {}, addEventListener() {} }, calls = [];
+  const state = { ts: 0, playing: false, speed: 64 };
+  const m = new Moments(button, { state, seek: (ts) => { state.ts = ts; calls.push(["seek", ts]); }, setSpeed: (x) => { state.speed = x; calls.push(["speed", x]); },
+    play: () => { state.playing = true; calls.push(["play"]); }, t: (k) => k, live: {} });
+  m.setSheet([cue(600, "S-1")], true);
+  m.go();
+  assert.deepEqual(calls, [["speed", 1], ["seek", 594], ["play"]]);
+  calls.length = 0;
+  m.setSheet([cue(600, "S-1"), cue(900, "S-2")], true);
+  m.go(); // already playing: it only jumps
+  assert.deepEqual(calls, [["seek", 894]]);
+});
+
+test("Italian elides the article before a minute said with a vowel: all'8', all'11', al 10'", () => {
+  const said = ["1", "8", "10", "11", "18", "80", "45+2"].map((m) => tr("it", "toAirPast", { m }));
+  assert.deepEqual(said, ["doveva andare in onda all'1'", "doveva andare in onda all'8'", "doveva andare in onda al 10'", "doveva andare in onda all'11'",
+    "doveva andare in onda al 18'", "doveva andare in onda all'80'", "doveva andare in onda al 45+2'"]);
+  assert.equal(tr("it", "row_aired", { m: "8", by: "approvata da te" }), "in onda all'8', approvata da te");
 });

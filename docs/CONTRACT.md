@@ -484,3 +484,28 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - Next key moment also stops at a cue of a story that waits for review on this visitor's desk.
 - The desk's audit total from a replay counts agent steps that used the model (the traces); the
   audit table, and so docs/MEASURES.md, counts model calls.
+
+## Judge 2 fixes (fix/judge2-desk, additive)
+
+- Fact kinds: `player_goals` (a player's goals since kick-off, own goals not counted: one fact at 0 at
+  the player's kick-off or entry and one at every goal, `source_event_ids` the goals counted) and
+  `team_pass_accuracy` (a team's passes completed of those tried since kick-off, %, at each 5-minute
+  window end as `team_possession`; the label carries the count, e.g. "Pass accuracy 84% (312/371) since kick-off"). Existing fact ids do not change.
+- MCP tool `get_scorers(match_id, player_id=None)`: the latest `player_goals` fact of each player who has
+  scored (with `player_id`, that player's, 0 included), up to the clock. `get_team_totals` also returns
+  `team_pass_accuracy`.
+- Ask the studio: the `studio_host` has a `get_stories` tool, the verified stories already on air at the
+  visitor's clock (from `web/data/<match>/stories.json`), so a "why" question is answered from them.
+  The answer's numbers are still fact ids checked by `rules.check_answer`, which also accepts a goal
+  count and "N passes of M".
+- `POST /api/decisions` with `edited_text`: Content Safety refuses from severity 4 in any category, and
+  the refusal names it ("content safety flagged the text for violence (severity 6)").
+- An edit whose text is the verifier's proposal is written to the audit table as `used_proposal`
+  (`session_decisions` keeps `edited`).
+- Each audit write of a desk decision (`approved`/`edited`/`killed`, `used_proposal`, `edit_refused`, `undo`, `ai_off`/`ai_on`) also
+  logs an Application Insights custom event `studiodesk.decision` on the `studiodesk.decision` logger,
+  with `decision_action`, `decision_match_id`, `decision_story_id`, `decision_langs` and
+  `decision_session` (a salted hash of the session id). No text and no client address.
+- Next key moment on a paused replay jumps and plays at 1x.
+- Desk: the audit table also lists the visitor's own decisions (class `a-human`), in time order.
+- Ask the studio in Analyst mode lists the cited facts by their `label_en`, the ids in the tooltip.

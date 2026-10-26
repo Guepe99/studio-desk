@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from studiodesk import telemetry
 from studiodesk.agents.llm import FakeChatClient
 from test_agents import desk_db, rows, run  # noqa: F401 - fixtures and helpers
+from test_api import PROPOSALS, desk  # noqa: F401
 from test_ask import SPRINT, body, studio  # noqa: F401
 
 
@@ -137,3 +138,34 @@ def test_a_rejected_text_carries_its_short_reason(desk_db, spans):  # noqa: F811
     assert verdicts and {(v["studiodesk.lang"], v["studiodesk.accepted"], v["studiodesk.status"], v["studiodesk.reason"])
                          for v in verdicts} == {("it", False, "template", "a number the facts do not give"),
                                                 ("en", True, "template", ""), ("es", True, "template", "")}
+
+
+def test_each_desk_decision_is_a_custom_event_without_text_or_address(desk):  # noqa: F811
+    """Azure Monitor's log exporter stubbed by an in-memory one on the "studiodesk" logger tree, as telemetry.py sets it."""
+    import logging
+
+    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
+    exporter, provider = InMemoryLogRecordExporter(), LoggerProvider()
+    provider.add_log_record_processor(SimpleLogRecordProcessor(exporter))
+    handler, tree = LoggingHandler(logger_provider=provider), logging.getLogger("studiodesk")
+    tree.addHandler(handler)
+    try:
+        a, b = desk(), desk()
+        a.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000001", "decision": "approved"})
+        a.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000002", "decision": "edited", "edited_text": dict(PROPOSALS)})
+        a.post("/api/decisions", json={"match_id": "DEMO", "story_id": "S-000001", "decision": "edited",
+                                       "edited_text": {"en": "Secret words 9 km/h"}})  # refused: a number the facts do not give
+        a.delete("/api/decisions", params={"match_id": "DEMO", "story_id": "S-000001"})
+        b.post("/api/kill", json={"on": True})
+    finally:
+        tree.removeHandler(handler)
+    events = [dict(r.log_record.attributes) for r in exporter.get_finished_logs()
+              if (r.log_record.attributes or {}).get("microsoft.custom_event.name") == "studiodesk.decision"]
+    assert [(e["decision_action"], e["decision_story_id"], e["decision_langs"]) for e in events] == [
+        ("approved", "S-000001", ""), ("used_proposal", "S-000002", "en,es,it"), ("edit_refused", "S-000001", "en"),
+        ("undo", "S-000001", ""), ("ai_off", "", "")]
+    assert len({e["decision_session"] for e in events[:4]}) == 1 and events[4]["decision_session"] != events[0]["decision_session"]
+    for r in exporter.get_finished_logs():  # no text, no reason, no address, no cookie
+        values = " ".join(map(str, [r.log_record.body, *(r.log_record.attributes or {}).values()]))
+        assert not any(x in values for x in ("Secret", "A line by the AI", "testclient", "facts do not give"))

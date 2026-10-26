@@ -14,8 +14,9 @@ export function suggestions(facts, now) {
 }
 
 export class Ask {
-  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [] }) {
-    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts });
+  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [], match = null }) {
+    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts, match });
+    this.factById = new Map(facts.map((f) => [f.fact_id, f]));
     this.form = panel.querySelector("form");
     this.input = panel.querySelector("#ask-q");
     this.send = this.form.querySelector('[type="submit"]');
@@ -128,6 +129,13 @@ export class Ask {
     }));
   }
 
+  factText(id) {
+    const f = this.factById.get(id);
+    if (!f) return id;
+    const who = f.player_id ? this.match?.players?.[f.player_id]?.name : this.match?.teams?.[f.team_id]?.short_name;
+    return who ? `${f.label_en} (${who})` : f.label_en;
+  }
+
   // emptied first, so the same sentence twice (two declines) is still announced
   announce(text, lang) {
     this.live.textContent = "";
@@ -135,7 +143,7 @@ export class Ask {
     requestAnimationFrame(() => { this.live.textContent = text; });
   }
 
-  // also called when the language or the audience changes: fact ids show only in Analyst mode
+  // also called when the language or the audience changes: the cited facts show only in Analyst mode
   render() {
     // aria-disabled, not disabled: a disabled button would drop the focus of whoever pressed it (busy stops a second send)
     this.send.setAttribute("aria-disabled", String(this.busy));
@@ -156,7 +164,10 @@ export class Ask {
       if (analyst && q.facts.length) {
         const ids = document.createElement("p");
         ids.className = "ask-facts";
-        ids.textContent = `${this.t("askFacts")}: ${q.facts.join(", ")}`;
+        // the facts by their ledger label (English) and whose they are; the id stays in the tooltip
+        ids.lang = "en";
+        ids.title = q.facts.join(", ");
+        ids.textContent = `${this.t("askFacts")}: ${q.facts.map((id) => this.factText(id)).join("; ")}`;
         li.append(ids);
       }
       return li;

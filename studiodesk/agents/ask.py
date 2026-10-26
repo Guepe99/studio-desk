@@ -10,6 +10,7 @@ Safety passed on the question and on the answer, with Prompt Shields on the ques
 import asyncio
 import functools
 import json
+import math
 import time
 from contextlib import closing
 
@@ -23,7 +24,8 @@ from .safety import AzureSafety, Throttled, verdict
 
 MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored the brief
 TOOL_RESULT_CHARS = 6000
-SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tried again after this
+SAFETY_RETRY_S = 60.0
+STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows    # a Content Safety client that could not be built is tried again after this
 
 DECLINED = {
     "en": "The studio cannot answer that from the match data so far.",
@@ -46,7 +48,12 @@ INSTRUCTIONS = (
     "a label or write the word label. Never compute a total, count, difference or average yourself, never write a "
     "number in words. A team's shots, shots on target, corners and possession so far are facts counted by code: read "
     "them with get_team_totals and write each count with its noun, for both teams (\"9 shots, 4 on target\", "
-    "\"55% possession\"). To say which team has controlled the match, cite those totals and the latest momentum. Quote the value of at least one fact you cite; for a goal that is its scorer "
+    "\"55% possession\"); a team's pass accuracy is there too, written as its share and the count in its label (\"83%, 228 "
+    "of 276 passes\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
+    "its noun (\"2 goals\"). To say which team has controlled the match, cite those totals and the latest momentum. "
+    "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the verified analysis "
+    "of the stories already on air: answer from the analysis of the story the question is about, in the answer's "
+    "language, citing that story's fact_ids, and give no cause the analysis does not give. Quote the value of at least one fact you cite; for a goal that is its scorer "
     "and minute, never its value (1.0 is the goal count, not something to write). A goal is an equaliser only when its label leaves the score level (\"Goal 2-2\"). Write a minute only as 'minute N' in English, 'minuto N' in Italian or Spanish, "
     "or N', with N the `minute` of a fact you cite, never worked out from ts. Give a score only when the question asks for it, "
     "as get_match_info gives it, home side first (2-1 when the home side leads 2-1). "
@@ -145,7 +152,37 @@ def tools(match_id, ts, usage=None):
                 usage["pending_chars"] = usage.get("pending_chars", 0) + len(_result_text(out))
             return out
         return tool(call, result_parser=_result_text)
-    return [capped(fn) for fn in mcp_server.TOOLS]
+
+    def get_stories(match_id: str) -> list[dict]:
+        """The stories already on air (put there by the risk rule, not flagged by Content Safety), oldest first:
+        kind, minute, team, player, the analysis the verifier passed and the story's fact_ids. For why and how."""
+        return stories_on_air(match_id, ts, times[0] if times else math.inf, names)
+    return [capped(fn) for fn in (*mcp_server.TOOLS, get_stories)]
+
+
+def stories_on_air(match_id, ts, p1, names):
+    """The replay's stories that a visitor sees on air by default at ts (as api._auto_rows: `auto_approved` and
+    not `flagged`), with every fact id known at ts. Read from the replay the page shows; [] without one."""
+    try:
+        rows = json.loads((STORIES_DIR / match_id / "stories.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out = []
+    with mcp_server.clock_at(ts):
+        for s in rows if isinstance(rows, list) else []:
+            if not (isinstance(s, dict) and s.get("default_status") == "auto_approved" and s.get("safety") != "flagged"
+                    and isinstance(s.get("ts"), (int, float)) and s["ts"] <= ts and s.get("analysis_en")
+                    and (s.get("verifier") or {}).get("status") != "pending"):
+                continue
+            ids = [i for i in s.get("fact_ids") or [] if isinstance(i, str)]
+            if not ids or any("error" in mcp_server.get_fact(match_id, i) for i in ids):
+                continue
+            period = 1 if s["ts"] <= p1 else 2
+            out.append({"story_id": s.get("story_id"), "kind": s.get("kind"),
+                        "minute": rules.stoppage(rules.minute(s["ts"], period, p1), period),
+                        "team": names.get(s.get("team_id")), "player": names.get(s.get("player_id")),
+                        "analysis": s["analysis_en"], "fact_ids": ids})
+    return out  # stories.json is sorted by ts
 
 
 def new_usage():

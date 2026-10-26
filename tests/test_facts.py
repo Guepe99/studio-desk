@@ -15,7 +15,7 @@ from studiodesk.facts.engine import formation_name, shot_detail
 KINDS = {"pass_distance", "pass_difficulty", "pass_accuracy", "ball_speed", "shot_speed", "sprint_speed",
          "sprint_count", "distance_covered", "momentum", "press_intensity", "line_height", "score",
          "shot_distance", "team_width", "team_length", "formation", "start_formation", "team_shots",
-         "team_shots_on_target", "team_corners", "team_possession"}
+         "team_shots_on_target", "team_corners", "team_possession", "team_pass_accuracy", "player_goals"}
 
 
 def facts(conn, kind=None):
@@ -60,6 +60,24 @@ def test_team_totals_count_from_kick_off_and_wait_for_the_ball_to_cross(match_db
         by_ts.setdefault(r["ts"], []).append(r["value"])
     assert by_ts and all(len(v) == 2 and abs(sum(v) - 100) < 0.2 for v in by_ts.values())
     assert home["team_possession"]["unit"] == "%" and json.loads(home["team_possession"]["source_frames"])[0] == 0
+
+
+def test_player_goals_and_team_pass_accuracy_count_from_kick_off(match_db):
+    info, conn = match_db
+    (score,) = facts(conn, "score")
+    goals = facts(conn, "player_goals")
+    lineup = conn.execute("SELECT count(*) FROM lineups WHERE match_id = ?", (info["match_id"],)).fetchone()[0]
+    zeros, scored = [r for r in goals if r["value"] == 0], [r for r in goals if r["value"] > 0]
+    assert len(zeros) == lineup and all(r["label_en"] == "0 goals since kick-off" and r["unit"] == "goals" for r in zeros)
+    (g,) = scored
+    assert (g["player_id"], g["ts"], g["label_en"]) == (score["player_id"], score["ts"], "1 goal since kick-off")
+    assert json.loads(g["source_event_ids"]) == [info["goal_event_id"]]
+    acc = facts(conn, "team_pass_accuracy")
+    windows = {r["ts"] for r in facts(conn, "momentum")}
+    assert acc and {r["ts"] for r in acc} <= windows and all(r["player_id"] is None and r["unit"] == "%" for r in acc)
+    last = max((r for r in acc if r["team_id"] == HOME), key=lambda r: r["ts"])
+    ok, n = map(int, re.search(r"\((\d+)/(\d+)\)", last["label_en"]).groups())
+    assert n == len(json.loads(last["source_event_ids"])) and abs(last["value"] - 100 * ok / n) < 0.06
 
 
 def test_goal_shot_and_sprint(match_db):

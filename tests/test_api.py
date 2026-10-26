@@ -75,6 +75,9 @@ DEMO_SHOT = {"fact_id": "F-SHOT_SPEED-000001", "kind": "shot_speed", "ts": 470.6
              "player_id": "T02-9", "value": 67.2, "unit": "km/h", "label_en": "Shot speed 67.2 km/h", "source_event_ids": [150]}
 
 
+PROPOSALS = {"en": "A line by the AI", "es": "Una línea", "it": "Una riga"}
+
+
 @pytest.fixture
 def desk(tmp_path, monkeypatch):
     """A client per visitor against an empty runtime.sqlite and a replay with two stories."""
@@ -83,7 +86,7 @@ def desk(tmp_path, monkeypatch):
     demo = tmp_path / "web" / "data" / "DEMO"
     demo.mkdir(parents=True)
     (demo / "stories.json").write_text(json.dumps([{"story_id": "S-000001", "ts": 470.6, "fact_ids": ["F-SHOT_SPEED-000001"]},
-                                                   {"story_id": "S-000002", "ts": 900.0, "fact_ids": []}]))
+                                                   {"story_id": "S-000002", "ts": 900.0, "fact_ids": [], "verifier": {"proposals": PROPOSALS}}]))
     (demo / "meta.json").write_text(json.dumps(DEMO_META))
     (demo / "facts.json").write_text(json.dumps([DEMO_SHOT]))
     monkeypatch.setattr(api, "WEB", tmp_path / "web")
@@ -196,7 +199,10 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
             seen.append(text)
             if "boom" in text:
                 raise OSError("network")
-            return {"Hate": 4 if "nasty" in text else 0, "Violence": 0}
+            if "empty" in text:
+                return {}
+            # the judge's headline: football words read as violence at the lowest severity, 2
+            return {"Hate": 4 if "nasty" in text else 0, "Violence": 6 if "gore" in text else 2 if "close range" in text else 0}
 
     monkeypatch.setattr(safety, "AzureSafety", Fake)
     c = desk()
@@ -206,11 +212,15 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
     monkeypatch.setattr(api, "_edit_safety", None)
     assert _edit(c, {"en": "Kind words", "title_en": "Headline"}).status_code == 200 and seen == ["Kind words\nHeadline"]
     r = _edit(c, {"en": "nasty words"})
-    assert r.status_code == 422 and r.json()["detail"] == "content safety did not pass the text. It stays off air."
+    assert r.status_code == 422 and r.json()["detail"] == "content safety flagged the text for hate (severity 4). It stays off air."
+    assert _edit(c, {"en": "nasty gore"}).json()["detail"].startswith("content safety flagged the text for hate and violence (severity 6)")
+    assert _edit(c, {"en": "empty"}).json()["detail"] == "content safety did not pass the text. It stays off air."
+    assert _edit(c, {"title_en": "Duarte heads wide from close range"}).status_code == 200  # severity 2 passes an edit
+    assert safety.verdict({"Violence": 2}) == "flagged"  # and still holds an agents' draft
     assert _edit(c, {"en": "boom"}).json()["detail"].startswith("the content safety check could not run")
-    assert _edit(c, {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number") and len(seen) == 3
+    assert _edit(c, {"en": "35 km/h"}).json()["detail"].startswith("the English text has a number") and len(seen) == 6
     assert c.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"][0]["edited_text"] == {
-        "en": "Kind words", "title_en": "Headline"}
+        "title_en": "Duarte heads wide from close range"}
 
 
 def test_undo_drops_only_this_visitors_decision(desk):
@@ -293,6 +303,16 @@ def test_non_numeric_content_length_is_a_400():
     scope = {"type": "http", "method": "POST", "path": "/api/kill", "headers": [(b"content-length", b"abc")]}
     asyncio.run(api.BodyCap(app)(scope, receive, send))
     assert sent[0]["status"] == 400
+
+
+def test_using_the_ai_proposal_has_its_own_audit_action(desk):
+    c = desk()
+    assert _edit(c, dict(PROPOSALS), "S-000002").json()["edited_text"] == PROPOSALS
+    assert c.get("/api/decisions", params={"match_id": "DEMO"}).json()["decisions"][0]["decision"] == "edited"  # on air as an edit
+    _edit(c, {**PROPOSALS, "en": "A line by the producer"}, "S-000002")
+    rows = [r for r in c.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] if r["actor"] == "human"]
+    assert [r["action"] for r in rows] == ["edited", "used_proposal"]
+    assert rows[1]["detail"]["langs"] == ["en", "es", "it"]
 
 
 def test_kill_switch_is_per_session_and_audited(desk):

@@ -45,7 +45,7 @@ export function isMomentKey(e) {
 
 export class Moments {
   /** @param {HTMLButtonElement} button
-   *  @param {{state, seek: (ts: number) => void, setSpeed: (x: number) => void, t: (key: string) => string,
+   *  @param {{state, seek: (ts: number) => void, setSpeed: (x: number) => void, play: () => void, t: (key: string) => string,
    *    live: HTMLElement}} opts  live: a polite live region for "no more" */
   constructor(button, opts) {
     Object.assign(this, opts);
@@ -83,6 +83,7 @@ export class Moments {
     }
     if (this.state.speed > 1) this.setSpeed(1); // at 64x the 3 s lead and the card would flash past
     this.seek(ts);
+    if (!this.state.playing) this.play(); // a paused replay plays the moment, as the button promises
   }
 
   /** Every frame: touches the DOM only when the button changes state or language. */

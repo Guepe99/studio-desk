@@ -23,6 +23,9 @@ API_VERSION = "2024-09-01"
 RESOURCE = ("studiodesk-safety", "rg-studiodesk")  # account, resource group
 MAX_CALLS = 100
 FLAG_SEVERITY = 2
+# A producer's edit is flagged only from severity 4 (medium): at 2, the lowest, football words ("close range",
+# "strike") read as violence. The agents' drafts keep FLAG_SEVERITY.
+EDIT_FLAG_SEVERITY = 4
 MIN_INTERVAL_S = 0.25   # under the F0 limit of 5 calls a second
 MAX_FAILURES = 3        # consecutive failed calls before the step gives up
 DEADLINE_S = 300.0      # the whole step, so a dead endpoint cannot hold a run for 50 minutes
@@ -107,8 +110,8 @@ def _body(e):
         return ""
 
 
-def verdict(analysis):
-    return "flagged" if any(v >= FLAG_SEVERITY for v in analysis.values()) else "passed"
+def verdict(analysis, threshold=FLAG_SEVERITY):
+    return "flagged" if any(v >= threshold for v in analysis.values()) else "passed"
 
 
 def check_match(rt, match_id, analyze, max_calls=MAX_CALLS, log=print, deadline_s=DEADLINE_S):

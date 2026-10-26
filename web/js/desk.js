@@ -36,8 +36,8 @@ export const TEXT = {
     noStories: "No AI stories in this replay yet. The template graphics play on their own; stories appear here once the agents have run on the match.",
     offair: "Off air", goMinute: "Go to minute {m}", goTitle: "Go to this moment",
     st_auto_approved: "Auto-approved", st_needs_review: "Needs review", st_approved: "Approved", st_edited: "Edited and approved", st_rejected: "Rejected",
-    defaultWas: "default: {s}", heldSafety: "held: flagged by Content Safety",
-    line_live: "On air, {by}", by_auto_approved: "approved automatically (low risk)", by_approved: "approved by you", by_edited: "edited and approved by you", by_template: "template graphic, no approval needed",
+    defaultWas: "Before your decision: {s}.", before_needs_review: "Before your decision it was waiting for you.", before_auto_approved: "Before your decision it went on air by itself (low risk).", heldSafety: "held: flagged by Content Safety",
+    line_live: "On air, {by}", by_auto_approved: "approved automatically (low risk)", by_approved: "approved by you", by_edited: "edited and approved by you", by_proposal: "AI proposal put on air by you", by_template: "template graphic, no approval needed",
     line_held: "Waiting for you, {why}", why_safety: "flagged by Content Safety", line_rejected: "Off air, rejected by you", line_kill: "Off air while AI graphics are off",
     details: "Details", whyReject: "What was wrong?", r_number: "A number", r_player: "A name", r_moment: "The moment", r_tone: "The tone",
     risk_low: "Low risk", risk_mid: "Medium risk", risk_high: "High risk", riskTitle: "Risk score {r}. Below {t} a story goes on air by itself.",
@@ -58,7 +58,7 @@ export const TEXT = {
     proposalOn: "AI proposal, on air: ", proposalOff: "AI proposal, not on air: ", useProposal: "Use proposal",
     lang_en: "English", lang_it: "Italian", lang_es: "Spanish", emptyText: "The {name} text cannot be empty. Reject the story to keep it off air.",
     cancel: "Cancel", saveApprove: "Save and approve",
-    done_approved: "{what} approved, on air", done_kept: "{what} kept on air", done_edited: "{what} edited, on air",
+    done_approved: "{what} approved, on air", done_kept: "{what} kept on air", done_edited: "{what} edited, on air", done_proposal: "{what}: AI proposal on air", done_proposalKill: "{what}: AI proposal on air once AI graphics are back on",
     done_approvedKill: "{what} approved, on air once AI graphics are back on", done_keptKill: "{what} approved, on air once AI graphics are back on",
     done_editedKill: "{what} edited, on air once AI graphics are back on", done_rejected: "{what} rejected, off air",
     undo: "Undo", undoLabel: "Undo: {what}", undone_onair: "Undone: {what} is on air again", undone_held: "Undone: {what} is held again",
@@ -71,7 +71,7 @@ export const TEXT = {
     tokens: "tokens", cost: "model cost", yours: "of your actions", logCaption: "Audit log, newest first",
     colWho: "Who", colWhat: "What", colCost: "Tokens and cost",
     a_ai_off: "switched AI graphics off", a_ai_on: "switched AI graphics on", a_ask: "your question, {s}", a_auto: "auto-approved, risk {r} below {t}",
-    a_approved: "approved", a_edited: "edited", a_rejected: "rejected", a_undo: "undid the last action",
+    a_approved: "approved", a_edited: "edited", a_used_proposal: "used the AI proposal", a_rejected: "rejected", a_undo: "undid the last action",
     auditEmpty: "None yet. Put a story on air, edit it or reject it and it shows up here.",
     pipeline: "How a story is made", noTraces: "No agent traces in this replay yet.", wholeRun: "Whole run", showStory: "Show story",
     traceSum: ({ n, tok, usd, s }) => `${n} hand-off${n === "1" ? "" : "s"}, ${tok} tokens, ${usd}, ${s} s`,
@@ -124,8 +124,8 @@ export const TEXT = {
     noStories: "Ancora nessuna storia IA in questo replay. Le grafiche standard vanno in onda da sole; le storie compaiono qui dopo che gli agenti hanno lavorato sulla partita.",
     offair: "Fuori onda", goMinute: "Vai al minuto {m}", goTitle: "Vai a questo momento",
     st_auto_approved: "Approvata in automatico", st_needs_review: "Da rivedere", st_approved: "Approvata", st_edited: "Modificata e approvata", st_rejected: "Respinta",
-    defaultWas: "stato iniziale: {s}", heldSafety: "in attesa: segnalata da Content Safety",
-    line_live: "In onda, {by}", by_auto_approved: "approvata in automatico (rischio basso)", by_approved: "approvata da te", by_edited: "modificata e approvata da te", by_template: "grafica standard, non serve approvazione",
+    defaultWas: "Prima della tua decisione: {s}.", before_needs_review: "Prima della tua decisione aspettava te.", before_auto_approved: "Prima della tua decisione andava in onda da sola (rischio basso).", heldSafety: "in attesa: segnalata da Content Safety",
+    line_live: "In onda, {by}", by_auto_approved: "approvata in automatico (rischio basso)", by_approved: "approvata da te", by_edited: "modificata e approvata da te", by_proposal: "proposta dell'IA mandata in onda da te", by_template: "grafica standard, non serve approvazione",
     line_held: "Aspetta una tua decisione, {why}", why_safety: "segnalata da Content Safety", line_rejected: "Fuori onda, respinta da te", line_kill: "Fuori onda finché le grafiche IA sono spente",
     details: "Dettagli", whyReject: "Cosa non andava?", r_number: "Un numero", r_player: "Un nome", r_moment: "Il momento", r_tone: "Il tono",
     risk_low: "Rischio basso", risk_mid: "Rischio medio", risk_high: "Rischio alto", riskTitle: "Punteggio di rischio {r}. Sotto {t} una storia va in onda da sola.",
@@ -146,7 +146,7 @@ export const TEXT = {
     proposalOn: "Proposta IA, in onda: ", proposalOff: "Proposta IA, non in onda: ", useProposal: "Usa la proposta",
     lang_en: "Inglese", lang_it: "Italiano", lang_es: "Spagnolo", emptyText: "Il testo ({name}) non può essere vuoto. Respingi la storia per tenerla fuori onda.",
     cancel: "Annulla", saveApprove: "Salva e approva",
-    done_approved: "Approvazione salvata: {what} in onda", done_kept: "Approvazione salvata: {what} resta in onda", done_edited: "Modifica salvata: {what} in onda",
+    done_approved: "Approvazione salvata: {what} in onda", done_kept: "Approvazione salvata: {what} resta in onda", done_edited: "Modifica salvata: {what} in onda", done_proposal: "Proposta dell'IA in onda: {what}", done_proposalKill: "Proposta dell'IA salvata: {what} andrà in onda quando riaccendi le grafiche IA",
     done_approvedKill: "Approvazione salvata: {what} andrà in onda quando riaccendi le grafiche IA",
     done_keptKill: "Approvazione salvata: {what} andrà in onda quando riaccendi le grafiche IA",
     done_editedKill: "Modifica salvata: {what} andrà in onda quando riaccendi le grafiche IA", done_rejected: "Storia respinta: {what} fuori onda",
@@ -160,7 +160,7 @@ export const TEXT = {
     tokens: "token", cost: "costo dei modelli", yours: "azioni tue", logCaption: "Registro, dal più recente",
     colWho: "Chi", colWhat: "Cosa", colCost: "Token e costo",
     a_ai_off: "hai spento le grafiche IA", a_ai_on: "hai acceso le grafiche IA", a_ask: "la tua domanda, {s}", a_auto: "approvata in automatico, rischio {r} sotto {t}",
-    a_approved: "approvata", a_edited: "modificata", a_rejected: "respinta", a_undo: "hai annullato l'ultima azione",
+    a_approved: "approvata", a_edited: "modificata", a_used_proposal: "hai usato la proposta dell'IA", a_rejected: "respinta", a_undo: "hai annullato l'ultima azione",
     auditEmpty: "Ancora nessuna. Manda in onda, modifica o respingi una storia e comparirà qui.",
     pipeline: "Come nasce una storia", noTraces: "Ancora nessuna traccia degli agenti in questo replay.", wholeRun: "Tutto il giro", showStory: "Mostra la storia",
     traceSum: ({ n, tok, usd, s }) => `${n} passaggi${n === "1" ? "o" : ""} di consegne, ${tok} token, ${usd}, ${s} s`,
@@ -176,7 +176,7 @@ export const TEXT = {
     role_verifier: "Controlla ogni numero sul registro dei fatti; riscrive al massimo due volte, poi usa una frase modello.",
     role_director: "Sceglie grafica, momento e pubblico; mai più di 2 sullo schermo.",
     sec_air: "In onda ora", sec_needs: "Aspettano te", sec_done: "Già decise",
-    missed: "Perse: {n}", row_aired: "in onda al {m}', {by}",
+    missed: "Perse: {n}", row_aired: ({ m, by }) => `in onda ${alMinute(m)}, ${by}`,
     tip_st_auto_approved: "Rischio basso: va in onda da sola. Respingila se qualcosa non torna.",
     tip_st_needs_review: "Va in onda solo se la mandi tu: il rischio non è basso, oppure Content Safety l'ha segnalata.",
     tip_st_approved: "L'hai mandata in onda tu.", tip_st_edited: "Hai cambiato il testo e l'hai mandata in onda. Il nuovo testo ha superato il controllo di numeri e nomi.",
@@ -185,7 +185,7 @@ export const TEXT = {
     tip_st_template: "Fatta dal codice a partire dai fatti: niente IA, non serve approvazione.",
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
-    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: "doveva andare in onda al {m}'", left: "ancora {s} s",
+    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
     done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
@@ -213,8 +213,8 @@ export const TEXT = {
     noStories: "Todavía no hay historias de IA en esta repetición. Los gráficos estándar salen solos; las historias aparecen aquí cuando los agentes han trabajado sobre el partido.",
     offair: "Fuera de antena", goMinute: "Ir al minuto {m}", goTitle: "Ir a este momento",
     st_auto_approved: "Aprobada automáticamente", st_needs_review: "Por revisar", st_approved: "Aprobada", st_edited: "Editada y aprobada", st_rejected: "Rechazada",
-    defaultWas: "estado inicial: {s}", heldSafety: "en espera: marcada por Content Safety",
-    line_live: "En antena, {by}", by_auto_approved: "aprobada automáticamente (riesgo bajo)", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti", by_template: "gráfico estándar, no necesita aprobación",
+    defaultWas: "Antes de tu decisión: {s}.", before_needs_review: "Antes de tu decisión esperaba tu revisión.", before_auto_approved: "Antes de tu decisión salía al aire sola (riesgo bajo).", heldSafety: "en espera: marcada por Content Safety",
+    line_live: "En antena, {by}", by_auto_approved: "aprobada automáticamente (riesgo bajo)", by_approved: "aprobada por ti", by_edited: "editada y aprobada por ti", by_proposal: "propuesta de la IA puesta en antena por ti", by_template: "gráfico estándar, no necesita aprobación",
     line_held: "Espera tu decisión, {why}", why_safety: "marcada por Content Safety", line_rejected: "Fuera de antena, rechazada por ti", line_kill: "Fuera de antena mientras los gráficos de IA están apagados",
     details: "Detalles", whyReject: "¿Qué estaba mal?", r_number: "Un número", r_player: "Un nombre", r_moment: "El momento", r_tone: "El tono",
     risk_low: "Riesgo bajo", risk_mid: "Riesgo medio", risk_high: "Riesgo alto", riskTitle: "Puntuación de riesgo {r}. Por debajo de {t} una historia sale al aire sola.",
@@ -235,7 +235,7 @@ export const TEXT = {
     proposalOn: "Propuesta de IA, en antena: ", proposalOff: "Propuesta de IA, no emitida: ", useProposal: "Usar la propuesta",
     lang_en: "Inglés", lang_it: "Italiano", lang_es: "Español", emptyText: "El texto ({name}) no puede quedar vacío. Rechaza la historia para dejarla fuera de antena.",
     cancel: "Cancelar", saveApprove: "Guardar y aprobar",
-    done_approved: "Aprobación guardada: {what} en antena", done_kept: "Aprobación guardada: {what} sigue en antena", done_edited: "Cambio guardado: {what} en antena",
+    done_approved: "Aprobación guardada: {what} en antena", done_kept: "Aprobación guardada: {what} sigue en antena", done_edited: "Cambio guardado: {what} en antena", done_proposal: "Propuesta de la IA en antena: {what}", done_proposalKill: "Propuesta de la IA guardada: {what} saldrá al aire cuando vuelvas a encender los gráficos de IA",
     done_approvedKill: "Aprobación guardada: {what} saldrá al aire cuando vuelvas a encender los gráficos de IA",
     done_keptKill: "Aprobación guardada: {what} saldrá al aire cuando vuelvas a encender los gráficos de IA",
     done_editedKill: "Cambio guardado: {what} saldrá al aire cuando vuelvas a encender los gráficos de IA", done_rejected: "Rechazo guardado: {what} fuera de antena",
@@ -249,7 +249,7 @@ export const TEXT = {
     tokens: "tokens", cost: "coste de los modelos", yours: "acciones tuyas", logCaption: "Registro, primero lo más reciente",
     colWho: "Quién", colWhat: "Qué", colCost: "Tokens y coste",
     a_ai_off: "has apagado los gráficos de IA", a_ai_on: "has encendido los gráficos de IA", a_ask: "tu pregunta, {s}", a_auto: "aprobada automáticamente, riesgo {r} por debajo de {t}",
-    a_approved: "aprobada", a_edited: "editada", a_rejected: "rechazada", a_undo: "has deshecho la última acción",
+    a_approved: "aprobada", a_edited: "editada", a_used_proposal: "has usado la propuesta de la IA", a_rejected: "rechazada", a_undo: "has deshecho la última acción",
     auditEmpty: "Todavía ninguna. Emite una historia, edítala o recházala y aparecerá aquí.",
     pipeline: "Cómo nace una historia", noTraces: "Todavía no hay trazas de los agentes en esta repetición.", wholeRun: "Toda la ejecución", showStory: "Ver la historia",
     traceSum: ({ n, tok, usd, s }) => `${n} relevo${n === "1" ? "" : "s"}, ${tok} tokens, ${usd}, ${s} s`,
@@ -291,6 +291,9 @@ export const TEXT = {
 };
 
 /** A desk string in a page language, English when that language lacks it. */
+/** Italian "al 10'" but "all'8'", "all'11'", "all'80'": the article elides before a vowel sound (otto, undici, uno). */
+export function alMinute(m) { return /^(8|11?(?!\d))/.test(String(m)) ? `all'${m}'` : `al ${m}'`; }
+
 export function tr(lang, key, vars = {}) {
   const v = TEXT[lang]?.[key] ?? TEXT.en[key];
   if (typeof v === "function") return v(vars);
@@ -634,7 +637,7 @@ export class Desk {
     this.decisions.set(id, { story_id: id, decision, edited_text: editedText, at, from: wasStatus, ts: this.state.ts }); // from: a generated graphic rejected while waiting was skipped, not taken out
     this.note = "";
     if (!this.online || s.gen) {
-      this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
+      this.localAudit.unshift({ at, ts: this.state.ts, actor: "human", action: this.usedProposal(s) ? "used_proposal" : decision, story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
         detail: { langs: [...new Set(Object.keys(editedText ?? {}).map((k) => k.replace(/^title_/, "")))] } });
       this.endEdit(id);
       this.announce(s, prev, wasStatus, undoing);
@@ -688,7 +691,7 @@ export class Desk {
     if (undoing) key = `undone_${this.tally(s)}`;
     else {
       key = st === "rejected" ? (s.gen ? (wasStatus === "needs_review" ? "done_skipped" : "done_takenOut") : "done_rejected")
-        : st === "edited" ? "done_edited" : wasStatus === "auto_approved" ? "done_kept" : "done_approved";
+        : st === "edited" ? (this.usedProposal(s) ? "done_proposal" : "done_edited") : wasStatus === "auto_approved" ? "done_kept" : "done_approved";
       if (this.killed(s) && st !== "rejected") key += "Kill";
     }
     this.setDone({ id, key }, undoing ? null : { id, prev });
@@ -755,8 +758,17 @@ export class Desk {
     this.tab = "traces";
     this.render();
     const g = this.root.querySelector(`[data-trace="${CSS.escape(storyId)}"]`);
-    g?.scrollIntoView({ block: "start" });
+    this.scrollToTop(g);
     g?.focus({ preventScroll: true });
+  }
+
+  // Brings el to the top of the desk's own scrolling list: scrollIntoView would scroll the page too, and the
+  // masthead and the picture would leave the screen. Without a scrolling box in the desk (the page scrolls), as before.
+  scrollToTop(el) {
+    let box = el?.parentElement;
+    while (box && box !== this.root.parentElement && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+    if (!el || !box || box === this.root.parentElement) return el?.scrollIntoView({ block: "start" });
+    box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
   }
 
   // ---- keys -----------------------------------------------------------------------------------
@@ -903,6 +915,8 @@ export class Desk {
   // "Goal 10'": a story as the status line and the buttons name it
   what(s) { return `${kindName(s.kind, this.state.lang)} ${this.minuteText(s)}'`; }
 
+  byKey(s) { const st = this.status(s); return st === "edited" && this.usedProposal(s) ? "by_proposal" : `by_${st}`; }
+
   tally(s) { return this.onAir(s) ? "onair" : this.status(s) === "needs_review" && !this.killed(s) ? "held" : "off"; }
 
   // As the card shows it: a story cleared for air but not on screen now is "approved", not "On air"
@@ -913,14 +927,14 @@ export class Desk {
     const st = this.status(s), t = this.tallyOf(s), lang = this.state.lang;
     if (t === "held") return this.tx("line_held", { why: s.gen ? this.tx("why_gen") : s.safety === "flagged" ? this.tx("why_safety") : this.tx(`risk_${riskBand(Number(s.risk))}`).toLocaleLowerCase(lang) });
     if (t === "off") return this.tx(st === "expired" ? "line_expired" : st === "rejected" ? (this.skipped(s) ? "line_skipped" : "line_rejected") : this.killed(s) ? "line_kill" : "offair");
-    const by = this.tx(s.filler && st === "auto_approved" ? "by_template" : `by_${st}`);  // as the proof panel says
+    const by = this.tx(s.filler && st === "auto_approved" ? "by_template" : this.byKey(s));  // as the proof panel says
     return t === "onair" ? this.tx("line_live", { by }) : cap(by, lang);
   }
 
   // A Done row in a few words: who decided, or why it stays off air
   outcome(s) {
     const st = this.status(s);
-    const by = this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : `by_${st}`);
+    const by = this.tx(st === "expired" ? "row_expired" : st === "rejected" ? (this.skipped(s) ? "row_skipped" : "row_rejected") : this.killed(s) ? "row_kill" : this.byKey(s));
     return this.aired(s) ? this.tx("row_aired", { m: this.clockText(this.firstOf(s)), by }) : by;
   }
   // the history of what aired: on air by the rule, or decided in this tab (match time ts) before its slot ended,
@@ -992,7 +1006,8 @@ export class Desk {
       section("needs", needs.map((s) => this.renderCard(s)), needsEmpty),
       section("done", done.map((s) => this.renderRow(s)), tx("doneEmpty")),
       // the missed ones are counted, not listed among the decisions; their rows open on demand
-      missed.length ? h("details", { className: "missed", "data-focus": "sec:missed" },
+      // open stays open across the redraws a playing replay makes (each new cue redraws the list)
+      missed.length ? h("details", { className: "missed", "data-focus": "sec:missed", open: this.missedOpen, ontoggle: (e) => { this.missedOpen = e.target.open; } },
         h("summary", { title: tx("tip_st_expired") }, tx("missed", { n: int(missed.length, this.state.lang) })),
         h("ul", { className: "items" }, missed.map((s) => h("li", {}, this.renderRow(s))))) : null,
     ];
@@ -1125,7 +1140,8 @@ export class Desk {
           h("b", {}, s.safety === "flagged" ? cap(tx("why_safety"), lang) : tx(`risk_${band}`)),
           h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
         " ", tx(tip)),
-      this.decisions.has(id) ? h("p", { className: "default" }, tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
+      this.decisions.has(id) ? h("p", { className: "default" }, TEXT.en[`before_${this.defaultStatus(s)}`] ? tx(`before_${this.defaultStatus(s)}`)
+        : tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
       s.safety === "flagged" && s.default_status === "auto_approved" && st !== "needs_review" ? h("p", { className: "default" }, tx("heldSafety")) : null,
       this.editing === id ? null : this.renderProposal(s, lang),
       h("dl", { className: "checks" },
@@ -1159,11 +1175,17 @@ export class Desk {
     const p = s.verifier?.proposals;
     if (!p) return null;
     const text = p[lang] ?? p.en ?? "";
-    const using = LANGS.every((l) => this.decisions.get(s.story_id)?.edited_text?.[l] === p[l]);
+    const using = this.usedProposal(s);
     return h("div", { className: "proposal" },
       h("p", { className: "proposal-text" }, h("b", {}, this.tx(using ? "proposalOn" : "proposalOff")), h("span", { lang: p[lang] ? lang : "en" }, text)),
       using ? null : h("button", { type: "button", className: "ctl", "data-focus": `${s.story_id}:proposal`, disabled: this.locked(),
         onclick: () => this.decide(s, "edited", { ...p }) }, this.tx("useProposal")));
+  }
+
+  // The visitor's edit is the AI proposal word for word: on air as an edit, but said and logged as the AI's line
+  usedProposal(s) {
+    const p = s.verifier?.proposals, e = this.decisions.get(s.story_id)?.edited_text;
+    return !!p && !!e && Object.keys(e).length === LANGS.length && LANGS.every((l) => e[l] === p[l]);
   }
 
   startEdit(s) {
@@ -1276,7 +1298,8 @@ export class Desk {
     const humans = [...(this.online ? this.auditRows.filter((r) => r.actor === "human") : []), ...this.localAudit];
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
     const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
-    return { rows: [...auto, ...agents].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
+    // the table is the whole trail: the producer's decisions too, among the agents' steps
+    return { rows: [...auto, ...agents, ...humans].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
   }
 
   renderAudit() {
@@ -1311,7 +1334,7 @@ export class Desk {
       rows.length ? [h("h3", { className: "audit-head" }, tx("logCaption")), h("div", { className: "log-wrap", role: "region", tabindex: 0, "aria-label": tx("logCaption") }, h("table", { className: "log" },
         h("caption", { className: "sr" }, tx("logCaption")),
         h("thead", {}, h("tr", {}, ["colMinute", "colWho", "colWhat", "colCost"].map((c) => h("th", { scope: "col" }, tx(c))))),
-        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" ? "auto" : "agent"}` },
+        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" || r.actor === "human" ? r.actor : "agent"}` },
           h("td", { className: "num", title: utc(r) }, minute(r)),
           // the model under its agent, and the story by its name and minute
           h("td", {}, agentName(r.actor, lang), r.model ? h("span", { className: "model", lang: "en" }, r.model) : null),
@@ -1395,7 +1418,7 @@ export class Desk {
     this.tab = "stories";
     this.render();
     const el = this.root.querySelector(`#story-${CSS.escape(id)}`);
-    el?.scrollIntoView({ block: "start" });
+    this.scrollToTop(el);
     el?.querySelector(".minute")?.focus({ preventScroll: true });
   }
 

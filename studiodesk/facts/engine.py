@@ -38,6 +38,10 @@ Formulas (all windows are 5 minutes of one period; the last window of a period i
   the keeper saves), team_corners (at the corner); source events all the team's counted events so far.
   team_possession: the team's share of the frames in which either team owns the ball, from kick-off to the
   end of every 5-minute window (ts = the window end, source frames 0 to that end).
+- team_pass_accuracy: a team's passes completed of those tried since kick-off, at the end of every 5-minute
+  window (ts = the window end), as a share (%) with the count in the label; source events the passes.
+- player_goals: a player's goals since kick-off (own goals not counted), 0 when the player comes on and
+  again at each goal, when the ball crosses the line as the score fact; source events the goals.
 """
 import json
 import math
@@ -310,7 +314,11 @@ class Match:
                      f"Starting formation {name}, team sheet", team, None, period=1)
 
     def score(self):
-        goals = {self.home: 0, self.away: 0}
+        goals, scored = {self.home: 0, self.away: 0}, {}
+        for pid, (on, _) in self.lineups.items():  # every player on the team sheet starts at 0 goals
+            if pid in self.team_of:
+                self.add("player_goals", on or 0.0, 0, "goals", "0 goals since kick-off", self.team_of[pid], pid,
+                         period=None if on else 1)
         for e in self.events:
             if not is_goal(e):
                 continue
@@ -319,6 +327,11 @@ class Match:
             f = self.line_frame(e["ts"]) if self.pos is not None else None
             self.add("score", e["ts"], goals[team], "goal", f"Goal {goals[self.home]}-{goals[self.away]}",
                      team, e["player_id"], [e["event_id"]], frames=None if f is None else (f, f))
+            if e["result_name"] != "owngoal":
+                scored.setdefault(e["player_id"], []).append(e["event_id"])
+                n = len(scored[e["player_id"]])
+                self.add("player_goals", e["ts"], n, "goals", f"{n} goal{'s' * (n > 1)} since kick-off", e["team_id"],
+                         e["player_id"], scored[e["player_id"]], frames=None if f is None else (f, f))
 
     def team_totals(self):
         """Running counts per team (module docstring): a fact at kick-off and one at every change."""
@@ -344,6 +357,18 @@ class Match:
                 for n, (ts, _) in enumerate(got, 1):
                     self.add(kind, ts, n, unit, (one if n == 1 else many.format(n)) + " since kick-off", team, None,
                              [eid for _, eid in got[:n]])
+
+    def team_passes(self, period, b):
+        """Each team's passes completed of those tried, from kick-off to the end of this window."""
+        for team in (self.home, self.away):
+            es = [e for e in self.events if e["team_id"] == team and e["type_name"] in PASS_TYPES
+                  and (e["period"], e["ts"]) <= (period, b)]
+            if not es:
+                continue
+            ok = sum(e["result_name"] == "success" for e in es)
+            pct = 100 * ok / len(es)
+            self.add("team_pass_accuracy", b, round(pct, 1), "%", f"Pass accuracy {pct:.0f}% ({ok}/{len(es)}) since kick-off",
+                     team, None, [e["event_id"] for e in es], period=period)
 
     def possession(self, period, b, frames):
         """Each team's share of the owned frames from kick-off to the end of this window."""
@@ -458,6 +483,7 @@ class Match:
                 fa, fb = self.frame(a), max(self.frame(b) - 1, self.frame(a))
                 frames = (fa, fb)
             self.momentum(period, b, evs, ids, frames, mins)
+            self.team_passes(period, b)
             if frames is None:
                 continue
             self.possession(period, b, frames)
