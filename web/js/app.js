@@ -563,6 +563,7 @@ function tick(now) {
   voice?.update(state.ts, end); // null until its clips are checked
   try { booth?.update(state.ts); } catch (e) { booth.stop(); queueMicrotask(() => { throw e; }); } // reported, the frame goes on
   moments.update(state.ts);
+  ask?.update();
   const onAir = onAirStory();
   activity.update(state.ts, state.seeked, onAir, state.lang);
   audBox.update(onAir, state.ts, state.lang, state.audience);
@@ -766,6 +767,29 @@ async function main() {
     const third = [...host.live.values()].some((i) => i.cue.graphic === "pass_shot");
     return ball.visible && ball.x > STAGE_W / 2 && !third ? "left" : "right";
   };
+  // a graphic that fails to register is named on screen and its cues are skipped; one that throws on air
+  // is named too, and that cue is tried again only when its payload changes (ograf-host.js _fail)
+  const broken = new Set();
+  let filling = null;
+  const noGraphic = (g) => {
+    if (broken.has(g)) return;
+    broken.add(g);
+    if (filling) return; // the words still to come name every graphic in broken
+    // over the 3D view's own notice, this one waits: it comes back when that clears (view3d.js _notice)
+    const fill = () => {
+      const text = t("nographic").replace("{g}", [...broken].join(", "));
+      if (view3d?.notice) view3d.prior = text;
+      else { $("#notice").textContent = text; $("#notice").hidden = false; }
+      layout();
+    };
+    const n = $("#notice");
+    if (view3d?.notice || !n.hidden) return fill();
+    // an alert region that shows already filled is not read out: it shows empty, then gets the words (as view3d.js)
+    n.textContent = "";
+    n.hidden = false;
+    layout();
+    filling = setTimeout(() => { filling = null; fill(); }, 100);
+  };
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },
     frameRate: 60,
@@ -774,15 +798,10 @@ async function main() {
     vendorParams: () => ({ v_showFactIds: false, v_players: players, v_teams: teams, v_compact: compact, v_side: awayFromBall() }),
     // in the deck or not, the nameplate stays on the pitch, magnified so its smallest type (26 px) is drawn at 11.5 px
     compact: () => ({ deck: deckMode ? deck : null, magnify: Math.max(1, 11.5 / (26 * scale)) }),
+    onError: noGraphic,
   });
-  // a graphic that fails to register is left out (its cues are skipped) and named on screen
   const reg = await Promise.allSettled(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
-  const missing = GRAPHICS.filter((g, i) => reg[i].status === "rejected");
-  if (missing.length) {
-    $("#notice").textContent = t("nographic").replace("{g}", missing.join(", "));
-    $("#notice").hidden = false;
-    layout();
-  }
+  GRAPHICS.filter((g, i) => reg[i].status === "rejected").forEach(noGraphic);
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
   desk.render();

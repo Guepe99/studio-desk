@@ -132,6 +132,14 @@ test("a template graphic is written by code and needs no approval; a producer's 
   assert.equal(ew.checks.at(-1)[1], "Edited and approved by the producer");
 });
 
+test("on-air text of a pass or shot: the same digits as the graphic, the 100 threshold on the value rounded to tenths", () => {
+  const big = (value) => onAirText({ graphic: "pass_shot", payload: { value, unit: "km/h" } }).split(" ")[0];
+  assert.equal(big(48.24), "48.2");
+  assert.equal(big(99.94), "99.9");
+  assert.equal(big(99.96), "100");
+  assert.equal(big(112.45), "112");
+});
+
 test("M001 team shape: the ten values on screen, each found in the panel's own facts, in Italian with a decimal comma", () => {
   const P = PACKS.M001, cue = P.match.cues.find((c) => c.graphic === "team_stats" && c.lang === "it");
   const pr = proofOf(cue, P.ctx(cue));
