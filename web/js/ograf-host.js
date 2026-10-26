@@ -180,16 +180,24 @@ export class OGrafHost {
 
   // A graphic that throws (load, render, play) is logged, named to the page once (opts.onError) and taken
   // off, so its slot frees; that cue is not tried again until the page reloads or its payload changes (an
-  // edited card). An instance no longer on screen (a seek or its cue end came first) is only logged.
+  // edited card). An instance no longer on screen (a seek or its cue end came first) counts too, unless the
+  // cue's payload changed since: then the failure is only logged.
   _fail(inst, err) {
     if (inst.failed) return;
     inst.failed = true;
-    console.error(`OGraf graphic ${inst.cue.graphic} failed on cue ${inst.cue.cue_id}:`, err);
-    if (this.live.get(inst.cue.cue_id) !== inst) return;
-    this.failed.add(failKey(inst.cue));
-    this.opts.onError?.(inst.cue.graphic, err);
-    this._remove(inst.cue.cue_id, false);
-    this.taken.delete(inst.cue.cue_id); // failed, not taken: the same cue with a new payload may come on at once
+    const id = inst.cue.cue_id, key = failKey(inst.cue);
+    // reported once per payload: seeks while it loaded may have made several instances of it
+    if (!this.failed.has(key)) {
+      console.error(`OGraf graphic ${inst.cue.graphic} failed on cue ${id}:`, err);
+      const cur = this.cues.find((c) => c.cue_id === id);
+      if (!cur || failKey(cur) === key) {
+        this.failed.add(key);
+        this.opts.onError?.(inst.cue.graphic, err);
+      }
+    }
+    if (this.live.get(id) !== inst) return;
+    this._remove(id, false);
+    this.taken.delete(id); // failed, not taken: the same cue with a new payload may come on at once
   }
 
   _failed(c) { return this.failed.size > 0 && this.failed.has(failKey(c)); }
@@ -203,11 +211,14 @@ export class OGrafHost {
     inst.gone = true;
     if (animate) this.leaving.add(inst);
     else inst.node.remove();
+    // a load that failed is reported by _add; a stop or dispose that fails (or throws) is only logged, the cue aired
     inst.loaded
-      // a load that failed is reported by _add; a stop or dispose that fails is only logged, the cue aired
-      .then(() => Promise.resolve(inst.el.stopAction(animate && inst.ready ? {} : { skipAnimation: true }))
-        .then(() => inst.el.dispose({}))
-        .catch((e) => console.error(`OGraf graphic ${inst.cue.graphic} failed to leave on cue ${inst.cue.cue_id}:`, e)), () => {})
+      .then(async () => {
+        try {
+          await inst.el.stopAction(animate && inst.ready ? {} : { skipAnimation: true });
+          await inst.el.dispose({});
+        } catch (e) { console.error(`OGraf graphic ${inst.cue.graphic} failed to leave on cue ${inst.cue.cue_id}:`, e); }
+      }, () => {})
       .finally(() => { inst.node.remove(); this.leaving.delete(inst); });
   }
 }

@@ -768,7 +768,7 @@ async function main() {
     return ball.visible && ball.x > STAGE_W / 2 && !third ? "left" : "right";
   };
   // a graphic that fails to register is named on screen and its cues are skipped; one that throws on air
-  // is named too, and that cue is not tried again (ograf-host.js _fail)
+  // is named too, and that cue is tried again only when its payload changes (ograf-host.js _fail)
   const broken = new Set();
   let filling = null;
   const noGraphic = (g) => {

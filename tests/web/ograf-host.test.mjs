@@ -6,21 +6,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const log = [];
-let flaky = 0;
 const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
 class FakeGraphic {
   constructor(tag) { Object.assign(this, { tag, style: {}, attached: false, played: false }); }
   remove() { this.attached = false; }
-  // a real load awaits fonts; "bad" (or a payload marked broken) throws as a render() that throws would,
-  // "flaky" throws on its first load only
+  // a real load awaits fonts; "bad" (or a payload marked broken) throws as a render() that throws would
   async load(p) {
     await tick();
-    if (this.tag === "ograf-bad" || p.data.broken || (this.tag === "ograf-flaky" && !flaky++)) throw new Error("render failed");
+    if (this.tag === "ograf-bad" || p.data.broken) throw new Error("render failed");
     this.data = p.data;
     return { statusCode: 200 };
   }
   async playAction() { this.played = true; log.push(["play", this.data.id]); return {}; }
-  async stopAction() { log.push(["stop", this.data.id]); return {}; }
+  // "stopper" throws at once, before any promise
+  stopAction() { if (this.tag === "ograf-stopper") throw new Error("stop failed"); log.push(["stop", this.data.id]); return Promise.resolve({}); }
   async dispose() { if (this.tag === "ograf-sticky") throw new Error("dispose failed"); return {}; }
   async setActionsSchedule() { return {}; }
   async goToTime() { return {}; }
@@ -141,19 +140,55 @@ test("a graphic that aired but fails to dispose is only logged: its cue comes ba
   assert.deepEqual(unhandled, []);
 });
 
-test("a stale instance whose load fails after a seek replaced it does not mark the cue failed", async () => {
+test("seeks while a broken graphic loads: logged and named once, and not loaded again", async () => {
+  const { errors, logged } = await capture(async (h) => {
+    h.graphics.bad = { manifest: { id: "bad" }, tag: "ograf-bad", inS: 0, outS: 0 };
+    h.setCues([cue("x", 1, 60, "bad")], 0);
+    for (let i = 0; i < 20; i++) { h.sync(1.2 + i * 0.1, true); await tick(1); } // a drag: a seek every frame
+    await tick(30);
+    for (let i = 0; i < 5; i++) h.sync(4 + i * 0.1, true);
+    assert.deepEqual([...h.live.keys()], [], "not loaded again");
+  });
+  assert.deepEqual(errors, [["bad", "render failed"]], "named once");
+  assert.equal(logged.length, 1, "logged once");
+});
+
+test("a broken graphic whose cue ends before its load fails is still named", async () => {
   const { errors } = await capture(async (h) => {
-    h.graphics.flaky = { manifest: { id: "flaky" }, tag: "ograf-flaky", inS: 0, outS: 0 };
-    h.setCues([cue("f", 1, 6, "flaky")], 0);
-    run(h, 0, 1.2);   // the first load starts (and will fail)
-    h.sync(1.3, true); // a seek: a second instance, whose load succeeds
+    h.graphics.bad = { manifest: { id: "bad" }, tag: "ograf-bad", inS: 0, outS: 0 };
+    h.setCues([cue("x", 1, 0.2, "bad")], 0);
+    run(h, 0, 1.5); // on at 1 s, off at 1.2 s, all before the load settles
     await tick(30);
-    assert.deepEqual([...h.live.keys()], ["f"]);
-    h.sync(1.4, true); // and another seek: the cue is not marked failed
+  });
+  assert.deepEqual(errors, [["bad", "render failed"]]);
+});
+
+test("a load that fails after its payload was edited does not mark the edited cue failed", async () => {
+  const { errors } = await capture(async (h) => {
+    const c = { ...cue("e", 1, 6), payload: { id: "e", broken: true } };
+    h.setCues([c], 0);
+    run(h, 0, 1.2); // the broken payload starts loading
+    h.setCues([{ ...c, payload: { id: "e" } }], 1.3); // edited before that load fails
     await tick(30);
-    assert.deepEqual([...h.live.keys()], ["f"]);
+    assert.deepEqual([...h.live.keys()], ["e"]);
+    h.sync(1.4, true);
+    assert.deepEqual([...h.live.keys()], ["e"], "the edited cue is still tried after a seek");
   });
   assert.deepEqual(errors, [], "nothing named to the page");
+});
+
+test("a stop action that throws at once is only logged, with no unhandled rejection", async () => {
+  const { errors, logged, unhandled } = await capture(async (h) => {
+    h.graphics.stopper = { manifest: { id: "stopper" }, tag: "ograf-stopper", inS: 0, outS: 0 };
+    h.setCues([cue("s", 1, 1, "stopper")], 0);
+    run(h, 0, 1.1);
+    await tick(30);
+    run(h, 1.2, 2.5);
+    await tick(30);
+  });
+  assert.deepEqual(unhandled, []);
+  assert.deepEqual(errors, []);
+  assert.equal(logged.length, 1, "the stop failure is logged");
 });
 
 test("a cue that failed is tried again once its payload changes (an edited card)", async () => {
