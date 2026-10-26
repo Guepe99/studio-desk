@@ -495,6 +495,9 @@ _CHAIN = re.compile(_LB + r"\d+(?:-\d+){2,}(?![\w.,]\d)")
 _FACT_ID = re.compile(r"F-[A-Z_]+-\d+", re.IGNORECASE)
 # the word the model puts before an id ("fact F-SCORE-000001", "fatto F-…"): it goes with the id
 _CITED_AS = re.compile(r"\b(?:facts?|fatt[oi]|hechos?)\s*:?\s*(?=F-[A-Z_]+-\d+)", re.IGNORECASE)
+# "; see F-1 and F-2", "citing F-1, F-2": the ids, what joins them and the word that leads them go as one
+_ID_RUN = re.compile(r"\s*[,;]?\s*(?:\b(?:see|citing|cf\.?|vedi|ver|véase|cfr\.?)\s+)?F-[A-Z_]+-\d+"
+                     r"(?:\s*(?:,|;|&|\band\b|\be\b|\by\b)\s*F-[A-Z_]+-\d+)*", re.IGNORECASE)
 _CITATION = re.compile(r"\s*\[\s*F-[A-Z_]+-\d+(?:\s*[,;]\s*F-[A-Z_]+-\d+)*\s*\]", re.IGNORECASE)
 
 
@@ -535,11 +538,8 @@ def decimal_comma(text, lang):
 
 def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
-    text = _FACT_ID.sub("", _CITATION.sub("", _CITED_AS.sub("", text)))
+    text = _FACT_ID.sub("", _ID_RUN.sub("", _CITATION.sub("", _CITED_AS.sub("", text))))
     text = re.sub(r"\s*[,;]\s*(?=\))", "", text)  # "(minuto 10, )" reads "(minuto 10)"
-    # "..., see F-1 and F-2." loses its ids above; the "see and" left behind goes too
-    text = re.sub(r"[,;]?\s*\b(?:see|vedi|ver|véase)\b(?:\s*(?:and|e|y|,))*\s*(?=[.;:!?)]|$)", "", text,
-                  flags=re.IGNORECASE)
     return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
 
 

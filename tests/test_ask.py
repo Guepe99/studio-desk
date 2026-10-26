@@ -794,6 +794,10 @@ def test_a_goal_ordinal_passes_only_for_a_cited_goal():
 def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
     assert rules.strip_citations("Okowande scored twice, as analysed in the on-air story; see F-SCORE-000001 and "
                                  "F-SCORE-000002.") == "Okowande scored twice, as analysed in the on-air story."
+    assert rules.strip_citations("Redwick lead, as reported in the on-air analysis citing F-SCORE-000001 and "
+                                 "F-SCORE-000002.") == "Redwick lead, as reported in the on-air analysis."
+    assert rules.strip_citations("Ha segnato due volte, vedi F-SCORE-000001 e F-SCORE-000002.") == "Ha segnato due volte."
+    assert rules.strip_citations("Ostwick ha il 54% del possesso (F-TEAM_POSSESSION-000040).") == "Ostwick ha il 54% del possesso."
     assert rules.strip_citations("Vedi i dati.") == "Vedi i dati."
     assert rules.goal_word("Hugo Okowande ha marcado 2 goals.", "es") == "Hugo Okowande ha marcado 2 goles."
     assert rules.goal_word("Okowande ha segnato 2 goals.", "it") == "Okowande ha segnato 2 gol."
