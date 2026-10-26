@@ -270,9 +270,14 @@ export class View3D {
       this.set("2d");
       this._notice(() => this.t("lost3d"));
     });
-    await loadMotion(s).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
-    new AwarenessRig(s);
-    new KeeperRig(s);
+    try {
+      await loadMotion(s).catch((e) => console.warn(`motion clips not loaded, procedural poses: ${e.message}`));
+      new AwarenessRig(s);
+      new KeeperRig(s);
+    } catch (e) {
+      s.engine.dispose();   // the page falls back to 2D (fail3d) with no live engine behind it
+      throw e;
+    }
     this.scene = s;
     this.last = null;
     this._apply();

@@ -84,8 +84,11 @@ Considered and not used:
 - Law 4 of the Laws of the Game asks that each goalkeeper wears colours that distinguish them
   from the other players and the officials
   ([FA copy of Law 4, 2026-27](https://www.thefa.com/-/media/files/thefaportal/governance-docs/laws-of-the-game/2026-27/law-4-the-players-equipment.ashx)).
-  Our keepers wear a fixed green (home) or purple (away), since the export carries no keeper
-  colours; a team whose primary colour is close to these would clash.
+  The export carries no keeper colours, so the home keeper wears green and the away keeper
+  purple unless that shirt is within 25 (CIE76 delta E) of either team's two colours or of the
+  other keeper's; then he takes the colour of a fixed palette farthest from those
+  (`keeperKits` in web/js/players3d.js). On M001 and M002 the home keeper wears yellow, on M004
+  the away keeper.
 - In the wide frame a player is 30 to 60 px tall: what reads is the shirt and shorts colour
   blocks and the socks, so the far body keeps those as flat colours and drops everything else.
 - Numbers are readable only in replays and close-ups; there the back number is the one that
