@@ -6,7 +6,7 @@ Every visitor gets their own session, kept in a cookie. Your decisions never rea
 
 **3D or 2D.** On a computer with a graphics card the picture is 3D, with the 2D pitch as a small see-through minimap at the bottom; click the minimap to swap the two views. On a machine without a graphics card (a virtual machine or a remote desktop, where the browser draws in software) the page opens on the 2D pitch. Add `&view=split` to any link below to bring the 3D view back; it may run slowly there.
 
-The links below open each moment at 1x speed a few seconds before it happens, so you do not have to wait for it. Graphics stay on screen for 6 to 12 seconds, so at 4x or faster they pass quickly. While a graphic is on air, **Show proof** under the picture lists the fact behind each number on it.
+The links below open each moment at 1x speed a few seconds before it happens, so you do not have to wait for it. Graphics stay on screen for 6 to 15 seconds, so at 4x or faster they pass quickly. While a graphic is on air, **Show proof** under the picture lists the fact behind each number on it.
 
 ## 1. Watch the agents work (1 minute)
 
@@ -23,20 +23,20 @@ https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=
 On the big chance in **Needs you**:
 
 1. Open **Details**. It shows the facts the story cites from the fact ledger, each with what it measures and its value, the event they come from on a small pitch, the verifier's verdict and the Content Safety result.
-2. Press **Put on air**, **Edit**, **Reject** or **Use proposal** (the agents' own line). The confirmation that appears has an **Undo** button.
-3. Now open the first goal, in the 10th minute. Redwick Wanderers score; a goal is low risk, so its graphics go on air by themselves, for about 30 seconds:
+2. Press **Put on air**, **Edit** or **Reject** on the story, or **Use proposal** in Details (the agents' own line). Pause first if you need time: the big chance card is due at 8:01, and your choice decides what airs then. The confirmation that appears has an **Undo** button.
+3. Now open the first goal, in the 10th minute. Redwick Wanderers score; a goal is low risk, so its graphics go on air by themselves: a shot card, then the goal card, for about 18 seconds:
 
    https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1
 
-4. Open the **Audit log** tab. Your decision on the big chance is there, next to the auto-approved goal.
+4. Open the **Audit log** tab. Your decision on the big chance is at the top, under **Your actions**; the table below it lists the auto-approved goal and the agent steps.
 
 ## 3. See what the agents did (1 minute)
 
-Open the **Traces** tab. Each step lists the agent, the model, the tokens, the time and the cost. Steps marked "rules, no model" or "code, no model" made no model call. Press **Show story** on a step to jump to the story it produced.
+Open the **Traces** tab. Each step lists the agent, the model, the tokens, the time and the cost. Director steps are marked "rules, no model": the director makes no model call. Press **Show story** on a step to jump to the story it produced.
 
 ## 4. Switch the AI off (30 seconds)
 
-Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics stay; the **Next key moment** button becomes **Next goal**. Turn it back on. The switch belongs to your session, so it also applies to the other matches until you turn it back on.
+Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics that code builds from the facts stay (line-ups, name plates, pass and shot cards, and the Momentum and Team shape panels); the **Next key moment** button becomes **Next goal**. Turn it back on. The switch belongs to your session, so it also applies to the other matches until you turn it back on.
 
 ## 5. Change the language and the audience (1 minute)
 
