@@ -40,7 +40,7 @@ PREP = {"it": "di", "es": "de"}
 UNIT = {"shot_speed": "km/h", "sprint_speed": "km/h", "shot_distance": "m", "line_height": "m", "momentum": "/10",
         "press_intensity": "/10", "pass_accuracy": "%", "distance_covered": "km", "formation": None}
 RANGE = {"km/h": range(0, 131), "m": range(0, 71), "/10": [i / 10 for i in range(0, 101)],
-         "%": range(0, 101), "km": [i / 10 for i in range(0, 141)]}
+         "%": range(0, 101), "km": range(0, 14001, 100)}  # km: the facts' metres, a clip per tenth of a km
 FORMATIONS = ["4-4-2", "4-3-3", "4-2-3-1", "3-5-2", "3-4-3", "5-3-2", "4-5-1", "4-1-4-1", "5-4-1", "4-4-1-1",
               "3-4-2-1"]
 KOKORO_PY = os.environ.get("STUDIODESK_KOKORO_PY", str(config.ROOT / ".tts" / "kokoro" / "bin" / "python"))
@@ -58,11 +58,12 @@ def variants(lines, role, lang):
 
 
 def number(v, unit, lang):
-    """A fact value as the co-commentator says it: whole km/h, metres and per cent, tenths out of ten and in km."""
+    """A fact value as the co-commentator says it: whole km/h, metres and per cent, tenths out of ten and in km
+    (distance_covered is stored in metres)."""
     if unit is None:
         return "-".join(str(int(v)))
     if unit == "km":
-        v = v / 1000 if v > 200 else v
+        v = v / 1000
     # half up, as web/js/booth.js (Math.round) and the fact engine round: 10.45 km is "10.5"
     x = half_up(v * 10) / 10 if unit in ("/10", "km") else half_up(v)
     s = f"{x:.1f}".removesuffix(".0") if isinstance(x, float) else str(x)

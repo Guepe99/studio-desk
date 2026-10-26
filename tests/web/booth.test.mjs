@@ -184,6 +184,12 @@ test("pieces and number match studiodesk/booth.py", () => {
   assert.equal(number(101.6, "km/h", "en"), "102");
   assert.equal(number(7.26, "/10", "it"), "7,3");
   assert.equal(number(10450, "km", "es"), "10,5");
+  assert.equal(number(200, "km", "en"), "0.2"); // metres, however few: never "200 kilometres"
+  // a distance with no number clip (the clips stop at 14 km) is not said at all
+  const b = new Booth(options("it")), say = (value) => b.render("co", ["{fact:distance_covered}."],
+    { facts: { distance_covered: { fact_id: "F", value } } });
+  assert.equal(say(10450)?.text, "10,5 chilometri.");
+  assert.equal(say(14550), null);
   assert.equal(number(433, null, "en"), "4-3-3");
   assert.equal(clipKey("co", "Dan."), "co|Dan.");
 });

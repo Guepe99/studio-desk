@@ -36,6 +36,7 @@ def test_numbers_are_said_as_the_co_commentator_says_them():
     assert booth.number(101.6, "km/h", "en") == "102"
     assert booth.number(7.26, "/10", "it") == "7,3"
     assert booth.number(10450, "km", "es") == "10,5"
+    assert booth.number(200, "km", "en") == "0.2"  # metres, however few: never "200 kilometres"
     assert booth.number(8.0, "/10", "en") == "8"
     assert booth.number(433, None, "en") == "4-3-3"
 
