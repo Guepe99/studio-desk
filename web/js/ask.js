@@ -3,7 +3,7 @@
 // answer are untrusted text: they are set with textContent, never as markup.
 const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (config.ASK_TIMEOUT_S)
 // Suggested questions, each shown only once the ledger up to the replay time holds the facts that answer it.
-const SUGGEST = [["askSugShots", ["team_shots"]], ["askSugControl", ["team_possession", "team_shots"]],
+const SUGGEST = [["askSugShots", ["team_shots"]], ["askSugControl", ["team_possession"]],
   ["askSugGoals", ["score"]], ["askSugSprint", ["sprint_speed"]], ["askSugPass", ["pass_difficulty"]]];
 const MAX_SUGGEST = 4;
 
