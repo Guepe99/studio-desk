@@ -237,8 +237,8 @@ class Match:
             nxt = self.events[i + 1]["ts"] if i + 1 < len(self.events) else ts + 5
             f0 = self.frame(ts) if self.pos is not None else None
             if self.grid is not None and kind in MOVE_TYPES and e["result_name"] == "success":
-                v = self.xt(e["end_x"], e["end_y"], sign) - self.xt(e["start_x"], e["start_y"], sign)
-                self.add("xt_added", ts, round(v, 4), "xT", f"xT {v:+.3f}", team, pid, [eid])
+                v = round(self.xt(e["end_x"], e["end_y"], sign) - self.xt(e["start_x"], e["start_y"], sign), 4)
+                self.add("xt_added", ts, v, "xT", f"xT {half_up(v * 1000) / 1000:+.3f}", team, pid, [eid])
             if kind in SHOT_TYPES:
                 d = round(math.hypot(e["start_x"] - (LENGTH if sign > 0 else 0.0), e["start_y"] - WIDTH / 2), 1)
                 detail = shot_detail(e, sign, self.saves_after(i))
@@ -464,7 +464,7 @@ class Match:
                 touches = [e["event_id"] for e in mine if e["ts"] <= cp]
                 passes = [e["event_id"] for e in mine if e["ts"] <= cp and e["type_name"] in PASS_TYPES
                           and e["result_name"] == "success"]
-                km = round(float(step_m[:f + 1].sum()) / 1000, 1)
+                km = half_up(float(step_m[:f + 1].sum()) / 100) / 10  # as distance_covered says it
                 peaks = [p for ts, p in sprints if ts <= cp + 1e-9]
                 self.add("checkin_touches", cp, len(touches), "touches", f"{len(touches)} touches {by}", team, pid,
                          touches, period=period)

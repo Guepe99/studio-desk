@@ -1814,7 +1814,7 @@ def template(m, story, lang):
         else:
             key = "recap_win" if story["phase"] == "ft" else "recap_lead"
             text = TEMPLATES[key][i].format(title=title, leader=lead_name, s=s)
-        # the label's own whole percent: value 82.5 can be "83%" in the label, and the two must agree
+        # the label's own whole percent, the number the desk and the booth show
         acc = {f["team_id"]: mt.group(1) for f in facts
                if f["kind"] == "pass_accuracy" and (mt := re.search(r"(\d+)%", f["label_en"]))}
         h, a = m.home["team_id"], m.away["team_id"]

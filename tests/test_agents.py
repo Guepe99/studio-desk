@@ -1153,7 +1153,8 @@ def test_a_discarded_round_spends_no_opener_and_adds_no_audience(desk_db, monkey
 
     async def watch(desk, b, wait=True):
         await batch(desk, b, wait)
-        seen.append(("MARK" in desk.spent, "mark" in desk.used["en"]["loud"], "player:MARK" in desk.director.audiences))
+        seen.append(("MARK" in desk.spent, "mark" in desk.used["en"]["loud"], "player:MARK" in desk.director.audiences,
+                     "MARK" in desk.openings["en"]))
 
     def spends_then_fails(self, s):
         if not failed:  # the round spends an opener and a loud word, its plan takes an audience, then it fails
@@ -1161,6 +1162,7 @@ def test_a_discarded_round_spends_no_opener_and_adds_no_audience(desk_db, monkey
             self.spent.add("MARK")
             self.used["en"]["loud"].add("mark")
             self.director.audiences.append("player:MARK")
+            self.openings["en"].append("MARK")
             raise RuntimeError("down")
         return on_air(self, s)
     monkeypatch.setattr(workflow, "run_batch", watch)

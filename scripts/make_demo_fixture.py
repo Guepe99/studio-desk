@@ -303,7 +303,7 @@ def main(out_dir: Path) -> Path:
         fr = int(round(e["ts"] * FPS))
         opp = out[fr, 1:, :2][[i for i, p in enumerate(players) if p["team_id"] != e["team_id"]]]
         near = int(np.sum(np.linalg.norm(opp - (e["end_x"], e["end_y"]), axis=1) < 6))
-        diff = 10 * min(0.95, dist / 70 + 0.15 * near)  # 0..10, as studiodesk/facts
+        diff = round(10 * min(0.95, dist / 70 + 0.15 * near), 1)  # 0..10, as studiodesk/facts
         fd = fact("pass_distance", e["ts"], e["team_id"], e["player_id"], dist, "m",
                   f"Pass of {dist:.0f} m", [e["event_id"]])
         fq = fact("pass_difficulty", e["ts"], e["team_id"], e["player_id"], diff, "/10",

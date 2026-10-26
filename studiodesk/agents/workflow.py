@@ -947,13 +947,13 @@ async def run_batch(desk, batch, wait=True):
         air, tail = build_workflow(desk)  # a workflow runs one input at a time, and live tails overlap
         # what a round spends: the director's slots and audiences, the phrasebook's openers and style rations
         before = copy.deepcopy(({k: getattr(desk.director, k) for k in ("placed", "whistles", "audiences")},
-                                desk.spent, desk.used))
+                                desk.spent, desk.used, desk.openings))
 
         def restore(director_only=False):
-            slots, spent, used = copy.deepcopy(before)
+            slots, spent, used, openings = copy.deepcopy(before)
             vars(desk.director).update(slots)
             if not director_only:
-                desk.spent, desk.used = spent, used
+                desk.spent, desk.used, desk.openings = spent, used, openings
         try:
             rnd = (await air.run(batch)).get_outputs()[-1]
         except Exception as e:  # noqa: BLE001 - the broadcast goes on with rules and templates
@@ -980,7 +980,7 @@ async def run_batch(desk, batch, wait=True):
             except Exception as e2:  # noqa: BLE001 - the fallback failed too: this batch airs nothing, the match goes on
                 restore()
                 rnd = Round(batch, [], [])
-                with suppress(Exception):  # the failure may be the trace or the database itself
+                with suppress(Exception):  # the failure may be the trace itself
                     desk.trace("director", "fallback", "workflow failed", f"fallback failed: {rules.brief_error(e2)}", [])
         desk.save(rnd)
         if any(s["verifier"]["status"] == "pending" for s in rnd.stories):
