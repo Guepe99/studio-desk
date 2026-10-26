@@ -460,3 +460,15 @@ def test_fillers_cover_every_minute_from_facts_take_turns_and_keep_clear_of_wait
     kids = au.fill_cues(m, meta, facts, events, [cue(0.0, 5.0, "kids")], {"S-1"})
     assert {c["payload"]["quality"] for c in kids if c["graphic"] == "pass_shot"} == {"How hard: 7.5/10"}
     assert not au.fill_cues(m, meta, facts, events, sheet + got, {"S-1"})  # nothing to add twice
+
+
+def test_a_chance_with_no_place_distance_or_speed_keeps_single_spaces():
+    m, stories = _packs(REPLAYS)["M001"]
+    s = next(s for s in stories.values() if s["kind"] == "big_chance" and (rules.shot_info(s) or {}).get("outcome") in pb.OUTCOME["en"])
+    bare = {**s, "place": None, "outcome": rules.shot_info(s)["outcome"],
+            "facts": [f for f in s["facts"] if f["kind"] not in ("shot_distance", "shot_speed")]}
+    assert not pb.focus_options(bare)
+    for role in ("own", "other", "player"):
+        for lang in rules.LANGS:
+            line, = au.chance(m, bare, role, lang)
+            assert "  " not in line, (role, lang, line)
