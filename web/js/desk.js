@@ -392,6 +392,7 @@ export class Desk {
     this.traces = [];
     this.byId = new Map();
     this.decisions = new Map(); // story_id -> {decision, edited_text, at}
+    this.met = new Set(); // the ones this visitor saw waiting in Needs you: only those can be missed
     this.kill = false;
     this.online = false;
     this.offline = "";   // why decisions stay in this tab, when the API refused or did not answer
@@ -568,7 +569,11 @@ export class Desk {
     return [...this.stories.filter((s) => this.visible(s)), ...gens.filter((g) => g === wait || this.status(g) !== "needs_review")];
   }
   /** The stories waiting for this visitor, oldest first. */
-  queue() { return this.shown().filter((s) => this.status(s) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b)); }
+  queue() {
+    const q = this.shown().filter((s) => this.status(s) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b));
+    for (const s of q) this.met.add(s.story_id);
+    return q;
+  }
   pending() { return this.queue().length; }
 
   /** The cues to play for an audience and language, with this visitor's overlay applied. */
@@ -656,6 +661,7 @@ export class Desk {
       if (prev) this.decisions.set(id, prev); else this.decisions.delete(id);
       this.note = this.tx("notSaved", { why: e.validation && editedText ? this.tx("badChar") : e.message });
       this.focusTo = null;
+      await this.refreshAudit(); // a refused edit is logged too
     }
     if (ok) this.announce(s, prev, wasStatus, undoing);
     this.busy = false;
@@ -993,7 +999,8 @@ export class Desk {
     const tx = (k, v) => this.tx(k, v), shown = this.shown();
     const needs = this.queue();
     const done = shown.filter((s) => !["needs_review", "expired"].includes(this.status(s)) && !this.live.has(s.story_id));
-    const missed = shown.filter((s) => this.status(s) === "expired").sort((a, b) => this.firstOf(b) - this.firstOf(a));
+    // one whose moment passed before the visitor got there (a link to the 8th minute) was never theirs to miss
+    const missed = shown.filter((s) => this.status(s) === "expired" && this.met.has(s.story_id)).sort((a, b) => this.firstOf(b) - this.firstOf(a));
     // Next first, soonest first; then the rest, latest first
     done.sort((a, b) => (this.isNext(b) - this.isNext(a)) || (this.isNext(a) ? this.firstOf(a) - this.firstOf(b) : this.firstOf(b) - this.firstOf(a)));
     const air = this.airRows();

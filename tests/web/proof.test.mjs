@@ -228,7 +228,7 @@ test("the open panel follows a producer's edit of the graphic on air, and says w
   const P = PACKS.M001, cue = P.match.cues.find((c) => c.graphic === "why_card" && c.story_id && /km\/h/.test(c.payload.body) && c.lang === "en");
   let status = "auto_approved";
   const desk = { byId: P.stories, genFor: () => null, factIndex: P.ctx(cue).factIndex, eventIndex: P.ctx(cue).eventIndex,
-    clockText: P.minute, status: () => status, what: () => "Goal" };
+    clockText: P.minute, status: () => status, usedProposal: () => false, what: () => "Goal" };
   const pf = new Proof(el(), el(), { desk, match: P.match, state: { lang: "en" }, pitch: {}, view3d: () => null, onLayout() {} });
   pf.update([cue]);
   Object.assign(pf, { openId: cue.cue_id, cue, key: "" });
@@ -256,4 +256,13 @@ test("a casual or kids line the code wrote from the facts says so, without the v
   assert.deepEqual([pr.writer, pr.verifier], ["phrasebook", null]);
   const ai = P.match.cues.find((c) => c.story_id === cue.story_id && c.audience === "analyst" && c.lang === "en");
   assert.equal(proofOf(ai, P.ctx(ai)).writer, "ai");
+});
+
+test("M001 goal at 10' after Use proposal: the AI wrote it and the producer put it on air", () => {
+  const P = PACKS.M001, cue = P.match.cues.find((c) => c.story_id === "S-000002" && c.graphic === "why_card" && c.lang === "en" && c.audience === "analyst");
+  const pr = proofOf(cue, { ...P.ctx(cue), status: "proposal" }), w = proofWords(pr, { match: P.match, minute: P.minute, lang: "en", what: "" });
+  assert.equal(w.checks[0][1], "The AI commentator");
+  assert.equal(w.checks.at(-1)[1], "The AI proposal, put on air by the producer");
+  assert.ok(!w.checks.some(([k]) => k === "Verifier"));
+  for (const lang of ["it", "es"]) assert.notEqual(proofWords(pr, { match: P.match, minute: P.minute, lang, what: "" }).checks.at(-1)[1], "ap_proposal");
 });

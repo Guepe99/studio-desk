@@ -96,3 +96,16 @@ test("a card a goal replay holds back keeps its graphic on the desk, so its proo
   }
   assert.ok(n > 0, "no card was held back: the test checks nothing");
 });
+
+test("a graphic whose moment passed before the visitor got there is not counted as missed; one they saw waiting is", () => {
+  const mt = match("M001"), late = desk("M001", mt), id = "G-C-000571";   // a team shape panel at 5:08 that waits for the producer
+  late.state.ts = 465;   // TESTING.md step 1 opens the match at 7:45
+  assert.equal(late.status(late.byId.get(id)), "expired");
+  assert.deepEqual(late.queue().map((s) => s.story_id).filter((x) => x === id), []);
+  assert.ok(!late.met.has(id));
+  const early = desk("M001", mt);
+  early.state.ts = 305;
+  assert.ok(early.queue().some((s) => s.story_id === id));
+  early.state.ts = 465;
+  assert.ok(early.met.has(id) && early.status(early.byId.get(id)) === "expired");
+});

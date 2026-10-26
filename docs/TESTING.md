@@ -23,7 +23,7 @@ https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=
 On the big chance in **Needs you**:
 
 1. Open **Details**. It shows the facts the story cites from the fact ledger, each with what it measures and its value, the event they come from on a small pitch, the verifier's verdict and the Content Safety result.
-2. Press **Put on air**, **Edit** or **Reject** on the story, or **Use proposal** in Details (the agents' own line). Pause first if you need time: the big chance card is due at 8:01, and your choice decides what airs then. The confirmation that appears has an **Undo** button.
+2. Press **Put on air**, **Edit** or **Reject** on the story, or **Use proposal** in Details (the agents' own line). Pause first if you need time: the story is due on air at 7:56 (the shot card first, then the big chance card at 8:01), and your choice decides what airs then. The confirmation that appears has an **Undo** button.
 3. Now open the first goal, in the 10th minute. Redwick Wanderers score; a goal is low risk, so its graphics go on air by themselves: a shot card, then the goal card, for about 18 seconds:
 
    https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1
@@ -32,11 +32,11 @@ On the big chance in **Needs you**:
 
 ## 3. See what the agents did (1 minute)
 
-Open the **Traces** tab. Each step lists the agent, the model, the tokens, the time and the cost. Director steps are marked "rules, no model": the director makes no model call. Press **Show story** on a step to jump to the story it produced.
+Open the **Traces** tab. Each step lists the agent, the model, the tokens, the time and the cost. Director steps are marked "rules, no model": the director makes no model call. Press **Show story** beside a story's steps to jump to the story they produced.
 
 ## 4. Switch the AI off (30 seconds)
 
-Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics that code builds from the facts stay (line-ups, name plates, pass and shot cards, and the Momentum and Team shape panels); the **Next key moment** button becomes **Next goal**. Turn it back on. The switch belongs to your session, so it also applies to the other matches until you turn it back on.
+Turn off the **AI graphics** switch on the desk. Every story goes off air, approved ones included, and only the template graphics that code builds from the facts stay (line-ups, name plates, pass and shot cards, and the Momentum panel); the Team shape panels, also built by code, still wait for you under **Needs you**. The **Next key moment** button becomes **Next goal**. Turn it back on. The switch belongs to your session, so it also applies to the other matches until you turn it back on.
 
 ## 5. Change the language and the audience (1 minute)
 

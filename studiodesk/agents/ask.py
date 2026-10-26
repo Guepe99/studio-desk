@@ -28,9 +28,9 @@ SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tr
 STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows
 
 DECLINED = {
-    "en": "The studio cannot answer that from the match data so far.",
-    "it": "Lo studio non può rispondere a questa domanda con i dati della partita fin qui.",
-    "es": "El estudio no puede responder a esa pregunta con los datos del partido hasta ahora.",
+    "en": "The studio cannot answer that from the match data so far. Ask about this match in English, Italian or Spanish.",
+    "it": "Lo studio non può rispondere a questa domanda con i dati della partita fin qui. Chiedi di questa partita in italiano, inglese o spagnolo.",
+    "es": "El estudio no puede responder a esa pregunta con los datos del partido hasta ahora. Pregunta por este partido en español, inglés o italiano.",
 }
 
 INSTRUCTIONS = (

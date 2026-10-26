@@ -24,7 +24,7 @@ export const STRINGS = {
     checked: "Who checked it", dtWriter: "Written by", w_ai: "The AI commentator", w_code: "Code, straight from the facts, no AI",
     dtNumbers: "Numbers check (code)", numbersOk: "Every number matches the fact ledger", numbersBad: "A number does not match the fact ledger",
     dtApproval: "On air because", ap_auto_approved: "Approved automatically (low risk)", ap_approved: "Approved by the producer",
-    ap_edited: "Edited and approved by the producer", ap_template: "A template graphic needs no approval",
+    ap_edited: "Edited and approved by the producer", ap_proposal: "The AI proposal, put on air by the producer", ap_template: "A template graphic needs no approval",
     ap_rejected: "Taken off air by the producer", ap_expired: "Off air: missed, its moment passed before anyone put it on air", ap_needs_review: "Waiting for the producer",
     offAir: "This graphic is no longer on air.",
   },
@@ -40,7 +40,7 @@ export const STRINGS = {
     checked: "Chi l'ha controllato", dtWriter: "Scritto da", w_ai: "Il commentatore IA", w_code: "Il codice, direttamente dai fatti, senza IA",
     dtNumbers: "Controllo dei numeri (codice)", numbersOk: "Ogni numero corrisponde al registro dei fatti", numbersBad: "Un numero non corrisponde al registro dei fatti",
     dtApproval: "In onda perché", ap_auto_approved: "Approvata in automatico (rischio basso)", ap_approved: "Approvata dalla regia",
-    ap_edited: "Modificata e approvata dalla regia", ap_template: "Una grafica standard non ha bisogno di approvazione",
+    ap_edited: "Modificata e approvata dalla regia", ap_proposal: "La proposta dell'IA, mandata in onda dalla regia", ap_template: "Una grafica standard non ha bisogno di approvazione",
     ap_rejected: "Tolta dalla regia", ap_expired: "Fuori onda: persa, il suo momento è passato prima che qualcuno la mandasse in onda", ap_needs_review: "In attesa della regia",
     offAir: "Questa grafica non è più in onda.",
   },
@@ -56,7 +56,7 @@ export const STRINGS = {
     checked: "Quién lo comprobó", dtWriter: "Escrito por", w_ai: "El comentarista IA", w_code: "El código, directamente de los datos, sin IA",
     dtNumbers: "Control de las cifras (código)", numbersOk: "Cada cifra coincide con el registro de datos", numbersBad: "Una cifra no coincide con el registro de datos",
     dtApproval: "En antena porque", ap_auto_approved: "Aprobada automáticamente (riesgo bajo)", ap_approved: "Aprobada por la realización",
-    ap_edited: "Editada y aprobada por la realización", ap_template: "Un gráfico estándar no necesita aprobación",
+    ap_edited: "Editada y aprobada por la realización", ap_proposal: "La propuesta de la IA, puesta en antena por la realización", ap_template: "Un gráfico estándar no necesita aprobación",
     ap_rejected: "Retirado por la realización", ap_expired: "Fuera de antena: perdida, su momento pasó antes de que alguien la pusiera en antena", ap_needs_review: "A la espera de la realización",
     offAir: "Este gráfico ya no está en antena.",
   },
@@ -227,10 +227,10 @@ export function proofOf(cue, { story, factIndex, eventIndex, match, minute, stat
     .filter((id) => id && match.players[id]));
   const v = story?.verifier ?? {};
   // a casual, kids or team line audiences.py wrote from the facts, not the story's own (AI or phrasebook) line
-  const own = story && cue.graphic === "why_card" && cue.audience !== "analyst" && status !== "edited" && p.body !== story.texts?.[cue.lang];
+  const own = story && cue.graphic === "why_card" && cue.audience !== "analyst" && status !== "edited" && status !== "proposal" && p.body !== story.texts?.[cue.lang];
   return {
     cue, story, facts, numbers, events: shown, more: allEvents.length > shown.length, players,
-    writer: !story ? "code" : own ? "phrasebook" : v.on_air ?? "ai",       // "phrasebook" | "template" | "ai" | "code" (a template graphic)
+    writer: !story ? "code" : own ? "phrasebook" : status === "proposal" ? "ai" : v.on_air ?? "ai",       // "phrasebook" | "template" | "ai" | "code" (a template graphic)
     verifier: story && !v.on_air && !own ? v.status ?? null : null,   // the verifier passed the AI's own line; a phrasebook line is code
     safety: story?.safety ?? null,
     approval: status ?? "template", // a generated graphic goes through the desk too (desk.js genFor)
@@ -289,7 +289,12 @@ export class Proof {
     const story = cue.story_id ? this.desk.byId.get(cue.story_id) ?? null : null, s = story ?? this.desk.genFor(cue);
     return { story, factIndex: this.desk.factIndex, eventIndex: this.desk.eventIndex, match: this.match,
       // the verifier's minute (rules.py): a fact at 300.0 s closes minute 5
-      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: s && !cue.payload?.filler ? this.desk.status(s) : null };   // a filler is a template graphic
+      minute: (ts) => this.desk.clockText(Math.max(0, ts - 1e-6)), status: s && !cue.payload?.filler ? this.status(s) : null };   // a filler is a template graphic
+  }
+  // the AI proposal put on air is an edit for the desk, but the AI's line for the proof
+  status(s) {
+    const st = this.desk.status(s);
+    return st === "edited" && this.desk.byId.has(s.story_id) && this.desk.usedProposal(s) ? "proposal" : st;
   }
   what(cue) {
     const s = cue.story_id && this.desk.byId.get(cue.story_id);
