@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -417,7 +418,10 @@ def test_audit_lists_the_risk_rule_approvals(desk, tmp_path):
     rows = c.get("/api/audit", params={"match_id": "DEMO"}).json()["rows"]
     assert [(r["actor"], r["action"], r["story_id"]) for r in rows] == [("human", "rejected", "S-000001"), ("auto", "auto_approved", "S-000001")]
     assert rows[1]["at"] == "2026-10-19T09:00:00+00:00" and rows[1]["detail"] == {"risk": 0.2}
+    seen = (demo / "stories.json").stat().st_mtime_ns
     (demo / "stories.json").write_text("not json")
+    # the replay cache is keyed on the mtime: on a coarse clock the rewrite could keep it, so move it on
+    os.utime(demo / "stories.json", ns=(seen, seen + 1_000_000_000))
     assert desk().get("/api/audit", params={"match_id": "DEMO"}).json()["rows"] == []
 
 

@@ -115,9 +115,13 @@ def test_rules_alone_runs_the_workflow_with_the_model_off(match_db, monkeypatch)
     from studiodesk import mcp_server
     info, conn = match_db
     monkeypatch.setattr(mcp_server, "DB_PATH", info["path"])
+    # two planted storylines, so the answer key is really read (the fixture match has none of its own)
+    conn.executemany("INSERT INTO storylines (match_id, story_id, kind, ts_start, ts_end, team_id) VALUES (?, ?, ?, ?, ?, ?)",
+                     [(info["match_id"], "H1", "top_sprint", 100.0, 200.0, "T01"), (info["match_id"], "H2", "comeback", 180.0, 360.0, "T02")])
+    conn.commit()
     r = measures.rules_only(info["match_id"], conn)  # no Azure: the fake client raises on every call
     assert r["stories"] > 0 and r["proposals"] == 0 and r["ai"] == 0
-    assert r["phrasebook"] + r["template"] == r["stories"] and 0 <= r["found"] <= r["planted"]
+    assert r["phrasebook"] + r["template"] == r["stories"] and r["planted"] == 2 and 0 <= r["found"] <= 2
     agents = {"match_id": info["match_id"], "found": r["planted"], "planted": r["planted"], "stories": r["stories"] + 2, "proposals": 5}
     page = measures.rules_section([agents], [r])
     assert f"| {r['planted']} / {r['found']} of {r['planted']} | {r['stories'] + 2} / {r['stories']} | 5 / 0 |" in page
