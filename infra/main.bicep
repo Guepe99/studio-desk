@@ -11,10 +11,18 @@ param aiName string = 'studiodesk-ai-89965b'
 // Role assignment names (GUIDs) that already exist, by role; a fresh environment leaves this empty and gets
 // guid() names. Role assignment names are unique in the tenant, so they cannot be reused elsewhere.
 param roleAssignmentNames object = {}
+// Content Safety's custom subdomain (<name>.cognitiveservices.azure.com): Entra ID tokens need one, regional
+// endpoints refuse them. Unique across Azure and permanent once set. Empty: no subdomain, for an account made
+// without one, whose endpoint Azure generated (the live one, rg-studiodesk.bicepparam).
+param safetySubdomain string = 'studiodesk-safety-${uniqueString(resourceGroup().id)}'
 
 var insightsName = 'studiodesk-insights'
 var openAiUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' // Cognitive Services OpenAI User
-var cognitiveServicesUser = 'a97b65f3-24c7-4388-baec-2e87135dc908' // Cognitive Services User
+// Azure AI Developer: the Content Safety data actions (text:analyze, text:shieldprompt) without
+// accounts/listkeys/action, which Cognitive Services User also grants. Its other permissions are on Machine
+// Learning workspaces and other kinds of account, so they reach nothing at the scope of this account.
+// https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/ai-machine-learning#azure-ai-developer
+var azureAiDeveloper = '64702f94-c441-49e6-a78b-ef80e0188fee'
 
 module monitoring 'monitoring.bicep' = {
   name: 'monitoring'
@@ -58,14 +66,14 @@ resource model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   sku: { name: 'GlobalStandard', capacity: 100 } // 100k tokens and 100 requests a minute
   properties: {
     model: { format: 'OpenAI', name: 'gpt-5-mini', version: '2025-08-07' }
-    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    versionUpgradeOption: 'NoAutoUpgrade' // a new model version only by a change here, never under the app
     raiPolicyName: 'Microsoft.DefaultV2'
   }
   dependsOn: [project] // one change at a time on the account
 }
 
 // Content Safety on the free tier (one F0 account per kind per subscription). The container calls it with its
-// managed identity (Cognitive Services User below). studiodesk/agents/safety.py falls back to key1 through the
+// managed identity (Azure AI Developer below). studiodesk/agents/safety.py falls back to key1 through the
 // az CLI when Entra ID is refused, which only works on a machine with az; dropping that fallback (_use_key)
 // would let this account set disableLocalAuth: true.
 resource safety 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
@@ -73,7 +81,10 @@ resource safety 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   location: location
   kind: 'ContentSafety'
   sku: { name: 'F0' }
-  properties: { publicNetworkAccess: 'Enabled' }
+  properties: {
+    customSubDomainName: empty(safetySubdomain) ? null : safetySubdomain
+    publicNetworkAccess: 'Enabled'
+  }
 }
 
 // Speech on the free tier, used only offline by studiodesk/voice.py to record the replay voice-over; the
@@ -99,7 +110,8 @@ resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// Azure generates the Content Safety host (studiodesk-safety-e2606 here); the app wants it with no trailing slash.
+// The Content Safety host: the custom subdomain, or the one Azure generated (studiodesk-safety-e2606 on the live
+// account); the app wants it with no trailing slash.
 var safetyEndpoint = 'https://${split(safety.properties.endpoint, '/')[2]}'
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
@@ -132,7 +144,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           ]
         }
       ]
-      scale: { minReplicas: 0, maxReplicas: 1 }
+      // one replica always on: the desk's caps and runtime.sqlite live in it and reset when it scales to zero
+      scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
 }
@@ -149,9 +162,9 @@ resource appOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 
 resource appSafetyUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: safety
-  name: roleAssignmentNames.?safetyUser ?? guid(safety.id, app.id, cognitiveServicesUser)
+  name: roleAssignmentNames.?safetyDeveloper ?? guid(safety.id, app.id, azureAiDeveloper)
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUser)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAiDeveloper)
     principalId: app.identity.principalId
     principalType: 'ServicePrincipal'
   }
