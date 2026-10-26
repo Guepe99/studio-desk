@@ -983,7 +983,9 @@ try {
     if (got.img || got.xss) fail("ask: the answer ran as markup");
     if (!got.answer.startsWith("<img") || got.live !== got.answer) fail(`ask: answer "${got.answer}", live region "${got.live}"`);
     if (!got.you.endsWith("Who is the fastest so far?")) fail(`ask: question echo "${got.you}"`);
-    if (!got.facts.includes("F-SPRINT_SPEED-000001")) fail(`ask: no fact ids in Analyst mode ("${got.facts}")`);
+    // in Analyst mode the cited facts by their label, never as raw ids
+    const cited = await p.evaluate(() => window.studioDesk.match.facts.find((f) => f.fact_id === "F-SPRINT_SPEED-000001")?.label_en);
+    if (!cited || !got.facts.includes(cited) || /F-[A-Z_]+-\d+/.test(got.facts)) fail(`ask: Analyst facts "${got.facts}", wanted the label "${cited}"`);
     if (!/9/.test(got.status)) fail(`ask: questions left not shown ("${got.status}")`);
     await pick(p, '[data-audience="casual"]');
     if ((await seen()).facts) fail("ask: fact ids shown to the casual fan");

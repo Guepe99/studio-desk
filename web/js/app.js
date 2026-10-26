@@ -798,7 +798,7 @@ async function main() {
   buildSeekMarks();
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
-  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts });
+  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts, match });
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
