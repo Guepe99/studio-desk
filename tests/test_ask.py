@@ -608,10 +608,12 @@ def test_m001_ostwick_passes_in_italian_come_from_the_team_totals(m001, monkeypa
         "Pass accuracy 80% (139/174) since kick-off"
     assert acc["ts"] == 2400.0 and len(acc["source_event_ids"]) == tried
     for answer in ("L'Ostwick FC ha completato 139 passaggi su 174, con una precisione dell'80%.",
-                   "L'Ostwick FC ha completato 139 su 174 passaggi, l'80%."):
+                   "L'Ostwick FC ha completato 139 su 174 passaggi, l'80%.",
+                   "Ostwick FC ha 139 passaggi completati (80%, 139/174)."):
         assert m001(answer, [acc["fact_id"]], ts=2400.0, lang="it") == "answered", reason()
     for answer in ("L'Ostwick FC ha completato 140 passaggi su 174, con una precisione dell'80%.",
-                   "L'Ostwick FC ha fatto 174 passaggi, con una precisione dell'80%."):
+                   "L'Ostwick FC ha fatto 174 passaggi, con una precisione dell'80%.",
+                   "Ostwick FC ha 174 passaggi completati, l'80%."):
         assert m001(answer, [acc["fact_id"]], ts=2400.0, lang="it") == "declined"
 
 
@@ -799,6 +801,10 @@ def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
     assert rules.strip_citations("Ha segnato due volte, vedi F-SCORE-000001 e F-SCORE-000002.") == "Ha segnato due volte."
     assert rules.strip_citations("Ostwick ha il 54% del possesso (F-TEAM_POSSESSION-000040).") == "Ostwick ha il 54% del possesso."
     assert rules.strip_citations("Vedi i dati.") == "Vedi i dati."
-    assert rules.goal_word("Hugo Okowande ha marcado 2 goals.", "es") == "Hugo Okowande ha marcado 2 goles."
-    assert rules.goal_word("Okowande ha segnato 2 goals.", "it") == "Okowande ha segnato 2 gol."
-    assert rules.goal_word("Okowande has 2 goals.", "en") == "Okowande has 2 goals."
+    assert rules.local_words("Hugo Okowande ha marcado 2 goals.", "es") == "Hugo Okowande ha marcado 2 goles."
+    assert rules.local_words("Okowande ha segnato 2 goals.", "it") == "Okowande ha segnato 2 gol."
+    assert rules.local_words("Okowande has 2 goals.", "en") == "Okowande has 2 goals."
+    assert rules.local_words("Ostwick ha il 80%, 139 di 174 pases.", "it") == "Ostwick ha l'80%, 139 di 174 passaggi."
+    assert rules.local_words("Il 11% e il 18% dei passaggi.", "it") == "L'11% e il 18% dei passaggi."
+    assert rules.local_words("Ostwick tiene 80%, 139 de 174 passaggi.", "es") == "Ostwick tiene 80%, 139 de 174 pases."
+    assert rules.decimal_comma("Redwick 55% and Ostwick 44,5%, 1,000 passes.", "en") == "Redwick 55% and Ostwick 44.5%, 1,000 passes."

@@ -532,8 +532,11 @@ def minute_word(text, lang):
 
 
 def decimal_comma(text, lang):
-    """Italian and Spanish write 32,8: the model copies the facts' 32.8 now and then."""
-    return text if lang == "en" else re.sub(r"(?<=\d)\.(?=\d)", ",", text)
+    """Italian and Spanish write 32,8: the model copies the facts' 32.8 now and then. English writes 44.5, and
+    a comma before one or two digits is a decimal the model brought from the other languages (1,000 stays)."""
+    if lang == "en":
+        return re.sub(r"(?<=\d),(?=\d{1,2}(?![\d]))", ".", text)
+    return re.sub(r"(?<=\d)\.(?=\d)", ",", text)
 
 
 def strip_citations(text):
@@ -543,12 +546,18 @@ def strip_citations(text):
     return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
 
 
-def goal_word(text, lang):
-    """An Italian or Spanish answer counts goals as gol or goles, never with the English word."""
+def local_words(text, lang):
+    """An Italian or Spanish answer counts goals and passes in its own words: the model borrows the other
+    languages' ("2 goals", "174 pases" in Italian). Italian also says l'80%, never il 80%."""
     if lang == "en":
         return text
-    return re.sub(r"\b(\d+)\s+goals?\b", lambda m: f"{m[1]} {'goles' if lang == 'es' and m[1] != '1' else 'gol'}",
+    text = re.sub(r"\b(\d+)\s+goals?\b", lambda m: f"{m[1]} {'goles' if lang == 'es' and m[1] != '1' else 'gol'}",
                   text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(\d+)\s+(?:passes|pases|pass|passaggi)\b", lambda m: f"{m[1]} {'pases' if lang == 'es' else 'passaggi'}",
+                  text, flags=re.IGNORECASE)
+    if lang == "it":  # 8, 11 and 80-89 start with a vowel sound (otto, undici, ottanta)
+        text = re.sub(r"\b([Ii])l\s+(?=(?:8\d?|11)(?:,\d+)?\s*%)", lambda m: "L'" if m[1] == "I" else "l'", text)
+    return text
 
 
 def allowed_numbers(facts, minutes=()):
@@ -732,6 +741,9 @@ _PAIR = re.compile(_LB + r"(\d+)\s*/\s*(\d+)(?![\d.,]*\d)|" + _LB
                    + rf"(\d+)\s+{_PASSES}(?:\s+(?:completed|completati|riusciti|completados|completos))?\s+(?:of|out of|su|de)\s+(\d+)(?![\d.,]*\d)",
                    re.IGNORECASE)
 _LABEL_PAIR = re.compile(r"\((\d+)/(\d+)\)")
+# "139 passaggi completati": the completed count alone, the first of a label's pair (the attempts alone stay out)
+_COMPLETED = re.compile(_LB + rf"(\d+)\s+(?:{_PASSES}|pass)\s+(?:completed|completati|riusciti|completados|completos|acertados)\b",
+                        re.IGNORECASE)
 MAX_ASK_FACTS = 8
 
 
@@ -810,6 +822,7 @@ def check_answer(text, facts, p1, lang, ids, score=None):
         rest = pattern.sub(licensed([(f["value"],) for f in facts if f["unit"] == unit]), rest)
     pairs = [tuple(map(float, mt.groups())) for f in facts for mt in _LABEL_PAIR.finditer(f["label_en"])]
     rest = _PAIR.sub(licensed(pairs), rest)
+    rest = _COMPLETED.sub(licensed([p[:1] for p in pairs]), rest)
 
     goals = {int(a) + int(b) for f in facts if f["kind"] == "score" for a, b in _GOAL_LABEL.findall(f["label_en"])}
     rest = _GOAL_ORDINAL.sub(lambda mt: " " if _GOAL_ORDINALS[mt.group(0).lower()] in goals else mt.group(0), rest)

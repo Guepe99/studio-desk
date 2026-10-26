@@ -48,8 +48,9 @@ INSTRUCTIONS = (
     "a label or write the word label. Never compute a total, count, difference or average yourself, never write a "
     "number in words. A team's shots, shots on target, corners and possession so far are facts counted by code: read "
     "them with get_team_totals and write each count with its noun, for both teams (\"9 shots, 4 on target\", "
-    "\"55% possession\"); a team's pass accuracy is there too, written as its share and the count in its label (\"83%, 228 "
-    "of 276 passes\"), also when the question asks how many passes: never the attempts alone (\"276 passes\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
+    "\"55% possession\"); a team's pass accuracy is there too, and the pair in its label (139/174) is the team's passes completed and "
+    "attempted, so it answers any question about how many passes a team has made or completed: write it as its share and that pair in the answer's language "
+    "(\"83%, 228 of 276 passes\", \"83%, 228 passaggi riusciti su 276\", \"83%, 228 de 276 pases\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
     "its noun (\"2 goals\"). To say which team has controlled the match, cite those totals and the latest momentum. "
     "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the verified analysis "
     "of the stories already on air: answer from the analysis of the story the question is about, in the answer's "
@@ -259,7 +260,7 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
         usage.pop("pending_chars", None)
         return declined(lang, rules.brief_error(e), usage)
 
-    text = rules.goal_word(rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang), lang)
+    text = rules.local_words(rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang), lang)
     ids = list(dict.fromkeys(i.strip().upper() for i in out.fact_ids))
     reason = check(match_id, ts, text, ids, lang, p1)
     if reason:
