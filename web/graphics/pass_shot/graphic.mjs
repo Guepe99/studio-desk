@@ -58,9 +58,9 @@ export default class PassShot extends SdGraphic {
     num.style.color = p.text ?? "#37003c";
     $(".name").textContent = p.name ?? d.player_id ?? "";
     $(".team").textContent = p.team_name ?? p.team_short ?? "";
-    // rounded to tenths before the test, so 99.96 is "100", not "100.0"
+    // the threshold on the value rounded to tenths, so 99.96 is "100", not "100.0"
     const v = Math.round(d.value * 10) / 10;
-    $(".big").textContent = Number.isFinite(d.value) ? decimal(v, v >= 100 ? 0 : 1, this.lang) : "";
+    $(".big").textContent = Number.isFinite(d.value) ? decimal(d.value, v >= 100 ? 0 : 1, this.lang) : "";
     $(".unit").textContent = d.unit ?? "";
     const q = d.quality, row = $(".q"), bar = scaled(q);
     row.classList.toggle("none", q == null || q === "");

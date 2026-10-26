@@ -770,9 +770,11 @@ async function main() {
   // a graphic that fails to register is named on screen and its cues are skipped; one that throws on air
   // is named too, and that cue is not tried again (ograf-host.js _fail)
   const broken = new Set();
+  let filling = null;
   const noGraphic = (g) => {
     if (broken.has(g)) return;
     broken.add(g);
+    if (filling) return; // the words still to come name every graphic in broken
     // over the 3D view's own notice, this one waits: it comes back when that clears (view3d.js _notice)
     const fill = () => {
       const text = t("nographic").replace("{g}", [...broken].join(", "));
@@ -786,7 +788,7 @@ async function main() {
     n.textContent = "";
     n.hidden = false;
     layout();
-    setTimeout(fill, 100);
+    filling = setTimeout(() => { filling = null; fill(); }, 100);
   };
   host = new OGrafHost($("#overlay"), {
     resolution: { width: STAGE_W, height: STAGE_H },

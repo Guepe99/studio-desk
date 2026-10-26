@@ -121,7 +121,8 @@ export function onAirText(cue) {
   const p = cue.payload ?? {};
   if (cue.graphic === "why_card") return `${p.title ?? ""}\n${p.body ?? ""}`;
   if (cue.graphic === "pass_shot") {
-    const big = Number.isFinite(p.value) ? (p.value >= 100 ? p.value.toFixed(0) : p.value.toFixed(1)) : "";
+    const v = Math.round(p.value * 10) / 10; // the threshold as the graphic takes it: 99.96 is "100"
+    const big = Number.isFinite(p.value) ? p.value.toFixed(v >= 100 ? 0 : 1) : "";
     return `${big} ${p.unit ?? ""}\n${typeof p.quality === "string" ? p.quality : ""}`.trim();
   }
   if (cue.graphic === "nameplate") return Number.isFinite(p.speed_kmh) ? `${p.speed_kmh.toFixed(1)} km/h` : "";

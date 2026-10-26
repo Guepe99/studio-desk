@@ -129,8 +129,8 @@ export class Ask {
 
   // rebuilt only when the list changes, so a focused suggestion keeps its focus
   renderSuggestions() {
-    if (!this.suggestEl) return;
     this.suggestN = this.suggestCount();
+    if (!this.suggestEl) return;
     const keys = suggestions(this.facts, Math.min(this.state.ts, this.maxTs));
     const sig = `${this.state.lang}|${keys.join()}`;
     if (sig === this.suggestSig) return;

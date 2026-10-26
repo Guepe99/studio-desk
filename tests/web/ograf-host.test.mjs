@@ -6,19 +6,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const log = [];
+let flaky = 0;
 const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
 class FakeGraphic {
   constructor(tag) { Object.assign(this, { tag, style: {}, attached: false, played: false }); }
   remove() { this.attached = false; }
-  async load(p) {   // a real load awaits fonts; "bad" throws as a render() that throws would
+  // a real load awaits fonts; "bad" (or a payload marked broken) throws as a render() that throws would,
+  // "flaky" throws on its first load only
+  async load(p) {
     await tick();
-    if (this.tag === "ograf-bad") throw new Error("render failed");
+    if (this.tag === "ograf-bad" || p.data.broken || (this.tag === "ograf-flaky" && !flaky++)) throw new Error("render failed");
     this.data = p.data;
     return { statusCode: 200 };
   }
   async playAction() { this.played = true; log.push(["play", this.data.id]); return {}; }
   async stopAction() { log.push(["stop", this.data.id]); return {}; }
-  async dispose() { return {}; }
+  async dispose() { if (this.tag === "ograf-sticky") throw new Error("dispose failed"); return {}; }
   async setActionsSchedule() { return {}; }
   async goToTime() { return {}; }
   customAction() { if (this.tag === "ograf-pin") return Promise.reject(new Error("no position")); }
@@ -122,6 +125,50 @@ test("a positioned graphic whose first position action rejects is reported, with
   });
   assert.deepEqual(unhandled, [], "no unhandled rejection");
   assert.deepEqual(errors, [["pin", "no position"]]);
+});
+
+test("a graphic that aired but fails to dispose is only logged: its cue comes back after a seek", async () => {
+  const { errors, logged, unhandled } = await capture(async (h) => {
+    h.graphics.sticky = { manifest: { id: "sticky" }, tag: "ograf-sticky", inS: 0, outS: 0 };
+    h.setCues([cue("s", 1, 2, "sticky")], 0);
+    run(h, 0, 3.2); // on air from 1 s, off at 3 s
+    await tick(30);
+    h.sync(2, true);
+    assert.deepEqual([...h.live.keys()], ["s"], "back on screen after a seek into it");
+  });
+  assert.deepEqual(errors, [], "not named as a graphic that could not load");
+  assert.equal(logged.length, 1, "the dispose failure is logged");
+  assert.deepEqual(unhandled, []);
+});
+
+test("a stale instance whose load fails after a seek replaced it does not mark the cue failed", async () => {
+  const { errors } = await capture(async (h) => {
+    h.graphics.flaky = { manifest: { id: "flaky" }, tag: "ograf-flaky", inS: 0, outS: 0 };
+    h.setCues([cue("f", 1, 6, "flaky")], 0);
+    run(h, 0, 1.2);   // the first load starts (and will fail)
+    h.sync(1.3, true); // a seek: a second instance, whose load succeeds
+    await tick(30);
+    assert.deepEqual([...h.live.keys()], ["f"]);
+    h.sync(1.4, true); // and another seek: the cue is not marked failed
+    await tick(30);
+    assert.deepEqual([...h.live.keys()], ["f"]);
+  });
+  assert.deepEqual(errors, [], "nothing named to the page");
+});
+
+test("a cue that failed is tried again once its payload changes (an edited card)", async () => {
+  const { errors } = await capture(async (h) => {
+    const c = { ...cue("e", 1, 6), payload: { id: "e", broken: true } };
+    h.setCues([c], 0);
+    run(h, 0, 1.2);
+    await tick(30);
+    assert.deepEqual([...h.live.keys()], [], "off after the failure");
+    h.setCues([{ ...c, payload: { id: "e" } }], 1.3);
+    run(h, 1.3, 1.5);
+    await tick(30);
+    assert.deepEqual([...h.live.keys()], ["e"], "the edited card goes on air");
+  });
+  assert.equal(errors.length, 1);
 });
 
 test("team colours reach a style attribute only as #rgb or #rrggbb", async () => {

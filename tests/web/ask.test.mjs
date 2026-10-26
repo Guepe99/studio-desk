@@ -47,3 +47,16 @@ test("open panel, replay playing: the suggestions appear as their facts come in,
   ask.update();
   assert.equal(box.built, 3, "a closed panel is left alone");
 });
+
+test("a page without the suggestion box: update() does not go back to renderSuggestions every frame", () => {
+  const node = () => ({ addEventListener() {}, setAttribute() {}, querySelector: () => node(), textContent: "", hidden: false });
+  const panel = { ...node(), querySelector: (s) => (s === "#ask-suggest" ? null : node()) };
+  globalThis.document = { querySelector: () => node(), createElement: () => ({ dataset: {} }) };
+  const state = { ts: 0, lang: "en" };
+  const ask = new Ask(panel, { state, t: (k) => k, button: node(), facts: [{ kind: "team_shots", ts: 120 }], maxTs: 5400 });
+  let calls = 0;
+  const render = ask.renderSuggestions;
+  ask.renderSuggestions = function () { calls++; return render.call(this); };
+  for (let ts = 0; ts <= 600; ts += 1 / 60) { state.ts = ts; ask.update(); }
+  assert.equal(calls, 2, "on the first frame and when the clock crosses 120 s");
+});

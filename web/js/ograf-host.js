@@ -8,7 +8,7 @@
 //   leaves when its cue ends.
 // - Seek, audience or language change: every graphic is disposed and the cues active at the new
 //   time are rebuilt, except a cue whose graphic threw (_fail), which stays off until the page
-//   reloads. Graphics with supportsNonRealTime get the non-real-time path:
+//   reloads or its payload changes. Graphics with supportsNonRealTime get the non-real-time path:
 //   setActionsSchedule([play at 0, stop at end]) and goToTime(cue-local ms) on every frame until the
 //   cue ends. Others are loaded and played with skipAnimation.
 // - A new cue sheet that leaves every graphic on screen as it was (the desk reached or approved a
@@ -24,6 +24,7 @@
 
 const MAX_ON_SCREEN = 2;
 const DECK_BOX = 720; // the compact box width (the graphics' .compact rules)
+const failKey = (c) => `${c.cue_id}\n${JSON.stringify(c.payload)}`;
 
 export class OGrafHost {
   /**
@@ -40,7 +41,7 @@ export class OGrafHost {
     this.live = new Map(); // cue_id -> instance
     this.leaving = new Set(); // instances still animating out
     this.taken = new Set(); // cue ids already taken off since the last rebuild: a speed change must not bring one back
-    this.failed = new Set(); // cue ids whose graphic threw (_fail): never tried again, not even after a rebuild
+    this.failed = new Set(); // cue id and payload of each cue whose graphic threw (_fail): never tried again, not even after a rebuild
     this.cues = [];
     this.last = null;
     this.speed = 1;
@@ -100,7 +101,7 @@ export class OGrafHost {
     }
     for (const c of this.cues) {
       if (c.ts > now || this._visible() >= MAX_ON_SCREEN) break;
-      if (this.live.has(c.cue_id) || this.taken.has(c.cue_id) || this.failed.has(c.cue_id) || now >= this._end(c)) continue;
+      if (this.live.has(c.cue_id) || this.taken.has(c.cue_id) || now >= this._end(c) || this._failed(c)) continue;
       // a frame that lands inside the cue but past its stop time still shows it, without animation,
       // until the next frame: with slow frames at 16x the window between start and stop can fall between two
       const g = this.graphics[c.graphic], late = now >= this._end(c) - this._lead(c);
@@ -115,7 +116,7 @@ export class OGrafHost {
     this.taken.clear();
     for (const c of this.cues) {
       if (c.ts > now || this._visible() >= MAX_ON_SCREEN) break;
-      if (now >= this._end(c) || this.failed.has(c.cue_id)) continue;
+      if (now >= this._end(c) || this._failed(c)) continue;
       const g = this.graphics[c.graphic];
       if (g.manifest.supportsNonRealTime) this._add(c, now, "non-realtime");
       else if (now < this._end(c) - g.outS) this._add(c, now, "realtime", true);
@@ -178,15 +179,20 @@ export class OGrafHost {
   }
 
   // A graphic that throws (load, render, play) is logged, named to the page once (opts.onError) and taken
-  // off, so its slot frees; its cue is not tried again until the page reloads.
+  // off, so its slot frees; that cue is not tried again until the page reloads or its payload changes (an
+  // edited card). An instance no longer on screen (a seek or its cue end came first) is only logged.
   _fail(inst, err) {
     if (inst.failed) return;
     inst.failed = true;
-    this.failed.add(inst.cue.cue_id);
     console.error(`OGraf graphic ${inst.cue.graphic} failed on cue ${inst.cue.cue_id}:`, err);
+    if (this.live.get(inst.cue.cue_id) !== inst) return;
+    this.failed.add(failKey(inst.cue));
     this.opts.onError?.(inst.cue.graphic, err);
-    if (this.live.get(inst.cue.cue_id) === inst) this._remove(inst.cue.cue_id, false);
+    this._remove(inst.cue.cue_id, false);
+    this.taken.delete(inst.cue.cue_id); // failed, not taken: the same cue with a new payload may come on at once
   }
+
+  _failed(c) { return this.failed.size > 0 && this.failed.has(failKey(c)); }
 
   // The stop follows the load, not the in animation, so it can cut a running in animation short.
   // Without animation the element leaves the screen at once and is disposed when its load settles.
@@ -198,9 +204,10 @@ export class OGrafHost {
     if (animate) this.leaving.add(inst);
     else inst.node.remove();
     inst.loaded
-      .then(() => inst.el.stopAction(animate && inst.ready ? {} : { skipAnimation: true }))
-      .then(() => inst.el.dispose({}))
-      .catch((e) => this._fail(inst, e))
+      // a load that failed is reported by _add; a stop or dispose that fails is only logged, the cue aired
+      .then(() => Promise.resolve(inst.el.stopAction(animate && inst.ready ? {} : { skipAnimation: true }))
+        .then(() => inst.el.dispose({}))
+        .catch((e) => console.error(`OGraf graphic ${inst.cue.graphic} failed to leave on cue ${inst.cue.cue_id}:`, e)), () => {})
       .finally(() => { inst.node.remove(); this.leaving.delete(inst); });
   }
 }
