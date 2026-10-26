@@ -44,7 +44,7 @@ def measures(meta, events, pos, ball):
     is_gk = np.array([p in gk for p in ents])
     p2 = ts >= meta["period1_s"]
     out = {}
-    near_d, cy, by, line, bdist, away, facing, near_n, run_d, run_close = [], [], [], [], [], [], [], 0, [], []
+    near_d, cy, by, line, bdist, away, facing, near_n, run_d, run_close, cf = [], [], [], [], [], [], [], 0, [], [], []
     vel = np.zeros_like(xy)
     vel[2:-2] = (xy[4:] - xy[:-4]) / (4 / fps)
     for f in range(0, F, 2):
@@ -71,6 +71,7 @@ def measures(meta, events, pos, ball):
                 run_close.append(vel[f, dn] @ to_c / max(np.hypot(*to_c), 1e-6))   # < 0: he drops off
         # block: centroid of the defending outfield players across the pitch, and the back line
         cy.append(np.nanmean(xy[f, defn, 1]))
+        cf.append(f)
         by.append(bxy[f, 1])
         # defending team's own goal: home defends x = 0 in period 1
         own0 = (not att_home) != p2[f]   # True when the defending team defends x = 0
@@ -107,27 +108,34 @@ def measures(meta, events, pos, ball):
     out["defenders within 15 m of the ball, moving > 0.7 m/s"] = f"{len(facing)} of {near_n} samples"
     out["  share travelling within 30 deg of the ball direction"] = (facing > np.cos(np.radians(30))).mean()
     out["  share travelling more than 90 deg away (back to the ball if facing = travel)"] = (facing < 0).mean()
-    return out, cy, by
+    return out, cy, by, np.array(cf)
 
 
-def lag(cy, by, step_s=0.2):
-    """Seconds by which the block's sideways shift trails the ball (best cross-correlation)."""
-    a, b = cy - cy.mean(), by - by.mean()
-    best = max(range(0, 60), key=lambda s: np.corrcoef(a[s:], b[:len(b) - s])[0, 1])
-    return best * step_s
+def lag(frames, cy, by, fps, step=2, max_s=12.0):
+    """Seconds by which the block's sideways shift trails the ball (best cross-correlation). The samples are
+    placed back on their frames, so a stretch skipped out of open play is a gap, never a shorter lag."""
+    n = int(max(frames)) + 1
+    a, b = np.full(n, np.nan), np.full(n, np.nan)
+    a[frames], b[frames] = cy, by
+
+    def corr(s):  # the block at frame f against the ball at frame f - s, where both were sampled
+        x, y = a[s:], b[:n - s]
+        both = ~np.isnan(x) & ~np.isnan(y)
+        return np.corrcoef(x[both], y[both])[0, 1] if both.sum() > 2 else -np.inf
+    return max(range(0, int(max_s * fps), step), key=corr) / fps
 
 
 def main():
     match_id = sys.argv[1] if len(sys.argv) > 1 else "M001"
     meta, events, pos = load(match_id)
-    real, cy, by = measures(meta, events, pos, pos[:, 0])
-    ctrl, _, _ = measures(meta, events, pos, np.roll(pos[:, 0], -300 * meta["fps"], axis=0))
+    real, cy, by, cf = measures(meta, events, pos, pos[:, 0])
+    ctrl, *_ = measures(meta, events, pos, np.roll(pos[:, 0], -300 * meta["fps"], axis=0))
     print(f"{match_id}: real tracking | control (ball from 5 min later)")
     for k, v in real.items():
         fmt = lambda x: (f"{x:.2f}" if isinstance(x, float) else
                          " / ".join(f"{y:.2f}" for y in x) if isinstance(x, tuple) else str(x))  # noqa: E731
         print(f"  {k}: {fmt(v)} | {fmt(ctrl.get(k, '-'))}")
-    print(f"  block shift lag behind the ball: {lag(cy, by):.1f} s")
+    print(f"  block shift lag behind the ball: {lag(cf, cy, by, meta['fps']):.1f} s")
     # self-check: the control must look like a team that does not react
     assert abs(ctrl["block shift: correlation"]) < real["block shift: correlation"]
 

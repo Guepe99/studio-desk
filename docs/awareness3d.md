@@ -21,7 +21,7 @@ is taken from five minutes later. A team that reacts shows a clear gap between t
 | Share of carrier frames with a defender within 5 m | 57% | 27% |
 | Block shift: slope of defending centroid y on ball y | 0.29 (corr 0.72) | 0.02 (corr 0.05) |
 | Line height: slope of back-four depth on ball depth | 0.51 (corr 0.77) | -0.02 (corr -0.04) |
-| Lag of the block shift behind the ball | 2.0 s | |
+| Lag of the block shift behind the ball (on real timestamps) | 2.4 s | |
 | Attack runs (carrier over 3 m/s at goal, inside 35 m): nearest defender, median | 1.86 m | 11.46 m |
 | Same, nearest defender's speed towards the carrier (below 0: drops off) | -1.18 m/s | |
 | Defenders within 15 m of the ball moving over 0.7 m/s: travelling within 30 deg of the ball direction | 27% | 17% |
@@ -38,7 +38,7 @@ What this says:
   21% had the head within 30 deg of it.
 - **Simulator notes, not changed here** (`studiodesk/sim/`): the block shifts with a slope of 0.29
   where coaching material describes a back four shuffling across as one unit (F13), and with a
-  2.0 s lag (`shape_lag_s` is 2.5); the closing defender targets 3.5 m goal-side and on attack
+  2.4 s lag (`shape_lag_s` is 2.5); the closing defender targets 3.5 m goal-side and on attack
   runs drops off at 1.2 m/s instead of engaging; after a goal nobody converges on the scorer (0
   teammates within 10 m of him) and every player keeps running at match pace. These are the
   biggest remaining sources of "fake" and only the simulator can fix them.
