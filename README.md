@@ -131,7 +131,7 @@ The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stor
 
 The test counts and the run with the model off were measured on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md).
 
-**Tests.** 541 Python tests passed in 3 min 18 s and 176 browser-logic tests in 2 min 11 s; the commands are in [Run it locally](#run-it-locally).
+**Tests.** 550 Python tests passed in 2 min 58 s and 179 browser-logic tests in 1 min 50 s; the commands are in [Run it locally](#run-it-locally).
 
 **Delay from event to graphic.** In one real-speed run on Azure (M001, minutes 5 to 20, `python -m studiodesk.agents run M001 --speed 1 --from-ts 300 --to-ts 1200`), the two goals were cued 3.7 and 5.6 seconds after their shots, and the big chance 9.7 seconds after its shot, once the play had settled. These are upper bounds. A full round of agents (story finder, director, analyst, three commentators, verifier and rewrites) took 16.7 seconds at the median and 34.1 seconds at most, so the analysis and the proposals reach the desk after the graphic is already on air.
 
