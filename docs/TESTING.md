@@ -1,6 +1,6 @@
 # Testing Studio Desk
 
-These steps take about five minutes on a computer with an up-to-date browser. You need no account and nothing to install. The site scales to zero when nobody uses it, so the first page load after a quiet spell can take about 30 seconds; after that it answers at once.
+These steps take about five minutes on a computer with an up-to-date browser. You need no account and nothing to install. The site is kept running until 11 Nov 2026, so pages load at once.
 
 Every visitor gets their own session, kept in a cookie. Your decisions never reach another judge, and each match starts with no decisions. A reload keeps the decisions you made.
 

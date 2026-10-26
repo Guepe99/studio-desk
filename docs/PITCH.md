@@ -25,3 +25,5 @@ Also built on:
 - **OGraf**, the EBU's open format for HTML broadcast graphics, for every graphic on screen.
 
 Anyone can approve stories, switch the AI off and ask the studio a question on the live site, with no account: https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/
+
+The site is open on purpose for judging. In production the desk sits behind Microsoft Entra ID sign-in with producer and viewer roles, so only a producer can put a story on air or switch the AI off; that is the first step of our roadmap and is not built yet.
