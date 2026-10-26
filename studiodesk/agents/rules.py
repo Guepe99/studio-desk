@@ -543,7 +543,7 @@ def strip_citations(text):
     """Text without fact-id citations ("[F-SHOT_SPEED-000031]"): the ids live in fact_ids, never on the desk."""
     text = _FACT_ID.sub("", _ID_RUN.sub("", _CITATION.sub("", _CITED_AS.sub("", text))))
     text = re.sub(r"\s*[,;]\s*(?=\))", "", text)  # "(minuto 10, )" reads "(minuto 10)"
-    return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:facts?\s*)?\)|\[\s*\]", "", text)).strip()
+    return re.sub(r"\s+([.,;:!?])", r"\1", re.sub(r"\(\s*(?:(?:see|vedi|ver)\s+)?(?:(?:the\s+)?facts?|fatti|hechos)?\s*\)|\[\s*\]", "", text, flags=re.IGNORECASE)).strip()
 
 
 def local_words(text, lang):

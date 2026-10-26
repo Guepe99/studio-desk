@@ -800,6 +800,7 @@ def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
                                  "F-SCORE-000002.") == "Redwick lead, as reported in the on-air analysis."
     assert rules.strip_citations("Ha segnato due volte, vedi F-SCORE-000001 e F-SCORE-000002.") == "Ha segnato due volte."
     assert rules.strip_citations("Ostwick ha il 54% del possesso (F-TEAM_POSSESSION-000040).") == "Ostwick ha il 54% del possesso."
+    assert rules.strip_citations("Okowande scored, giving Redwick the lead (see facts).") == "Okowande scored, giving Redwick the lead."
     assert rules.strip_citations("Vedi i dati.") == "Vedi i dati."
     assert rules.local_words("Hugo Okowande ha marcado 2 goals.", "es") == "Hugo Okowande ha marcado 2 goles."
     assert rules.local_words("Okowande ha segnato 2 goals.", "it") == "Okowande ha segnato 2 gol."
