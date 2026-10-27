@@ -12,7 +12,7 @@ No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a five-minute wa
 
 ## What to try
 
-1. Open a match and press Play. The page opens on M001; the others are [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002), [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003) and [M004](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M004). The seek bar gets a button for each goal once the replay has reached it, and **Next key moment** jumps to the next story the agents found.
+1. Open a match and press Play. The page opens on M001; the others are [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002), [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003) and [M004](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M004). The seek bar gets a button for each goal once the replay has reached it, and **Next key moment** jumps to the next story the agents found. On a first visit a short welcome offers **Watch the first goal, with sound** or **Start from kick-off**.
 2. On a computer with a graphics card the picture is 3D, with the 2D pitch as a small, see-through live minimap at the bottom, as in a football video game. Click the minimap to swap the two, and click it again to swap them back. **Minimap** in the settings (the gear) turns it off. The 3D view runs in your browser and uses the same tracking data. A phone, or a computer that draws without a graphics card (a virtual machine or a remote desktop), starts on the 2D pitch; add `&view=split` to the link to bring the 3D view back.
 3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level. While the code's phrasebook line is on air, the risk follows the story's kind: a fact (a goal, a comeback, a sprint, a recap) is low, and a reading of the game (a big chance, a change of shape, who is on top) is medium. Use **Put on air**, **Edit** or **Reject** on a story, or open **Details** and press **Use proposal** to put the agents' own line on air; the confirmation that appears has an **Undo** button. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
 4. Look at the **Agents at work** strip under the picture. It shows which agent is working and what it passed on. While a graphic is on air, it shows how that graphic was made.
@@ -177,6 +177,15 @@ cp -r replays/. web/data/
 The export builds the tracking data and the template graphics; the copy adds the recorded agent output. Then open http://127.0.0.1:8000/. The replay needs no Azure account; Ask the studio does, and without `AZURE_OPENAI_ENDPOINT` it answers that there is no model on the site. The `agents` extras installed with the first command are needed by the tests and by the agents; to run the agents yourself, use `.venv/bin/python -m studiodesk.agents run M001 --fake` for an offline model, or set `AZURE_OPENAI_ENDPOINT` and sign in with the Azure CLI to use the real one.
 
 Tests run offline and never call a paid service: `.venv/bin/pytest -q` and, after `.venv/bin/python scripts/make_demo_fixture.py`, `node --test tests/web/*.test.mjs`. The browser checks in `tests/web/` (layout, desk, 3D, voice) run with `scripts/with-lock.sh chromium tests/web/run-smoke.sh <check>.mjs`; `smoke.mjs` runs on the demo fixture, or on a replay with `MATCH=M001`. They need Linux (`flock`) and Docker: by default the browser runs in a container image of the maintainer's machine, so elsewhere run `npm install && npx playwright install chromium` once (`package.json` pins Playwright) and prefix the command with `PLAYWRIGHT_FROM=$PWD/ CDP=0`, which makes Playwright launch its own Chromium. GitHub Actions runs both test suites on every push and builds the container image from main once the tests pass.
+
+## Use it from your own agent
+
+The MCP server is the way in for another team's agents: the same read-only tools the Studio Desk agents use, held at a match minute so nothing later leaks. `examples/studio_assistant.py` is a small Microsoft Agent Framework agent that starts the server over stdio and answers a producer's question up to that minute, then prints the tools it called and the facts it cites. It uses the same model client and Entra ID sign-in as the agents (`AZURE_OPENAI_ENDPOINT`, Azure CLI). Add `--dry-run` to list the tools and call one with no model and no Azure.
+
+```
+.venv/bin/python examples/studio_assistant.py --match M001 --minute 30 "Who has created the most chances so far?"
+.venv/bin/python examples/studio_assistant.py --match M001 --minute 30 --dry-run
+```
 
 ## Deployment
 

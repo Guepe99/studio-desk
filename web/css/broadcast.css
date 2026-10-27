@@ -262,10 +262,10 @@ body {
 /* F: the broadcast column fills the screen, on the page's white; a phone can still scroll to its controls */
 #app:fullscreen { overflow-y: auto; background: var(--page); }
 /* ?: the keyboard shortcuts, a native modal dialog (Escape or Close shut it, the focus goes back) */
-#keys { border: none; border-radius: var(--r-card); box-shadow: var(--shadow); color: var(--purple); background: var(--page);
+#keys, #welcome { border: none; border-radius: var(--r-card); box-shadow: var(--shadow); color: var(--purple); background: var(--page);
   font-size: 16px; line-height: 1.35; padding: 20px 24px; max-width: min(460px, calc(100vw - 32px)); }
-#keys::backdrop { background: rgba(30, 0, 33, .45); }
-#keys h2 { margin: 0 0 14px; font-size: 20px; font-weight: 800; }
+#keys::backdrop, #welcome::backdrop { background: rgba(30, 0, 33, .45); }
+#keys h2, #welcome h2 { margin: 0 0 14px; font-size: 20px; font-weight: 800; }
 #keys dl { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
 #keys h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; }
 #keys dt, #keys dd { margin: 0; }
@@ -273,6 +273,8 @@ body {
 #keys kbd { display: inline-block; min-width: 26px; padding: 4px 6px; border: 1.5px solid var(--purple); border-radius: 6px;
   font: 700 14px/1 var(--font); text-align: center; }
 #keys form { text-align: right; }
+#welcome p { margin: 0 0 20px; }
+#welcome .wl-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

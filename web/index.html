@@ -157,6 +157,15 @@
   </main>
   <aside id="desk" aria-label="Control desk"></aside>
   <!-- ? with the focus in the broadcast or its controls (keys.js) -->
+  <!-- the first visit's welcome (welcome.js): the focus starts on the first goal, Escape closes it -->
+  <dialog id="welcome" aria-labelledby="welcome-title" aria-describedby="welcome-text">
+    <h2 id="welcome-title" data-i18n="welcomeTitle">Welcome to Studio Desk</h2>
+    <p id="welcome-text" data-i18n="welcomeText">Studio Desk is an AI production desk for football: agents write the TV graphics from the match data, and you approve what goes on air.</p>
+    <div class="wl-actions">
+      <button id="welcome-start" class="ctl" type="button" data-i18n="welcomeStart">Start from kick-off</button>
+      <button id="welcome-goal" class="ctl primary" type="button" data-i18n="welcomeGoal" autofocus>Watch the first goal, with sound</button>
+    </div>
+  </dialog>
   <dialog id="keys" aria-labelledby="keys-title">
     <h2 id="keys-title" data-i18n="keysTitle">Keyboard shortcuts</h2>
     <dl>
