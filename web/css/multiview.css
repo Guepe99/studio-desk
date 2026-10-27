@@ -21,8 +21,13 @@ body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 #mv-clock { min-width: 13ch; }
 #mv-sync { min-width: 11ch; font-size: 13px; font-weight: 600; color: var(--lilac-100); }
 
-#mv-wall { flex: 1 1 0; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, var(--pw, 45vw)); justify-content: center; align-content: center; gap: 12px; padding: 4px 16px 16px; }
-#mv-wall.one-col { grid-template-columns: var(--pw, 100%); align-content: start; overflow: visible; }
+#mv-wall { flex: 1 1 0; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, auto); justify-content: center; align-content: center; gap: 12px; padding: 4px 16px 16px; }
+/* a live window large on the left, the other three in a column beside it */
+#mv-wall.focus { grid-template-columns: auto auto; align-items: start; }
+#mv-wall.focus .mv-win { grid-column: 2; }
+#mv-wall.focus .mv-win.big { grid-column: 1; grid-row: 1 / span 3; }
+#mv-wall.one-col .mv-win.big { order: -1; }
+#mv-wall.one-col { grid-template-columns: auto; align-content: start; overflow: visible; }
 
 .mv-win { margin: 0; display: flex; flex-direction: column; }
 .mv-pic { position: relative; width: var(--pw); aspect-ratio: 16 / 9; overflow: hidden; background: #000; outline: 4px solid transparent; outline-offset: 0; }
@@ -49,3 +54,4 @@ body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
   body.mv { height: auto; min-height: 100vh; min-height: 100dvh; }
   .mv-lede { font-size: 14px; }
 }
+.mv-back { color: var(--page); font-size: 14px; font-weight: 600; text-underline-offset: 3px; }

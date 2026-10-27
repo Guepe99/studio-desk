@@ -36,7 +36,7 @@ const wins = WINDOWS.map((w, i) => {
     frame.contentWindow.dispatchEvent(new Event("resize"));   // app.js lays the frame out again without the hidden rows
   });
   // the click is a user gesture in this page; same-origin windows share it, so their audio may start in it
-  hit.addEventListener("click", () => listen(i));
+  hit.addEventListener("click", () => listen(i));   // and the window grows, the others shrink beside it (fit)
   wall.append(fig);
   return { ...w, fig, frame, hit, name: fig.querySelector(".mv-name"), bar: fig.querySelector(".mv-meter i") };
 });
@@ -68,6 +68,7 @@ function listen(i) {
     w.fig.classList.toggle("tally", j === live);
     w.hit.setAttribute("aria-pressed", String(j === live));
   });
+  fit();
 }
 
 function setPlaying(on) {
@@ -77,6 +78,10 @@ function setPlaying(on) {
   for (const w of wins) sd(w)?.setPlaying(on);
 }
 playBtn.addEventListener("click", () => setPlaying(!playing));
+$("#mv-single").addEventListener("click", (e) => {
+  const d = live >= 0 ? sd(wins[live]) : sd(wins[0]);
+  e.currentTarget.href = `index.html?match=${match}&t=${Math.floor(d?.state.ts ?? start)}${playing ? "&play=1" : ""}`;
+});
 document.addEventListener("keydown", (e) => {
   if ((e.key === " " || e.key === "k") && !e.target.closest("button")) { e.preventDefault(); setPlaying(!playing); }
 });
@@ -145,19 +150,35 @@ function meter() {
   wins[live].bar.style.transform = `scaleY(${Math.max(0, Math.min(1, (db + 60) / 60)).toFixed(3)})`;
 }
 
-// the cells: 16:9 pictures as large as the wall allows, two by two (one column on a narrow screen)
+// the cells: 16:9 pictures as large as the wall allows, two by two (one column on a narrow screen); with a
+// window live, as in a gallery multiviewer: that one large on the left, the other three small beside it
 const ONE_COL = matchMedia("(max-width: 899px), (orientation: portrait)");
+function size(w, pw) {
+  // a large window draws at full size, so it gets the page's full graphics; a small one at VW x VH
+  const vw = pw > 1.25 * VW ? 2 * VW : VW;
+  w.fig.style.setProperty("--pw", `${pw}px`);
+  w.fig.style.setProperty("--k", String(pw / vw));
+  Object.assign(w.frame.style, { width: `${vw}px`, height: `${vw * VH / VW}px` });
+}
 function fit() {
   const cols = ONE_COL.matches ? 1 : 2, gap = 12, umd = 30;
   const cs = getComputedStyle(wall);
   const W = wall.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const H = wall.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 8;   // 8: the tally outline, 4 px a side
+  const focus = cols === 2 && live >= 0;
+  wall.classList.toggle("one-col", cols === 1);
+  wall.classList.toggle("focus", focus);
+  wins.forEach((w, j) => w.fig.classList.toggle("big", focus && j === live));
+  if (focus) {
+    const small = Math.floor(Math.max(160, Math.min(W * 0.3, ((H - 2 * gap) / 3 - umd) * 16 / 9)));
+    const big = Math.floor(Math.max(160, Math.min(W - gap - small, (H - umd) * 16 / 9)));
+    wins.forEach((w, j) => size(w, j === live ? big : small));
+    return;
+  }
   let pw = (W - gap * (cols - 1)) / cols;
   if (cols === 2) pw = Math.min(pw, ((H - gap) / 2 - umd) * 16 / 9);
   pw = Math.floor(Math.max(160, pw));
-  wall.style.setProperty("--pw", `${pw}px`);
-  wall.style.setProperty("--k", String(pw / VW));
-  wall.classList.toggle("one-col", cols === 1);
+  wins.forEach((w) => size(w, pw));
 }
 new ResizeObserver(fit).observe(wall);
 ONE_COL.addEventListener("change", fit);

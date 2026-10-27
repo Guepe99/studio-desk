@@ -155,7 +155,7 @@ const CONTROL_STRINGS = {
     voice: "Voice", voiceName: "AI voice-over", goalAt: "Goal, {who}, {m}'",
     nextGoal: "Next goal", nonextGoal: "No more goals", nokeyGoal: "No goals",
     goalsHint: "AI graphics are off: this jumps to the goals",
-    keysTitle: "Keyboard shortcuts", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
+    keysTitle: "Keyboard shortcuts", multiview: "Multiview: four audiences at once", keySpace: "Space", keyPlay: "Play or pause", keyTen: "Back or forward 10 seconds",
     keyFive: "Back or forward 5 seconds", keyJump: "Jump to 0%, 10% … 90% of the match", keyVoice: "AI voice-over on or off",
     keyFull: "Full screen on or off", keyList: "This list",
     bothTeams: "Both teams", everyone: "Everyone",
@@ -171,7 +171,7 @@ const CONTROL_STRINGS = {
     voice: "Voce", voiceName: "Voce IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Prossimo gol", nonextGoal: "Nessun altro gol", nokeyGoal: "Nessun gol",
     goalsHint: "Grafiche IA spente: il pulsante salta ai gol",
-    keysTitle: "Scorciatoie da tastiera", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
+    keysTitle: "Scorciatoie da tastiera", multiview: "Multiview: quattro pubblici insieme", keySpace: "Spazio", keyPlay: "Riproduci o metti in pausa", keyTen: "Indietro o avanti di 10 secondi",
     keyFive: "Indietro o avanti di 5 secondi", keyJump: "Salta allo 0%, 10% … 90% della partita", keyVoice: "Accendi o spegni la voce IA",
     keyFull: "Attiva o disattiva lo schermo intero", keyList: "Questo elenco",
     bothTeams: "Entrambe le squadre", everyone: "Tutti",
@@ -187,7 +187,7 @@ const CONTROL_STRINGS = {
     voice: "Voz", voiceName: "Voz de IA", goalAt: "Gol, {who}, {m}'",
     nextGoal: "Siguiente gol", nonextGoal: "No hay más goles", nokeyGoal: "No hay goles",
     goalsHint: "Gráficos de IA apagados: el botón salta a los goles",
-    keysTitle: "Atajos de teclado", keySpace: "Espacio", keyPlay: "Reproducir o pausar", keyTen: "Atrás o adelante 10 segundos",
+    keysTitle: "Atajos de teclado", multiview: "Multiview: cuatro públicos a la vez", keySpace: "Espacio", keyPlay: "Reproducir o pausar", keyTen: "Atrás o adelante 10 segundos",
     keyFive: "Atrás o adelante 5 segundos", keyJump: "Ir al 0%, 10% … 90% del partido", keyVoice: "Activar o desactivar la voz de IA",
     keyFull: "Activar o desactivar la pantalla completa", keyList: "Esta lista",
     bothTeams: "Ambos equipos", everyone: "Todos",
@@ -666,6 +666,7 @@ function wireControls() {
     else if (b.dataset.delay) { if (Number(b.dataset.delay) !== delay) location.search = delayUrl(location.search, Number(b.dataset.delay), state, view3d?.mode); }
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
     else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
+    else if (b.id === "multiview-open") location.href = `multiview.html?match=${matchId}&t=${Math.floor(state.ts)}`;
     else if (b.id === "keys-open") { setMenu(false, true); $("#keys").showModal(); }
   });
   // a menu button: Enter or ArrowDown opens it on its first item, ArrowUp on its last; arrows, Home and End move,

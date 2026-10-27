@@ -102,6 +102,19 @@ expect(a[0].ctx === "running" && a[0].crowd + a[0].lines > 0, `window 1 plays (c
 expect(a[2].crowd + a[2].lines === 0, `window 3 is silent (crowd ${a[2].crowd}, lines ${a[2].lines})`);
 ts = await times();
 expect(spread(ts) <= 0.5, `still within 0.5 s with the reference on window 1 (${spread(ts).toFixed(3)} s)`);
+// the live window is the large one, the other three small in a column beside it, all on screen
+const box = () => page.$$eval(".mv-pic", (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, b: r.bottom }; }));
+let bx = await box();
+console.log(JSON.stringify(bx));
+expect(bx[0].w > 2 * bx[1].w && bx[1].w === bx[2].w && bx[2].w === bx[3].w, "window 1 large, the others small");
+expect(bx.slice(1).every((r) => r.x > bx[0].x + bx[0].w) && Math.max(...bx.map((r) => r.b)) <= 1080, "the small ones beside it, all on screen");
+await page.screenshot({ path: path.join(shots, "multiview-focus.png") });
+await page.click(".mv-win:nth-child(1) .mv-hit");
+await page.waitForTimeout(1000);
+bx = await box();
+expect(bx.every((r) => r.w === bx[0].w), "clicked again: all four the same size");
+await page.click(".mv-win:nth-child(1) .mv-hit");   // back to window 1 live for the checks below
+await page.waitForTimeout(1000);
 
 // a goal button moves all four
 await page.locator("#mv-goals button").nth(2).click();
