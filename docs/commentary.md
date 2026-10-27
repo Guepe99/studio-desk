@@ -31,7 +31,7 @@ Kokoro reading whole sentences. Chatterbox was dropped untried: its smallest exp
 does not fit the 2 GB disk cap next to Kokoro (1.7 GB), and the 2 shared vCPUs were already the bottleneck.
 The studio voice is unchanged: Azure, `docs/voice.md`.
 
-Kokoro is pinned: `kokoro` 0.9.4, `misaki` 0.9.4, `torch` 2.5.1+cpu
+Kokoro is pinned: `kokoro` 0.9.4, `misaki` 0.9.4, `torch` 2.13.0+cpu, `transformers` 5.10.4
 (`scripts/booth-kokoro-requirements.txt`), and model revision `f3ff3571791e39611d31c381e3a41a3af07b4987` of
 `hexgrad/Kokoro-82M`. `scripts/booth-kokoro-setup.sh` checks the weights and the six voice files by SHA256.
 It installs into `.tts/` (git-ignored, about 1.7 GB), apart from the project venv. Delete `.tts/` after a

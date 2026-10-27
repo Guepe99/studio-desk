@@ -7,7 +7,7 @@ REV=$(sed -n 's/^REPO, REV = .*"\([0-9a-f]\{40\}\)".*/\1/p' scripts/booth_kokoro
 [ ${#REV} = 40 ] || { echo "no pinned revision in scripts/booth_kokoro.py"; exit 1; }
 export HF_HOME="$PWD/.tts/hf"
 python3 -m venv .tts/kokoro
-.tts/kokoro/bin/pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu
+.tts/kokoro/bin/pip install -q --index-url https://download.pytorch.org/whl/cpu torch==2.13.0+cpu
 .tts/kokoro/bin/pip install -q -r scripts/booth-kokoro-requirements.txt
 .tts/kokoro/bin/python -I - "$REV" <<'PY'
 import hashlib, sys
