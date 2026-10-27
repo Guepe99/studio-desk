@@ -24,6 +24,9 @@ body { display: flex; }
   #desk-open, #desk-close { display: inline-block; }
 }
 @media (prefers-reduced-motion: reduce) { #desk, .desk-open #desk { transition: none; } }
+/* docked, the open Ask panel covers the foot of the desk (ask.css): the desk ends above it (desk.js sets --ask-h), so no
+   story or button sits under the panel, where a click would land on the panel instead */
+@media (min-width: 1100px) { #desk { padding-bottom: var(--ask-h, 0px); } }
 
 #ai-off { position: absolute; right: 56px; top: 40px; height: 66px; padding: 0 28px; display: flex; align-items: center;
   background: var(--orange); color: var(--purple); font: 800 36px/1 var(--font); letter-spacing: .02em; border-radius: var(--r-box); }

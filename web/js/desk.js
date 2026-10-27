@@ -80,7 +80,8 @@ export const TEXT = {
     tokInOut: "{a} in, {b} out", zeroTokens: "0 tokens", sharedBy: ({ n }) => `, shared by ${n} stories`,
     how_ai: "AI", how_codeai: "Code and AI", how_rules: "Rules",
     ag_story_finder: "Story finder", ag_analyst: "Analyst", ag_commentator: "Commentator", ag_verifier: "Verifier", ag_director: "Director",
-    ag_human: "You", ag_auto: "Auto-approval", ag_studio_host: "Studio host",
+    ag_human: "You", ag_auto: "Auto-approval", ag_studio_host: "Studio host", ag_desk: "Desk rule",
+    a_expired: ({ min }) => (min ? `missed: nobody put it on air within ${min} min of its slot, so it never aired` : "missed: nobody put it on air before its slot ended, so it never aired"),
     role_story_finder: "Picks moments from the events the match clock releases.",
     role_analyst: "Describes the moment from its facts, citing fact ids.",
     role_commentator: "Writes the lines in English, Italian and Spanish.",
@@ -96,7 +97,7 @@ export const TEXT = {
     tip_st_template: "Made by code from the facts: no AI and no approval needed.",
     airEmpty: "Nothing on screen right now.", doneEmpty: "Nothing decided yet.",
     needsEmpty: "Nothing waits for you. The agents write these graphics, and a low-risk one goes on air by itself, any other waits here for you.",
-    next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "due on air now", toAirPast: "was due on air at {m}'", left: "{s} s left",
+    next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "due on air now", toAirPast: "was due on air at {m}'", missIn: ", missed in {s} s", left: "{s} s left",
     takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_lineup: "Line-ups", g_why_card: "Card",
     done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", k_checkin: "Player check-in",
     line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
@@ -177,7 +178,8 @@ export const TEXT = {
     tokInOut: "{a} in input, {b} in output", zeroTokens: "0 token", sharedBy: ({ n }) => `, condiviso da ${n} storie`,
     how_ai: "IA", how_codeai: "Codice e IA", how_rules: "Regole",
     ag_story_finder: "Cercastorie", ag_analyst: "Analista", ag_commentator: "Commentatore", ag_verifier: "Verificatore", ag_director: "Regista",
-    ag_human: "Tu", ag_auto: "Approvazione automatica", ag_studio_host: "Conduttore",
+    ag_human: "Tu", ag_auto: "Approvazione automatica", ag_studio_host: "Conduttore", ag_desk: "Regola della regia",
+    a_expired: ({ min }) => (min ? `persa: nessuno l'ha mandata in onda entro ${min} min dal suo spazio, quindi non è mai andata in onda` : "persa: nessuno l'ha mandata in onda prima della fine del suo spazio, quindi non è mai andata in onda"),
     role_story_finder: "Sceglie i momenti tra gli eventi che l'orologio della partita rende disponibili.",
     role_analyst: "Descrive il momento dai suoi fatti, citando gli id dei fatti.",
     role_commentator: "Scrive le frasi in inglese, italiano e spagnolo.",
@@ -193,7 +195,7 @@ export const TEXT = {
     tip_st_template: "Fatta dal codice a partire dai fatti: niente IA, non serve approvazione.",
     airEmpty: "In questo momento non c'è niente in onda.", doneEmpty: "Ancora niente di deciso.",
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
-    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, left: "ancora {s} s",
+    next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, missIn: ", persa tra {s} s", left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
     done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
@@ -273,7 +275,8 @@ export const TEXT = {
     tokInOut: "{a} de entrada, {b} de salida", zeroTokens: "0 tokens", sharedBy: ({ n }) => `, compartido por ${n} historias`,
     how_ai: "IA", how_codeai: "Código e IA", how_rules: "Reglas",
     ag_story_finder: "Buscahistorias", ag_analyst: "Analista", ag_commentator: "Comentarista", ag_verifier: "Verificador", ag_director: "Realizador",
-    ag_human: "Tú", ag_auto: "Aprobación automática", ag_studio_host: "Presentador",
+    ag_human: "Tú", ag_auto: "Aprobación automática", ag_studio_host: "Presentador", ag_desk: "Regla de la realización",
+    a_expired: ({ min }) => (min ? `perdida: nadie la puso en antena en los ${min} min después de su espacio, así que nunca salió` : "perdida: nadie la puso en antena antes de que terminara su espacio, así que nunca salió"),
     role_story_finder: "Elige los momentos entre los eventos que libera el reloj del partido.",
     role_analyst: "Describe el momento a partir de sus datos, citando los id de los datos.",
     role_commentator: "Escribe las frases en inglés, italiano y español.",
@@ -289,7 +292,7 @@ export const TEXT = {
     tip_st_template: "Hecho por código a partir de los datos: sin IA y sin aprobación.",
     airEmpty: "Ahora no hay nada en antena.", doneEmpty: "Todavía no hay nada decidido.",
     needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, los de riesgo bajo salen al aire solos, los demás esperan aquí tu decisión.",
-    next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "sale al aire ahora", toAirPast: "debía salir al aire en el {m}'", left: "quedan {s} s",
+    next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "sale al aire ahora", toAirPast: "debía salir al aire en el {m}'", missIn: ", perdida en {s} s", left: "quedan {s} s",
     takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_lineup: "Alineaciones", g_why_card: "Tarjeta",
     done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", k_checkin: "Números del jugador",
     line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
@@ -337,7 +340,11 @@ const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself sta
 const EDIT_MAX = 600; // studiodesk/api.py EDIT_MAX_CHARS
 const TITLE_MAX = 80; // studiodesk/api.py TITLE_MAX_CHARS
 const LOOKAHEAD_S = 60; // a story whose first graphic is this close is listed, as Next
-const MISS_S = 300; // an agents' story nobody decided on leaves Needs you 5 match minutes after its slot (or its moment, without a cue)
+// How long an agents' story nobody decided on may wait after its slot (its last graphic's end, or its moment without a cue)
+// before it is missed: a chance or a sprint goes with its replay at the next stoppage, a phase of play stays true a little
+// longer, a goal, a comeback or a recap is still the story minutes later (docs/desk.md, When a story is missed)
+export const MISS_S = { big_chance: 60, key_pass: 60, top_sprint: 60, momentum_swing: 120, pressing_spell: 120, high_press: 120, tactical_shift: 120, goal: 300, comeback: 300, recap: 300 };
+export const missAfter = (kind) => MISS_S[kind] ?? 120;
 const ON_AIR = ["auto_approved", "approved", "edited"];
 const REASONS = ["number", "player", "moment", "tone"]; // why a story was rejected, one tap each
 const API_TIMEOUT_MS = 4000;
@@ -415,6 +422,7 @@ export class Desk {
     this.byId = new Map();
     this.decisions = new Map(); // story_id -> {decision, edited_text, at}
     this.met = new Set(); // the ones this visitor saw waiting in Needs you: only those can be missed
+    this.missedAt = new Map(); // story_id -> when (UTC) the desk first saw a met one missed: its audit row
     this.kill = false;
     this.online = false;
     this.offline = "";   // why decisions stay in this tab, when the API refused or did not answer
@@ -488,6 +496,10 @@ export class Desk {
     this.bodyEl = h("div", { className: "desk-body", role: "tabpanel", tabindex: 0, "data-focus": "panel" });
     root.replaceChildren(this.headEl, this.infoEl, this.killEl, this.noteEl, this.doneEl, this.bodyEl);
     root.addEventListener("keydown", (e) => this.onKey(e));
+    // the open Ask panel sits over the foot of the docked desk (ask.css): the desk keeps its height free (desk.css --ask-h),
+    // so no story or button of the desk is left under it
+    const ask = document.querySelector?.("#ask");
+    if (ask && typeof ResizeObserver === "function") new ResizeObserver(() => root.style.setProperty("--ask-h", `${ask.hidden ? 0 : ask.offsetHeight}px`)).observe(ask);
   }
 
   tx(key, vars) { return tr(this.state.lang, key, vars); }
@@ -560,9 +572,13 @@ export class Desk {
   // a story or generated graphic nobody decided on while it could air is missed ("expired") and leaves Needs
   // you for the missed count: a generated graphic when its slot ends, an agents' story MISS_S after it
   status(s) {
-    const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s), end = this.slotEnd.get(s.story_id);
-    if (d !== "needs_review") return d;
-    return this.state.ts >= (s.gen ? end : (end ?? this.firstOf(s)) + MISS_S) ? "expired" : d;
+    const d = this.decisions.get(s.story_id)?.decision ?? this.defaultStatus(s);
+    return d === "needs_review" && this.state.ts >= this.missAt(s) ? "expired" : d;
+  }
+  /** The match time a waiting story or generated graphic is missed at: from the clock, so seeking back before it makes it wait again. */
+  missAt(s) {
+    const end = this.slotEnd.get(s.story_id);
+    return s.gen ? end : (end ?? this.firstOf(s)) + missAfter(s.kind);
   }
   /** The status a tooltip explains: the AI switch and a filler first. */
   tipKey(s) {
@@ -598,6 +614,14 @@ export class Desk {
     return q;
   }
   pending() { return this.queue().length; }
+  /** Keeps missedAt in step with the clock: a met story missed now gets its time once; one waiting again (seeking back) loses it. */
+  noteMissed() {
+    for (const id of this.met) {
+      const s = this.byId.get(id);
+      if (s && this.status(s) === "expired") { if (!this.missedAt.has(id)) this.missedAt.set(id, new Date().toISOString()); }
+      else this.missedAt.delete(id);
+    }
+  }
 
   /** The cues to play for an audience and language, with this visitor's overlay applied. */
   sheet(cues, audience, lang) {
@@ -848,6 +872,7 @@ export class Desk {
     this.shownTab = this.tab;
     const locked = this.locked(), tx = (k, v) => this.tx(k, v);
     const lang = this.state.lang, n = this.pending(), shown = this.shown().length;
+    this.noteMissed();
     const tabs = [["stories", tx("tabStories"), shown], ["audit", tx("tabAudit")], ["traces", tx("tabTraces")]];
     const tabButton = ([id, label, count]) => h("button", {
       // only the selected tab's panel exists, so only that tab names it
@@ -984,7 +1009,10 @@ export class Desk {
     }
     const s = this.byId.get(id), at = s ? this.firstOf(s) : now, sec = int(Math.ceil(at - now), this.state.lang);
     if (mode === "in") return at > now ? this.tx("inS", { s: sec }) : "";
-    return at > now ? this.tx("toAir", { s: sec }) : now < (this.slotEnd.get(id) ?? at) ? this.tx("toAirNow") : this.tx("toAirPast", { m: this.clockText(at) });
+    if (at > now) return this.tx("toAir", { s: sec });
+    if (now < (this.slotEnd.get(id) ?? at)) return this.tx("toAirNow");
+    const left = s && this.status(s) === "needs_review" ? Math.ceil(this.missAt(s) - now) : NaN; // the seconds before it is missed
+    return `${this.tx("toAirPast", { m: this.clockText(at) })}${left > 0 ? this.tx("missIn", { s: int(left, this.state.lang) }) : ""}`;
   }
   whenSpan(mode, id) { const el = h("span", { className: `when when-${mode}`, "data-when": `${mode}|${id}` }); el.textContent = this.when(el); return el; }
 
@@ -1314,6 +1342,13 @@ export class Desk {
 
   // Audit: the agents' rows (from the API, or from the replay traces) and this visitor's actions.
   auditData() {
+    this.noteMissed();
+    // the desk's own outcome: a story this visitor saw waiting and nobody put on air in time (status "expired")
+    const missed = [...this.missedAt].map(([id, at]) => {
+      const s = this.byId.get(id);
+      return { at, ts: this.missAt(s), actor: "desk", action: "expired", story_id: id, model: null, tokens_in: 0, tokens_out: 0, cost_usd: 0,
+        detail: { min: s.gen ? 0 : missAfter(s.kind) / 60 } };
+    });
     const fromApi = this.auditRows.filter((r) => r.actor !== "human" && r.actor !== "auto");
     // the visitor's own questions (studio_host, POST api/ask) are no reason to drop the replay's traces
     const asks = fromApi.filter((r) => r.actor === "studio_host");
@@ -1329,11 +1364,12 @@ export class Desk {
     const byAt = (a, b) => String(b.at).localeCompare(String(a.at));
     const reached = (r) => !this.byId.has(r.story_id) || this.visible(this.byId.get(r.story_id)); // no spoilers, as in Stories
     // the table is the whole trail: the producer's decisions too, among the agents' steps
-    return { rows: [...auto, ...agents, ...humans].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt), steps: agents !== fromApi };
+    return { rows: [...auto, ...agents, ...humans, ...missed].filter(reached).sort(byAt), agents, humans: [...humans].sort(byAt),
+      mine: [...humans, ...missed].sort(byAt), steps: agents !== fromApi };
   }
 
   renderAudit() {
-    const { rows, agents, humans, steps } = this.auditData();
+    const { rows, agents, humans, mine: yours, steps } = this.auditData();
     const lang = this.state.lang, tx = (k, v) => this.tx(k, v);
     const calls = agents.filter((r) => r.model);
     const tokens = agents.reduce((n, r) => n + r.tokens_in + r.tokens_out, 0), cost = agents.reduce((n, r) => n + r.cost_usd, 0);
@@ -1342,6 +1378,7 @@ export class Desk {
     const minute = (r) => (this.byId.has(r.story_id) ? `${this.minuteText(this.byId.get(r.story_id))}'` : Number.isFinite(r.ts) ? `${this.clockText(r.ts)}'` : "");
     const said = new Set(); // rows run newest first: a story's reject reasons go on its latest reject
     const what = (r) => {
+      if (r.action === "expired") return tx("a_expired", r.detail);
       if (r.actor !== "human" && r.actor !== "auto" && r.actor !== "studio_host") return h("span", { lang: "en" }, String(r.action).replace(/_/g, " ")); // an agent's step
       if (r.action === "ai_off" || r.action === "ai_on" || r.action === "undo") return tx(`a_${r.action}`);
       if (r.action === "ask") return tx("a_ask", { s: r.detail?.status ?? "asked" });
@@ -1352,7 +1389,7 @@ export class Desk {
       return a + (r.detail?.langs?.length ? ` (${r.detail.langs.join(", ")})` : "") + (why.length ? `: ${why.map((x) => tx(`r_${x}`).toLocaleLowerCase(lang)).join(", ")}` : "");
     };
     // "23' Goal, rejected: a number": this visitor's own actions first, in match minutes
-    const mine = humans.map((r) => {
+    const mine = yours.map((r) => {
       const s = this.byId.get(r.story_id);
       const line = s ? `${this.minuteText(s)}' ${kindName(s.kind, lang)}, ${what(r)}` : TEXT.en[`y_${r.action}`] ? tx(`y_${r.action}`, r.detail) : cap(what(r), lang);
       return h("li", { title: utc(r) }, line);
@@ -1364,7 +1401,7 @@ export class Desk {
       rows.length ? [h("h3", { className: "audit-head" }, tx("logCaption")), h("div", { className: "log-wrap", role: "region", tabindex: 0, "aria-label": tx("logCaption") }, h("table", { className: "log" },
         h("caption", { className: "sr" }, tx("logCaption")),
         h("thead", {}, h("tr", {}, ["colMinute", "colWho", "colWhat", "colCost"].map((c) => h("th", { scope: "col" }, tx(c))))),
-        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" || r.actor === "human" ? r.actor : "agent"}` },
+        h("tbody", {}, rows.map((r) => h("tr", { className: `a-${r.actor === "auto" || r.actor === "desk" ? "auto" : r.actor === "human" ? "human" : "agent"}` },
           h("td", { className: "num", title: utc(r) }, minute(r)),
           // the model under its agent, and the story by its name and minute
           h("td", {}, agentName(r.actor, lang), r.model ? h("span", { className: "model", lang: "en" }, r.model) : null),

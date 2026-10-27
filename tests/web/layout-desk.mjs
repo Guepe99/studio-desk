@@ -1,5 +1,5 @@
 // The desk and the agent strip as a first-time visitor meets them (layout review, findings 5, 9, 11,
-// 13, 14, 15, 17, 18, and the desk redesign in docs/desk.md), on the real page at 1280x720, 1920x1080,
+// 13, 14, 15, 17, 18, and the desk redesign in docs/desk.md), on the real page at 1280x720, 1440x900, 1920x1080,
 // 844x390, 390x844, 320x568 and 320x180, static hosting (the desk works offline, in the tab), on the
 // DEMO fixture by default:
 // - the header is one line: at 1280x720 the desk's head with its tabs is at most 80 px tall, in
@@ -19,7 +19,8 @@
 // - style review 2: the first card's primary action is in view without scrolling the desk (N7, in
 //   English, Italian and Spanish); "offline" on the Desk button is not the error colour (N14); docked,
 //   the audit table fits the desk without its own sideways scroll and "What" is not one word a line
-// Screenshots: out/shots/layout-<size>-{en,audit,strip,it}.png. SIZES='[[320,180]]' runs some sizes only.
+// - docked, with the Ask panel open over the foot of the desk, no desk button or Details is under it
+// Screenshots: out/shots/layout-<size>-{en,audit,strip,it,ask}.png. SIZES='[[320,180]]' runs some sizes only.
 // LAYOUT_BREAK=1 makes the audit table 640 px wide: with the scroller the run still passes.
 //
 //   WEBGL=0 [MATCH=M001] scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-desk.mjs
@@ -35,7 +36,7 @@ const { chromium } = require("playwright");
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
 const MATCH = process.env.MATCH ?? "DEMO";
 const PFX = MATCH === "DEMO" ? "layout" : `layout-${MATCH}`;
-const SIZES = process.env.SIZES ? JSON.parse(process.env.SIZES) : [[1280, 720], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
+const SIZES = process.env.SIZES ? JSON.parse(process.env.SIZES) : [[1280, 720], [1440, 900], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 const failures = [];
@@ -305,6 +306,36 @@ async function run(w, h) {
   }
   await openDesk();
   await shot(page, `${PFX}-${tag}-it.png`);
+
+  // docked, the open Ask panel covers the foot of the desk: no visible desk button or Details sits under it
+  // (a click there landed on the panel's input), at the end of the match with Done full and the desk scrolled down
+  if (!drawer) {
+    await seek(await page.evaluate(() => window.studioDesk.match.duration - 1));
+    const under = await page.evaluate(async () => {
+      document.querySelector("#ask").hidden = false;
+      const raf = () => new Promise((r) => requestAnimationFrame(r));
+      await raf(); await raf();
+      for (const d of document.querySelectorAll("#desk details:not(.more)")) d.open = true;
+      await raf();
+      for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = el.scrollHeight;
+      await raf(); await raf();
+      const out = [];
+      let n = 0;
+      for (const el of document.querySelectorAll("#desk button, #desk summary")) {
+        if (!el.checkVisibility()) continue;
+        const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        if (r.height === 0 || y < 0 || y > innerHeight) continue;
+        n++;
+        const hit = document.elementFromPoint(x, y);
+        // the desk's own sticky head over a scrolled row is scrolling, not covering: only something outside the desk counts
+        if (!hit?.closest("#desk")) out.push(`${el.textContent.trim().slice(0, 20)} under ${hit?.closest("[id]")?.id ?? hit?.tagName}`);
+      }
+      return { n, out };
+    });
+    await shot(page, `${PFX}-${tag}-ask.png`);
+    await page.evaluate(() => { document.querySelector("#ask").hidden = true; });
+    expect(under.n > 0 && !under.out.length, `${tag}: with Ask open, ${under.out.length} of ${under.n} desk controls are covered ${JSON.stringify(under.out.slice(0, 5))}`);
+  }
   await ctx.close();
 }
 

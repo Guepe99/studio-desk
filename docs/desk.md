@@ -55,16 +55,47 @@ audience) across its languages, with the pseudo-id `G-<cue_id>`. It takes the st
   at a time, and the analyst sheet alone has 17 to 18 Team shape panels a match.
 - One nobody decided on before its slot ended is missed: it never airs, it leaves Needs you for the
   "Missed" count under Done, and its row says "missed, nobody put it on air in time", with no action
-  left. The agents' stories get a limit too: 5 match minutes after the slot the director gave a held
-  story (after its moment, when it has no cue), it stops asking and is missed. Approving it in those
-  5 minutes records the decision, but its slot has passed, so it airs only if you go back in the match. Done says what happened to each: approved by you, approved automatically, skipped by
-  you, or missed. Each status has a one-line tooltip that says what it means.
+  left. The agents' stories get a limit too, by kind (below, When a story is missed). Done says what
+  happened to each: approved by you, approved automatically, skipped by you, or missed. Each status has
+  a one-line tooltip that says what it means.
 - The AI switch holds the agents' stories only: a generated graphic is code from the facts, so the
   rule above still decides it when the AI is off. A story stays off air with the AI off even when its
   words on air are the code's phrasebook, because an AI agent (the story finder) picked the moment;
   its tooltip says so.
 - Decisions on generated graphics stay in the tab, and in the tab's audit lines, even with the API:
   the API keeps decisions for story ids (`S-` followed by six digits) only.
+
+## When a story is missed
+
+A held story whose slot has passed waits a little longer, then leaves Needs you by itself: it is
+missed, it never airs afterwards, and the desk writes it to the audit. Before, every story waited 5
+match minutes, so a big chance at 8' still asked for a decision at 13' with "was due on air at 8'". Nobody
+airs a chance five minutes late: its graphic goes with its replay, at the next stoppage, and with the
+ball out of play for about 45 minutes of a top-flight match
+([The Analyst, ball in play 2025-26](https://theanalyst.com/articles/premier-league-ball-in-play-are-we-seeing-less-football-2025-26))
+a stoppage is rarely far off. The windows are mine, by how long the story stays true:
+
+| kind | waits after its slot |
+|---|---|
+| big chance, key pass, top sprint | 1 minute |
+| momentum swing, pressing spell, high press, tactical shift (a phase of play), and any other kind | 2 minutes |
+| goal, comeback, recap (still the story of the match minutes later, and at the break) | 5 minutes |
+
+The slot is the end of the story's last graphic, or its moment when it has no graphic (`MISS_S` and
+`missAt` in `web/js/desk.js`). A generated graphic is missed as soon as its slot ends, as before.
+Once the slot has passed the card says how long is left: "was due on air at 8', missed in 42 s".
+Approving it in that time records the decision, but the slot has passed, so it airs only if you go
+back in the match.
+
+The audit lists the miss among Your actions and in the table, "8' Big chance, missed: nobody put it
+on air within 1 min of its slot, so it never aired", by the Desk rule, in English, Italian and Spanish.
+It is not counted as one of your actions. Only a story you saw waiting is logged and counted under
+"Missed": one whose moment passed before you got there (a link to the 20th minute) was never yours to
+miss.
+
+Seeking follows the clock, as the replay does. Seek back before the story's window ends and it waits
+in Needs you again, and its audit line goes, since nothing aired; play on without deciding and it is
+missed again. A decision you made stays whichever way you seek.
 
 ## Settings explained
 
@@ -155,7 +186,15 @@ confirmation dialog for routine actions
 for efficient dismissal and correction, G16 for the consequences of an action to be clear.
 
 The audit starts with your own actions, newest first, in match minutes ("23' Goal, rejected: a
-number"), the UTC time in a tooltip; then the agents' log; the cost tiles come last.
+number"), the UTC time in a tooltip, and the stories the desk marked missed; then the agents' log;
+the cost tiles come last.
+
+## Wide screen
+
+From 1100 px the desk is a column beside the broadcast, as tall as the window. The open Ask panel
+sits over the foot of that column, so the desk ends above it: `desk.js` measures the panel and the
+column keeps that much space free at the bottom. Without it, the last rows of Done and their Details
+sat under the panel, where a click landed on the panel's input instead.
 
 ## Phone
 
