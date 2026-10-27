@@ -67,7 +67,9 @@ def rasterise(feat, atlas, pos, box, n, skin=None):
     colour (n, n, 4) with alpha 0/1 (alpha-tested at 0.5 like the material) and masks (n, n, 2).
     skin: (pos, tri) of the face skin, drawn first into the depth only: it hides the inner mouth and
     teeth of a closed mouth, as on the players."""
-    col = np.zeros((n, n, 4)); mask = np.zeros((n, n, 2)); depth = np.full((n, n), -np.inf)
+    col = np.zeros((n, n, 4))
+    mask = np.zeros((n, n, 2))
+    depth = np.full((n, n), -np.inf)
     if skin is not None:
         _draw(skin[0], skin[1], None, None, box, n, col, mask, depth)
     _draw(pos, feat["tri"], feat["uv"], atlas, box, n, col, mask, depth)
