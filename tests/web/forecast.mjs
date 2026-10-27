@@ -64,7 +64,10 @@ await page.evaluate(() => window.studioDesk.setPlaying(false));
 await page.evaluate(() => window.studioDesk.seek(700));
 await page.waitForFunction((id) => document.querySelector(`.watch button[data-watch="${id}"]`), ID);
 await page.locator(`.watch button[data-watch="${ID}"]`).click();
-check(await page.locator(`.watch button[data-watch="${ID}"]`).getAttribute("aria-pressed") === "true", "pre-approved: the button says so (aria-pressed)");
+// the panel redraws on the next frame (Watch.update), not inside the click
+const pressed = await page.waitForFunction((id) => document.querySelector(`.watch button[data-watch="${id}"]`)?.getAttribute("aria-pressed") === "true", ID, { timeout: 5000 })
+  .then(() => true, () => false);
+check(pressed, "pre-approved: the button says so (aria-pressed)");
 await playThrough(GOAL - 3, GOAL + 2);
 const card = await onAir();
 check(!!card && card.prepared === true && Math.abs(card.ts - GOAL) < 0.01, `pre-approved: on air at the goal's own time (${card?.ts})`);
