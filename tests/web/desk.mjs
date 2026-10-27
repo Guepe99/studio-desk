@@ -46,7 +46,7 @@ const firstCue = (all, id) => Math.min(...all.filter((c) => c.story_id === id).m
 const TEMPLATE_TS = cues.find((c) => c.story_id === null && c.audience === "analyst" && c.lang === "en" && c.graphic !== "why_card").ts + 1;
 // a template graphic on screen while the held story waits (the momentum card after the key pass)
 const MOMENTUM = cues.find((c) => c.story_id === null && c.graphic === "momentum" && c.audience === "analyst" && c.lang === "en");
-const ALL = firstCue(cues, BACK.story_id) + 22; // every story reached, nothing on screen
+const ALL = firstCue(cues, BACK.story_id) + 22; // every story reached, nothing on screen, the key pass missed (a minute after its slot)
 const LOOKAHEAD = 60;
 const EDIT = "The desk rewrote this line by hand: a quick ball over the top and a clean finish.";
 const EDIT_TITLE = "A finish from the desk";
@@ -101,8 +101,10 @@ async function structure(page, all, storyIds, ts, tag) {
   expect(secs.map((s) => s.id).join() === "air,needs,done", `${tag} @${ts}: sections ${secs.map((s) => s.id)}`);
   // live, a story exists once the match has passed its facts (its ts): a goal is never listed before it is scored
   const tsOf = await page.evaluate((ids) => Object.fromEntries(ids.map((id) => [id, window.studioDesk.desk.byId.get(id)?.ts])), storyIds);
-  const want = new Set(storyIds.filter((id) => tsOf[id] <= ts && firstCue(all, id) <= ts + LOOKAHEAD));
-  // a story nobody decided on, 5 match minutes past its slot, is listed under Missed, below the three sections
+  // one missed before this visitor saw it wait (a jump past its window) was never theirs: it is not listed
+  const unmet = new Set(await page.evaluate((ids) => { const d = window.studioDesk.desk; return ids.filter((id) => d.byId.get(id) && d.status(d.byId.get(id)) === "expired" && !d.met.has(id)); }, storyIds));
+  const want = new Set(storyIds.filter((id) => tsOf[id] <= ts && firstCue(all, id) <= ts + LOOKAHEAD && !unmet.has(id)));
+  // a story nobody decided on, past its slot by its kind's window (MISS_S in desk.js), is listed under Missed, below the three sections
   const missed = await page.$$eval("#desk .missed [data-item]", (n) => n.map((x) => x.id));
   const listed = [...secs.flatMap((s) => s.items).map((i) => i.id), ...missed].filter((i) => i.startsWith("story-S-")).map((i) => i.slice(6));
   // generated graphics (G- ids) go through the desk too, and at most one waits at a time
@@ -111,8 +113,8 @@ async function structure(page, all, storyIds, ts, tag) {
   expect(listed.length === new Set(listed).size && listed.length === want.size && listed.every((id) => want.has(id)),
     `${tag} @${ts}: listed ${JSON.stringify(listed)}, reached ${JSON.stringify([...want])}`);
   const late = await page.evaluate(([ids, now]) => { const d = window.studioDesk.desk; return ids.filter((id) => d.byId.get(id) && d.status(d.byId.get(id)) === "expired"
-    && !(now >= (d.slotEnd.get(id) ?? d.firstOf(d.byId.get(id))) + 300)); }, [missed.filter((i) => i.startsWith("story-S-")).map((i) => i.slice(6)), ts]);
-  expect(!late.length, `${tag} @${ts}: missed before 5 minutes past the slot ${JSON.stringify(late)}`);
+    && !(now >= d.missAt(d.byId.get(id)))); }, [missed.filter((i) => i.startsWith("story-S-")).map((i) => i.slice(6)), ts]);
+  expect(!late.length, `${tag} @${ts}: missed before its kind's window past the slot ${JSON.stringify(late)}`);
   for (const s of secs) {
     expect(String(s.items.length) === s.count, `${tag} @${ts}: ${s.id} says ${s.count} for ${s.items.length} items`);
     expect(s.items.length ? s.empty === null : (s.empty ?? "").length > 5, `${tag} @${ts}: ${s.id} empty state ${JSON.stringify(s.empty)}`);
@@ -140,7 +142,7 @@ async function noFactIds(page, tag) {
   });
   await page.evaluate(() => document.querySelector("#tab-stories").click());
   await page.evaluate(() => { for (const d of document.querySelectorAll("#desk details.more")) { d.open = true; d.dispatchEvent(new Event("toggle")); } });
-  const nested = await page.$$eval("#desk details details", (n) => n.length);
+  const nested = await page.$$eval("#desk details.more details", (n) => n.length);
   expect(!nested, `${tag}: ${nested} disclosures inside Details`);
   const found = [];
   for (const tab of ["stories", "audit", "traces"]) {
@@ -212,26 +214,24 @@ async function scenario(browser, w, h) {
   if (phone) {
     await closeDesk();
     expect(await page.$eval("#desk", (el) => getComputedStyle(el).visibility) === "hidden", `${tag}: sheet open before the Desk button`);
-    expect(await page.$eval("#desk-open .count", (el) => el.textContent) === "3", `${tag}: Desk badge does not say 3 waiting`);
-    expect(await page.$eval("#desk-open", (el) => el.getAttribute("aria-label")) === "Desk, 3 waiting for review", `${tag}: Desk button name`);
+    expect(await page.$eval("#desk-open .count", (el) => el.textContent) === "2", `${tag}: Desk badge does not say 2 waiting`);
+    expect(await page.$eval("#desk-open", (el) => el.getAttribute("aria-label")) === "Desk, 2 waiting for review", `${tag}: Desk button name`);
     expect(await page.$eval("#desk-open .off", (el) => el.hidden), `${tag}: Desk button says offline while online`);
     await openDesk();
     // the sheet leaves at least 40% of the height to the broadcast, which shows above it
     const sheet = await page.evaluate(() => ({ top: document.querySelector("#desk").getBoundingClientRect().top, frame: document.querySelector("#frame").getBoundingClientRect().bottom, h: innerHeight }));
     expect(sheet.top >= 0.4 * sheet.h - 1 && sheet.frame <= sheet.top + 1, `${tag}: the sheet leaves the broadcast ${JSON.stringify(sheet)}`);
   }
-  // one line: "Control desk · AI graphics on · 3 waiting" (the dots are CSS); on a phone the count gives way to Close
+  // one line: "Control desk · AI graphics on · 2 waiting" (the dots are CSS); on a phone the count gives way to Close
   const head = await page.$eval("#desk .desk-title", (el, last) => [el.querySelector("h2"), el.querySelector("#ai-switch .switch-label"), el.querySelector(last)]
     .map((x) => x && [x.textContent.replace(/\s+/g, " ").trim(), Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2)]), phone ? "#desk-close" : ".desk-sum");
-  expect(JSON.stringify(head.map((x) => x?.[0])) === `["Control desk","AI graphics on","${phone ? "Close" : "3 waiting"}"]` && head.every((x) => Math.abs(x[1] - head[0][1]) < 12),
+  expect(JSON.stringify(head.map((x) => x?.[0])) === `["Control desk","AI graphics on","${phone ? "Close" : "2 waiting"}"]` && head.every((x) => Math.abs(x[1] - head[0][1]) < 12),
     `${tag}: header ${JSON.stringify(head)}`);
-  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
-    `${tag}: Put on air does not name its story`);
-  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => [el.getAttribute("aria-keyshortcuts"), el.querySelector("kbd")?.textContent].join()) === "A,A",
-    `${tag}: Put on air does not show its key`);
+  // the key pass waited while its moment was on (seen at the momentum card above): a minute after its slot it is missed, never aired
+  expect(!!(await page.$(`#desk .missed ${card(HELD)}`)) && !(await page.$(`#desk .sec-needs ${card(HELD)}`)), `${tag}: the key pass is not missed at ${ALL}`);
 
   // 1. a waiting card: what will air, one status line, the actions, then Details (closed, built when opened)
-  for (const s of [HELD, SWING, BACK]) {
+  for (const s of [SWING, BACK]) {
     const c = await page.$eval(card(s), (el) => {
       const more = el.querySelector(":scope > details.more");
       return { parts: [...el.children].map((x) => x.className.split(" ")[0] || x.tagName), open: more?.open ?? null, h: Math.round(el.getBoundingClientRect().height),
@@ -258,6 +258,10 @@ async function scenario(browser, w, h) {
   }
   await seekTo(page, whyCue(HELD).ts + 2);
   await openDesk();
+  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => el.getAttribute("aria-label")).then((l) => /^Put on air: Key pass at minute \d+/.test(l)),
+    `${tag}: Put on air does not name its story`);
+  expect(await page.$eval(`${card(HELD)} .act-approved`, (el) => [el.getAttribute("aria-keyshortcuts"), el.querySelector("kbd")?.textContent].join()) === "A,A",
+    `${tag}: Put on air does not show its key`);
   expect(await page.$$eval(`${card(HELD)} .mini`, (n) => n.length) === 0, `${tag}: pitch map built with Details closed`);
   await page.$eval(card(HELD), (n) => n.scrollIntoView({ block: "start" }));
   await page.click(`${card(HELD)} .more > summary`);
@@ -567,10 +571,10 @@ async function lookahead(browser) {
   await structure(page, m2, s2.map((s) => s.story_id), chance.ts + 1, "M002");
   expect(await page.$eval(card(chance), (el) => !!el.querySelector(".tag")).catch(() => false), "M002 after the shot: the 17' story is not listed as Next");
   await structure(page, m2, s2.map((s) => s.story_id), at + 1, "M002");
-  // at 22' the held stories whose slot ended 5 minutes before (the 11' pressing spell among them) are missed, not waiting
-  const slotEnd = (id) => Math.max(...m2.filter((c) => c.story_id === id).map((c) => c.ts + c.duration_s));
-  const stale = s2.filter((s) => s.default_status === "needs_review" && slotEnd(s.story_id) + 300 <= 22 * 60).map((s) => `story-${s.story_id}`);
+  // at 22' the held stories seen waiting whose window after their slot has passed (the 11' pressing spell among them) are missed, not waiting
   await structure(page, m2, s2.map((s) => s.story_id), 22 * 60, "M002");
+  const stale = await page.evaluate((ids) => { const d = window.studioDesk.desk; return ids.filter((id) => d.met.has(id) && d.missAt(d.byId.get(id)) <= 22 * 60).map((id) => `story-${id}`); },
+    s2.filter((s) => s.default_status === "needs_review").map((s) => s.story_id));
   const missedAt22 = await page.$$eval("#desk .missed [data-item]", (n) => n.map((x) => x.id));
   const waitingAt22 = await page.$$eval("#desk .sec-needs [data-item]", (n) => n.map((x) => x.id));
   expect(stale.length > 0 && stale.every((id) => missedAt22.includes(id) && !waitingAt22.includes(id)) && /^Missed: \d+$/.test(await page.$eval("#desk .missed > summary", (el) => el.textContent)),
