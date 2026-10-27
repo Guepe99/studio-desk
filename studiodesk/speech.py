@@ -4,6 +4,7 @@ The page records 16 kHz mono 16-bit PCM WAV, one of the two formats that API tak
 the request's memory: it is never written to disk, logged or sent anywhere but Azure Speech."""
 import io
 import os
+import time
 import wave
 
 import httpx
@@ -27,6 +28,9 @@ PER_DAY = int(os.environ.get("ASK_VOICE_PER_DAY", "40"))
 PER_CLIENT_PER_DAY = 15  # per client address, as for edits: dropping the cookie does not reset it
 # F0 takes 1 concurrent speech to text request (speech-services-quotas-and-limits): a second one waits this long
 WAIT_S = 10.0
+# F0 also answers 429 "resource constraints" now and then, about one clip in three on 27 Oct 2026, and the
+# same clip goes through a moment later: two more tries after these pauses
+BUSY_RETRY_S = (1.0, 2.0)
 
 
 def available() -> bool:
@@ -51,11 +55,15 @@ def transcribe(audio: bytes, lang: str, token: str) -> str:
     """The text Azure Speech heard in `audio`, "" when it heard no words; raises on any other outcome.
     `token` is a Microsoft Entra token for https://cognitiveservices.azure.com, sent as the API asks:
     aad#<resource id>#<token>."""
-    r = httpx.post(f"{ENDPOINT}/speech/recognition/conversation/cognitiveservices/v1",
-                   params={"language": LOCALES[lang], "format": "simple", "profanity": "masked"},
-                   headers={"Authorization": f"Bearer aad#{RESOURCE_ID}#{token}", "Content-Type": CONTENT_TYPE,
-                            "Accept": "application/json"},
-                   content=audio, timeout=TIMEOUT_S)
+    for wait in BUSY_RETRY_S + (None,):
+        r = httpx.post(f"{ENDPOINT}/speech/recognition/conversation/cognitiveservices/v1",
+                       params={"language": LOCALES[lang], "format": "simple", "profanity": "masked"},
+                       headers={"Authorization": f"Bearer aad#{RESOURCE_ID}#{token}", "Content-Type": CONTENT_TYPE,
+                                "Accept": "application/json"},
+                       content=audio, timeout=TIMEOUT_S)
+        if r.status_code != 429 or wait is None:
+            break
+        time.sleep(wait)
     r.raise_for_status()
     out = r.json()
     status = out.get("RecognitionStatus")

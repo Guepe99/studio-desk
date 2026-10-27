@@ -157,3 +157,20 @@ def test_wav_problem():
     assert speech.wav_problem(wav(seconds=10.5)) is None
     assert "long" in speech.wav_problem(wav(seconds=10.6))
     assert "16-bit" in speech.wav_problem(wav(width=1))
+
+
+def test_transcribe_tries_again_when_speech_is_busy(monkeypatch):
+    statuses, slept = [429, 429, 200], []
+    reply(monkeypatch)
+
+    def post(url, **kw):
+        status = statuses.pop(0)
+        return httpx.Response(status, json={"RecognitionStatus": "Success", "DisplayText": "Who scored?"},
+                              request=httpx.Request("POST", url))
+    monkeypatch.setattr(speech.httpx, "post", post)
+    monkeypatch.setattr(speech.time, "sleep", slept.append)
+    assert speech.transcribe(b"audio", "en", "tok") == "Who scored?"
+    assert slept == [1.0, 2.0]
+    statuses[:] = [429, 429, 429]
+    with pytest.raises(httpx.HTTPStatusError):  # busy three times: the route answers 502 as before
+        speech.transcribe(b"audio", "en", "tok")
