@@ -127,3 +127,25 @@ def test_rules_alone_runs_the_workflow_with_the_model_off(match_db, monkeypatch)
     assert f"| {r['planted']} / {r['found']} of {r['planted']} | {r['stories'] + 2} / {r['stories']} | 5 / 0 |" in page
     assert "| all |" in page and "--no-rules" in measures.rules_section([agents], [])
     assert f"with the rules alone, {r['found']} and {r['stories']}" in " ".join(page.split())
+
+
+def test_analyses_written_replaced_and_kept():
+    stories = [story("S-000001", 1), story("S-000002", 2), story("S-000003", 3), story("S-000004", 4)]
+    stories[1]["verifier"]["analysis_judged"] = False  # the judge did not pass it
+    stories[3]["verifier"]["analysis_judged"] = True
+    traces = [{"agent": "analyst", "output_summary": "2 analyses", "story_ids": json.dumps(["S-000001", "S-000002"])},
+              {"agent": "analyst", "output_summary": "1 analysis, 1 replaced by the facts", "story_ids": ["S-000003"]},
+              {"agent": "analyst", "output_summary": "0 analyses fallback: timeout", "story_ids": ["S-000004"]},
+              {"agent": "verifier", "output_summary": "pass 4", "story_ids": []}]
+    assert measures.analyses(stories, traces) == {"analysis_rounds": 3, "analyses_written": 3, "analyses_code": 1,
+                                                  "analyses_judge": 1, "analyses_kept": 1}
+
+
+def test_timing_cue_is_the_director_and_the_round_ends_at_its_last_step():
+    def tr(seq, ts, agent, at, latency_ms=0):
+        return {"seq": seq, "ts": ts, "agent": agent, "at": f"2026-10-27T13:00:{at:06.3f}+00:00",
+                "latency_ms": latency_ms, "story_ids": json.dumps(["S-000001"] if agent == "story_finder" else [])}
+    traces = [tr(1, 600.0, "story_finder", 3.0, 2000), tr(2, 600.0, "director", 3.1), tr(3, 600.0, "analyst", 6.0, 2000),
+              tr(4, 600.0, "verifier", 20.0)]
+    t = measures.timing(traces, [story("S-000001", 599.0)])
+    assert [round(w, 3) for w in t["cues"]] == [2.1] and t["walls"] == [19.0]

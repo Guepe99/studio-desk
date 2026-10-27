@@ -65,17 +65,18 @@ first graphic lands on the picture at their moment: lead at most D.
 | M001 | 15 | 2.0 / 6.9 | 4 | 12 | 15 | 15 | 1.9 |
 | M002 | 24 | 2.0 / 6.5 | 2 | 21 | 24 | 24 | 1.5 |
 | M003 | 16 | 1.5 / 6.0 | 2 | 12 | 16 | 16 | 1.0 |
-| M004 | 28 | 4.9 / 6.0 | 3 | 22 | 28 | 28 | 1.0 |
-| all | 83 | 2.0 / 6.9 | 11 | 67 | 83 | 83 | 1.9 |
+| M004 | 28 | 5.0 / 12.6 | 3 | 21 | 27 | 28 | 7.6 |
+| all | 83 | 2.0 / 12.6 | 11 | 66 | 82 | 83 | 7.6 |
 
-At 5 s the 16 stories still late are 14 big chances (lead 5.0 to 6.0 s) and the 2 comebacks (6.9 and
-6.5 s); each lands its lead minus 5 s after its moment, at most 1.9 s. At 10 s and 15 s every story
-lands on its moment; 15 s adds only time for the producer.
+At 5 s the 17 stories still late are 14 big chances (lead 5.0 to 6.0 s), the 2 comebacks (6.9 and
+6.5 s) and a pressing spell in M004 (12.6 s); each lands its lead minus 5 s after its moment, at most
+7.6 s. At 10 s every story but that pressing spell lands on its moment (it lands 2.6 s after); at
+15 s all 83 do.
 
 The replays place each graphic a fixed time after its moment (the regenerations ran with the match
 clock not waiting for real time, see MEASURES.md), so these leads are the replay's own. On the
-live-speed run in MEASURES.md the two goals reached the director's cue 3.7 and 5.6 s after the shot
-and a big chance 9.7 s after it: a 5 s delay would put 1 of those 3 on its moment, 10 s all 3.
+live-speed run in MEASURES.md the two goals reached the director's cue 3.2 and 3.2 s after the shot
+and a big chance 8.0 s after it: a 5 s delay would put 2 of those 3 on its moment, 10 s all 3.
 
 The numbers above are also checked by `tests/web/delay.test.mjs`.
 

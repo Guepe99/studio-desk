@@ -69,7 +69,7 @@ test("M001 at 10 s: both first-half goals' graphics land on the shot; the 8' big
 });
 
 test("the measured numbers in docs/delay.md: stories on their moment at 0, 5, 10 and 15 s", () => {
-  const on = { M001: [4, 12, 15, 15], M002: [2, 21, 24, 24], M003: [2, 12, 16, 16], M004: [3, 22, 28, 28] };
+  const on = { M001: [4, 12, 15, 15], M002: [2, 21, 24, 24], M003: [2, 12, 16, 16], M004: [3, 21, 27, 28] };
   for (const [m, want] of Object.entries(on)) {
     const times = storyTimes(data(m, "cues.json"), data(m, "stories.json"), data(m, "events.json"));
     assert.deepEqual(DELAYS.map((d) => times.filter((r) => r.lead <= d + 1e-6).length), want, m);
