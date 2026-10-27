@@ -589,8 +589,10 @@ pre-approve ([docs/forecast.md](forecast.md)). Nothing above changes.
 
 - `web/data/<match>/forecast.json` (static replay export, written by `studiodesk/export.py` and by
   `python -m studiodesk.forecast <match_id>...`): `{match_id, kinds, step_s, steps, items, evaluation}`.
-  `steps`: `[{ts, items: [{id, kind, team_id, player_id, p, fact_ids, reason: {en, it, es}}]}]`, every
-  60 s of match time and at each goal, each step built from the facts with `ts <= step.ts` only.
+  `steps`: `[{ts, items: [{id, kind, team_id, player_id, p, level, fact_ids, reason: {en, it, es}}]}]`,
+  every 60 s of match time and at each fact the model reads (a shot or a goal), each step built from the
+  facts with `ts <= step.ts` only. `level` is `unlikely`, `possible` or `likely` (`forecast.level`), the
+  only likelihood the page shows; `p` stays for the evaluation.
   `items`: one per forecast id, `{id, kind, team_id, player_id, title, template, hit, at,
   trigger_fact_id, line, line_fact_ids}` (`title`, `template`, `line` by language; `template` keeps the
   slots `{minute}`, `{score}`, `{Minute}`, `{Score}` open; `line` is the filled line, null when the event
