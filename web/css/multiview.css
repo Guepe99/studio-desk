@@ -1,0 +1,51 @@
+/* The producer's multiviewer (multiview.html), on the palette of broadcast.css: a dark gallery wall,
+   a name strip (UMD) under each picture, and a tally border on the window whose sound is live. */
+/* one screen high with the wall two by two (multiview.js fits the pictures in what is left); a narrow screen scrolls */
+body.mv { background: var(--purple-900); color: var(--page); height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.mv-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; padding: 12px 16px 10px; }
+.mv-title { min-width: 0; flex: 1 1 520px; }
+.mv-head h1 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; line-height: 26px; font-weight: 800; }
+.mv-tag { padding: 1px 8px; border-radius: var(--r-chip); background: var(--green); color: var(--purple); font-size: 12px; line-height: 18px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.mv-lede { margin: 4px 0 0; max-width: 92ch; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--lilac-100); }
+
+.mv-transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 6px 8px; border-radius: var(--r-box); background: var(--purple-700); }
+.mv-transport .ctl.icon { border-color: var(--page); }
+#mv-goals { display: flex; flex-wrap: wrap; gap: 6px; }
+#mv-goals:empty { display: none; }
+#mv-goals button { height: 30px; padding: 0 10px; border: 1.5px solid var(--page); border-radius: var(--r-pill); font: 800 13px/1 var(--font); cursor: pointer; }
+#mv-goals button:hover { box-shadow: 0 0 0 3px var(--purple-400); }
+/* fixed widths: the readouts change every frame and must not move the buttons beside them */
+.mv-read { display: inline-block; font: 700 15px/1 var(--font); font-variant-numeric: tabular-nums; white-space: pre; color: var(--page); }
+#mv-clock { min-width: 13ch; }
+#mv-sync { min-width: 11ch; font-size: 13px; font-weight: 600; color: var(--lilac-100); }
+
+#mv-wall { flex: 1 1 0; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, var(--pw, 45vw)); justify-content: center; align-content: center; gap: 12px; padding: 4px 16px 16px; }
+#mv-wall.one-col { grid-template-columns: var(--pw, 100%); align-content: start; overflow: visible; }
+
+.mv-win { margin: 0; display: flex; flex-direction: column; }
+.mv-pic { position: relative; width: var(--pw); aspect-ratio: 16 / 9; overflow: hidden; background: #000; outline: 4px solid transparent; outline-offset: 0; }
+/* the broadcast page drawn at 960 x 540 and scaled to the cell (multiview.js) */
+.mv-pic iframe { position: absolute; left: 0; top: 0; width: 960px; height: 540px; border: 0; transform: scale(var(--k, 1)); transform-origin: 0 0; pointer-events: none; }
+.mv-hit { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.mv-hit:hover { background: rgba(255, 255, 255, .04); }
+.mv-hit:focus-visible { outline-offset: -4px; }
+
+.mv-umd { height: 30px; display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 8px; padding-right: 8px; background: #000; color: var(--page);
+  font: 800 15px/1 var(--font); letter-spacing: .04em; text-transform: uppercase; }
+.mv-src { height: 100%; display: grid; place-items: center; background: var(--purple-500); font-variant-numeric: tabular-nums; }
+.mv-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.mv-meter { width: 8px; height: 20px; display: flex; align-items: flex-end; background: var(--purple-700); visibility: hidden; }
+.mv-meter i { width: 100%; height: 100%; background: linear-gradient(to top, var(--green) 70%, var(--yellow) 88%, var(--error)); transform: scaleY(0); transform-origin: bottom; }
+.mv-live { visibility: hidden; padding: 3px 6px; border-radius: 4px; background: var(--green); color: var(--purple); font-size: 11px; letter-spacing: .08em; }
+
+/* tally: the window whose sound is live */
+.mv-win.tally .mv-pic { outline-color: var(--green); }
+.mv-win.tally .mv-umd { box-shadow: 0 0 0 4px var(--green); }
+.mv-win.tally .mv-meter, .mv-win.tally .mv-live { visibility: visible; }
+
+@media (max-width: 899px), (orientation: portrait) {
+  body.mv { height: auto; min-height: 100vh; min-height: 100dvh; }
+  .mv-lede { font-size: 14px; }
+}
