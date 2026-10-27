@@ -339,11 +339,12 @@ try {
   expect(refused.mode === "2d" && !refused.scene && /2D only/.test(refused.note ?? ""), `no GPU: the large window stays 2D and says why (${JSON.stringify(refused)})`);
 
   // window 1 does not load: the desk is built on window 2, and the page keeps running
+  // (multiview.js awaits meta and facts at top level, so window.multiview may come after the load event)
   const p5 = await ctx.newPage();
   p5.on("pageerror", (e) => fail(`page error with window 1 down: ${e.message}`));
   await p5.route((u) => u.pathname.endsWith("/index.html") && u.searchParams.get("audience") === "analyst", (r) => r.abort());
   await p5.goto(new URL("multiview.html?match=M001", base).href);
-  const deskUp = await p5.waitForFunction(() => window.multiview.desk?.ready && window.multiview.desk.state === window.multiview.sd(window.multiview.wins[1]).state, null, { timeout: 60000 })
+  const deskUp = await p5.waitForFunction(() => window.multiview?.desk?.ready && window.multiview.desk.state === window.multiview.sd(window.multiview.wins[1]).state, null, { timeout: 60000 })
     .then(() => true, () => false);
   expect(deskUp && await p5.locator("#desk .sec-needs").count() === 1, "window 1 down: the desk is built on window 2");
   await p5.close();
