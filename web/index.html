@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/view3d.css">
   <link rel="stylesheet" href="css/ask.css">
   <link rel="stylesheet" href="css/proof.css">
+  <link rel="stylesheet" href="css/highlights.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -36,6 +37,8 @@
         <div id="ai-off" data-i18n="aioff" hidden>AI off</div>
         <div id="replay-badge" role="status"></div>
         <div id="moment" role="status" aria-atomic="true"><span></span></div>
+        <!-- the highlights strip: the minute and what it is, the score after a goal (highlights.js) -->
+        <div id="hl-strip" role="status" aria-atomic="true" hidden><span class="hl-tag"></span><span class="hl-what"></span><span class="hl-score" hidden></span></div>
         <div id="status" role="status"></div>
       </div>
     </div>
@@ -62,6 +65,8 @@
         <span data-i18n="voice">Voice</span>
       </button>
       <button id="next-moment" class="ctl" type="button" aria-disabled="true">Next key moment</button>
+      <button id="hl-stop" class="ctl primary" type="button" hidden>Stop highlights</button>
+      <button id="hl-offer" class="ctl primary" type="button" hidden>Watch the highlights</button>
       <!-- Show proof: one button per graphic on air, in the room the row has left (proof.js) -->
       <div id="proof-bar" role="group" aria-label="Proof of the graphics on air"></div>
       <!-- the settings: one menu button (a gear), its state beside it when it is not the default (4x, an audience) -->
@@ -106,6 +111,9 @@
           <div class="mg" role="group" aria-labelledby="mg-more"><p id="mg-more" class="mh" aria-hidden="true" data-i18n="more">More</p>
             <button id="minimap" type="button" role="menuitemcheckbox" tabindex="-1" aria-checked="false" data-i18n="minimap" aria-describedby="why-more">Minimap</button>
             <button id="half2" type="button" role="menuitem" tabindex="-1" data-i18n="half2">Jump to 2nd half</button>
+            <button type="button" role="menuitem" tabindex="-1" data-highlights="h1" data-i18n="hlH1">Highlights: first half</button>
+            <button type="button" role="menuitem" tabindex="-1" data-highlights="h2" data-i18n="hlH2">Highlights: second half</button>
+            <button type="button" role="menuitem" tabindex="-1" data-highlights="full" data-i18n="hlFull">Highlights: full match</button>
             <button id="keys-open" type="button" role="menuitem" tabindex="-1" data-i18n="keysTitle">Keyboard shortcuts</button>
             <p id="why-more" class="mg-why" aria-hidden="true" data-i18n="whyMore">Minimap: the 2D pitch in a corner of the 3D view.</p>
           </div>
