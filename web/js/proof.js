@@ -98,9 +98,9 @@ const SEASON_KINDS = {
   en: { season_matchweek: "Matchweek", season_position: "Place in the table", season_points: "League points", season_goal_difference: "Goal difference",
     season_form: "Points from the last five", season_h2h: "Goals in the last meeting", season_goals: "League goals this season", season_scoring_run: "League matches in a row with a goal" },
   it: { season_matchweek: "Giornata", season_position: "Posizione in classifica", season_points: "Punti in campionato", season_goal_difference: "Differenza reti",
-    season_form: "Punti nelle ultime cinque", season_h2h: "Gol nell'ultimo confronto", season_goals: "Gol in campionato in questa stagione", season_scoring_run: "Partite di campionato di fila in gol" },
+    season_form: "Punti nelle ultime cinque", season_h2h: "Gol nell'ultimo confronto", season_goals: "Gol in campionato in questa stagione", season_scoring_run: "Partite di campionato consecutive a segno" },
   es: { season_matchweek: "Jornada", season_position: "Puesto en la clasificación", season_points: "Puntos de liga", season_goal_difference: "Diferencia de goles",
-    season_form: "Puntos en los últimos cinco", season_h2h: "Goles en el último enfrentamiento", season_goals: "Goles de liga esta temporada", season_scoring_run: "Partidos de liga seguidos marcando" },
+    season_form: "Puntos en los últimos cinco", season_h2h: "Goles en el último enfrentamiento", season_goals: "Goles de liga esta temporada", season_scoring_run: "Partidos de liga seguidos con gol" },
 };
 for (const [lang, more] of Object.entries(SEASON_KINDS)) Object.assign(FACT_KINDS[lang], more);
 export const EVENT_KINDS = {

@@ -86,8 +86,8 @@ export function delayUrl(search, delay, state, view = "") {
 export const DELAY_STRINGS = {
   en: { delay: "Broadcast delay", delayOn: "Delay {s} s", delayWhy: "The picture runs {s} seconds behind the control desk",
     whyDelay: "The picture runs this far behind the desk, as on live TV: a goal graphic lands on the goal and you see each story first. A change reloads the page." },
-  it: { delay: "Ritardo di trasmissione", delayOn: "Ritardo {s} s", delayWhy: "L'immagine va in onda {s} secondi dopo la regia",
-    whyDelay: "L'immagine va in onda con questo ritardo rispetto alla regia, come in TV: la grafica del gol arriva sul gol e tu vedi ogni storia prima. Cambiarlo ricarica la pagina." },
+  it: { delay: "Ritardo di trasmissione", delayOn: "Ritardo {s} s", delayWhy: "L'immagine va in onda con {s} secondi di ritardo sulla regia",
+    whyDelay: "L'immagine va in onda con questo ritardo sulla regia, come nelle dirette TV: la grafica del gol arriva insieme al gol e ogni storia la vedi prima tu. Cambiarlo ricarica la pagina." },
   es: { delay: "Retardo de emisión", delayOn: "Retardo {s} s", delayWhy: "La imagen va {s} segundos por detrás de la realización",
     whyDelay: "La imagen sale con este retardo respecto a la realización, como en la tele en directo: el gráfico del gol llega con el gol y tú ves antes cada historia. Cambiarlo recarga la página." },
 };

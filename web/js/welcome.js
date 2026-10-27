@@ -10,11 +10,11 @@ export const WELCOME_STRINGS = {
   en: { welcomeTitle: "Welcome to Studio Desk",
     welcomeText: "Studio Desk is an AI production desk for football: agents write the TV graphics from the match data, and you approve what goes on air.",
     welcomeGoal: "Watch the first goal, with sound", welcomeStart: "Start from kick-off" },
-  it: { welcomeTitle: "Benvenuto in Studio Desk",
+  it: { welcomeTitle: "Ti diamo il benvenuto in Studio Desk",
     welcomeText: "Studio Desk è una regia con IA per il calcio: gli agenti scrivono le grafiche TV dai dati della partita e tu approvi cosa va in onda.",
     welcomeGoal: "Guarda il primo gol, con l'audio", welcomeStart: "Parti dal calcio d'inizio" },
-  es: { welcomeTitle: "Bienvenido a Studio Desk",
-    welcomeText: "Studio Desk es una realización con IA para el fútbol: los agentes escriben los gráficos de TV con los datos del partido y tú apruebas qué sale al aire.",
+  es: { welcomeTitle: "Te damos la bienvenida a Studio Desk",
+    welcomeText: "Studio Desk es un control de realización con IA para el fútbol: los agentes escriben los gráficos de TV con los datos del partido y tú apruebas qué sale al aire.",
     welcomeGoal: "Ver el primer gol, con sonido", welcomeStart: "Empezar desde el saque inicial" },
 };
 

@@ -47,12 +47,12 @@ the proof panel's names of the season facts in `web/js/proof.js`.
 | Last meeting | Ultimo confronto | Último enfrentamiento |
 | Top scorer | Miglior marcatore | Máximo goleador |
 | 5 goals, 1 goal | 5 gol, 1 gol | 5 goles, 1 gol |
-| 6th league goal of the season | 6° gol in campionato della stagione | 6.º gol de liga de la temporada |
-| First league goal of the season | Primo gol in campionato della stagione | Primer gol de liga de la temporada |
+| 6th league goal of the season | 6° gol in campionato in questa stagione | 6.º gol en Liga esta temporada |
+| First league goal of the season | Primo gol in campionato in questa stagione | Primer gol en Liga esta temporada |
 | Scored in 3 league matches in a row | A segno in 3 partite di campionato di fila | Ha marcado en 3 partidos de liga seguidos |
 | Season so far (proof button) | La stagione fin qui | La temporada hasta ahora |
 | Every number on this card is one of the season facts below, copied by code. | Ogni numero di questa grafica è uno dei fatti della stagione qui sotto, copiato dal codice. | Cada cifra de este gráfico es uno de los datos de la temporada de abajo, copiado por el código. |
-| Matchweek, Place in the table, League points, Goal difference, Points from the last five, Goals in the last meeting, League goals this season, League matches in a row with a goal | Giornata, Posizione in classifica, Punti in campionato, Differenza reti, Punti nelle ultime cinque, Gol nell'ultimo confronto, Gol in campionato in questa stagione, Partite di campionato di fila in gol | Jornada, Puesto en la clasificación, Puntos de liga, Diferencia de goles, Puntos en los últimos cinco, Goles en el último enfrentamiento, Goles de liga esta temporada, Partidos de liga seguidos marcando |
+| Matchweek, Place in the table, League points, Goal difference, Points from the last five, Goals in the last meeting, League goals this season, League matches in a row with a goal | Giornata, Posizione in classifica, Punti in campionato, Differenza reti, Punti nelle ultime cinque, Gol nell'ultimo confronto, Gol in campionato in questa stagione, Partite di campionato consecutive a segno | Jornada, Puesto en la clasificación, Puntos de liga, Diferencia de goles, Puntos en los últimos cinco, Goles en el último enfrentamiento, Goles de liga esta temporada, Partidos de liga seguidos con gol |
 
 ## Not done
 
