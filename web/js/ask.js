@@ -2,8 +2,35 @@
 // The server checks every answer against the facts; the page only shows it. The question echo and the
 // answer are untrusted text: they are set with textContent, never as markup.
 import { AskVoice } from "./ask-voice.js";
+import { LEAD_S } from "./moments.js";
 
 const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (config.ASK_TIMEOUT_S)
+// "Watch it": the moment an answer is about, from the events behind its cited facts (no API change). A shot that
+// scored is a goal, any other shot a shot; a chance is the one play an xT fact is about (cumulative pass facts are not).
+const STRENGTH = { goal: 3, shot: 2, chance: 1 };
+const CHANCE_KINDS = new Set(["xt_added"]);
+
+/** A moment's button shows only while the clock is at or past its lead-in: a rewind before it hides it, so the
+ *  button never jumps past the replay time, and the press itself (which lands at `at`) keeps it. */
+export const canWatch = (m, now) => !!m && now >= m.at - 1;
+
+/** The one moment worth replaying for an answer: of the events behind the cited facts, up to `now`, the latest
+ *  of the strongest kind, as {event_id, ts, kind, at} with `at` the seek target LEAD_S before it; null when none. */
+export function answerMoment(factIds, factById, eventById, now) {
+  let best = null;
+  for (const id of factIds) {
+    const f = factById.get(id), ids = f?.source_event_ids ?? [];
+    for (const eid of ids) {
+      const e = eventById.get(eid);
+      if (!e || e.ts > now) continue;
+      const kind = e.type_name === "shot" ? (e.result_name === "success" ? "goal" : "shot")
+        : CHANCE_KINDS.has(f.kind) && ids.length === 1 ? "chance" : null;
+      if (kind && (!best || STRENGTH[kind] > STRENGTH[best.kind] || (kind === best.kind && e.ts > best.ts))) best = { event_id: eid, ts: e.ts, kind, at: Math.max(0, e.ts - LEAD_S) };
+    }
+  }
+  return best;
+}
+
 // Suggested questions, each shown only once the ledger up to the replay time holds the facts that answer it.
 const SUGGEST = [["askSugShots", ["team_shots"]], ["askSugControl", ["team_possession"]],
   ["askSugGoals", ["score"]], ["askSugSprint", ["sprint_speed"]], ["askSugPass", ["pass_difficulty"]]];
@@ -16,9 +43,10 @@ export function suggestions(facts, now) {
 }
 
 export class Ask {
-  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [], match = null }) {
-    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts, match });
+  constructor(panel, { matchId, state, t, button, controls, maxTs, onLayout, facts = [], match = null, watch = null }) {
+    Object.assign(this, { panel, matchId, state, t, button, controls, maxTs, onLayout, facts, match, watch });
     this.factById = new Map(facts.map((f) => [f.fact_id, f]));
+    this.eventById = new Map((match?.events ?? []).map((e) => [e.event_id, e]));
     // when each fact kind a suggestion needs is first in the ledger: the only times the suggestions can change
     const first = new Map();
     for (const f of facts) if (!(first.get(f.kind) <= f.ts)) first.set(f.kind, f.ts);
@@ -40,6 +68,7 @@ export class Ask {
     const mic = panel.querySelector("#ask-mic"); // a question by voice (ask-voice.js), once the probe allows it
     this.voice = mic ? new AskVoice(this, mic) : null;
     this.log = [];
+    this.watchShown = "";
     this.left = null;
     this.status = "";
     this.busy = false;
@@ -112,7 +141,9 @@ export class Ask {
     else if (r.status >= 500) this.status = "askErr";
     else if (!r.ok || typeof data?.answer !== "string") this.status = "askBad";
     else {
-      this.log.unshift({ question, lang, answer: data.answer, declined: data.status !== "answered", facts: data.fact_ids ?? [] });
+      const facts = data.fact_ids ?? [];
+      this.log.unshift({ question, lang, answer: data.answer, declined: data.status !== "answered", facts,
+        moment: data.status === "answered" ? answerMoment(facts, this.factById, this.eventById, ts) : null });
       this.left = data.questions_left;
       this.status = "";
       this.input.value = "";
@@ -124,8 +155,13 @@ export class Ask {
   // every frame: while the panel is open the suggestions follow the clock, rebuilt only when one of their
   // first fact times is crossed (a few comparisons a frame)
   update() {
-    if (!this.panel.hidden && this.suggestCount() !== this.suggestN) this.renderSuggestions();
+    if (this.panel.hidden) return;
+    if (this.suggestCount() !== this.suggestN) this.renderSuggestions();
+    if (this.watchSig() !== this.watchShown) this.render();
   }
+
+  // which answers' "Watch it" buttons the clock allows: the log is rebuilt only when one of them changes
+  watchSig() { return this.watch ? this.log.map((q) => (canWatch(q.moment, this.state.ts) ? 1 : 0)).join("") : ""; }
 
   // how many of those first fact times the clock has passed
   suggestCount() {
@@ -180,6 +216,7 @@ export class Ask {
     if (this.statusEl.textContent !== status) this.statusEl.textContent = status; // a rewrite would be announced again
     this.renderSuggestions();
     const analyst = this.state.audience === "analyst";
+    this.watchShown = this.watchSig();
     this.logEl.replaceChildren(...this.log.map((q) => {
       const li = document.createElement("li");
       const you = document.createElement("p"), ans = document.createElement("p");
@@ -189,6 +226,16 @@ export class Ask {
       ans.lang = q.lang;
       ans.textContent = q.answer;
       li.append(you, ans);
+      const m = q.moment;
+      if (this.watch && canWatch(m, this.state.ts)) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ctl ask-watch";
+        b.lang = this.state.lang;
+        b.textContent = this.t("askWatch").replace("{what}", this.t(`askMoment_${m.kind}`)).replace("{m}", this.match.clock(m.ts).label);
+        b.addEventListener("click", () => this.watch(m.at));
+        li.append(b);
+      }
       if (analyst && q.facts.length) {
         const ids = document.createElement("p");
         ids.className = "ask-facts";

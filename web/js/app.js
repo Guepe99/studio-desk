@@ -26,6 +26,7 @@ const STRINGS = {
     ask: "Ask the studio", close: "Close", askLabel: "Your question about the match so far", askSend: "Ask",
     askHint: "Answers use only the match data up to the replay time.", askWait: "The studio is checking the match data.",
     askYou: "You asked", askLeft: "Questions left today: {n}", askFacts: "Facts", askTry: "Try one of these",
+    askWatch: "Watch it: {what}, {m}'", askMoment_goal: "goal", askMoment_shot: "shot", askMoment_chance: "chance",
     askSugShots: "How many shots has each team had?", askSugControl: "Which team has had more of the ball so far?",
     askSugGoals: "Who has scored so far?", askSugSprint: "Who has made the fastest sprint so far?",
     askSugPass: "What has been the hardest pass so far?",
@@ -65,6 +66,7 @@ const STRINGS = {
     ask: "Chiedi allo studio", close: "Chiudi", askLabel: "La tua domanda sulla partita fin qui", askSend: "Chiedi",
     askHint: "Le risposte usano solo i dati della partita fino al momento del replay.", askWait: "Lo studio sta controllando i dati della partita.",
     askYou: "Hai chiesto", askLeft: "Domande rimaste oggi: {n}", askFacts: "Fatti", askTry: "Prova una di queste",
+    askWatch: "Guardalo: {what}, {m}'", askMoment_goal: "gol", askMoment_shot: "tiro", askMoment_chance: "occasione",
     askSugShots: "Quanti tiri ha fatto ogni squadra?", askSugControl: "Quale squadra ha tenuto di più il pallone finora?",
     askSugGoals: "Chi ha segnato finora?", askSugSprint: "Chi ha fatto lo scatto più veloce finora?",
     askSugPass: "Qual è stato il passaggio più difficile finora?",
@@ -103,6 +105,7 @@ const STRINGS = {
     ask: "Pregunta al estudio", close: "Cerrar", askLabel: "Tu pregunta sobre el partido hasta ahora", askSend: "Preguntar",
     askHint: "Las respuestas usan solo los datos del partido hasta el momento de la repetición.", askWait: "El estudio está revisando los datos del partido.",
     askYou: "Has preguntado", askLeft: "Preguntas restantes hoy: {n}", askFacts: "Datos", askTry: "Prueba una de estas",
+    askWatch: "Míralo: {what}, {m}'", askMoment_goal: "gol", askMoment_shot: "tiro", askMoment_chance: "ocasión",
     askSugShots: "¿Cuántos tiros ha hecho cada equipo?", askSugControl: "¿Qué equipo ha tenido más el balón hasta ahora?",
     askSugGoals: "¿Quién ha marcado hasta ahora?", askSugSprint: "¿Quién ha hecho el sprint más rápido hasta ahora?",
     askSugPass: "¿Cuál ha sido el pase más difícil hasta ahora?",
@@ -835,7 +838,9 @@ async function main() {
   buildSeekMarks();
   wireControls();
   layout(); // the team and player buttons may have changed the controls' height
-  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts, match });
+  ask = new Ask($("#ask"), { matchId, state, t, button: $("#ask-open"), controls, maxTs: match.duration, onLayout: layout, facts: match.facts, match,
+    // "Watch it" on an answer: the moment it is about, from its lead-in, in whatever view is on, as Next key moment does
+    watch: (ts) => { if (state.speed > 1) setSpeed(1); seek(ts); if (!state.playing) setPlaying(true); } });
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
