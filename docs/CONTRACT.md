@@ -480,9 +480,12 @@ Agents only learn about an event when the clock releases it, in replay generatio
   air."}`, keeps the story's last decision, spends one action and writes the audit action
   `edit_refused` (`detail.reason`). Anything that cannot be checked is refused.
 - The `why_card` kicker of a story card reads `KEY MOMENT` / `MOMENTO CHIAVE` / `MOMENTO CLAVE`.
-- Desk: an agents' story still `needs_review` 300 match seconds after its slot ends (its last cue's
+- Desk: an agents' story still `needs_review` some match seconds after its slot ends (its last cue's
   end, else its first cue or `ts`) is `expired` and listed under "Missed: n", as a generated graphic is
-  once its slot ends.
+  once its slot ends. The wait is by kind (`desk.js` `MISS_S`): 60 s for `big_chance`, `key_pass` and
+  `top_sprint`, 300 s for `goal`, `comeback` and `recap`, 120 s for any other kind. A missed story the
+  visitor saw waiting gets a browser-only "Desk rule" audit row; seeking back before its time makes it
+  wait again and removes the row.
 - Next key moment also stops at a cue of a story that waits for review on this visitor's desk.
 - The desk's audit total from a replay counts agent steps that used the model (the traces); the
   audit table, and so docs/MEASURES.md, counts model calls.
