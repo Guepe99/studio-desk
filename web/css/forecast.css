@@ -1,6 +1,6 @@
 /* Watch for (web/js/forecast.js): the storyline forecasts between the desk's head and its stories, a <details>
-   closed on a short or narrow desk. Compact:
-   at most 40% of the desk's height, scrolling inside; each forecast in four short lines and its button. */
+   closed at every width until the visitor opens it. Compact: at most 40% of the desk's height, scrolling inside;
+   each forecast in three short lines and its button. */
 .watch { flex: none; max-height: 40%; overflow-y: auto; overscroll-behavior: contain; padding: 8px 16px 10px;
   background: var(--lilac-25); border-bottom: 1px solid var(--lilac-100); font-size: 14px; }
 .watch .w-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; cursor: pointer; list-style: none; }
@@ -16,18 +16,21 @@
 .watch .w-done { border-left-color: var(--purple); }
 .watch .w-top { display: flex; align-items: baseline; gap: 8px; }
 .watch .w-title { font-weight: 800; }
-.watch .w-p { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+.watch .w-p { margin-left: auto; font-weight: 800; white-space: nowrap; }
+.watch .w-unlikely { color: var(--purple-400); font-weight: 700; }
 .watch .w-out { margin-left: auto; color: var(--purple-400); font-weight: 700; }
-.watch .w-bar { height: 4px; margin: 4px 0; background: var(--lilac-100); border-radius: 2px; overflow: hidden; }
-.watch .w-bar span { display: block; height: 100%; background: var(--purple); }
 .watch .w-reason, .watch .w-line { margin: 2px 0 0; }
 .watch .w-reason { color: var(--purple-400); }
 .watch .w-line { font-style: italic; }
-.watch .w-slot { display: inline-block; padding: 0 6px; border: 1px dashed var(--purple-400); border-radius: var(--r-chip);
-  font-style: normal; font-size: 12px; font-weight: 700; line-height: 18px; }
+/* a slot code fills at the event: plain words, underlined (the panel's note says so) */
+.watch .w-slot { text-decoration: underline dotted var(--purple-400); text-underline-offset: 3px; }
 .watch .w-pre { height: 30px; margin-top: 6px; padding: 0 12px; font-size: 14px; }
 .watch .w-pre[aria-pressed="true"] { background: var(--purple); color: var(--page); }
 .watch .w-empty { margin: 4px 0 0; color: var(--purple-400); }
 @media (pointer: coarse) { .watch .w-pre { min-height: 44px; } }
 @media (max-width: 1099px) { .watch { max-height: 35%; border-bottom: 0; border-top: 1px solid var(--lilac-100); } }
 .watch:not([open]) .w-note { display: none; }   /* closed: one line */
+/* open: a clear lower edge, so a card cut by the panel's own scroll never reads as lying over the stories */
+.watch[open] { box-shadow: 0 6px 8px -6px rgb(0 0 0 / .3); }
+.watch[open] .w-head { position: sticky; top: -8px; z-index: 1; margin: -8px -16px 0; padding: 8px 16px 4px; background: var(--lilac-25); }
+@media (max-width: 1099px) { .watch[open] { box-shadow: 0 -6px 8px -6px rgb(0 0 0 / .3); } }

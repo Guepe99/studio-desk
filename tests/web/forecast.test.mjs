@@ -107,6 +107,16 @@ test("every audit line reads in each language with its title", () => {
   }
 });
 
+test("the panel's words: a level, never a percentage, and slots that read as words, in each language", () => {
+  for (const lang of ["en", "it", "es"]) {
+    for (const k of ["w_lvl_unlikely", "w_lvl_possible", "w_lvl_likely", "w_slot_minute", "w_slot_score", "w_slot_final", "w_slotTitle", "w_note"]) {
+      const s = TEXT[lang][k];
+      assert.ok(s && !/[{%\u2013\u2014]|\d/.test(s), `${lang} ${k}: ${s}`);
+    }
+    assert.ok(TEXT[lang].w_slot_score.includes(" "), `${lang}: the score slot is a phrase, not a bare label`);
+  }
+});
+
 const M001 = new URL("../../web/data/M001/forecast.json", import.meta.url);
 test("M001: the brace at 13' is a prepared line that airs on its goal", { skip: !existsSync(M001) && "no web/data/M001/forecast.json" }, () => {
   const data = JSON.parse(readFileSync(M001, "utf8"));
@@ -117,5 +127,7 @@ test("M001: the brace at 13' is a prepared line that airs on its goal", { skip: 
   const [cue] = preparedCues(data, new Map([[it.id, { ts: 700 }]]), "analyst", "en");
   assert.equal(cue.ts, it.at);
   assert.match(cue.payload.body, /strikes again in the 13th minute/);
-  for (const d of data.steps) for (const x of d.items) assert.ok(x.p >= 0 && x.p <= 1 && x.fact_ids.length);
+  for (const d of data.steps) for (const x of d.items) assert.ok(x.p >= 0 && x.p <= 1 && x.fact_ids.length && ["unlikely", "possible", "likely"].includes(x.level));
+  // the panel's facts never lag a graphic: Ostwick's first shot (7:50) is in the step at 7:56
+  assert.match(stepAt(data, 476).items.find((x) => x.id === "W-clean_sheet-T01").reason.en, /Ostwick: 1 shot/);
 });

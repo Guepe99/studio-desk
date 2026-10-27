@@ -33,8 +33,32 @@ DEFAULT = {"rate0": 0.0145, "per_shot": 0.1, "prior_min": 45.0, "stage": [1.0] *
            "p1_min": 46.2, "p2_min": 47.0, "chase": 1.0, "late": 1.0}
 
 
+# On screen a forecast is a word, never a percentage. The model is fitted on simulated matches, where half
+# the matches have a planted comeback and goals from minute 81 are rarer than in real football, so before a
+# probability becomes a word its odds are moved from the simulator's event rate to a real-football rate
+# (prior shift, Saerens, Latinne and Decaestecker 2002). Sources in docs/forecast.md: the team that scores
+# first wins 71.1% of Premier League matches (CIES, 2015-2019), so the side behind levels in about 29%;
+# 18% of goals came from the 80th minute in 2024/25 at about 2.9 a match, so a late goal in about 40%.
+# The words follow the IPCC likelihood scale: unlikely below 1/3, likely from 2/3.
+REAL_RATE = {"comeback": 0.29, "late_goal": 0.40}
+LEVELS = ((1 / 3, "unlikely"), (2 / 3, "possible"), (math.inf, "likely"))
+
+
 def load_params(path=PARAMS_FILE):
-    return {**DEFAULT, **json.loads(Path(path).read_text())["params"]} if Path(path).exists() else dict(DEFAULT)
+    if not Path(path).exists():
+        return dict(DEFAULT)
+    data = json.loads(Path(path).read_text())
+    sim = {k: v["base_rate"] for k, v in data.get("evaluation", {}).get("scores", {}).items()}
+    return {**DEFAULT, **data["params"], "sim_rate": sim}
+
+
+def level(kind, p, params):
+    """The word for a forecast: unlikely, possible or likely, after the shift to the real-football rate."""
+    sim, real = params.get("sim_rate", {}).get(kind), REAL_RATE.get(kind)
+    if sim and real and 0 < p < 1:
+        odds = p / (1 - p) * (real / (1 - real)) / (sim / (1 - sim))
+        p = odds / (1 + odds)
+    return next(word for top, word in LEVELS if p < top)
 
 
 class Game:
@@ -172,8 +196,9 @@ def forecasts(g, ts, params=None):
     out = []
 
     def add(item_id, kind, p, facts, team=None, player=None):
-        out.append({"id": item_id, "kind": kind, "team_id": team, "player_id": player,
-                    "p": round(min(max(p, 0.0), 1.0), 4), "fact_ids": [f["fact_id"] for f in facts if f]})
+        p = round(min(max(p, 0.0), 1.0), 4)
+        out.append({"id": item_id, "kind": kind, "team_id": team, "player_id": player, "p": p,
+                    "level": level(kind, p, params), "fact_ids": [f["fact_id"] for f in facts if f]})
 
     for (kind, pid), f in sorted(last.items()):
         if kind != "player_goals" or f["value"] != 1:
@@ -230,9 +255,10 @@ def resolve(g, item):
 
 
 def timeline(g, params=None):
-    """Forecast steps for the replay: every STEP_S of match time and at each goal, until full time."""
+    """Forecast steps for the replay: every STEP_S of match time and at each fact the model reads (a goal, a
+    shot), so the panel never lags a graphic already on air, until full time."""
     times = {round(k * STEP_S, 2) for k in range(int(g.end // STEP_S) + 1)}
-    times |= {round(f["ts"], 2) for f in g.facts if f["kind"] == "score"}
+    times |= {round(f["ts"], 2) for f in g.facts}
     return [{"ts": t, "items": forecasts(g, t, params)} for t in sorted(times) if t < g.end - EPS]
 
 
@@ -248,7 +274,7 @@ LANGS = ("en", "it", "es")
 TEMPLATES = {
     "second_goal": ("{player} strikes again {minute}: {score}.", "Ancora {player}! Doppietta {minute}: {score}.",
                     "¡Otra vez {player}! Gol {minute}: {score}."),
-    "comeback": ("What a comeback! {Team} have fought all the way back: {score}.", "Che rimonta {team_di}! È {score}.",
+    "comeback": ("What a comeback! {Team} have fought all the way back: {score}.", "Che rimonta {team_di}! Di nuovo in parità: {score}.",
                  "¡Qué reacción! {Team} iguala el partido, {score}."),
     "clean_sheet": ("Full time, and {team} keep a clean sheet: {score}.",
                     "Triplice fischio: {team} chiude senza subire gol, {score}.",

@@ -64,6 +64,25 @@ def test_monotonic_where_it_should_be():
     assert p_of(off, 1100.0, "W-second_goal-T01-9") is not None and p_of(off, 1300.0, "W-second_goal-T01-9") is None
 
 
+def test_words_are_honest_for_real_football():
+    """The panel shows a word, shifted to real-football rates: a deficit is never likely to be overturned."""
+    level = lambda g, ts, i: next(it["level"] for it in forecast.forecasts(g, ts) if it["id"] == i)  # noqa: E731
+    one = game(fact("F-SCORE-1", "score", 300.0, "T01", 1, "T01-9"))
+    two = game(fact("F-SCORE-1", "score", 300.0, "T01", 1, "T01-9"), fact("F-SCORE-2", "score", 900.0, "T01", 2, "T01-9"))
+    assert p_of(one, 600.0, "W-comeback-F-SCORE-1") > 0.6 and level(one, 600.0, "W-comeback-F-SCORE-1") == "possible"
+    assert level(two, 2460.0, "W-comeback-F-SCORE-1") == "unlikely"
+    assert level(game(), 600.0, "W-late_goal") == "possible"  # about 40% of real matches have one
+    assert level(one, 5500.0, "W-clean_sheet-T01") == "likely"
+    assert forecast.level("comeback", 0.99, {}) == "likely" and forecast.level("comeback", 0.2, {}) == "unlikely"
+
+
+def test_a_step_at_every_fact():
+    """The panel's facts never lag a graphic: a shot at 7:50 is in the step from 7:50, not from 8:00."""
+    g = game(fact("F-TEAM_SHOTS-3", "team_shots", 470.1, "T02", 1))
+    st = max((s for s in forecast.timeline(g) if s["ts"] <= 476.0), key=lambda s: s["ts"])
+    assert st["ts"] == 470.1 and "F-TEAM_SHOTS-3" in next(it for it in st["items"] if it["id"] == "W-clean_sheet-T01")["fact_ids"]
+
+
 def test_reads_only_the_facts_up_to_now(match_db):
     _, conn = match_db
     full = forecast.Game.from_db(conn, "M001")
