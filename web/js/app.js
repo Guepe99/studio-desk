@@ -13,6 +13,7 @@ import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
+import { WELCOME_STRINGS, wantsWelcome, openWelcome } from "./welcome.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card"];
 const STRINGS = {
@@ -126,6 +127,8 @@ const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck 
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
+let audioLoaded;     // called once the voice and the booth have loaded (the welcome waits for it to turn the sound on)
+const audioReady = new Promise((r) => { audioLoaded = r; });
 // the 3-2-1 before kick-off and the full-time strap; pips only with the Voice button on (countdown.js)
 const countdown = new Countdown($("#moment"), { lang: () => state.lang, sound: () => !!voice?.on && !$("#voice").hidden });
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
@@ -187,6 +190,7 @@ const HEAD_STRINGS = {
   es: { tagline: "Agentes de IA escriben los gráficos de TV de la repetición de un partido, y tú decides qué sale al aire", replay: "Repetición" },
 };
 for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[lang], more);
+for (const [lang, more] of Object.entries(WELCOME_STRINGS)) Object.assign(STRINGS[lang], more);
 
 // Graphic text is never drawn under MIN_PX. A frame where the 17 px fact chips would be smaller gets the
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
@@ -836,6 +840,20 @@ async function main() {
   if (params.get("play") === "1") setPlaying(true);
   // the shortcuts (Space, N) work at once; a visitor who already moved the focus keeps it
   if (document.activeElement === document.body) frame.focus();
+  // a plain first visit: a short welcome, one press from the first goal with sound (welcome.js)
+  let store = null;
+  try { store = localStorage; } catch { /* site data blocked */ }
+  if (wantsWelcome(location.search, store)) {
+    // the Voice button turns on the voice-over, the commentary and the crowd; if the audio is still loading, it
+    // turns on when it lands (Chrome and Firefox allow it once the page has had a click; Safari may not)
+    const soundOn = () => { if (voice && !voice.on && !$("#voice").hidden) $("#voice").click(); };
+    openWelcome($("#welcome"), { store, kickoff: pressPlay, firstGoal: () => {
+      $("#goals").firstElementChild?.click();   // goal buttons are in time order: LEAD_S before the first goal's play
+      setPlaying(true);
+      soundOn();
+      audioReady.then(soundOn);
+    } });
+  }
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
@@ -856,6 +874,7 @@ async function main() {
     booth?.unlock();
   };
   if (v.on) for (const type of ["pointerup", "keydown"]) document.addEventListener(type, wake, true);
+  audioLoaded();
 }
 
 main();
