@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { Match } from "../../web/js/match.js";
 import { BallPlan } from "../../web/js/ball3d.js";
 import { smoothMatch } from "../../web/js/scene3d/track.js";
-import { planKeeper } from "../../web/js/keeper3d.js";
+import { planKeeper, realRoot, GROUND, clearance } from "../../web/js/keeper3d.js";
 
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/data");
 function load(id) {
@@ -87,6 +87,46 @@ test("the half-time whistle ends a keeper reaction", { skip }, () => {
   // time runs on into the second half: a reaction must not
   for (const { id, m, rs } of K) for (const { r, e } of rs)
     if (e.ts < m.meta.period1_s) assert.ok(r.end <= m.meta.period1_s + 1e-9, `${id} shot at ${e.ts}: reaction runs on to ${r.end}, half time at ${m.meta.period1_s}`);
+});
+
+// the beaten keeper's dive on the real clips' root curves (web/vendor/motion/clips.json); their hands
+// are measured in the browser (keeper3d-rig.js), here they ride on the root a metre up
+const MOTION = JSON.parse(readFileSync(path.join(DATA, "../vendor/motion/clips.json"), "utf8"));
+const REAL = Object.fromEntries(Object.entries(MOTION.clips).filter(([n]) => n.startsWith("GK_"))
+  .map(([n, c]) => [n, { ...c, fps: MOTION.fps, contact: 0.8, hand: [0, 1, 0], hands: c.root.map((q) => [q[0], 1 + q[1], q[2]]) }]));
+
+test("a beaten keeper dives towards the side the ball goes in", { skip }, () => {
+  let n = 0;
+  for (const id of IDS) {
+    const m = M[id];
+    for (const g of m.goals) {
+      const e = shotOf(m, g);
+      if (!e) continue;
+      const p = plan(m, e.ts), side = (r, q, K) => (q.x - K[0]) * r.u[0] + (q.y - K[1]) * r.u[1];
+      for (const r of planKeeper(m, (t) => p.ball(t), { ballR: 0.11, span: [e.ts - 1, e.ts + 1], real: REAL }).filter((x) => x.shot === e.event_id)) {
+        let line = null;   // where the ball crosses the goal line
+        for (let t = e.ts; t < e.ts + 3 && !line; t += 0.01) { const q = p.ball(t); if (q.x < 0 || q.x > 105) line = q; }
+        const K = m.at(r.i, r.tc), k = realRoot(r, r.tc + 0.6), moved = k.dx * r.u[0] + k.dy * r.u[1];
+        assert.ok(line && Math.sign(moved) === Math.sign(side(r, line, K)), `${id} goal at ${e.ts}: dives ${moved.toFixed(2)} m to his right, the ball goes in ${side(r, line, K).toFixed(2)} m`);
+        n++;
+      }
+    }
+  }
+  assert.ok(n >= 12, `only ${n} goals checked`);
+});
+
+test("a keeper lying after his dive is raised until no joint is in the pitch", () => {
+  // joint heights of the M001 595 s dive at 595.97 s before the fix (measured in the browser, holder lowered 0.78 m by the clip)
+  const lying = {
+    Head: -0.075, neck_01: -0.095, spine_03: -0.095, spine_02: -0.065, spine_01: -0.037, pelvis: 0.003, clavicle_l: -0.066, clavicle_r: -0.097,
+    upperarm_l: 0.087, upperarm_r: -0.258, lowerarm_l: 0.244, lowerarm_r: -0.046, hand_l: 0.412, hand_r: 0.082,
+    thigh_l: 0.069, thigh_r: -0.075, calf_l: 0.098, calf_r: -0.055, foot_l: 0.218, foot_r: 0.027, ball_l: 0.315, ball_r: 0.102,
+  };
+  assert.ok(Object.values(lying).some((y) => y < 0), "the fixture is not under the pitch");
+  const up = clearance(lying);
+  for (const [b, y] of Object.entries(lying)) if (b in GROUND) assert.ok(y + up >= GROUND[b] - 1e-9 && y + up >= 0, `${b} at ${(y + up).toFixed(3)} m`);
+  // standing, nothing moves
+  assert.equal(clearance({ Head: 1.6, pelvis: 0.95, foot_l: 0.09, foot_r: 0.1, ball_l: 0.03, ball_r: 0.03 }), 0);
 });
 
 test("a low ball straight at the keeper is gathered, not dived on", { skip }, () => {

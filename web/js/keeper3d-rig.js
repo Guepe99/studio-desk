@@ -9,7 +9,7 @@
 // Real clips can replace the procedural ones by name (GK_Dive_L, GK_Dive_R, GK_Low_L, GK_Low_R,
 // GK_Catch, GK_Tip): a clip already in the file is never overwritten. Such a clip should be in
 // place (no root motion) and keyed on keeper3d.CLIP_KEYS; keeperRoot() gives the root curve.
-import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
+import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS, GROUND, clearance } from "./keeper3d.js";
 import { nodesOf, chain, aim, turnWorld } from "./awareness-rig.js";
 import { THROW } from "./scene3d/players.js";
 
@@ -22,6 +22,7 @@ export class KeeperRig {
     this.s = s;
     s.keeper = this;
     this.enabled = true;
+    this.ground = true;   // keep the body above the grass (_ground); off only to compare
     const probe = s.container.instantiateModelsToScene((n) => `gk-probe-${n}`, false, { doNotInstantiate: true });
     probe.animationGroups.forEach((g) => g.dispose());
     const P = nodesOf(probe.rootNodes[0], "gk-probe-");
@@ -115,7 +116,21 @@ export class KeeperRig {
         aimPart(lo, hand, target.subtractToRef(lo.getAbsolutePosition(), dir), w);
       }
     }
+    for (const p of this.s.players) this._ground(p, ts);   // after the arms, which can reach down
     for (const p of this.s.players) this._grip(p, ts);   // after the arms moved
+  }
+
+  // A keeper down after his dive rests on the grass: the whole body is raised until every joint
+  // clears its GROUND height (the clip's lying pose, on a smaller or larger player, sank into it).
+  _ground(p, ts) {
+    if (!this.ground || !this.at(p.i, ts) || !p.holder.isEnabled()) return;
+    const y = {};
+    for (const b of Object.keys(GROUND)) {
+      const n = p.anim.node(b);
+      if (n) { chain(n); y[b] = n.getAbsolutePosition().y; }
+    }
+    const up = clearance(y);
+    if (up > 0) { p.holder.position.y += up; p.holder.computeWorldMatrix(true); }
   }
 
   // A low ball straight at him is gathered stooping: bent forward from the hips, legs straight,

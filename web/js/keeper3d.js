@@ -30,6 +30,18 @@ const MAX_SHIFT = 2.0;       // m the feet leave the tracked spot, at most
 const LIE_LIFT = 0.18;       // m: holder height of a body lying on its side (shoulder half-width)
 const DEG = Math.PI / 180;
 
+// Metres each joint stays above the grass while a reaction plays: about the body's half-thickness
+// there, so a keeper lying flat rests on his chest, hips and thighs instead of sinking into the
+// pitch (the clips' hips drop about 0.8 m whatever the player's size).
+export const GROUND = {
+  Head: 0.13, neck_01: 0.1, spine_03: 0.11, spine_02: 0.11, spine_01: 0.1, pelvis: 0.1, clavicle_l: 0.09, clavicle_r: 0.09,
+  upperarm_l: 0.05, upperarm_r: 0.05, lowerarm_l: 0.04, lowerarm_r: 0.04, hand_l: 0.03, hand_r: 0.03,
+  thigh_l: 0.07, thigh_r: 0.07, calf_l: 0.05, calf_r: 0.05, foot_l: 0.04, foot_r: 0.04, ball_l: 0.01, ball_r: 0.01,
+};
+// How far to raise a body whose joints are at heights y ({ bone: metres above the grass }) so that
+// every one of them clears GROUND; 0 when none is under.
+export const clearance = (y) => Math.max(0, ...Object.keys(GROUND).filter((b) => b in y).map((b) => GROUND[b] - y[b]));
+
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (u) => { const t = clamp(u, 0, 1); return t * t * (3 - 2 * t); };
 

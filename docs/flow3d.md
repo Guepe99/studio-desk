@@ -682,3 +682,28 @@ turns 0.000, want 0.600"; the old emotions: "the emotion's weight dips to 0.00")
 In the browser, on the final code: `sample3d-shots.mjs` passes (0 facing snaps over 15 degrees in
 a frame, jog slide 0.076 m per step), `kick3d-shots.mjs` passes in both looks, `view3d.mjs` on
 M001 passes, and `frame-cost.mjs` (WebGL 2, from 530 s) counts 376 draw calls, as before.
+
+## 10. The keeper on the grass after a dive
+
+On the M001 goal at 595 s the keeper dived with `GK_Dive_R` and lay half buried: the clip's root
+drops about 0.8 m while the lying pose is only 0.2 to 0.3 m thick, so the right upper arm ended
+0.26 m under the pitch and the head and spine up to 0.10 m.
+
+- **Grounding.** While a reaction plays, after the arms are aimed, `KeeperRig._ground` reads the
+  height of every joint and raises the holder by the deepest shortfall against `GROUND` in
+  `keeper3d.js` (a rough body thickness per joint: 0.13 m at the head, 0.10 m at the spine and
+  pelvis, 0.03 to 0.07 m at hands and legs, 0.01 m at the toes). A standing keeper is never moved.
+- **Direction.** The dive already goes to the ball's side on every goal: the broadcast camera is
+  at y = -34, the ball crosses 0.8 m inside the far post (y 36.85 of 37.66) and the keeper's hips
+  go from y 35.3 to 36.76. He reads as diving wide because he stands 3.4 m off his line, which
+  from this camera puts him beside the far post.
+
+| M001 595 s dive, browser measurement every 0.1 s | Before | After |
+|---|---|---|
+| Lowest joint | -0.258 m (right upper arm) | +0.005 m (a toe, standing up) |
+| Lowest joint while lying | -0.258 m | +0.05 m |
+| Lowest head or spine joint | -0.095 m | +0.18 m |
+
+Checks: `tests/web/keeperball3d.test.mjs`, "a beaten keeper dives towards the side the ball goes
+in" (12 goals on M001 to M004) and "a keeper lying after his dive is raised until no joint is in
+the pitch" (the joint heights measured before the fix at 595.97 s).
