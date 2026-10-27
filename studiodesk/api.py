@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictBool, StringConstraints, model_validator
 
-from . import __version__, config, db, telemetry
+from . import __version__, config, db, speech, telemetry
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # https://<account>.openai.azure.com
@@ -60,7 +60,8 @@ MAX_BODY_BYTES = 16384
 
 
 class BodyCap:
-    """Caps POST bodies at MAX_BODY_BYTES with 413, chunked ones included (they have no Content-Length)."""
+    """Caps POST bodies at MAX_BODY_BYTES (a voice question at speech.MAX_BYTES) with 413, chunked ones
+    included (they have no Content-Length)."""
 
     def __init__(self, app):
         self.app = app
@@ -68,10 +69,11 @@ class BodyCap:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] != "POST":
             return await self.app(scope, receive, send)
+        cap = speech.MAX_BYTES if scope["path"] == "/api/ask/voice" else MAX_BODY_BYTES
         length = dict(scope["headers"]).get(b"content-length")
         if length is not None and not length.isdigit():
             return await JSONResponse({"detail": "bad Content-Length"}, status_code=400)(scope, receive, send)
-        if length is not None and int(length) > MAX_BODY_BYTES:
+        if length is not None and int(length) > cap:
             return await JSONResponse({"detail": "request body too large"}, status_code=413)(scope, receive, send)
         seen = 0
 
@@ -79,7 +81,7 @@ class BodyCap:
             nonlocal seen
             message = await receive()
             seen += len(message.get("body", b""))
-            if seen > MAX_BODY_BYTES:  # FastAPI re-raises an HTTPException met while reading the body
+            if seen > cap:  # FastAPI re-raises an HTTPException met while reading the body
                 raise HTTPException(413, "request body too large")
             return message
 
@@ -96,7 +98,7 @@ CSP = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'se
        "connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
                     "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": CSP,
-                    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"}
+                    "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), payment=(), usb=()"}
 
 
 @app.middleware("http")
@@ -677,7 +679,7 @@ def get_ask():
         _ask_ready()
     except HTTPException:
         return {"available": False}
-    return {"available": True}
+    return {"available": True, "voice": speech.available()}  # voice: the page may show its microphone button
 
 
 @app.post("/api/ask", dependencies=[Depends(_ask_ready)])
@@ -707,6 +709,50 @@ async def post_ask(q: Question, request: Request, response: Response):
                 raise
             await asyncio.sleep(0.5)
     return {"status": out["status"], "answer": out["answer"], "fact_ids": out["fact_ids"], "questions_left": left}
+
+
+# --- Ask the studio by voice (studiodesk/speech.py): a recorded question becomes text in the question box;
+# the visitor then sends it through POST /api/ask like a typed one, with all its checks and caps.
+_voice_sent = {"day": "", "all": 0, "by_client": {}}  # shortcut: in memory, right for the single replica
+_speech_slot = threading.Semaphore(1)
+
+
+def _voice_ready():
+    _ask_ready()  # no answers, no point in a question by voice
+    if not speech.available():
+        raise HTTPException(503, "voice questions are not available")
+
+
+def _transcribe(audio: bytes, lang: str, client: str):
+    """Waits for the one Speech slot, counts the clip, transcribes it: the text, or a JSONResponse."""
+    if not _speech_slot.acquire(timeout=speech.WAIT_S):
+        return JSONResponse({"detail": "speech to text is busy, try again"}, status_code=503)
+    try:
+        over = _take(_voice_sent, client, speech.PER_DAY, speech.PER_CLIENT_PER_DAY)
+        if over == "day":
+            return _limit("the studio has turned all the voice questions it can into text today")
+        if over == "client":
+            return _limit(f"this address has asked its {speech.PER_CLIENT_PER_DAY} voice questions today")
+        try:
+            return speech.transcribe(audio, lang, _token())
+        except Exception as e:  # noqa: BLE001 - network, auth, quota: the visitor can try again or type
+            status = getattr(getattr(e, "response", None), "status_code", "")  # 401 or 403: identity, role or subdomain
+            logging.getLogger("uvicorn.error").warning("speech to text failed: %s %s", type(e).__name__, status)  # no audio, no text
+            return JSONResponse({"detail": "speech to text could not run"}, status_code=502)
+    finally:
+        _speech_slot.release()
+
+
+@app.post("/api/ask/voice", dependencies=[Depends(_voice_ready)])
+async def post_ask_voice(request: Request, lang: Literal["en", "it", "es"] = Query()):
+    """A WAV body (speech.wav_problem) in, {"text"} out: "" when no words were heard. Nothing is kept."""
+    if request.headers.get("content-type", "").split(";")[0].strip() != "audio/wav":
+        raise HTTPException(415, "send audio/wav")
+    audio = await request.body()
+    if why := speech.wav_problem(audio):
+        raise HTTPException(422, why)
+    out = await asyncio.to_thread(_transcribe, audio, lang, _address(request))
+    return out if isinstance(out, JSONResponse) else {"text": " ".join(out.split())[:280]}
 
 
 # --- the 3D frame-rate beacon -------------------------------------------------------------------

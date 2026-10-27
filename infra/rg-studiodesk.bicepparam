@@ -15,3 +15,6 @@ param roleAssignmentNames = {
 // The live Content Safety account reports no customSubDomainName; its endpoint is
 // https://studiodesk-safety-e2606.cognitiveservices.azure.com/. Empty keeps the property out of the request.
 param safetySubdomain = ''
+// Speech gets its custom subdomain with the first deployment that has this line (checked free on 27 Oct 2026);
+// it is permanent. The app's Speech User assignment gets a guid() name.
+param speechSubdomain = 'studiodesk-speech-e2606'
