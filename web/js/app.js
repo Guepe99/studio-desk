@@ -297,7 +297,7 @@ function layout() {
     if (!DOCKED.matches) for (const el of [ask, pf]) { el.style.width = deck.style.width; el.style.maxHeight = `${fh}px`; }
   } else if (deckMode) deck.style.width = controls.style.width;
   $("#audiences").style.width = controls.style.width;
-  // the minimap sits at RADAR_K of its box, as small as a game's radar, but never narrower than RADAR_MIN px:
+  // the minimap sits at RADAR_K of its box, small enough to leave the play in view, but never narrower than RADAR_MIN px:
   // magnified on a small frame, as the score bug is
   radarK = Math.max(RADAR_K, RADAR_MIN / (RADAR_BOX.w * s));
   $("#radar").style.scale = radarK !== 1 ? String(radarK) : "";

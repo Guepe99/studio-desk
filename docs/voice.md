@@ -14,8 +14,7 @@ One voice per language, the same for every story:
 | `it` | `it-IT-Isabella:DragonHDLatestNeural` |
 | `es` | `es-ES-Ximena:DragonHDLatestNeural` |
 
-English: `en-US-Ava:DragonHDLatestNeural`, chosen by ear by the project owner
-on 19 Oct 2026 against `en-US-Andrew:DragonHDLatestNeural` and `en-GB-OllieMultilingualNeural`
+English: `en-US-Ava:DragonHDLatestNeural`, chosen by ear against `en-US-Andrew:DragonHDLatestNeural` and `en-GB-OllieMultilingualNeural`
 (the same sentence read by each). The HD voices work on the F0 tier of our resource.
 
 HD voices take no `mstts:express-as` styles and pick their tone from the text, so the SSML is the
@@ -28,15 +27,15 @@ with the `voices/list` endpoint of our Sweden Central resource;
 Italian and Spanish (19 Oct 2026, from the same `voices/list` of our resource): each language has two
 Dragon HD voices, a woman's and a man's (`it-IT-Isabella` and `it-IT-Alessio`, `es-ES-Ximena` and
 `es-ES-Tristan`), and none of the it-IT or es-ES voices lists a sports style. We took the HD
-voices, the family the product owner chose for English, which work on F0 like Ava, and the woman's voice
+voices, the family chosen for English, which work on F0 like Ava, and the woman's voice
 in both, so the desk keeps one presenter across the three languages instead of
 changing persona when the viewer changes language. Isabella's standard voice is tagged for news
 and narration, Ximena's multilingual one for narration; neither tag is a commentary style. The
 Spain Spanish voice matches the phrasebook, which is written in Spain Spanish ("el área pequeña",
 "zapatazo"). Not chosen: the `MAI-Voice-2` voices (`it-IT-Luca`, `es-ES-Marta`), whose `excited` and
 `shouting` styles would suit a goal, because they are a different, newer family we have not
-priced or tried on F0; worth a listen if the product owner wants more energy. Nobody has listened to the
-Italian and Spanish clips yet: the product owner should, as for English.
+priced or tried on F0; worth a listen for more energy. The Italian and Spanish clips have not been
+checked by ear yet, as the English one was.
 
 ## What is read
 

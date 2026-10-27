@@ -70,11 +70,11 @@ Considered and not used:
   skins...) are shared under CC0" ([licence](https://static.makehumancommunity.org/about/license.html),
   [FAQ on closed-source use](https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html)).
   Its bodies and skins are closer to a real person than the UBC one, but it has its own
-  skeleton and needs Blender to export and rebind, which this machine does not have. The rebind in
+  skeleton and needs Blender to export and rebind, which our build machine does not have. The rebind in
   `build_footballer.py` would take a MakeHuman body the same way; it is the first upgrade to try.
-- **Paid store models** (the product owner's reference is one): their licences forbid redistributing the
+- **Paid store models**: their licences forbid redistributing the
   model in an extractable form, and this repository is public.
-- **Mixamo and AI-generated meshes**: excluded by the brief.
+- **Mixamo and AI-generated meshes**: excluded.
 - **Cloth photo textures** ([ambientCG](https://ambientcg.com/license), CC0): a knit normal map
   would add fabric at close range, but in software WebGL every extra texture fetch costs frame
   rate and at broadcast distance it is under a pixel. Not added.

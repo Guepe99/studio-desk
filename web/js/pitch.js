@@ -83,7 +83,7 @@ export function namedPlayers(cues, factPlayer) {
   return ids;
 }
 
-// the grass's opacity in the minimap over the 3D view, as a game's radar: the 3D picture shows through,
+// the grass's opacity in the minimap over the 3D view: the 3D picture shows through,
 // lines, dots and ball stay opaque (view3d.mjs reads it back)
 export const SEE_THROUGH = 0.5;
 
@@ -197,7 +197,7 @@ export class Pitch {
     }
     // a disc at least 7.5 CSS pixels in radius (9 at 1280x720) but never wider than 2.4 m, so a crowded
     // box stays readable; the number goes when it would be under 5.5 CSS pixels (Split thumbnail)
-    // in the minimap a small dot, as a game's radar draws them: 1.6 m across the radius
+    // in the minimap a small dot: 1.6 m across the radius
     const R = this.seeThrough < 1 ? 1.6 * S : Math.max(20, Math.min(7.5 / this.css, 2.4 * S)), TAU = Math.PI * 2;
     const numbers = R * 1.08 * this.css >= 5.5;
     const lit = namedPlayers(cues, this._factPlayer);

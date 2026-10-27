@@ -17,7 +17,6 @@ State when this research was written, read from `web/js/scene3d.js` (560 lines t
 - Mowing: UEFA asks for 18 stripes along the length (5.50 to 6.10 m) or 12 across (5.50 to 6.00 m), with grass cut to 24 to 28 mm: https://www.ligue1.com/Articles/NEWS/2021/09/07/user-s-manual-the-pitch . Decorative patterns have been banned since 2017/18 because straight cuts help assistant referees judge offside: https://www.premierleague.com/news/444377
 - Lines are no wider than 12 cm: https://www.theifab.com/laws/latest/the-field-of-play/
 - Floodlights: UEFA Elite Level A means over 2,000 lux horizontal, 5,000 to 6,200 K and colour rendering of 80 or more (secondary summary of UEFA's guide): https://www.stadiaworld.com/ebooks/sv_2023-24_en/76/ . Across all levels the range is 4,200 to 6,200 K: https://documents.uefa.com/r/UEFA-Stadium-Lighting-Guide-2023-2023/Colour-temperature-Online
-- Games: FIFA 23 deliberately exaggerated the shadows on the ball and on players to "ground" them, and pitch wear builds up over the match: https://wccftech.com/fifa-23-graphics-enhancements-include-pitch-wear-exaggerated-shadows-and-more/amp/ . EA FC's "Tele Broadcast" camera is a side-on, mid-distance TV view: https://www.90min.com/best-camera-settings-ea-fc-25 . I found no developer source on how EA renders grass.
 
 **Screenshot checklist**
 1. The camera sits on the halfway line, about 15 to 20 m up, looking 12 to 15 degrees down at the centre spot. Nearer than about 64 to 74 m to the centre spot looks like a drone shot.
@@ -56,7 +55,7 @@ State when this research was written, read from `web/js/scene3d.js` (560 lines t
 
 ## C. Assets (redistributable)
 
-- **Licence risk:** Quaternius published the Quaternius Asset License v1.0 on 28/08/2026. It forbids redistributing the assets "as a standalone asset", and section 7 says it does not apply retroactively: https://quaternius.com/license.html . The UAL 1 and 2 Standard zips I downloaded today from OpenGameArt still ship License.txt = CC0 1.0, and the itch pages say CC0. Keep the zip's License.txt as proof (already done in `web/vendor/quaternius/LICENSE.txt`).
+- **Licence risk:** Quaternius published the Quaternius Asset License v1.0 on 28/08/2026. It forbids redistributing the assets "as a standalone asset", and section 7 says it does not apply retroactively: https://quaternius.com/license.html . The UAL 1 and 2 Standard zips downloaded from OpenGameArt on 18 Oct 2026 still ship License.txt = CC0 1.0, and the itch pages say CC0. Keep the zip's License.txt as proof (already done in `web/vendor/quaternius/LICENSE.txt`).
 - **UAL1 Standard:** CC0, 14.5 MB zip, 46 clips (I checked the GLB): https://opengameart.org/node/174563 . Useful clips: Idle_Loop, Walk_Loop, Jog_Fwd_Loop, Sprint_Loop, Jump_Start/Jump_Loop/Jump_Land (header), Roll and Roll_RM (keeper dive stand-in), Dance_Loop (celebration), Hit_Chest, Crouch_Idle_Loop (keeper set). No kick, pass, header or dive.
 - **UAL2 Standard:** CC0, 10.3 MB zip (itch says 17 MB), 43 clips on the same rig, plus a female mannequin: https://opengameart.org/content/universal-animation-library-2 and https://quaternius.itch.io/universal-animation-library-2 . Useful clips: Slide_Start/Slide_Loop/Slide_Exit (slide tackle), Hit_Knockback (foul), LayToIdle (getting up), OverhandThrow (keeper throw), Yes, Idle_FoldArms_Loop. Same rig, so no retargeting needed.
 - **CMU mocap:** subject 10 has five "soccer - kick ball" trials at 120 fps (`search.php?subjectnumber=10`). "May be copied, modified, or redistributed without permission": http://mocap.cs.cmu.edu/faqs.php . "May not resell this data directly": https://mocap.cs.cmu.edu/ . It needs BVH-to-glTF conversion and bone mapping, and its BVH files are hard to use without remapping: https://blenderartists.org/t/cmu-bvh-visualizer/1491385.md
@@ -71,16 +70,16 @@ State when this research was written, read from `web/js/scene3d.js` (560 lines t
 - **Kenney:** the sports pack is 2D only. No 3D football assets found: https://opengameart.org/content/football-pack
 - **Footballer models with kits:** none found under CC0 or CC BY. Tint the mannequin per team instead.
 
-## D. Recommendation (about 4 builder days, ranked by impact over effort)
+## D. Recommendation (ranked by impact over effort)
 
-1. **PBR plus HDRI lighting** (0.5 day). Move the players and pitch from StandardMaterial to `PBRMaterial`. Light them with `stadium_01` as a 1k .env through `CreateFromPrefilteredData`. Use `KHR_PBR_NEUTRAL` tone mapping so kits keep their colour. Sources: HDREnvironment doc, imageProcessing typings.
-2. **Shadows** (0.5 to 1 day). One `DirectionalLight` and a `CascadedShadowGenerator` with 2 cascades, PCF, `stabilizeCascades`, tight `shadowMaxZ`, players and ball as casters. Add a dark blob decal under each player and the ball (the FIFA 23 "exaggerated shadow"). On WebGL1 or phones, blobs only. Sources: CSM doc, wccftech.
-3. **Pitch shader** (1 day). Material plugin or Node Material: 18 lengthwise stripes 5.5 to 6.1 m wide, brightness alternating by stripe index and view angle, world-space noise, Grass005 detail at two scales against tiling, lines 12 cm wide drawn into a high-resolution `DynamicTexture` with mipmaps, darker wear in the goalmouths. Sources: Ligue 1/UEFA, IFAB, Node Material doc.
-4. **Broadcast camera** (0.5 day). Fixed on the halfway line, about 18 m up, about 70 m from the centre spot. Target = ball blended with the players' centroid, through a critically damped spring with a dead zone. `fov` narrows when play bunches. Replays: two or three preset angles (behind goal, low touchline, high tactical). Sources: UEFA, Free TV, CineFilter, patent 10262692.
-5. **Animation states from UAL1 plus UAL2** (1 day). Add slide tackle, header jump, keeper dive (Roll) and celebration clips. Blend locomotion by speed with `beginWeightedAnimation` and `syncWith`, and transitions with `enableBlending`. Coordinate kick timing with the ball agent: no kick clip exists, so either a short `BoneIKController` swing on the leg or CMU subject 10 retargeted with `AnimatorAvatar` (adds about a day). Sources: zip clip lists, advanced_animations, retargeting doc.
-6. **Post-processing** (0.25 day). `DefaultRenderingPipeline` with hdr, `samples=4` on WebGL2 and FXAA otherwise, light sharpen, faint bloom and vignette. No DoF in the live view, possibly in replays. Source: DefaultRenderingPipeline doc.
-7. **Stands** (0.5 day). Poly Pizza stands (CC BY 3.0, credit in THIRD_PARTY.md) around the pitch, or procedural tiers with thin-instanced seats and a crowd texture, frozen with `freezeWorldMatrix` and `material.freeze()`. Sources: Poly Pizza, thinInstances doc.
-8. **Degradation** (0.25 day). Read `engine.webGLVersion`. Phone profile: hardware scaling 1.5 to 2, no cascades, FXAA. `SceneOptimizer` aiming at 30 fps. Run the lavapipe tests on the low profile. Sources: SceneOptimizer doc, forum thread.
+1. **PBR plus HDRI lighting**. Move the players and pitch from StandardMaterial to `PBRMaterial`. Light them with `stadium_01` as a 1k .env through `CreateFromPrefilteredData`. Use `KHR_PBR_NEUTRAL` tone mapping so kits keep their colour. Sources: HDREnvironment doc, imageProcessing typings.
+2. **Shadows**. One `DirectionalLight` and a `CascadedShadowGenerator` with 2 cascades, PCF, `stabilizeCascades`, tight `shadowMaxZ`, players and ball as casters. Add a dark blob decal under each player and the ball, exaggerated on purpose so nobody floats (checklist point 3). On WebGL1 or phones, blobs only. Source: CSM doc.
+3. **Pitch shader**. Material plugin or Node Material: 18 lengthwise stripes 5.5 to 6.1 m wide, brightness alternating by stripe index and view angle, world-space noise, Grass005 detail at two scales against tiling, lines 12 cm wide drawn into a high-resolution `DynamicTexture` with mipmaps, darker wear in the goalmouths. Sources: Ligue 1/UEFA, IFAB, Node Material doc.
+4. **Broadcast camera**. Fixed on the halfway line, about 18 m up, about 70 m from the centre spot. Target = ball blended with the players' centroid, through a critically damped spring with a dead zone. `fov` narrows when play bunches. Replays: two or three preset angles (behind goal, low touchline, high tactical). Sources: UEFA, Free TV, CineFilter, patent 10262692.
+5. **Animation states from UAL1 plus UAL2**. Add slide tackle, header jump, keeper dive (Roll) and celebration clips. Blend locomotion by speed with `beginWeightedAnimation` and `syncWith`, and transitions with `enableBlending`. Coordinate kick timing with the ball agent: no kick clip exists, so either a short `BoneIKController` swing on the leg or CMU subject 10 retargeted with `AnimatorAvatar`. Sources: zip clip lists, advanced_animations, retargeting doc.
+6. **Post-processing**. `DefaultRenderingPipeline` with hdr, `samples=4` on WebGL2 and FXAA otherwise, light sharpen, faint bloom and vignette. No DoF in the live view, possibly in replays. Source: DefaultRenderingPipeline doc.
+7. **Stands**. Poly Pizza stands (CC BY 3.0, credit in THIRD_PARTY.md) around the pitch, or procedural tiers with thin-instanced seats and a crowd texture, frozen with `freezeWorldMatrix` and `material.freeze()`. Sources: Poly Pizza, thinInstances doc.
+8. **Degradation**. Read `engine.webGLVersion`. Phone profile: hardware scaling 1.5 to 2, no cascades, FXAA. `SceneOptimizer` aiming at 30 fps. Run the lavapipe tests on the low profile. Sources: SceneOptimizer doc, forum thread.
 
 **Not worth doing in the time**
 - SSR: grass does not reflect, and it costs about 4 ms.
@@ -96,9 +95,9 @@ State when this research was written, read from `web/js/scene3d.js` (560 lines t
 ---
 Not checked: whether lavapipe headless Chromium exposes WebGL2 with MSAA and float render targets (CSM and HDR need them). Test that first. File sizes for the Poly Pizza models, and any published broadcast field of view, were not found.
 
-## E. What Studio Desk built from this (feat/scene3d, 18 Oct 2026)
+## E. What Studio Desk built from this
 
-Sections A to D above are the research as handed to the builder. This section records what the
+Sections A to D above are the research as written before the build. This section records what the
 test renderers support, the decisions taken from that, and where the build departs from D.
 
 ### Test renderers
@@ -120,15 +119,18 @@ uses raw RGBA masks (`RawTexture`) on a Standard material. Neither bug shows on 
 
 ### Profiles (`web/js/scene3d/quality.js`)
 
-- **high**: WebGL 2 with MSAA 4 and a fine pointer. Cascaded sun shadows (2 cascades, 1024 px,
-  PCF at low quality), `DefaultRenderingPipeline` with HDR, MSAA 4, sharpen, faint bloom,
-  vignette; grass detail at two scales; full crowd.
+- **high**: WebGL 2 with MSAA 4 and not a phone. Cascaded sun shadows (3 cascades of 1024 px
+  fitted to the view, PCF at medium quality), `DefaultRenderingPipeline` with HDR, FXAA (MSAA 4
+  only where SSAO2 is not supported), sharpen, bloom at half scale, depth of field on tight shots
+  and replays, SSAO2; grass detail at two scales; full crowd with two front rows of 3D spectators
+  and hair cards; render width capped at 1920 px.
 - **low**: WebGL 1, phones (coarse pointer and short side under 820 CSS px) and the lavapipe
-  tests. Blob shadows, no pipeline (materials tone-map themselves, one FXAA pass), one detail
-  scale, 30% of the crowd, render width capped at 1100 px.
-- `?quality=low|high` forces one. No `SceneOptimizer` (removed 21/10/2026): it lowered the
-  picture while playing, and a softer picture was what a viewer noticed. A machine under 10 fps
-  is offered the 2D pitch, never switched to it (view3d.js, 22/10/2026).
+  tests. Blob shadows (a WebGL 2 device on this profile gets 2 cascades of 1024 px instead), a
+  light pipeline (FXAA, sharpen, bloom at quarter scale, the grade) with no depth of field or
+  SSAO, one detail scale, 30% of the crowd as cards only, render width capped at 1100 px.
+- `?quality=low|high` forces one. No `SceneOptimizer`: it lowered the picture while playing, and
+  a softer picture was what a viewer noticed. A machine under 10 fps is offered the 2D pitch,
+  never switched to it (`view3d.js`).
 
 ### Where the build departs from section D, and why
 
@@ -139,10 +141,11 @@ uses raw RGBA masks (`RawTexture`) on a Standard material. Neither bug shows on 
 2. **Pitch lines**: a distance field in the pitch shader, anti-aliased with screen derivatives,
    instead of a `DynamicTexture`. A texture would need about 16k px to keep 12 cm lines crisp;
    the distance field is exact at any distance and does not shimmer when the camera pans.
-3. **Post on low**: no pipeline at all. In software the pipeline cost four fifths of the frame.
+3. **Post on low**: a light chain only (FXAA, sharpen, bloom at quarter scale, the grade), with
+   no depth of field or SSAO. In software the full pipeline cost four fifths of the frame.
 4. **Stands**: procedural tiers with thin-instanced seats and crowd, no Poly Pizza model (CC BY
-   with unknown file sizes). The near stand under the camera gantry has no roof, side walls or
-   crowd: they blocked the main camera at 18 m.
+   with unknown file sizes). The near stand has its roof and crowd, except 40 m either side of
+   the main camera, where they blocked its view (section F).
 5. **Animation**: clips are sampled from match time with `goToFrame` and weights, never played,
    so seeks, replays and video frames always show the same pose. Upper-body emotion clips are
    applied after the animation step, because Babylon clamps an animatable's weight to 1.
@@ -158,10 +161,10 @@ uses raw RGBA masks (`RawTexture`) on a Standard material. Neither bug shows on 
 
 1280x720, DEMO match, each frame finished with a one-pixel `readPixels` (otherwise frames only
 queue and the number is inflated), median of three 3-second runs (`tests/web/scene3d-perf.mjs`).
-Both renderers are software on a shared 2-core machine: the numbers compare before and after on
-this machine, they say nothing about a real GPU.
+Both renderers are software on a shared 2-core machine: the numbers compare before and after,
+they say nothing about a real GPU.
 
-| Renderer, profile | Before (origin/main, 18 Oct) | After (this branch, footballers and awareness on) |
+| Renderer, profile | Before (the earlier code) | After (footballers and awareness on) |
 |---|---|---|
 | lavapipe WebGL 1, low | 5.11 | 5.52 |
 | SwiftShader WebGL 2, high | 2.05 | 0.86 |
@@ -171,9 +174,9 @@ profile pays for everything at once in software. One earlier run that switched p
 (`scene3d-perf.mjs high all`, from 0.59 fps with everything on) gave 0.80 without sun shadows,
 1.08 without the crowd, 1.59 with post effects at their minimum and 1.65 with no pipeline. On a
 real GPU they should cost far less (shadow maps and MSAA are what GPUs are built for), but this was
-not measured: no GPU on this machine. The 2D suggestion under 10 fps and the frame-rate beacon (api/perf) are the safety net.
+not measured: no GPU was available. The 2D suggestion under 10 fps and the frame-rate beacon (api/perf) are the safety net.
 
-On 21/10/2026 `tests/web/frame-cost.mjs` (M001 high profile, SwiftShader, from the goal at 10:00)
+`tests/web/frame-cost.mjs` (M001 high profile, SwiftShader, from the goal at 10:00)
 counted 1,179 draw calls a frame. Four changes took out work that did not reach the picture:
 
 - each player casts its shadow from a twin of the far body (`players3d.js` `shadowTwin`), one draw per
@@ -192,10 +195,9 @@ Draw calls fell to 651 in the celebration shot (depth of field on) and to 375 in
 moments match the old ones (SSIM 0.992 to 0.997, the spread of two runs of the same code).
 SwiftShader stays at 0.05 to 0.08 fps: its time is pixel work, which these changes do not touch.
 
-## F. Pitch and crowd (feat/pitchcrowd3d, 18 Oct 2026)
+## F. Pitch and crowd
 
-The product owner said the 3D match looked like a 1990s game; the ground and the crowd were two of the
-biggest tells. This section gives the rules the build follows, with numbers and sources.
+The ground and the crowd were two of the parts that made the first 3D match look fake. This section gives the rules the build follows, with numbers and sources.
 
 ### Mowing stripes (`web/js/scene3d/pitch.js`)
 
@@ -224,25 +226,24 @@ biggest tells. This section gives the rules the build follows, with numbers and 
   the screen-space anti-aliasing of section E.
 - Shell grass (the fur approach from the
   [Babylon forum](https://forum.babylonjs.com/t/how-to-achieve-grass-3d-effect-similar-to-this-one/51166))
-  was not built: optional in the brief, and the high profile already runs about 1 fps in
+  was not built: optional, and the high profile already runs about 1 fps in
   software, so it could not be measured against the 10% rule here.
 
 ### Crowd (`web/js/scene3d/stands.js`, `crowd.js`, `toon.js`)
 
-- Industry practice: instanced 3D spectators near the pitch, cheaper cards further out
-  ([polycount, FIFA 10 crowd](https://polycount.com/discussion/71901/in-game-crowd-techniques-such-as-fifa-10)).
-  Here the front 2 rows are 3D on high (4 until 18/10/2026, see quality.js); low keeps cards only (below).
+- Our choice: instanced 3D spectators near the pitch, cheaper cards further out. The front 2 rows
+  are 3D on high (four rows cost too much, see `quality.js`); low keeps cards only (below).
 - 3D spectator: the CC0 mannequin body (about 360 triangles, `scripts/build_spectator.py`) with
   hair, a face and a scarf added at load time; 579 triangles in all. One thin-instanced mesh, one
   draw call.
 - Style: anime, to match the players. Head and hair at 1.3 times life size, the players' own face
-  (below), flat colours, toon shading (below), and on high a thin dark outline (1.2 cm, Babylon's
-  outline renderer). Low has no outline: in lavapipe it costs a second pass.
+  (below), flat colours, toon shading (below), and no outline on either profile: in SwiftShader
+  four 3D rows with outlines made the frame 3.6 times slower.
 - Hair: a weighted palette of natural colours, any of them on any skin: black 26%, dark brown
   20%, brown 20%, dark blonde 12%, blonde 10%, platinum, grey and light brown 4% each.
   A first version drew all 12 colours evenly and read as confetti; the next one kept 10% vivid
-  heads (pink, sky blue, teal, violet, silver), which the product owner found too loud; one with only
-  dark tones read as too uniform; copper and auburn read as unrealistic (18/10/2026).
+  heads (pink, sky blue, teal, violet, silver), which read as too loud; one with only
+  dark tones read as too uniform; copper and auburn read as unrealistic.
 - Face: the players' anime face. `scripts/build_crowd_face.py` draws the face of
   `web/vendor/players/anime.glb` (eyes with highlights, lashes, brows, mouth, from its face atlas)
   front-on into `web/vendor/crowd/face.png` (512 x 512, 22 KB): neutral and joy (the players'
@@ -251,8 +252,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
   whole crowd, so it stays one draw call. Per spectator: the skin and hair of the palettes, an
   iris colour from six (tinting the iris as the players' material does), brows in the hair colour,
   and a smile (the joy face) on a quarter of them and on everyone while cheering. A first version
-  drew two dark dots and no mouth or brows; the product owner asked for the players' face
-  (27/10/2026). The crown of the hair is spiky, the lower part a tighter mass.
+  drew two dark dots and no mouth or brows, which did not match the players. The crown of the hair is spiky, the lower part a tighter mass.
 - Low profile: cards only. In lavapipe one row of 3D spectators and the hair cards together cost
   about a quarter of the frame rate (4.4 against 6.0 frames/s in a probe that switched them off),
   so on low the head card paints dark hair on itself (a cap to the brow and the sides) and there
@@ -276,7 +276,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
   stretched to whole loops (0.8x to 1.2x) so it ends where the blend back starts; a fan who was
   standing cheers from standing and goes back to standing. A card spectator carries his shirt
   and end on torso, head and hair alike, so he jumps whole by the same rule, corners included.
-- Banners: eight banners of 7 x 1.3 m hung over the front walls of the stands, tied along the
+- Banners: eight banners of 7 x 0.9 m hung over the front walls of the stands, tied along the
   top edge, in plain team colours with no text or crests, waving with a vertex-shader sine wave
   (0.12 m at the free bottom edge, 4.2 rad/s, travelling along the banner). A first version had
   flags held up in the stands; with no fan holding them they read as rectangles floating in
@@ -284,7 +284,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 
 ### One bowl (`web/js/scene3d/stands.js`)
 
-The product owner saw the stadium as separate blocks: open corners with dark gaps, sky between the roofs,
+The first stadium read as separate blocks: open corners with dark gaps, sky between the roofs,
 an empty near stand. The stands now form one bowl.
 
 - The two side stands run between the two end lines (123 m), the end stands between the two side
@@ -312,10 +312,10 @@ through) and tilt their normals with the wave, so folds read as bands even with 
 ### Frames per second
 
 Measured as in section E (`tests/web/scene3d-perf.mjs`, 1280x720, DEMO match, median of three
-3-second runs). The machine was shared with two other builder agents, so single runs swing by
+3-second runs). The machine was shared with other jobs, so single runs swing by
 up to a third; treat these as rough.
 
-| Renderer, profile | Before (origin/main 7ffce82) | After (this branch) |
+| Renderer, profile | Before (commit 7ffce82) | After |
 |---|---|---|
 | lavapipe WebGL 1, low | 6.24 (runs 5.8 to 6.3) | 4.14 with a 3D row and hair cards; about 6.0 estimated for the final low profile (see below) |
 | SwiftShader WebGL 2, high | 0.92 | not measured for the final version |
@@ -323,20 +323,20 @@ up to a third; treat these as rough.
 The 4.14 led to the low profile without a 3D row or hair cards. A probe that switched parts off
 in one page (`all on` 4.41, 3D row off 4.93, hair cards off 5.97, cards off 6.58) puts the final
 low profile near 6.0, inside the 10% budget (5.62), but the interleaved before and after run for
-the final code was not made: the lead measures fps once at merge.
+the final code was not made.
 
 ### Checks (`tests/web/sample3d-shots.mjs`)
 
 - Stripes: the relative contrast of two neighbouring stripes, seen from the TV side and from
   the far side, must change sign and be at least 0.02; looking along the stripes it must be
   under 12% of that. Grass patches add the same contrast to every view, so the stripe part is
-  half the difference of the two opposite views. origin/main passes this check too (it already
+  half the difference of the two opposite views. The earlier code passes this check too (it already
   swapped its stripes with the view's Z), with less contrast: 0.054 against 0.068 now.
 - Bowl: from the centre spot, a patch just above the back wall at each corner must be less than
-  20% sky. On origin/main the two near corners were 100% sky and the check fails.
+  20% sky. On the earlier code the two near corners were 100% sky and the check fails.
 - Crowd: one goal record per score fact; the home end is all seated 2 s before the home goal,
   over 90% celebrating 4 s after it and all seated again 10.5 s after it; under 30% of the away
   end celebrates; and the frame of the end behind the goal changes on average by more than 8
   levels.
-  On low (cards only) the same numbers come from the cheer state the cards follow. On origin/main
-  there is neither and the check fails.
+  On low (cards only) the same numbers come from the cheer state the cards follow. The earlier
+  code has neither and the check fails.

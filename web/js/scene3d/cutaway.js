@@ -20,8 +20,8 @@ export const REPLAY_LEN = 5.5;        // seconds of the goal replay (view3d.js R
 // prefers-reduced-motion: camera 1 holds the wide shot throughout: no punch-in, no rail slide, no cut
 // to camera 2, no cutaway (camera.js), no goal replay (view3d.js)
 export const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
-// seconds: after the ball is out, back on camera 1 before the restart (a throw-in's taker picks
-// the ball up 1.6 s before it, players.js THROW), shot lengths
+// seconds: after the ball is out, back on camera 1 before the restart (a throw-in's taker raises
+// the ball over his head from 1.6 s before it, players.js THROW.start), shot lengths
 export const CUTAWAY = {
   after: 1.5,
   before: { throw_in: 4, other: 3 },

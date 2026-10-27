@@ -189,7 +189,7 @@ how often such a thing happens in real football, no more.
 | panel | `web/js/forecast.js`, `web/css/forecast.css`, strings in `web/js/desk.js` (`w_*`, `a_prepared_*`, `y_prepared_*`) |
 | tests | `tests/test_forecast.py`, `tests/web/forecast.test.mjs`, `tests/web/forecast.mjs` (browser, M001) |
 
-Season facts (feat/season): `forecast.EXTRA_KINDS` takes functions `(game, ts, params) -> items` for
+Season facts: `forecast.EXTRA_KINDS` takes functions `(game, ts, params) -> items` for
 milestone kinds (a player's 10th goal of the season from his season tally and the second_goal rate);
 each new kind also needs its branch in `resolve()`, a title and a template.
 
@@ -201,7 +201,7 @@ each new kind also needs its branch in `resolve()`, a title and a template.
     node --test tests/web/forecast.test.mjs
     WEBGL=0 scripts/with-lock.sh chromium tests/web/run-smoke.sh forecast.mjs
 
-The calibration takes about 4 minutes on this machine (run it detached if the build lock is busy). It
+The calibration takes about 4 minutes on a 2-core machine (run it detached if the build lock is busy). It
 writes `studiodesk/forecast_params.json` and adds a run to `data/forecast.sqlite` (tables
 `forecast_runs`, `forecast_samples`, `forecast_scores`, `forecast_reliability`). The same seed gives the
 same numbers (`test_calibration_is_reproducible`).

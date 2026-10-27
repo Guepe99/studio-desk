@@ -403,7 +403,7 @@ export class View3D {
     this._carrier(v);
   }
 
-  // The shirt and surname over the player on the ball, as a football game shows them: in open play
+  // The shirt and surname over the player on the ball: in open play
   // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
   // The players an open proof cites get the same tag; the carrier's own tag goes when he is one of them.
   // None on a crowd or stadium cutaway (scene3d/cutaway.js), nor on camera 2's tight shots (the

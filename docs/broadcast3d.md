@@ -1,9 +1,9 @@
 # Broadcast look for the 3D view
 
-The 3D sample looked like a video game from the 1990s: a near camera on a wide lens, flat daylight,
+The first 3D sample did not look like television: a near camera on a wide lens, flat daylight,
 players floating on the grass and no picture processing. This note has the rules a football
 outside broadcast follows, the numbers we took from them, what the scene does now, and the
-measurements before and after, so a reviewer can check every claim.
+measurements before and after, so every claim can be checked.
 
 Code: `web/js/scene3d/camera.js` (cameras and cutting), `web/js/scene3d/post.js` (post chain and
 grade), `web/js/scene3d/lighting.js` (night and day light, floodlights), `web/js/scene3d/grounding.js`
@@ -35,9 +35,12 @@ shot of a match broadcast does.
 
 ### What the scene does
 
-- **Camera 1, live:** fixed at (0, 18, -68) in scene metres: on the halfway line, 34 m back from
+- **Camera 1, live:** at (0, 18, -68) in scene metres: on the halfway line, 34 m back from
   the near touchline and 18 m up. That puts the line of sight 27.9 degrees down to the near
   touchline and 14.8 degrees to the centre spot, inside both OP-32 ranges, 70.3 m from the spot.
+  It stands on a short rail along the touchline: around a kick that a player's head would hide
+  from the lens, it slides up to 10 m along the rail, the smallest slide that shows the kicker's
+  foot (`web/js/scene3d/sightline.js`).
 - **Long lens:** 24 to 42 m of pitch across the frame at the aim point, which is 19 to 33 degrees
   across. The old camera stood near and wide; from 70 m on a long lens depth flattens the way TV
   pictures do. A phone-sized frame zooms in further (to 0.65 of the width) so players stay readable.
@@ -47,17 +50,20 @@ shot of a match broadcast does.
   the ball in the middle 80% of the frame.
 - **Tight shots only at a stoppage:** camera 2 is a pitchside handheld on a long lens. It takes a
   tight shot of the scorer from 1 to 6 s after a goal, of the fouler after a foul and of the keeper
-  after a save. For fouls and saves the shot runs from 1 s after the event to 0.5 s
-  before the next event, and only if that leaves at least 2 s, so the cut back to camera 1 always
-  comes before play restarts. On M001 that gives 17 fouls and 4 saves, every one followed by a free
-  kick or a corner 25 to 33 s later (checked in the browser on the real match). The camera stands
+  after a save. For fouls and saves the shot runs from 1 s after the event until 6 s after it or
+  0.5 s before the next event, whichever comes first, and only if that leaves at least 2 s, so the
+  cut back to camera 1 always comes before play restarts. On M001 that gives 17 fouls and 4 saves,
+  every one followed by a free kick or a corner. The camera stands
   where the player was when the stoppage began, 18 m from him on the near touchline side and a
   little towards the halfway line (never more than 4 m outside the lines), 2.2 m up, and stays put
-  for the shot. The frame is 3.2 m across at the player, aimed 1.2 m up: knees to head, nearly level,
-  with the boards and the far stand behind him, on a lens of about 10 degrees, with depth of field
-  on the high profile. Two earlier versions failed the lead's review: a 7 m frame from the main
-  platform, then a 4.5 m one, both 14 degrees down from 18 m up, read as a view from above with
-  nothing but grass behind the players.
+  for the shot. If another player would walk between him and the player during the shot, the
+  operator steps round by 15 degrees at a time, up to 45, to a place where nobody does
+  (`sightline.js`). The frame is 4.5 m across at the player, aimed 0.95 m up: head to feet with
+  room for raised arms, nearly level, with the boards and the far stand behind him, on a lens of
+  about 14 degrees (capped under 16), with depth of field on the high profile. The aim follows
+  the player's position averaged over 2 s. Two earlier versions shot from the main platform, 18 m
+  up and 14 degrees down; they read as a view from above with nothing but grass behind the
+  players.
 - **Replays:** one free camera at four angles: the goal camera (14 m behind the goal line on the
   long axis, 13.5 degrees to the penalty mark), a pitch-level camera in line with the 18-yard line,
   the reverse angle from the far stand and a high tactical view. A goal replay runs 5.5 s from
@@ -71,14 +77,14 @@ shot of a match broadcast does.
   faster than half speed only when the flight is too long for its 3 s (0.66x on one goal of M002).
 - **Shots and the player on the ball:** every shot that is not a goal gets a short punch-in on
   camera 1 towards where it ends (22 m wide, 1.2 s held, 1.2 s out, `camera.js` SHOT_PUNCH). In
-  open play the shirt and surname of the player on the ball hang over his head, as in a football
-  game (`view3d.js` CARRIER): the player of the next touch, while the ball is on the ground within
+  open play the shirt and surname of the player on the ball hang over his head, our choice to
+  keep the play readable from 70 m (`view3d.js` CARRIER): the player of the next touch, while the ball is on the ground within
   2.5 m of him for 0.2 s.
 
 ### Cutaways at stoppages
 
-Feedback from the product owner after watching M001 in 3D: at a throw-in or a goal kick he expected a shot
-of the crowd and the stadium, as on TV and in a football game. The rules we follow:
+At a throw-in or a goal kick a match broadcast shows the crowd and the stadium. The rules we
+follow:
 
 | Rule | Number | Source |
 |---|---|---|
@@ -86,15 +92,12 @@ of the crowd and the stadium, as on TV and in a football game. The rules we foll
 | Cut only once the ball has gone out | "I prefer to cut when the ball has gone out of play" | SVG Europe, interview with a FIFA World Cup 2022 host-broadcast director (9 Dec 2022) |
 | Crowd and bench shots are their own cameras, called live at stoppages | "Fans on five, manager on 13" | Champions Journal, as above |
 | A "public" camera filming the crowd is one of 13 camera classes of a match broadcast; one camera change every 9 s on average (583 a game), replay shots 6.8 s on average | 200 fully annotated games | SoccerNet-v2 (Deliège et al., CVPR Workshops 2021), camera shot segmentation |
-| Football games show the stadium from the air and fans waving flags and scarves | drone shots of the stadium, banners and flags in the stands | EA SPORTS FIFA 23 coverage (NME) and EA's visuals deep dive |
 | Length of one cutaway | 4 to 5 s | our choice: no source gives one; it is shorter than the 9 s average shot and the 6.8 s replay shot above, so the restart is never missed |
-| How often | every stoppage with room for a shot, unless the previous cutaway ended under 20 s before | our choice: no source gives a rate. The first rule (at least 60 s apart, about half of the stoppages) left most pauses on camera 1, and the product owner noticed: "during pauses there are no cutaway shots". Now about one a minute (median 51 s apart on M001) |
-| Back on camera 1 before the restart | 4 s before a throw-in (the taker picks the ball up 1.6 s before it), 3 s before any other restart | our choice, over the 0.5 s floor the tight shots keep |
+| How often | every stoppage with room for a shot, unless the previous cutaway ended under 20 s before | our choice: no source gives a rate. The first rule (at least 60 s apart, about half of the stoppages) left most pauses on camera 1. Now about one a minute (median 51 s apart on M001) |
+| Back on camera 1 before the restart | 4 s before a throw-in (the taker raises the ball over his head from 1.6 s before it, `players.js` THROW), 3 s before any other restart | our choice, over the 0.5 s floor the tight shots keep |
 
 Sources: https://www.champions-journal.com/1000/directors-cut ,
-https://www.sportsvideo.org/?p=232815 , https://arxiv.org/abs/2011.13367 ,
-https://www.nme.com/news/gaming-news/fifa-23-will-improve-matchday-experience-with-better-crowds-and-flashier-replays-3285320 ,
-https://www.ea.com/ea-studios/ea-sports/news/visuals-audio-deep-dive .
+https://www.sportsvideo.org/?p=232815 , https://arxiv.org/abs/2011.13367 .
 
 What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
 
@@ -170,7 +173,7 @@ into `out/crowd-cutaways/` (not in git).
 Anti-aliasing on high: with SSAO2 the scene is drawn into SSAO2's prepass target, so the
 pipeline's MSAA never reached it and the high profile had none at all. MSAA 4 in that target
 (`ssao.textureSamples`) took the sample scene from 0.64 to 0.38 and 0.43 fps, FXAA to 0.53 fps
-(`scene3d-perf.mjs high`, SwiftShader, 1280 x 720, back to back on 24 Oct): FXAA it is, with the
+(`scene3d-perf.mjs high`, SwiftShader, 1280 x 720, back to back): FXAA it is, with the
 sharpen pass after it as on low.
 
 Babylon docs: https://doc.babylonjs.com/features/featuresDeepDive/postProcesses/defaultRenderingPipeline .
@@ -218,8 +221,8 @@ What the scene does at night:
   The one behind camera 1's left shoulder is the key (2.2) and casts the shadow map; the other three
   are fill (1.45). Even light over the pitch, four soft shadows per player.
 - The stands sit outside the floodlights' beams: they are excluded from the four lights and get
-  only a dim spill (0.3) and a darker crowd, so the bright pitch stands out from darker
-  surroundings. The lead's review said the first night look barely read; this was the fix.
+  only a dim spill (0.6) and a darker crowd, so the bright pitch stands out from darker
+  surroundings.
 - Emissive lamp banks: a 6 x 3 lamp panel on each mast head and a row of lamps under the leading
   edge of each roof, bright enough (emissive 5 to 7) that only they cross the bloom threshold.
 - A faint lens flare (a halo and two small ghosts) on each mast.
@@ -231,7 +234,7 @@ What the scene does at night:
   shadow). One thin-instanced mesh, one draw call.
 - **Blob shadows for the lights without a shadow map:** at night one long faint blob per corner
   mast, pointing away from it and as long as a 1.82 m player's shadow at that mast's elevation
-  (1.2 to 6 m). FIFA 23 exaggerated contact shadows for the same reason: so players do not float.
+  (1.2 to 6 m). Exaggerated on purpose, so players do not float.
 - **Cascaded shadow map** (`CascadedShadowGenerator`): high profile 3 cascades of 1024 px fitted
   to the view (`autoCalcDepthBounds`), PCF at medium quality; a WebGL 2 phone gets 2 cascades at
   low quality; WebGL 1 gets blobs only. `shadowMaxZ` 160 m, stabilised cascades, depth clamp.
@@ -242,12 +245,12 @@ What the scene does at night:
 
 New checks in `tests/web/sample3d-shots.mjs`, each written so that it fails without the change:
 
-| Check | Pass on this branch (low profile) |
+| Check | Measured (low profile) |
 |---|---|
 | Camera 1 on the halfway line, 12 to 16 degrees down to the centre spot and along its median line of sight | 14.8 and 13.5 degrees |
 | Long lens: 18 to 34 degrees across, 23 to 43 m of pitch at the aim | 26.3 to 30.2 degrees, 38.1 m |
-| Tight shot from a pitchside camera: 8 to 30 m away, 2 to 4 m up, a lens under 16 degrees, standing still | 17.3 m, 2.2 m up, 10.7 degrees |
-| Tight shot nearly level (3 degrees up to 6 down) with knees and head in frame in 80% of its frames | 3.2 to 3.3 degrees down, 100% |
+| Tight shot from a pitchside camera: 8 to 30 m away, 2 to 4 m up, a lens under 16 degrees, standing still | not re-measured since the 4.5 m frame |
+| Tight shot nearly level (3 degrees up to 6 down) with knees and head in frame in 80% of its frames | not re-measured since the 4.5 m frame |
 | Every cut at a stoppage (within 8 s of a goal, or inside a foul or save stoppage) | cuts at 101.2 s to camera 2 and 102.5 s to the replay, goal at 100.2 s |
 | Grass 0.3 m in front of each player's feet darker with grounding than without (under 0.9), grass 8 m away unchanged (over 0.95) | 0.818 and 1.0 over 11 players |
 | An identity grade table leaves the frame unchanged (under 2/255), the broadcast table changes it (over 2/255) | 0.61 and 11.57 |
@@ -256,27 +259,26 @@ The same checks pass under WebGL 2 on SwiftShader (high profile, 177 shadow cast
 camera numbers, grass in front of the feet at 0.786, identity table 0.59/255, grade 11.34/255.
 
 Commands: `scripts/with-lock.sh chromium tests/web/run-smoke.sh sample3d-shots.mjs` (low) and the
-same with `WEBGL=2` in front (high); `.venv/bin/pytest -q` (98 passed);
-`scripts/with-lock.sh chromium tests/web/run-smoke.sh` (2D smoke, passed on the run before the
-pitchside tight shot, which changed only 3D files).
+same with `WEBGL=2` in front (high); `.venv/bin/pytest -q`;
+`scripts/with-lock.sh chromium tests/web/run-smoke.sh` (2D smoke).
 
-**The checks against main (7ffce82).** An earlier version of these checks, run on a copy of main,
-failed 6 times: no contact shadows; camera 1 not on a long lens (39.8 to 44.4 degrees, 58 m of
+**The checks against the earlier code (commit 7ffce82).** An earlier version of these checks, run
+on that commit, failed 6 times: no contact shadows; camera 1 not on a long lens (39.8 to 44.4 degrees, 58 m of
 pitch); the tight shot too close (9.8 m) and at the wrong angle (7.2 degrees); no darkening under
-the feet (1.0, 17 players); no grade table to test. Two checks pass on main too: main already had
-the camera on the halfway line at 12 to 16 degrees and already cut only at the goal, so those two
-guard against regressions and do not prove this branch. The pitchside tight-shot checks were
-rewritten after that run and were not run again on main; main's tight shot comes from the 18 m
-high platform, so the 2 to 4 m height check cannot pass there.
+the feet (1.0, 17 players); no grade table to test. Two checks pass on the earlier code too: it already
+had the camera on the halfway line at 12 to 16 degrees and already cut only at the goal, so those
+two guard against regressions and do not prove the new code. The pitchside tight-shot checks were
+rewritten after that run and were not run again on the earlier code, whose tight shot comes from
+the 18 m high platform, so the 2 to 4 m height check cannot pass there.
 
 ## 6. Frame rate
 
-Measured with `tests/web/scene3d-perf.mjs` on this machine (2 cores, software rendering only), so
+Measured with `tests/web/scene3d-perf.mjs` on a 2-core machine, software rendering only, so
 the numbers compare before and after; they say nothing about a real GPU.
 
-| Profile | Before (main 7ffce82) | After | How |
+| Profile | Before (commit 7ffce82) | After | How |
 |---|---|---|---|
-| Low (lavapipe, WebGL 1) | 1.67 and 1.62 fps | 1.21 and 1.39 fps | alternated back to back, twice, with two other agents loading the machine |
+| Low (lavapipe, WebGL 1) | 1.67 and 1.62 fps | 1.21 and 1.39 fps | alternated back to back, twice, with other jobs loading the machine |
 | High (SwiftShader, WebGL 2) | 0.86 to 0.94 fps | 0.92 fps | separate runs earlier in the day |
 
 On low the post chain (HDR buffer, FXAA, bloom, grade) costs about 15 to 25% on a software
@@ -285,12 +287,12 @@ gave 6.03 fps before; the after run in the test itself gave 5.21 fps.
 
 ## 7. Stills and video
 
-In `out/shots/` of the main checkout (not in git): `broadcast3d-before-*.png` and
+In `out/shots/` (not in git): `broadcast3d-before-*.png` and
 `broadcast3d-after-*.png` for `wide`, `tight`, `replay`, `wide-day`, `phone-portrait` and
 `phone-landscape`, plus `broadcast3d-after-establishing.png` (camera 1 on a wide lens tilted up to
 the roofs and masts, made only for this note). `broadcast3d-before.mp4` and `broadcast3d.mp4` are 20 s of
 M001; `broadcast3d-before-after.mp4` puts them side by side, before on the left and after on the right
-(the ffmpeg on this machine has no text filter, so the halves carry no label). The video was
+(the ffmpeg build used has no text filter, so the halves carry no label). The video was
 rendered before the tight shot moved to the pitchside camera, so its tight shot is still the
 earlier one from the platform; the stills are current.
 
@@ -303,16 +305,17 @@ Compared still by still against the before set, these are the parts that still g
   the night reads from the dark stands and the even pitch, not from the lamps.
 - **No pools of light.** Four directional lights light the pitch evenly with no falloff towards
   the corners; real floodlights leave a faint pattern of brighter and darker patches.
-- **The stands are flat.** At night they get a single dim spill light; the crowd sprites are flat
-  cards, readable on the high profile and close to invisible on the low profile and on a phone.
+- **The stands are flat.** At night they get a single dim spill light. On the high profile the
+  two front rows are 3D spectators and the rest are flat cards; on the low profile every
+  spectator is a card, close to invisible on a phone.
 - **The tight shot crosses traffic.** Camera 2 stands still and other players run through the
   frame, sometimes in front of the scorer; a real operator would reframe or wait. The lower-third
   nameplate covers the scorer's waist in the tight still.
 - **The lens flare is faint**, on purpose, and nearly lost at phone size.
 - **Low profile shadows are blobs only**: no shadow shape, just a soft dark patch and a faint
   streak per mast.
-- **The goalmouth wear** reads as a brown smudge under the night light. The pitch shader belongs
-  to the pitch and crowd branch, so this branch does not touch it.
+- **The goalmouth wear** reads as a brown smudge under the night light (`docs/scene3d-research.md`,
+  section F, has the pitch shader).
 - **Possible banding** in dark gradients from the 16-point grade table; not seen in the stills,
   not checked on an 8-bit phone screen.
 - **Not tested on a real GPU or phone.** Every number and still here comes from software
@@ -330,11 +333,9 @@ Two screens, one in each far corner, on legs just behind the boards at world (±
 corner of the pitch is at (±52.5, 34), so the screens stand beyond the corner flag and everything
 on the pitch is in front of them; they never hide play. Each is 6.4 x 3.2 m, from 1 m (just over
 the 0.9 m boards) to 4.2 m, turned to camera 1. They show a fixed wordmark (STUDIO DESK) over the
-two club colours, drawn once. Until 22 Oct they showed the short names, the score and the minute in
-the score bug's look; in the wide shot the left screen sits just behind and above the score bug, and
-viewers read it as a second, smaller score bug ("WRE 0-0 BRI", or "0-0 8'" when half hidden). The
-score now has one place on screen. The cost notes below were measured with the old, redrawn text;
-a canvas drawn once costs less.
+two club colours, drawn once. An earlier version showed the short names, the score and the minute
+in the score bug's look; in the wide shot the left screen sits just behind and above the score bug,
+and it read as a second, smaller score bug. The score now has one place on screen.
 
 Why that height: camera 1 at (0, 18, -68) on its long lens sees only the bottom of the stands. A
 first version was 7.5 x 3.75 m from 1.8 to 5.55 m; in a sweep of the wide shot over M001 (47
@@ -356,14 +357,12 @@ Where each camera sees it, from the camera matrices (share of the frame, whole i
 
 Cost: the faces are one merged mesh with one 1024 x 512 `DynamicTexture` (a power of two for
 WebGL 1), the housings and legs another merged mesh, world matrices and materials frozen: 2 draw
-calls (377 against 375 on the high profile). The canvas is drawn again only when the text changes,
-once a minute or at a goal (4 draws for 4 minute changes over 200 s of play at 4x), never per
-frame; one draw and upload took 1.1 to 2.3 ms on a page that had played a while and 15 ms on a fresh page
-(three runs, under a load average of 18). The frame
-time could not be told apart on this machine: the same frame drawn six times with the screens and
+calls (377 against 375 on the high profile). The canvas is drawn once, and again when the web
+font arrives; it is never redrawn per minute or per frame. The frame
+time could not be told apart on a software renderer: the same frame drawn six times with the screens and
 six without, alternated, took a median of 13.8 to 14.6 s against 15.4 to 16.7 s in three runs and
 7.0 against 6.6 s, 11.8 against 11.5 s, 6.9 against 7.1 s and 6.6 against 6.6 s in four more (software WebGL 2, every frame waits on a CPU shared with other
-agents): the sign flips between runs, so the difference is under the noise; on a real
+jobs): the sign flips between runs, so the difference is under the noise; on a real
 GPU two more draw calls of 4 and 1 triangles are negligible.
 
 ### Kick-off and full time
@@ -387,9 +386,9 @@ whistles are the booth's own: `booth.js` already blows `whistle.mp3` at kick-off
 period end, so nothing new is played at full time.
 
 The count runs on real time: on a page that stalls for more than a second or two (the software
-renderers here) a label can be skipped; the clock is still held until the count is over.
+renderers used for testing) a label can be skipped; the clock is still held until the count is over.
 
-Commands: `node --test tests/web/stadium.test.mjs` (6 tests) and
+Commands: `node --test tests/web/stadium.test.mjs` (5 tests) and
 `WEBGL=2 MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh stadium.mjs`. Stills in
 `out/shots/` (not in git): `stadium-broadcast.png`, `stadium-replay-low.png`, `countdown-3d.png`,
 `countdown-1280.png`, `countdown-390.png` (in Spanish) and `countdown-fulltime.png`. The two screen stills

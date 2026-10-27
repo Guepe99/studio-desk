@@ -1,8 +1,8 @@
 # Anime footballers (`?players=anime`)
 
-The product owner asked for anime-style footballers: big eyes with highlights, a small nose, a line mouth,
+Anime-style footballers: big eyes with highlights, a small nose, a line mouth,
 big stylised hair in saturated colours, flat cel shading with a crisp shadow edge, clean outlines,
-faces that change with the emotion. Inazuma Eleven is the style reference only: no character,
+faces that change with the emotion. The style is generic anime: no character,
 hairstyle-plus-colour pair, kit or face is copied from any anime, manga or game, and no real person.
 
 What ships:
@@ -11,7 +11,7 @@ What ships:
   bound to the mannequin skeleton (65 joints, same names, hierarchy and rest pose).
 - `web/js/toon3d.js`: the cel shading and the outline, as two material plugins on Babylon's PBR material.
 - `web/js/players3d.js`: `dressAnime` (kit, hair, eyes, face) behind `dressFootballer`, and `animeLook(pid)`.
-- `web/js/scene3d.js`: the anime model is the default since 18/10/2026 (`?players=footballer` brings back the realistic body).
+- `web/js/scene3d.js`: the anime model is the default (`?players=footballer` brings back the realistic body).
 - `tests/test_build_anime.py` and `tests/web/anime3d-shots.mjs`.
 
 ## Research
@@ -66,13 +66,6 @@ What ships:
   inject GLSL into the PBR material and keep skinning, morph targets, shadows and the kit code as
   they are. This is what `toon3d.js` uses.
 
-**The anime football games.**
-
-- Captain Tsubasa: Rise of New Champions is described as cel-shaded by the press
-  ([GamePro](https://www.gamepro.de/artikel/captain-tsubasa-fussball-preview,3353580.html)). Its
-  engine is not documented.
-- No visual breakdown of Inazuma Eleven: Victory Road was found.
-
 ### Characters we can ship in a public MIT repo
 
 | Source | Licence | Verdict |
@@ -96,8 +89,8 @@ What ships:
 - The remesher works on an unsigned distance field, so it wraps a shell around any thin sheet.
 
 **Does the anime case avoid it? No.** The cause is the post-processing, not the style of the input.
-An anime image has the same thin parts: hair spikes, ears, fingers, the shirt hem. Our parallel
-TRELLIS trial (branch feat/trellis3d) got the double wall again, together with flat hands and thin
+An anime image has the same thin parts: hair spikes, ears, fingers, the shirt hem. Our own
+TRELLIS trial got the double wall again, together with flat hands and thin
 arms. A voxel remesh to one shell would fix the wall, but it does not give:
 - clean eye and mouth geometry, which a face needs to change expression;
 - a separate hair mesh to recolour;

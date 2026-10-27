@@ -22,7 +22,7 @@ nothing was paid for, and no Hugging Face token was needed (the Space is public)
   `web/vendor/motion/LICENSE.txt`.
 - We ship outputs only (joint rotations), never the model or its training data. Kimodo-SOMA-RP is
   trained on the proprietary Bones Rigplay set; no BONES-SEED raw data was downloaded.
-- Not used, as the brief asked: Mixamo, BONES-SEED raw data, Hunyuan / HY-Motion, anything
+- Not used: Mixamo, BONES-SEED raw data, Hunyuan / HY-Motion, anything
   non-commercial. 100STYLE (CC BY 4.0) was the fallback for the locomotion loops: see the verdict.
 
 The Space has no API. `scripts/retarget_motion.py` does not talk to it: the clips were generated
@@ -113,7 +113,7 @@ them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
   become NaN, so the player disappears. Clips are now advanced only while their weight is above 0.
   The 20 s sweep found 40 NaN frames on the motion page and 1 on the procedural page before the
   fix, 0 after it.
-- Frames per second, software WebGL on this machine, the same 20 s window measured in the order
+- Frames per second, software WebGL, the same 20 s window measured in the order
   procedural, motion, procedural, motion: 5.1, 15.6, 12.4, 15.4 (an earlier run: 24.0, 11.5,
   29.5). The noise between runs is larger than any difference between the modes, so the clips
   cost no measurable frame rate here; a real GPU was not measured.
@@ -137,7 +137,7 @@ them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
 
 ## Kicks with the whole body
 
-Until tappa 3 only the kicking leg moved (`LEG_KEYS` in `web/js/ball3d.js`), so a shot and a pass
+At first only the kicking leg moved (`LEG_KEYS` in `web/js/ball3d.js`), so a shot and a pass
 looked the same from the broadcast camera: the trunk and the arms kept the run. Now every leg
 action also has keys for the standing leg, the pelvis, the trunk and both arms (`SUPPORT_KEYS`,
 `BODY_KEYS`, `bodyPose`), driven by the same ball events and the same weight, which fades in over
@@ -159,10 +159,8 @@ them after the clips and the leg pose, before grounding.
 | Side-foot pass | thigh turned out from the hip, pelvis more side-on at contact, slower foot (18.3 against 21.6 m/s), smaller knee share of the swing | Levanon and Dapena 1998, https://www.bisp-surf.de/Record/PU199807303122 ; https://ojs.ub.uni-konstanz.de/cpa/article/view/2248/2104 ; https://commons.nmu.edu/isbs/vol38/iss1/29 |
 | Lofted kick | little measured; the kicker leans back and gets under the ball | Browder 1991, Prassas 1990, cited in https://journal.kannuruniversity.ac.in/ijssp/common/viewarticle/7 |
 
-From game animation: anticipation (the wind-up) and follow-through are what make an action read
-(https://education.siggraph.org/static/HyperGraph/animation/character_animation/principles/anticipation.htm),
-and players of the football games complain first about kicks without a plant step
-(https://forums.ea.com/discussions/fc-27-general-discussion-en/game-play-autentic/13778715).
+From animation practice: anticipation (the wind-up) and follow-through are what make an action read
+(https://education.siggraph.org/static/HyperGraph/animation/character_animation/principles/anticipation.htm).
 
 ### What we adopted
 
@@ -182,7 +180,7 @@ the long ball, 0.42 and 0.4 for the pass.
 
 Touches and traps keep small values: 2 to 8 degrees of trunk and pelvis, and the arms stay the
 clips' (a dribble keeps the running arm swing; a trap takes a third of the arm pose). The pass
-arms replace the clip's arms fully since the goal review (they were at 0.7 and 28 degrees, and
+arms replace the clip's arms fully (they were once at 0.7 and 28 degrees, and
 the pass read as a leg moving on its own).
 The plant timing (landing about 0.1 s before contact) and every angle above that is not in the
 research table are our choices, set by looking at `tests/web/kick3d-shots.mjs`.
@@ -210,7 +208,7 @@ is part of the reach measured on the probe, so the foot still meets the ball.
 
 ## The goal
 
-The review of the tappa 3 clip found that the goal did not read as a goal: the ball stopped on
+In the first goal clip the goal did not read as a goal: the ball stopped on
 the line (the tracking ball ends at about 104.77 m), the net stayed flat, the keeper crouched,
 nobody reacted for a second and the camera cut to a frozen close-up. This section is the research
 behind the fix and what was built. The data and the simulator are unchanged: everything here is
@@ -224,8 +222,7 @@ how the 3D view draws them.
 | Keeper set timing | the keeper is still and set as the shot is struck; a keeper whose feet are moving or in the air cannot push off in time | https://learn.rushsoccer.com/?p=17715 |
 | Lateral dive | 15 keepers, 213 dives: the keeper moves after choosing a side; the leg opposite the dive drives the centre of mass across; the trunk leans towards the dive for low balls | https://lida.sport-iat.de/ta/Record/4056953 |
 | Lateral dive | the preparatory foot position changes the dive; the contralateral leg produces most of the lateral velocity | Monteiro et al. 2022, Scientific Reports, doi:10.1038/s41598-022-21508-6 (https://scilabiocom.eeferp.usp.br/pdf/Monterio_SciReports.pdf) |
-| Net in games | a net drawn as a grid of particles (Verlet) that the ball pushes; a canned net animation looks wrong | EA patent US 8,000,947, https://patents.justia.com/patent/8000947 |
-| Net in games | the ball enters the cloth, carries it back, then the cloth throws it off and it drops | https://people.engr.tamu.edu/sueda/courses/CSC474/2015W/demos/baujla/index.html ; https://discussions.unity.com/t/soccer-game-more-realistic-net/147596 |
+| Net simulation | the ball enters the cloth, carries it back, then the cloth throws it off and it drops | https://people.engr.tamu.edu/sueda/courses/CSC474/2015W/demos/baujla/index.html ; https://discussions.unity.com/t/soccer-game-more-realistic-net/147596 |
 | Net in Babylon | the cloth impostor (physics soft body) is too slow on phones | https://forum.babylonjs.com/t/whats-the-best-way-to-create-cloth-soft-body-animations-and-how-to-import-from-blender-cinema-4d/16451 |
 | Celebration | 366 goals: outstretched arms in 33.6%, a fist in 29.8%, team-mates join in 90.4%; 61.6% combine a solo act and a team act; on average 24.9 s | Lev et al. 2020, PLOS One, https://pmc.ncbi.nlm.nih.gov/articles/PMC7494092/ |
 | Joy | winners across cultures raise their arms, push the chest out and tip the head back | https://www.scientificamerican.com/podcast/episode/winning-athletes-raise-arms-x-cultures/ |

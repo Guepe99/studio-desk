@@ -1,7 +1,7 @@
 # Flow in the 3D view: ball size, keeper reactions, smooth motion
 
-Three complaints about the 3D sample: the ball looked giant, the keeper never dived, and the
-players did not move like a video game. This note has the rules, the sources behind them and the
+Three faults of the first 3D sample: the ball looked giant, the keeper never dived, and the
+players moved stiffly. This note has the rules, the sources behind them and the
 numbers before and after each fix, measured on M001.
 
 Code: `web/js/scene3d/track.js` (smooth paths), `web/js/keeper3d.js` (keeper plan, pure),
@@ -37,8 +37,7 @@ What depends on it, checked:
 | Skilled against less skilled keepers | about 4 m/s against 3 m/s lateral speed | PMC4974865 |
 | A late start | costs about 0.15 m of reach | lida.sport-iat.de/ta/Record/4084406 |
 | Collapse dive for low balls close to the body | technique description | keeperstop.com |
-| Games warp the root so the hands hit the contact frame | Unreal Engine Motion Warping | docs.unrealengine.com, Motion Warping |
-| EA FC 26 keepers | machine learning used for positioning, the saves are still authored animations | ea.com/news/fc-26-goalkeepers |
+| Warping the root so the hands meet the ball on the contact frame | Unreal Engine Motion Warping | docs.unrealengine.com, Motion Warping |
 
 No primary source gave a keeper's reaction time to a shot; 0.12 s is the visual reaction floor
 used in sprint starts and is used here only so the keeper never moves before the ball does.
@@ -47,7 +46,7 @@ used in sprint starts and is used here only so the keeper never moves before the
 
 Only events and facts that happened decide a reaction:
 
-- A **goal**: a shot with result `success` and a score fact within 0.5 s.
+- A **goal**: a shot with result `success` whose event id is in a score fact's `source_event_ids`.
 - A **save**: a shot whose next event in the same period, within 3 s, belongs to the other side's
   keeper and is not a goal kick. With a keeper event (`keeper_save`, `keeper_claim`,
   `keeper_punch`, `keeper_pick_up`) the contact time is that event; otherwise the shot must end
@@ -65,7 +64,7 @@ reaction:
 | gather a low ball | within 0.6 m sideways and lower than that (a ball straight at him is not dived on) |
 | low dive | under 0.6 m and within 1.6 m sideways |
 | full-stretch dive | everything else |
-| beaten keeper | a goal: a low or full dive that starts 0.15 s after the shot and reaches only 25 to 60% of the way (the share of a 1 s dive he has time for) |
+| beaten keeper | a goal: always the full-stretch dive to the ball's side, starting 0.15 s after the shot. He never reaches the ball: with the clips the dive plays at 1.5 times its own speed from the push and covers 60 to 100% of the clip's sideways travel, never past the ball, then he lands and stays down; the procedural pose goes 25 to 60% of the way (the share of a 1 s dive he has time for) |
 
 Timing: the keeper moves 0.12 s after the shot at the earliest (0.15 s when beaten), never before.
 When the clip's natural run-up does not fit between that and the contact, it is played faster, up
@@ -79,14 +78,14 @@ time, so a shot just before the whistle no longer dives on into the second half.
 
 ### In the data
 
-M001 has 8 shots that get a reaction: 3 catches and 1 low dive that are saves, 3 low dives and
-1 full dive that are goals. DEMO has 3: a low save at 240.9 s and two beaten dives (100.6 s and
-310.6 s). Neither match has a full-stretch save, so `GK_Dive_L` and `GK_Dive_R` are only seen
-beaten, and `GK_Tip` is never picked (no saved shot above 2 m).
+M001 has 8 shots that get a reaction: 4 saves, all catches, and 4 goals, all full-stretch dives.
+DEMO has 3: a low catch at 240.9 s and two beaten dives (100.6 s and 310.6 s). Neither match has a
+low dive, a full-stretch save or a saved shot above 2 m, so `GK_Dive_L` and `GK_Dive_R` are only
+seen beaten, and `GK_Low_L`, `GK_Low_R` and `GK_Tip` are never picked.
 
 ### Real clips and the procedural stand-ins
 
-When `web/vendor/motion/clips.glb` and `clips.json` are loaded (feat/motion3d), the reactions play
+When `web/vendor/motion/clips.glb` and `clips.json` are loaded (`docs/motion3d.md`), the reactions play
 `GK_Dive_L`, `GK_Dive_R`, `GK_Low_L`, `GK_Low_R`, `GK_Catch` and `GK_Tip` on their root curve:
 
 - On load the rig plays each clip on a probe scaled like the players and measures the hands frame
@@ -162,8 +161,8 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
 
 Measured by `tests/web/flow3d-measure.mjs` on the default clip of M001 (from 582.99 s, 12 s of
 the live part, 22 players, stepped at 60 Hz without drawing), then the live page for 15 s for
-the frame pacing. Software WebGL 1 on this server, low profile. Before is origin/main at 881caa9
-(feat/motion3d merged), after is this branch on top of it; same window, same script.
+the frame pacing. Software WebGL 1, low profile. Before is commit 881caa9 (with the motion clips
+of `docs/motion3d.md`), after is this change on top of it; same window, same script.
 
 | What | Before | After |
 |---|---|---|
@@ -186,11 +185,11 @@ Read the table this way:
   then a jump. The p95 of 12 m/s² is those jumps. After, the speed changes a little every frame.
 - The p95 facing turn rate went up (173 to 202 °/s) because the body now turns through the angle
   instead of jumping it; the maximum dropped from 9935 to 811 °/s.
-- The clock ran at half speed before: at about 6 frames per second on this server each frame is
+- The clock ran at half speed before: at about 6 frames per second in software each frame is
   167 ms, and the old cap of 0.1 s per frame threw the rest away. This is the biggest visible change
   on a slow machine. The optimizer applied no steps in either run.
 - Not fixed: the foot slide p95 at a walk and in sprints (0.6 to 0.9 m) comes from starts, stops
-  and the stand-in modes (backpedal, side-step, jockey loops from feat/motion3d), where the clip's
+  and the stand-in modes (backpedal, side-step, jockey loops, `docs/motion3d.md`), where the clip's
   stride does not match the ground speed. The remaining weight pops are those motion loops cutting
   in when the mode changes. On this window the camera and the LOD were already smooth: the camera
   follows a spring, and every player stays on the far mesh at broadcast distance. The camera was
@@ -217,7 +216,7 @@ sprint loop's stride and the ground speed disagree, and the faster distance-matc
 those few steps slide further.
 
 The same checks run in `tests/web/sample3d-shots.mjs` on the DEMO window it opens (from 88 s).
-Their limits sit between origin/main and this branch there: acceleration p95 24.2 before, 12.9
+Their limits sit between the code before and after this change there: acceleration p95 24.2 before, 12.9
 after (limit 16); jog slide median 0.111 before, 0.086 after (limit 0.1); facing snaps 35
 before, 0 after (limit 0); ball radius 0.17 before, 0.11 after; keeper reactions 0 of 1 before,
 1 of 1 after; hands to ball at the DEMO save 0.85 m with the keeper layer off, 0.22 m with it on
@@ -256,7 +255,8 @@ The highest planted sole did not move (8.3, 1.3, 2.9 and 2.5 cm on the four page
 median rose from -0.8 to -0.6 cm on DEMO default and from -0.7 to -0.6 cm on M001 default. The after-animation pass (ball rig,
 grounding, `settleFeet`, the other layers) costs 2.6 ms per frame for 22 players before and after,
 inside the run-to-run spread. The flight dip of T01-9 at 7.86 s is 10.7 cm instead of 16.8 cm.
-Stills, a boot seen from the grass: `tests/web/run-smoke.sh feet3d-stills.mjs DEMO T01-9 7.62 7.98`.
+Stills, a boot seen from the grass:
+`scripts/with-lock.sh chromium tests/web/run-smoke.sh feet3d-stills.mjs DEMO T01-9 7.62 7.98`.
 
 ## 5. Throw-ins and players keeping the ball
 
@@ -286,10 +286,8 @@ as mechanical.
   distance. Human cadence: 172.6 steps per minute at 2.9 m/s (PMC3022995); 2.88, 3.04 and 3.6
   steps/s at 4.15, 5.07 and 7.32 m/s (jssm.org/tablejssm-22-790.xml/table002.xml). Taken: the
   numbers below, to say how far our run cycle is from a real one. Changed in section 6.
-- **Moves with a still ball.** Games show the holder with skill moves rather than an idle loop
-  (EA FC guides: insider-gaming.com/all-new-skill-moves-in-ea-fc-26-simplified-skills-explained,
-  games.gg/ea-sports-fc-27/guides/ea-fc-27-skill-moves-complete-guide). No public source gives
-  their timings, so the five moves here (sole roll, drag-back, step-over, shoulder feint and a
+- **Moves with a still ball.** Our choice: a holder with the ball at his feet moves it instead
+  of standing in an idle loop. No public source gives the timings of such moves, so the five here (sole roll, drag-back, step-over, shoulder feint and a
   quick shimmy) were keyed by hand on the leg rig that the kicks already use.
 
 ### Measured causes (before)
@@ -334,10 +332,9 @@ motion look mechanical. Windows of 20 s from 0, 120, 280, 512, 530 (minute 8) an
   after the first touch. Never before a free kick, corner, penalty, goal kick or throw-in, never
   within 0.45 s of the kick, and only while he is within 1.5 m of the ball. The ball's offset eases
   with smoothstep and always ends at 0, so the tracking position is unchanged at the kick.
-  On the whole of M001: 802 moves (290 shimmies, 202 feints, 122 rolls, 110 step-overs, 78 drags;
-  503 before the shimmy and the shorter margins), the ball plan's worst miss of the tracking
-  1.20 m (limit 1.5). Of the 533 receptions the receiver keeps for 1 s or more, 474 show a move
-  (308 before): every one kept 1.17 s or more, except two before a set piece.
+  On the whole of M001: 802 moves (290 shimmies, 202 feints, 122 rolls, 110 step-overs, 78 drags),
+  the ball plan's worst miss of the tracking 1.20 m (limit 1.5). Every reception the receiver keeps
+  for 1.17 s or more shows a move, except two before a set piece.
 
 ### Numbers on M001 (high profile, WebGL 2)
 
@@ -469,9 +466,9 @@ place, and the dribbler keeps the ball at his feet. A run of the same stills wit
 (`root=0`) looks the same as with it on: the offset is about a centimetre. The stills show no
 lag, the measures show the jerk cut by more than half, so the smoothing stays.
 
-## 7. Review fixes: the throw-in taker's jump and the warp at a mode switch
+## 7. The throw-in taker's jump and the warp at a mode switch
 
-An independent review of sections 5 and 6 found the throw-in taker jumping when the draw to the
+A second look at sections 5 and 6 found the throw-in taker jumping when the draw to the
 ball began, the crouch snapping in, a fallback taker pulled 7.65 m, and the stride warp dropping
 to nothing in one frame when a player left a forward run.
 
@@ -532,9 +529,9 @@ table, which fails when the table's 3.04 steps/s at 5.07 m/s is changed to 3.3) 
 `tests/web/skills.test.mjs` (a plan over a window inside the first gives the same moves, which
 fails when the seed takes the window's start).
 
-## 8. Review fixes: the ball in the keeper's hands, the net, the spin
+## 8. The ball in the keeper's hands, the net, the spin
 
-A review of `ball3d.js`, `keeper3d.js` and their rigs found the ball dropping out of the keeper's
+A second look at `ball3d.js`, `keeper3d.js` and their rigs found the ball dropping out of the keeper's
 hands, a 20 m jump when the net window ended, close-range goals that never reached the net, and a
 ball that turned at every replan. Measured with node scripts on M001-M004, smoothed as the scene
 draws them, planned on the scene's windows (15 s back, 105 s ahead).
@@ -591,9 +588,9 @@ section), `flow3d.test.mjs` on M001-M004, `net3d.test.mjs` rests at the end of t
 the browser `tests/web/hold3d.mjs` steps a hold at 30 fps and checks the ball stays between the
 hands.
 
-## 9. Review fixes: half time, motion loops, head look, strides, facing
+## 9. Half time, motion loops, head look, strides, facing
 
-A review of the players' code found the smoothing and speed estimates reading across half time,
+A second look at the players' code found the smoothing and speed estimates reading across half time,
 motion loops that swap in one frame, a head look that switched off all at once, strides that
 ignored the player's height, a facing that depended on what was shown before a seek, and chained
 celebration variants that dipped to nothing between two clips.
