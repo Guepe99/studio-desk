@@ -13,7 +13,9 @@ import httpx
 # (Standard)" endpoint; the custom subdomain answers 429 on F0) and its resource id, which Entra ID tokens need
 ENDPOINT = os.environ.get("AZURE_SPEECH_ENDPOINT", "").rstrip("/")
 RESOURCE_ID = os.environ.get("AZURE_SPEECH_RESOURCE_ID", "")
-LOCALES = {"en": "en-GB", "it": "it-IT", "es": "es-ES"}  # the page's languages
+# the page's languages. English is en-US: on F0 in Sweden Central en-GB answered 429 "resource constraints" to
+# 3 clips in 3 on 27 Oct 2026, while en-US, it-IT and es-ES heard 9 in 9; en-US reads a British accent too
+LOCALES = {"en": "en-US", "it": "it-IT", "es": "es-ES"}
 RATE = 16000
 MAX_S = 10.5   # the page stops recording at 10 s
 MIN_S = 0.2
@@ -28,8 +30,8 @@ PER_DAY = int(os.environ.get("ASK_VOICE_PER_DAY", "40"))
 PER_CLIENT_PER_DAY = 15  # per client address, as for edits: dropping the cookie does not reset it
 # F0 takes 1 concurrent speech to text request (speech-services-quotas-and-limits): a second one waits this long
 WAIT_S = 10.0
-# F0 also answers 429 "resource constraints" now and then, about one clip in three on 27 Oct 2026, and the
-# same clip goes through a moment later: two more tries after these pauses
+# F0 may still answer 429 "resource constraints" while Speech scales up; Microsoft's advice is to try again
+# (speech-services-quotas-and-limits): two more tries after these pauses
 BUSY_RETRY_S = (1.0, 2.0)
 
 

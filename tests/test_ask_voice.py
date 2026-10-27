@@ -126,7 +126,7 @@ def reply(monkeypatch, status=200, body=None):
     return sent
 
 
-@pytest.mark.parametrize("lang, locale", [("en", "en-GB"), ("it", "it-IT"), ("es", "es-ES")])
+@pytest.mark.parametrize("lang, locale", [("en", "en-US"), ("it", "it-IT"), ("es", "es-ES")])
 def test_transcribe_sends_the_language_the_entra_token_and_the_format(monkeypatch, lang, locale):
     sent = reply(monkeypatch, body={"RecognitionStatus": "Success", "DisplayText": "Chi ha segnato?"})
     assert speech.transcribe(b"audio", lang, "tok") == "Chi ha segnato?"
