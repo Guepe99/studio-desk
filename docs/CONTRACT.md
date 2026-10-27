@@ -1,7 +1,7 @@
 # Data contract
 
-Every builder reads this file before writing code. If a piece needs something that is not here,
-it stops and asks the lead session; nobody changes the contract inside a feature branch.
+Every part of the code follows this file. A change to the data, the ids or the API starts here,
+in its own change, before any code that depends on it.
 
 ## Units and coordinates
 
@@ -103,7 +103,7 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
   - `risk` runs 0..1. Below `AUTO_APPROVE_RISK` (0.35, in `studiodesk/config.py`) the default
     status is `auto_approved`; otherwise it is `needs_review`.
     The risk rule applies only when Content Safety returned `passed`: a `flagged` or
-    `not_checked` story is `needs_review` whatever its risk (feat/verifier3).
+    `not_checked` story is `needs_review` whatever its risk.
   - `texts` is `{"en": .., "it": .., "es": ..}`.
   - `verifier` is `{"status": "pass"|"rewritten"|"template", "attempts": n, "flagged": [..]}`.
     In a live run a story is saved as it goes on air with `"status": "pending"`, and its row is
