@@ -99,7 +99,7 @@ export const TEXT = {
     needsEmpty: "Nothing waits for you. The agents write these graphics, and a low-risk one goes on air by itself, any other waits here for you.",
     next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "due on air now", toAirPast: "was due on air at {m}'", missIn: ", missed in {s} s", left: "{s} s left",
     takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_lineup: "Line-ups", g_why_card: "Card",
-    done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", gen_waits: "It waits for you: put it on air or skip it before its moment ends.", k_checkin: "Player check-in",
+    done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", gen_waits: "It waits for your decision: put it on air or skip it before its moment ends.", gen_auto: "Low risk: it goes on air by itself. Take it out if something looks wrong.", k_checkin: "Player check-in",
     line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
     line_expired: "Off air: missed, its moment passed before anyone put it on air", row_expired: "missed, nobody put it on air in time",
     row_rejected: "rejected by you", row_kill: "off air while AI graphics are off", info: "About your decisions",
@@ -197,7 +197,7 @@ export const TEXT = {
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
     next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, missIn: ", persa tra {s} s", left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
-    done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", gen_waits: "Aspetta te: mandala in onda o saltala prima che finisca il suo momento.", k_checkin: "Numeri del giocatore",
+    done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", gen_waits: "Aspetta una tua decisione: mandala in onda o saltala prima che finisca il suo momento.", gen_auto: "Rischio basso: va in onda da sola. Toglila se qualcosa non torna.", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
     line_expired: "Fuori onda: persa, il suo momento è passato prima che qualcuno la mandasse in onda", row_expired: "persa, nessuno l'ha mandata in onda in tempo",
     row_rejected: "respinta da te", row_kill: "fuori onda finché le grafiche IA sono spente", info: "Sulle tue decisioni",
@@ -294,7 +294,7 @@ export const TEXT = {
     needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, los de riesgo bajo salen al aire solos, los demás esperan aquí tu decisión.",
     next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "sale al aire ahora", toAirPast: "debía salir al aire en el {m}'", missIn: ", perdida en {s} s", left: "quedan {s} s",
     takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_lineup: "Alineaciones", g_why_card: "Tarjeta",
-    done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", gen_waits: "Te espera: emítelo o sáltalo antes de que acabe su momento.", k_checkin: "Números del jugador",
+    done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", gen_waits: "Espera tu decisión: emítelo o sáltalo antes de que acabe su momento.", gen_auto: "Riesgo bajo: sale al aire solo. Quítalo si algo no cuadra.", k_checkin: "Números del jugador",
     line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
     line_expired: "Fuera de antena: perdida, su momento pasó antes de que alguien la pusiera en antena", row_expired: "perdida, nadie la puso en antena a tiempo",
     row_rejected: "rechazada por ti", row_kill: "fuera de antena mientras los gráficos de IA están apagados", info: "Sobre tus decisiones",
@@ -1188,8 +1188,9 @@ export class Desk {
     if (s.gen) {
       // a generated graphic has no agent, check or draft: why it goes on air (or waits), and the facts it is drawn from
       const p = s.gen.payload ?? {}, facts = [...list(p.fact_ids), p.fact_id].filter(Boolean).map((f) => this.factIndex.get(f) ?? { fact_id: f, missing: true });
-      return [h("p", { className: "why" }, cap(tx("why_gen"), lang), ". ", tx(s.default_status === "auto_approved" ? "tip_low" : "gen_waits")),
-        h("p", { className: "sub" }, tx("evidence", { f: facts.length, e: 0 })), this.factsTable(facts, lang)];
+      // the advice only while it still applies: waiting for a decision, or airing by itself with no decision yet
+      const tip = st === "needs_review" ? "gen_waits" : s.default_status === "auto_approved" && !this.decisions.has(id) ? "gen_auto" : null;
+      return [h("p", { className: "why" }, cap(tx("why_gen"), lang), ".", tip ? [" ", tx(tip)] : null), this.factsTable(facts, lang)];
     }
     const v = s.verifier ?? {}, flagged = list(v.flagged);
     const risk = Number(s.risk), band = riskBand(risk);

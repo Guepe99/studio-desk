@@ -126,8 +126,9 @@ async function structure(page, all, storyIds, ts, tag) {
       if (i.id.startsWith("story-S-")) expect(i.next === firstCue(all, i.id.slice(6)) > ts, `${tag} @${ts}: ${i.id} Next tag ${i.next}`);
     }
   }
-  // On air now lists every graphic on screen: one row per story or generated graphic
-  const onScreen = await page.evaluate(() => [...window.studioDesk.host.live.values()].map(({ cue: c }) =>
+  // On air now lists every graphic on screen: one row per story or generated graphic (the season card that opens the
+  // match is part of the page, not of the desk's match, so it has no row)
+  const onScreen = await page.evaluate(() => [...window.studioDesk.host.live.values()].filter(({ cue: c }) => c.cue_id !== "SEASON-CARD").map(({ cue: c }) =>
     `story-${c.story_id ?? window.studioDesk.desk.genOf.get(`${c.graphic}|${c.ts}|${c.audience}`)?.story_id}`));
   const air = secs[0]?.items.map((i) => i.id) ?? [];
   expect([...new Set(onScreen)].sort().join() === [...air].sort().join(), `${tag} @${ts}: on screen ${JSON.stringify(onScreen)}, On air now ${JSON.stringify(air)}`);

@@ -5,7 +5,7 @@
 export const WINDOWS = [
   { audience: "analyst", lang: "en" },
   { audience: "kids", lang: "en" },
-  { audience: "team:T02", lang: "it" },
+  { audience: "team:away", lang: "it" },   // multiview.js puts the match's away team here
   { audience: "casual", lang: "es" },
 ];
 export const DRIFT_S = 0.3;   // a window further than this from the reference clock is seeked back to it

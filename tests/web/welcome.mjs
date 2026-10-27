@@ -1,9 +1,9 @@
-// The first visit's welcome (web/js/welcome.js) on the page as a judge opens it: no URL parameters, so M001.
+// The first visit's welcome (web/js/welcome.js) on the page as a judge opens it: no URL parameters, so M004.
 //
 //   WEBGL=0 scripts/with-lock.sh chromium tests/web/run-smoke.sh welcome.mjs
 //
 // Checks: a fresh visit shows the panel with the focus on the first goal button; the button lands within
-// 20 s before the first goal of M001 (LEAD_S before its play), playing, with the voice turned on; Escape
+// 20 s before the first goal of M004 (LEAD_S before its play), playing, with the voice turned on; Escape
 // closes it and a reload does not show it again; a deep link never shows it. Screenshot: out/shots/welcome.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -17,7 +17,7 @@ const { chromium } = require("playwright");
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
-const facts = await (await fetch(new URL("data/M001/facts.json", base))).json();
+const facts = await (await fetch(new URL("data/M004/facts.json", base))).json();
 const goalTs = Math.min(...facts.filter((f) => f.kind === "score").map((f) => f.ts));
 
 const failures = [];

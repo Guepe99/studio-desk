@@ -54,7 +54,7 @@ Press **Ask the studio** and type a question about the match so far, for example
 
 Open the multiviewer, the screen a producer watches in a broadcast gallery:
 
-https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/multiview.html
+https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/multiview.html?match=M001
 
 Four windows show the same moment of M001, the first goal, each for another audience: an analyst and kids in English, a fan of Ostwick FC (the team that concedes) in Italian, and a casual fan in Spanish. The strip under each picture names its audience and language. Press Play: the four play together, and **Sync** at the top says how far apart they are. Click a window: it grows, the other three shrink beside it, its border and strip turn green and you hear its commentary and crowd; click another and it takes its place, click the large one again to see all four the same size. The goal buttons at the top move all four windows. The graphics say different things to each audience, and the numbers on them are the same, because they all come from the same fact ledger. It works best on a computer screen; on a phone the windows are stacked.
 

@@ -8,7 +8,11 @@ import { WINDOWS, windowUrl, lagging, drift, umdLabel } from "./multiview-logic.
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const match = (params.get("match") || "M004").replace(/[^A-Za-z0-9_-]/g, "");
-const start = Number.isFinite(Number(params.get("t"))) && params.has("t") ? Number(params.get("t")) : 590;
+// the fan window follows the away team, and with no t= the four start 6 s before the first goal (590 on M001)
+const [meta, facts] = await Promise.all(["meta", "facts"].map((f) => fetch(`data/${match}/${f}.json`).then((r) => r.json())));
+const away = meta.teams[1].team_id;
+const goal = Math.min(...facts.filter((f) => f.kind === "score").map((f) => f.ts));
+const start = Number.isFinite(Number(params.get("t"))) && params.has("t") ? Number(params.get("t")) : Number.isFinite(goal) ? Math.round(goal) - 6 : 0;
 // each window draws at this size, scaled to its cell: the broadcast page lays out its compact graphics for it
 const VW = 960, VH = 540;
 // inside a window only the picture and its graphics: no masthead, controls, agent strip or desk
@@ -22,7 +26,8 @@ const wall = $("#mv-wall"), playBtn = $("#mv-play");
 let playing = false, live = -1, goalsBuilt = false;
 const meters = new WeakMap();   // AudioContext -> {an, buf}
 
-const wins = WINDOWS.map((w, i) => {
+const wins = WINDOWS.map((w0, i) => {
+  const w = w0.audience === "team:away" ? { ...w0, audience: `team:${away}` } : w0;
   const fig = document.createElement("figure");
   fig.className = "mv-win";
   fig.innerHTML = `<div class="mv-pic"><iframe tabindex="-1" inert allow="autoplay"></iframe><button class="mv-hit" type="button" aria-pressed="false"></button></div>

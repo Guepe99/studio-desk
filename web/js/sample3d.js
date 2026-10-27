@@ -1,5 +1,5 @@
 // 3D sample page: 20 seconds of the match on one clock, as a 3D broadcast and on the 2D pitch.
-// ?match=<id> (default M001, the match shipped in the image), ?from=<ts> start of the 20 s (default: 12 s before the first goal).
+// ?match=<id> (default M001, the match the docs measure), ?from=<ts> start of the 20 s (default: 12 s before the first goal).
 // If a goal falls in the stretch, the last seconds are its replay from behind the goal.
 import { loadMatch } from "./match.js";
 import { Pitch, STAGE_W, STAGE_H, textOn } from "./pitch.js";

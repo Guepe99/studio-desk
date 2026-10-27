@@ -50,7 +50,7 @@ const setup = await page.evaluate(() => window.multiview.wins.map((w) => {
     desk: getComputedStyle(doc.querySelector("#desk")).display, frameW: doc.querySelector("#frame").offsetWidth, umd: w.name.textContent };
 }));
 console.log(JSON.stringify(setup));
-const want = [["analyst", "en"], ["kids", "en"], ["team:T02", "it"], ["casual", "es"]];
+const want = [["analyst", "en"], ["kids", "en"], ["team:T02", "it"], ["casual", "es"]];   // T02: M001's away team
 expect(setup.every((s, i) => s.audience === want[i][0] && s.lang === want[i][1]), "each window has its audience and language");
 expect(setup.every((s) => Math.abs(s.ts - 590) < 0.01), "each window starts at t=590");
 expect(setup.every((s) => s.controls === "none" && s.desk === "none"), "inside a window: no controls, no desk");
@@ -165,6 +165,17 @@ console.log(JSON.stringify(heard));
 expect(heard[1].active, "the click on this page reaches window 2's document as a user gesture");
 expect(heard[1].ctx === "running" && heard[1].crowd + heard[1].lines > 0, `${rule ? "under the autoplay rule, " : ""}window 2 plays after the clicks (ctx ${heard[1].ctx}, crowd ${heard[1].crowd}, lines ${heard[1].lines})`);
 expect(heard.every((h, i) => i === 1 || h.crowd + h.lines === 0), "the other three are silent");
+
+// with no parameters: the default match, its own away team in window 3, and 6 s before its own first goal
+const p3 = await ctx.newPage();
+p3.on("pageerror", (e) => fail(`page error: ${e.message}`));
+await p3.goto(new URL("multiview.html", base).href);
+await p3.waitForFunction(() => window.multiview?.wins.every((w) => window.multiview.sd(w)?.match), null, { timeout: 90000 });
+const dflt = await p3.evaluate(() => window.multiview.wins.map((w) => ({ match: window.multiview.sd(w).match.meta.match_id, audience: window.multiview.sd(w).state.audience, ts: window.multiview.sd(w).state.ts })));
+const goal4 = Math.min(...(await (await fetch(new URL("data/M004/facts.json", base))).json()).filter((f) => f.kind === "score").map((f) => f.ts));
+console.log(JSON.stringify(dflt));
+expect(dflt.every((d) => d.match === "M004") && dflt[2].audience === "team:T08", `no parameters: M004, window 3 for its away team T08 (${dflt[2].audience})`);
+expect(dflt.every((d) => Math.abs(d.ts - (Math.round(goal4) - 6)) < 0.01), `no parameters: the four start 6 s before M004's first goal (${dflt[0].ts})`);
 
 await browser.close();
 console.log(failures.length ? `\n${failures.length} failure(s)` : "\nall multiview checks passed");
