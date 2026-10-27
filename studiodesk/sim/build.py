@@ -209,6 +209,10 @@ def build(n_matches=4, seed=7, path: Path = config.MATCHES_DB, minutes=None):
         Path(f"{tmp}{suffix}").unlink(missing_ok=True)
     conn = db.connect(tmp)
     write(conn, league, results)
+    from .season import simulate_season, write_season  # the matchweeks before the replays, own random stream
+    season = simulate_season(league, cal, seed, n_matches, minutes)
+    if season:
+        write_season(conn, season, [r["match"][0] for r in results])
     conn.close()
     for suffix in ("-wal", "-shm"):
         Path(f"{path}{suffix}").unlink(missing_ok=True)

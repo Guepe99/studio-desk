@@ -158,7 +158,7 @@ async function scenario(browser, w, h) {
   const page = await ctx.newPage();
   // voice.json and booth.json are optional (docs/CONTRACT.md): a match without clips answers 404 and plays silent.
   // api/ask too: the static server here has no API, so the page's GET probe gets a 404 (the real API answers 200).
-  const optional = (u) => /\/(voice|booth)\.json$/.test(u) || u.endsWith("/api/ask");
+  const optional = (u) => /\/(voice|booth|season)\.json$/.test(u) || u.endsWith("/api/ask");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m.location().url || "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   page.on("response", (r) => { if (r.status() >= 400 && !optional(r.url())) fail(`${tag} ${r.status()} ${r.url()}`); });

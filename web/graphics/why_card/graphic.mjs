@@ -1,5 +1,5 @@
 // Key moment card and recap, top right.
-import { SdGraphic } from "../shared/sd-graphic.mjs";
+import { SdGraphic, esc } from "../shared/sd-graphic.mjs";
 import { KICKER } from "./kicker.mjs";
 
 // The body gets 5 lines at 33 px; longer text shrinks to fit, down to 24 px (30 px in the compact
@@ -12,11 +12,17 @@ export default class WhyCard extends SdGraphic {
 .box { position: absolute; right: 72px; top: 56px; width: 720px; }
 .card { padding: 22px 30px 26px 34px; box-shadow: inset 8px 0 0 var(--pink), var(--shadow); }
 .title { font-weight: 800; font-size: 44px; line-height: 1.08; }
-.body { margin-top: 14px; font-weight: 400; font-size: ${BODY_PX}px; line-height: ${LINE}; color: var(--lilac-100); white-space: pre-line; }`;
+.body { margin-top: 14px; font-weight: 400; font-size: ${BODY_PX}px; line-height: ${LINE}; color: var(--lilac-100); white-space: pre-line; }
+/* the season lines under a goal (web/js/season.js): a green rule, one line each */
+.season { margin-top: 14px; padding-top: 12px; border-top: 3px solid var(--purple-400); display: grid; row-gap: 6px; }
+.season div { font-weight: 700; font-size: 28px; line-height: 1.15; }
+.season div::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 12px; border-radius: 3px; background: var(--green); }
+.season:empty { display: none; }
+.compact .season div { font-size: 30px; }`;
   }
 
   html() {
-    return `<div class="box"><div class="kicker"></div><div class="card panel"><div class="title"></div><div class="body"></div></div>
+    return `<div class="box"><div class="kicker"></div><div class="card panel"><div class="title"></div><div class="body"></div><div class="season"></div></div>
       <div class="factslot"></div></div>`;
   }
 
@@ -25,6 +31,8 @@ export default class WhyCard extends SdGraphic {
     $(".kicker").textContent = (KICKER[this.lang] ?? KICKER.en)[d.kind] ?? "";
     $(".title").textContent = d.title ?? "";
     $(".body").textContent = d.body ?? "";
+    const season = Array.isArray(d.season) ? d.season.filter((x) => typeof x === "string" && x) : [];
+    $(".season").innerHTML = season.map((x) => `<div>${esc(x)}</div>`).join("");
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);
     this.fit();
   }
@@ -51,6 +59,7 @@ export default class WhyCard extends SdGraphic {
       [$(".kicker"), [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 240, delay: 220 }],
       [$(".title"), [{ opacity: 0, transform: "translateX(30px)" }, { opacity: 1, transform: "none" }], { duration: 300, delay: 260 }],
       [$(".body"), [{ opacity: 0 }, { opacity: 1 }], { duration: 320, delay: 420 }],
+      [$(".season"), [{ opacity: 0 }, { opacity: 1 }], { duration: 240, delay: 560 }],
       [$(".factslot"), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 640 }],
     ];
   }

@@ -106,6 +106,51 @@ CREATE TABLE IF NOT EXISTS facts (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS facts_ts ON facts(match_id, ts);
 
+-- season (feat/season): the league before the replays, events level, no tracking ------------
+
+CREATE TABLE IF NOT EXISTS season_matches (     -- matchweeks before the replays' one
+  season_match_id TEXT PRIMARY KEY,             -- SM-001..
+  matchweek       INTEGER NOT NULL,
+  home_team_id    TEXT NOT NULL REFERENCES teams(team_id),
+  away_team_id    TEXT NOT NULL REFERENCES teams(team_id),
+  home_score      INTEGER NOT NULL,
+  away_score      INTEGER NOT NULL,
+  seed            INTEGER NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS season_goals (
+  season_match_id TEXT NOT NULL REFERENCES season_matches(season_match_id),
+  goal_no         INTEGER NOT NULL,             -- 1.. in match order
+  minute          INTEGER NOT NULL,             -- display minute
+  team_id         TEXT NOT NULL REFERENCES teams(team_id),      -- the side the goal counts for
+  player_id       TEXT NOT NULL REFERENCES players(player_id),  -- who put the ball in
+  own_goal        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (season_match_id, goal_no)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS season_fixtures (    -- the matchweek each replayed match sits in
+  match_id  TEXT PRIMARY KEY REFERENCES matches(match_id),
+  matchweek INTEGER NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS season_facts (       -- the season part of the fact ledger, per replayed match
+  match_id         TEXT NOT NULL REFERENCES matches(match_id),
+  fact_id          TEXT NOT NULL,               -- F-SEASON_<KIND>-<6 digits>
+  kind             TEXT NOT NULL,
+  ts               REAL NOT NULL,
+  period           INTEGER NOT NULL,
+  team_id          TEXT,
+  player_id        TEXT,
+  value            REAL NOT NULL,
+  unit             TEXT NOT NULL,
+  label_en         TEXT NOT NULL,
+  source_event_ids TEXT NOT NULL DEFAULT '[]',  -- JSON array: goals of the replayed match
+  source_frames    TEXT,                        -- always NULL: no tracking behind a season fact
+  source_season    TEXT NOT NULL DEFAULT '[]',  -- JSON array: "season_matches:SM-012", "season_goals:SM-012/2", "season_fixtures:M001"
+  detail           TEXT,                        -- JSON object: what is not a number (form letters, a meeting's matchweek)
+  PRIMARY KEY (match_id, fact_id)
+) STRICT;
+
 -- runtime.sqlite -------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS stories (

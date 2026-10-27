@@ -168,6 +168,7 @@ def export(match_id, conn, out_root, runtime=None):
         stories, traces, cues = [], [], template_cues(m, facts, events)
     from .agents import audiences  # every audience's line, the kids sheet and the player check-ins
     stories, cues = audiences.apply(m, facts, events, stories, cues)
+    season = season_facts(conn, match_id)
     # everything is built before the first write: a failure above leaves the old folder as it was
     _dump(out / "meta.json", m)
     with open(out / "tracking.f32", "wb") as fh:
@@ -178,6 +179,8 @@ def export(match_id, conn, out_root, runtime=None):
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
+    if season:  # feat/season, additive: a new file, the files above stay as they were
+        _dump(out / "season.json", season)
     index(out_root)
     return out
 
@@ -190,6 +193,15 @@ def index(out_root):
         m = json.loads(p.read_text())
         rows.append({"match_id": m["match_id"], "home": m["teams"][0]["name"], "away": m["teams"][1]["name"]})
     _dump(Path(out_root) / "matches.json", rows)
+
+
+def season_facts(conn, match_id):
+    """The match's season facts (docs/CONTRACT.md, Season additions), JSON columns parsed; [] for a database
+    without the season tables."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'season_facts'").fetchone():
+        return []
+    return _parsed(_all(conn, "SELECT * FROM season_facts WHERE match_id = ? ORDER BY ts, fact_id", (match_id,)),
+                   "source_event_ids", "source_frames", "source_season", "detail")
 
 
 def runtime_records(match_id, runtime):

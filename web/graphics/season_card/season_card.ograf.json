@@ -1,0 +1,60 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "studiodesk-season-card",
+  "version": "1.0.0",
+  "name": "Studio Desk season so far",
+  "description": "At kick-off, the season before the match: the matchweek, each club's place in the table, points, goal difference and last five results, the last meeting and each club's top scorer on the team sheet. Every number is a season fact. Vendor load() params: v_showFactIds (boolean), v_teams ({home: {short, color}, away: {short, color}}), v_compact (boolean).",
+  "author": { "name": "Studio Desk", "url": "https://github.com/Guepe99/studio-desk" },
+  "main": "graphic.mjs",
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "required": ["matchweek", "rows", "fact_ids"],
+    "properties": {
+      "matchweek": { "type": "integer", "title": "Matchweek", "default": 10 },
+      "rows": {
+        "type": "array",
+        "title": "The two clubs, home first",
+        "items": {
+          "type": "object",
+          "required": ["side", "pos", "pts", "gd"],
+          "properties": {
+            "side": { "type": "string", "enum": ["home", "away"] },
+            "pos": { "type": "integer", "title": "Place in the table" },
+            "pts": { "type": "integer", "title": "Points" },
+            "gd": { "type": "integer", "title": "Goal difference" },
+            "form": { "type": "array", "title": "Last five, oldest first", "items": { "type": "string", "enum": ["W", "D", "L"] } }
+          }
+        }
+      },
+      "h2h": {
+        "type": ["object", "null"],
+        "title": "Last meeting",
+        "properties": {
+          "matchweek": { "type": "integer" },
+          "home": { "type": "string", "enum": ["home", "away"] },
+          "away": { "type": "string", "enum": ["home", "away"] },
+          "home_goals": { "type": "integer" },
+          "away_goals": { "type": "integer" }
+        }
+      },
+      "scorers": {
+        "type": "array",
+        "title": "Top scorer on each team sheet",
+        "items": {
+          "type": "object",
+          "properties": { "side": { "type": "string", "enum": ["home", "away"] }, "name": { "type": "string" }, "goals": { "type": "integer" } }
+        }
+      },
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+    }
+  },
+  "actionDurations": [
+    { "type": "playAction", "duration": 1000 },
+    { "type": "stopAction", "duration": 260 },
+    { "type": "updateAction", "duration": 0 }
+  ],
+  "renderRequirements": [{ "resolution": { "width": { "ideal": 1920 }, "height": { "ideal": 1080 } } }]
+}

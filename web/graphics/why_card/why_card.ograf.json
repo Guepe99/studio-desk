@@ -16,7 +16,8 @@
       "kind": { "type": "string", "title": "Kind", "enum": ["why", "recap", "checkin"], "default": "why" },
       "title": { "type": "string", "title": "Title", "default": "The run that made it" },
       "body": { "type": "string", "title": "Body", "gddType": "multi-line", "default": "A sprint at 33.8 km/h opened the defence." },
-      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true }
+      "fact_ids": { "type": "array", "title": "Fact ids", "items": { "type": "string" }, "hidden": true },
+      "season": { "type": "array", "title": "Season lines (optional): a goal's tally and scoring run", "items": { "type": "string" } }
     }
   },
   "actionDurations": [
