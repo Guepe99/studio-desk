@@ -1,6 +1,8 @@
 // Ask the studio: a visitor's question about the match up to the replay time (POST api/ask, docs/CONTRACT.md).
 // The server checks every answer against the facts; the page only shows it. The question echo and the
 // answer are untrusted text: they are set with textContent, never as markup.
+import { AskVoice } from "./ask-voice.js";
+
 const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (config.ASK_TIMEOUT_S)
 // Suggested questions, each shown only once the ledger up to the replay time holds the facts that answer it.
 const SUGGEST = [["askSugShots", ["team_shots"]], ["askSugControl", ["team_possession"]],
@@ -35,6 +37,8 @@ export class Ask {
     });
     // outside the panel: an answer that comes after the panel is closed, and askOff as the box goes, are still announced
     this.live = document.querySelector("#ask-live");
+    const mic = panel.querySelector("#ask-mic"); // a question by voice (ask-voice.js), once the probe allows it
+    this.voice = mic ? new AskVoice(this, mic) : null;
     this.log = [];
     this.left = null;
     this.status = "";
@@ -45,19 +49,22 @@ export class Ask {
     this.form.addEventListener("submit", (e) => { e.preventDefault(); this.submit(); });
   }
 
-  // GET api/ask says whether a model and Content Safety are there. It is always a 200, so the probe leaves no
+  // GET api/ask says whether a model and Content Safety are there, and (voice) Speech for the microphone. It is always a 200, so the probe leaves no
   // error in the console; anything but {available: true} keeps the box hidden.
   async probe() {
+    let data = null;
     try {
       const r = await fetch("api/ask", { credentials: "same-origin", signal: AbortSignal.timeout(4000) });
-      if (!r.ok || (await r.json()).available !== true) return;
+      if (!r.ok || (data = await r.json()).available !== true) return;
     } catch { return; }
+    this.voice?.enable(data.voice === true);
     this.button.hidden = false;
     this.onLayout();
   }
 
   setOpen(open) {
     this.panel.hidden = !open;
+    if (!open) this.voice?.cancel();
     this.button.setAttribute("aria-expanded", String(open));
     // the panel is in the page flow, beside or under the picture and never over it: the page scrolls to show it whole
     if (open) {
@@ -70,6 +77,7 @@ export class Ask {
 
   // the model went away (503): no box and no button, and focus on the control just before the hidden button
   turnOff() {
+    this.voice?.cancel();
     this.announce(this.t("askOff"), this.state.lang);
     this.form.hidden = this.button.hidden = this.panel.hidden = true;
     this.button.setAttribute("aria-expanded", "false");
@@ -166,6 +174,7 @@ export class Ask {
   render() {
     // aria-disabled, not disabled: a disabled button would drop the focus of whoever pressed it (busy stops a second send)
     this.send.setAttribute("aria-disabled", String(this.busy));
+    this.voice?.render();
     const left = this.status || this.left === null ? "" : this.t("askLeft").replace("{n}", this.left);
     const status = this.status ? this.t(this.status) : left;
     if (this.statusEl.textContent !== status) this.statusEl.textContent = status; // a rewrite would be announced again

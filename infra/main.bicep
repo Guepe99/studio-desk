@@ -15,6 +15,9 @@ param roleAssignmentNames object = {}
 // the app signs in with its managed identity, and Entra ID tokens need a custom subdomain endpoint, so keep it set.
 // Empty: the template sends no customSubDomainName at all (the live account, rg-studiodesk.bicepparam).
 param safetySubdomain string = 'studiodesk-safety-${uniqueString(resourceGroup().id)}'
+// Speech's custom subdomain, the same way: Ask the studio by voice signs in to Speech with the app identity.
+// Setting it is permanent. Empty: no customSubDomainName, and the app gets no Speech endpoint (no microphone button).
+param speechSubdomain string = 'studiodesk-speech-${uniqueString(resourceGroup().id)}'
 
 var insightsName = 'studiodesk-insights'
 var openAiUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' // Cognitive Services OpenAI User
@@ -23,6 +26,9 @@ var openAiUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' // Cognitive Services Op
 // Learning workspaces and other kinds of account, so they reach nothing at the scope of this account.
 // https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/ai-machine-learning#azure-ai-developer
 var azureAiDeveloper = '64702f94-c441-49e6-a78b-ef80e0188fee'
+// Cognitive Services Speech User: the Speech data actions (speech to text among them), no key listing
+// https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/ai-machine-learning#cognitive-services-speech-user
+var speechUser = 'f2dc8367-1007-4938-bd23-fe263f013447'
 
 module monitoring 'monitoring.bicep' = {
   name: 'monitoring'
@@ -84,17 +90,18 @@ resource safety 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   properties: union({ publicNetworkAccess: 'Enabled' }, empty(safetySubdomain) ? {} : { customSubDomainName: safetySubdomain })
 }
 
-// Speech on the free tier, used only offline by studiodesk/voice.py to record the replay voice-over; the
-// container never calls it, so the app identity has no role here. voice.py reads key1 through the az CLI
-// because the account has no custom subdomain, which Entra ID tokens need. To remove the key: add
-// customSubDomainName (permanent, it cannot be removed), give the person who records the voice
-// 'Cognitive Services Speech User', and change voice.py to send a bearer token to the subdomain endpoint.
+// Speech on the free tier. The container calls speech to text for Ask the studio by voice
+// (studiodesk/speech.py) with its managed identity: Entra ID tokens need the custom subdomain, and the identity
+// has Cognitive Services Speech User below. studiodesk/voice.py still records the replay voice-over offline
+// with key1 through the az CLI on the regional endpoint; giving the person who records it
+// 'Cognitive Services Speech User' and changing voice.py to send a bearer token to the subdomain endpoint
+// would let this account set disableLocalAuth: true.
 resource speech 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: 'studiodesk-speech'
   location: location
   kind: 'SpeechServices'
   sku: { name: 'F0' }
-  properties: { publicNetworkAccess: 'Enabled' }
+  properties: union({ publicNetworkAccess: 'Enabled' }, empty(speechSubdomain) ? {} : { customSubDomainName: speechSubdomain })
 }
 
 // Consumption only, no log destination: the app's traces go to Application Insights.
@@ -137,6 +144,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_OPENAI_DEPLOYMENT', value: model.name }
             { name: 'ADMIN_TOKEN', secretRef: 'admin-token' }
             { name: 'AZURE_CONTENT_SAFETY_ENDPOINT', value: safetyEndpoint }
+            { name: 'AZURE_SPEECH_ENDPOINT', value: empty(speechSubdomain) ? '' : 'https://${speechSubdomain}.cognitiveservices.azure.com' }
+            { name: 'AZURE_SPEECH_RESOURCE_ID', value: speech.id }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
           ]
         }
@@ -164,6 +173,16 @@ resource appSafetyUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: roleAssignmentNames.?safetyDeveloper ?? guid(safety.id, app.id, azureAiDeveloper)
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAiDeveloper)
+    principalId: app.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource appSpeechUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: speech
+  name: roleAssignmentNames.?speechUser ?? guid(speech.id, app.id, speechUser)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', speechUser)
     principalId: app.identity.principalId
     principalType: 'ServicePrincipal'
   }

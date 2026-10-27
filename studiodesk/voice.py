@@ -126,8 +126,8 @@ def eligible(stories, lang):
 
 
 def azure_key():
-    """key1 of the Speech resource, from the logged-in Azure CLI (the F0 resource has no custom
-    subdomain, so Entra ID tokens are not accepted for synthesis)."""
+    """key1 of the Speech resource, from the logged-in Azure CLI: this script calls the regional endpoint,
+    where Entra ID tokens are not accepted (infra/main.bicep, the speech resource)."""
     if os.environ.get("SPEECH_KEY"):
         return os.environ["SPEECH_KEY"]
     az = os.environ.get("AZ", str(Path.home() / ".local" / "bin" / "az"))

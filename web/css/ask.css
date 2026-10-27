@@ -19,6 +19,9 @@
 #ask .ctl[type="submit"] { background: var(--purple); color: var(--page); }
 #ask .ctl[type="submit"]:hover { background: var(--purple-500); }
 #ask .ctl[aria-disabled="true"] { cursor: progress; }
+/* the microphone button (ask-voice.js): a red dot while it records */
+#ask-mic[hidden] { display: none; }
+#ask-mic.rec::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: var(--error); }
 #ask-hint { margin: 6px 0 0; color: var(--purple-400); font-size: 14px; }
 #ask-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 #ask-suggest[hidden] { display: none; }

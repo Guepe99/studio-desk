@@ -159,7 +159,7 @@ def test_per_session_and_site_caps_and_the_cost_stop(studio, monkeypatch):
 def test_503_without_a_model_and_the_probe(studio, monkeypatch):
     c = studio.visitor()
     assert c.post("/api/ask", json={}).status_code == 422
-    assert c.get("/api/ask").json() == {"available": True}  # the page's probe: a model is there, and a 200
+    assert c.get("/api/ask").json() == {"available": True, "voice": False}  # the page's probe: a model is there, and a 200; no Speech
     monkeypatch.setattr(ask, "safety_down", lambda: True)
     assert (c.get("/api/ask").status_code, c.get("/api/ask").json()) == (200, {"available": False})
     monkeypatch.setattr(ask, "safety_down", lambda: False)

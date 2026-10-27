@@ -32,6 +32,9 @@ WEB=$(free_port)
 if [ "$SCRIPT" = desk.mjs ]; then
   # the desk needs the API (sessions, decisions); runtime rows go to data/runtime.sqlite
   (cd "$ROOT" && exec "$PY" -m uvicorn studiodesk.api:app --host 127.0.0.1 --port "$WEB" >/dev/null 2>&1) &
+elif [ "$SCRIPT" = ask-voice.mjs ]; then
+  # the API with a stand-in model and a Speech stub (nothing reaches Azure)
+  (cd "$ROOT" && PYTHONPATH="$ROOT" exec "$PY" tests/web/ask_voice_server.py "$WEB" >/dev/null 2>&1) &
 else
   python3 -m http.server "$WEB" --bind 127.0.0.1 --directory "$ROOT/web" >/dev/null 2>&1 &
 fi
@@ -42,11 +45,13 @@ trap cleanup EXIT
 
 # WebGL pages (anything but the 2D pages) need the image with the software Vulkan driver.
 # voice.mjs needs MP3 decoding, which the foto-chromium build lacks: it runs in the Playwright image.
-WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs) echo 0 ;; voice.mjs) echo 2 ;; *) echo 1 ;; esac)}
+WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs|ask-voice.mjs) echo 0 ;; voice.mjs) echo 2 ;; *) echo 1 ;; esac)}
 if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
   IMAGE=foto-chromium:1
   GL=(--disable-gpu)
+  # ask-voice.mjs: Chromium's fake microphone (a beep) and no permission prompt
+  [ "$SCRIPT" = ask-voice.mjs ] && GL+=(--use-fake-device-for-media-stream --use-fake-ui-for-media-stream)
   BIN=chromium-browser
   if [ "$WEBGL" = 1 ]; then
     IMAGE=sd-chromium-webgl:1
