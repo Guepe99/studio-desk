@@ -30,7 +30,8 @@ it stops and asks the lead session; nobody changes the contract inside a feature
   Greek lookalikes; a line may be a bare surname) with `studiodesk.names.is_forbidden`.
 - Goals are SPADL shots (`shot`, `shot_freekick`, `shot_penalty`) with `result_name = 'success'`;
   own goals have `result_name = 'owngoal'`.
-- `M001` is the demo match shipped in the container image and opened by default.
+- The four matches M001 to M004 are shipped in the container image; `M004` is opened by default (the most
+  stories waiting for the producer), M001 is the one the docs and tests measure.
 
 ## Storage
 
@@ -185,7 +186,7 @@ The browser replay needs only these files.
 ## Web page (`web/`)
 
 Static files, no build step: `web/index.html` plus ES modules in `web/js/`. It opens
-`web/data/<match>/` from `?match=` (default `M001`). FastAPI serves `web/` as static files.
+`web/data/<match>/` from `?match=` (default `M004`). FastAPI serves `web/` as static files.
 Pinned libraries are vendored in `web/vendor/` with their licence in `THIRD_PARTY.md`. The API adds the per-visitor decisions and the live
 button.
 

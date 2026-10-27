@@ -37,7 +37,7 @@ page.on("pageerror", (e) => fail(`page error: ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error" && !m.location().url.includes("/api/") && !/404/.test(m.text())) fail(`console: ${m.text()}`); });
 
 const t0 = Date.now();
-await page.goto(new URL("multiview.html", base).href);
+await page.goto(new URL("multiview.html?match=M001", base).href);
 // loaded: every window has its match and its voice (the voice comes last in app.js)
 await page.waitForFunction(() => window.multiview?.wins.every((w) => window.multiview.sd(w)?.match && window.multiview.sd(w)?.voice), null, { timeout: 90000 });
 console.log(`     four windows loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -143,7 +143,7 @@ p2.on("pageerror", (e) => fail(`page error: ${e.message}`));
 const cdp = await ctx.newCDPSession(p2);
 const raw = async (expression) => (await cdp.send("Runtime.evaluate", { expression, returnByValue: true, userGesture: false })).result.value;
 await p2.setViewportSize({ width: 1920, height: 1080 });
-await p2.goto(new URL("multiview.html", base).href);
+await p2.goto(new URL("multiview.html?match=M001", base).href);
 for (let k = 0; k < 180 && !(await raw("!!window.multiview?.wins.every((w) => window.multiview.sd(w)?.voice && window.multiview.sd(w)?.booth)")); k++) await p2.waitForTimeout(500);
 const win = "window.multiview.wins[1].frame.contentWindow";
 expect(await raw(`!navigator.userActivation.hasBeenActive && !${win}.navigator.userActivation.hasBeenActive`), "fresh page: no user gesture yet, here or in window 2");

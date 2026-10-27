@@ -209,6 +209,15 @@ async function scenario(browser, w, h) {
   await page.click("#desk .undo");
   await seekTo(page, MOMENTUM.ts + 1.7);
   expect((await live(page)).some((x) => x.cue === MOMENTUM.cue_id), `${tag}: Undo did not bring the momentum card back`);
+  // a generated graphic has Details too: made by code, why it airs or waits, and the facts it is drawn from
+  const gd = await page.evaluate(() => {
+    const d = document.querySelector('#desk [id^="story-G-"] details.more');
+    if (!d) return null;
+    d.open = true; d.dispatchEvent(new Event("toggle"));
+    return { why: d.querySelector(".why")?.textContent ?? "", facts: d.querySelectorAll("table.facts tbody tr:not(.missing)").length };
+  });
+  expect(gd && /^Made by code from the facts\. /.test(gd.why) && gd.facts > 0, `${tag}: a generated graphic's Details ${JSON.stringify(gd)}`);
+  await page.evaluate(() => { for (const d of document.querySelectorAll("#desk details.more")) d.open = false; });
 
   await seekTo(page, ALL);
   if (phone) {

@@ -99,7 +99,7 @@ export const TEXT = {
     needsEmpty: "Nothing waits for you. The agents write these graphics, and a low-risk one goes on air by itself, any other waits here for you.",
     next: "Next", inS: "in {s} s", toAir: "airs in {s} s", toAirNow: "due on air now", toAirPast: "was due on air at {m}'", missIn: ", missed in {s} s", left: "{s} s left",
     takeOut: "Take out", g_pass_shot: "Pass and shot", g_nameplate: "Name plate", g_momentum: "Momentum", g_team_stats: "Team shape", g_lineup: "Line-ups", g_why_card: "Card",
-    done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", k_checkin: "Player check-in",
+    done_takenOut: "{what} taken out", skip: "Skip", why_gen: "made by code from the facts", gen_waits: "It waits for you: put it on air or skip it before its moment ends.", k_checkin: "Player check-in",
     line_skipped: "Off air, skipped by you", row_skipped: "skipped by you", done_skipped: "{what} skipped, off air",
     line_expired: "Off air: missed, its moment passed before anyone put it on air", row_expired: "missed, nobody put it on air in time",
     row_rejected: "rejected by you", row_kill: "off air while AI graphics are off", info: "About your decisions",
@@ -197,7 +197,7 @@ export const TEXT = {
     needsEmpty: "Non c'è niente da decidere. Queste grafiche le scrivono gli agenti, quelle a rischio basso vanno in onda da sole, le altre aspettano qui una tua decisione.",
     next: "Prossima", inS: "tra {s} s", toAir: "va in onda tra {s} s", toAirNow: "va in onda adesso", toAirPast: ({ m }) => `doveva andare in onda ${alMinute(m)}`, missIn: ", persa tra {s} s", left: "ancora {s} s",
     takeOut: "Togli", g_pass_shot: "Passaggio e tiro", g_nameplate: "Scheda giocatore", g_momentum: "Inerzia", g_team_stats: "Assetto", g_lineup: "Formazioni", g_why_card: "Riquadro",
-    done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", k_checkin: "Numeri del giocatore",
+    done_takenOut: "Fuori onda: {what}", skip: "Salta", why_gen: "fatta dal codice con i fatti", gen_waits: "Aspetta te: mandala in onda o saltala prima che finisca il suo momento.", k_checkin: "Numeri del giocatore",
     line_skipped: "Fuori onda, saltata da te", row_skipped: "saltata da te", done_skipped: "Saltata: {what} fuori onda",
     line_expired: "Fuori onda: persa, il suo momento è passato prima che qualcuno la mandasse in onda", row_expired: "persa, nessuno l'ha mandata in onda in tempo",
     row_rejected: "respinta da te", row_kill: "fuori onda finché le grafiche IA sono spente", info: "Sulle tue decisioni",
@@ -294,7 +294,7 @@ export const TEXT = {
     needsEmpty: "No hay nada por decidir. Estos gráficos los escriben los agentes, los de riesgo bajo salen al aire solos, los demás esperan aquí tu decisión.",
     next: "Siguiente", inS: "en {s} s", toAir: "sale al aire en {s} s", toAirNow: "sale al aire ahora", toAirPast: "debía salir al aire en el {m}'", missIn: ", perdida en {s} s", left: "quedan {s} s",
     takeOut: "Quitar", g_pass_shot: "Pase y tiro", g_nameplate: "Rótulo", g_momentum: "Dominio", g_team_stats: "Estructura", g_lineup: "Alineaciones", g_why_card: "Tarjeta",
-    done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", k_checkin: "Números del jugador",
+    done_takenOut: "Fuera de antena: {what}", skip: "Saltar", why_gen: "hecho por código con los datos", gen_waits: "Te espera: emítelo o sáltalo antes de que acabe su momento.", k_checkin: "Números del jugador",
     line_skipped: "Fuera de antena, saltado por ti", row_skipped: "saltado por ti", done_skipped: "Saltado: {what} fuera de antena",
     line_expired: "Fuera de antena: perdida, su momento pasó antes de que alguien la pusiera en antena", row_expired: "perdida, nadie la puso en antena a tiempo",
     row_rejected: "rechazada por ti", row_kill: "fuera de antena mientras los gráficos de IA están apagados", info: "Sobre tus decisiones",
@@ -1122,7 +1122,7 @@ export class Desk {
       editing ? null : h("div", { className: "actions" },
         this.act(s, "rejected", tx("takeOut"), "ctl", "r"),
         s.gen ? null : this.act(s, "edited", tx("edit"), "quiet", "e")),
-      s.gen ? null : this.renderDetails(s));
+      this.renderDetails(s));
   }
 
   storyHead(s, extra) {
@@ -1146,7 +1146,7 @@ export class Desk {
         this.act(s, "approved", tx(this.killed(s) ? "approve" : "put"), "ctl primary", "a"),
         s.gen ? null : this.act(s, "edited", tx("edit"), "ctl", "e"),
         this.act(s, "rejected", tx(s.gen ? "skip" : "reject"), "quiet", "r")),
-      s.gen ? null : this.renderDetails(s));
+      this.renderDetails(s));
   }
 
   // Done: one line per story, its quiet actions at the end
@@ -1166,7 +1166,7 @@ export class Desk {
           rejected ? this.act(s, "approved", tx(this.killed(s) ? "approve" : "put"), "quiet", "a") : this.act(s, "rejected", tx(s.gen ? "takeOut" : "reject"), "quiet", "r"),
           s.gen ? null : this.act(s, "edited", tx("edit"), "quiet", "e"))),
       editing ? this.renderEditor(s) : null,
-      s.gen ? null : this.renderDetails(s));
+      this.renderDetails(s));
   }
 
   // Details, one level: why it waits, the checks, the earlier drafts, the evidence. Built once opened.
@@ -1185,6 +1185,12 @@ export class Desk {
 
   detailsBody(s) {
     const lang = this.state.lang, st = this.status(s), id = s.story_id, tx = (k, v) => this.tx(k, v);
+    if (s.gen) {
+      // a generated graphic has no agent, check or draft: why it goes on air (or waits), and the facts it is drawn from
+      const p = s.gen.payload ?? {}, facts = [...list(p.fact_ids), p.fact_id].filter(Boolean).map((f) => this.factIndex.get(f) ?? { fact_id: f, missing: true });
+      return [h("p", { className: "why" }, cap(tx("why_gen"), lang), ". ", tx(s.default_status === "auto_approved" ? "tip_low" : "gen_waits")),
+        h("p", { className: "sub" }, tx("evidence", { f: facts.length, e: 0 })), this.factsTable(facts, lang)];
+    }
     const v = s.verifier ?? {}, flagged = list(v.flagged);
     const risk = Number(s.risk), band = riskBand(risk);
     const tip = band === "low" && this.defaultStatus(s) !== "auto_approved" ? "tip_lowHeld" : `tip_${band}`;
@@ -1214,18 +1220,23 @@ export class Desk {
       h("p", { className: "sub" }, tx("evidence", { f: facts.length, e: events.length })),
       h("div", { className: "ev-grid" },
         this.miniPitch(s, facts, events),
-        h("table", { className: "facts" },
-          h("caption", { className: "sr" }, tx("factsCaption")),
-          h("thead", {}, h("tr", {}, h("th", { scope: "col" }, tx("fact")), h("th", { scope: "col" }, tx("value")))),
-          h("tbody", {}, facts.map((f) => h("tr", { className: f.missing ? "missing" : "" },
-            // the ledger's labels are English
-            h("td", {}, f.missing ? h("span", { className: "flabel" }, tx("notInLedger")) : h("span", { className: "flabel", lang: "en" }, f.label_en ?? "")),
-            h("td", { className: "num" }, f.missing ? "" : valueText(f, lang))))))),
+        this.factsTable(facts, lang)),
       events.some((e) => !e.missing) ? h("p", { className: "events" }, tx("events"), h("span", { lang: "en" },
         events.filter((e) => !e.missing).map((e) => `${e.type_name.replace(/_/g, " ")} (${this.match.players[e.player_id]?.name ?? ""})`).join(", "))) : null,
       s.analysis_en ? h("p", { className: "analysis" }, h("b", {}, tx("analyst")), h("span", { lang: "en" }, this.plain(s.analysis_en))) : null,
       this.traceGroups().has(id) ? h("button", { type: "button", className: "link", "data-focus": `${id}:trace`, onclick: () => this.showTrace(id) }, tx("showTrace")) : null,
     ].flat().filter(Boolean);
+  }
+
+  factsTable(facts, lang) {
+    const tx = (k, v) => this.tx(k, v);
+    return h("table", { className: "facts" },
+      h("caption", { className: "sr" }, tx("factsCaption")),
+      h("thead", {}, h("tr", {}, h("th", { scope: "col" }, tx("fact")), h("th", { scope: "col" }, tx("value")))),
+      h("tbody", {}, facts.map((f) => h("tr", { className: f.missing ? "missing" : "" },
+        // the ledger's labels are English
+        h("td", {}, f.missing ? h("span", { className: "flabel" }, tx("notInLedger")) : h("span", { className: "flabel", lang: "en" }, f.label_en ?? "")),
+        h("td", { className: "num" }, f.missing ? "" : valueText(f, lang))))));
   }
 
   // The AI's own line, kept off air: one click puts it on air in all three languages, as an edit.

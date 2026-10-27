@@ -303,10 +303,13 @@ try {
           roles: items.filter((b) => !/^menuitem(radio|checkbox)?$/.test(b.getAttribute("role")) || b.tabIndex !== -1).length,
           loose: items.filter((b) => b.getAttribute("role") === "menuitemradio" && !b.closest('[role="group"]')).length,
           unnamed: groups.filter((x) => !document.getElementById(x.getAttribute("aria-labelledby"))?.textContent.trim()).length,
-          names: ["speed", "audience", "lang", "minimap"].map((k) => !!el.querySelector(k === "minimap" ? "#minimap" : `[data-${k}]`)).join() };
+          names: ["speed", "audience", "lang", "minimap"].map((k) => !!el.querySelector(k === "minimap" ? "#minimap" : `[data-${k}]`)).join(),
+          mv: ((b) => b.top >= r.top && b.bottom <= r.bottom)(document.querySelector("#multiview-open").getBoundingClientRect()) };
       });
       if (m.exp !== "true" || m.focus !== "1") fail(`${tag}: Enter on the gear: expanded ${m.exp}, focus on speed ${m.focus}`);
       if (!m.on) fail(`${tag}: the menu ${m.rect.join(",")} is not all on the ${w}x${h} screen`);
+      // on a wide screen Multiview is in view as the menu opens, not under a scroll (the menu once spread over the desk)
+      if (w >= 1200 && !m.mv) fail(`${tag}: Multiview is not in view in the open menu`);
       if (m.roles || m.loose || m.unnamed || m.names !== "true,true,true,true") fail(`${tag}: menu items ${JSON.stringify(m)}`);
       if ((await row()).off.length) fail(`${tag}: the open menu moves the buttons`);
       await page.screenshot({ path: `${shots}/layout-menu-${tag}.png` });

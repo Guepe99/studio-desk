@@ -7,7 +7,7 @@ import { WINDOWS, windowUrl, lagging, drift, umdLabel } from "./multiview-logic.
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
-const match = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
+const match = (params.get("match") || "M004").replace(/[^A-Za-z0-9_-]/g, "");
 const start = Number.isFinite(Number(params.get("t"))) && params.has("t") ? Number(params.get("t")) : 590;
 // each window draws at this size, scaled to its cell: the broadcast page lays out its compact graphics for it
 const VW = 960, VH = 540;

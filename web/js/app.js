@@ -143,7 +143,7 @@ const STRINGS = {
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
-const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
+const matchId = (params.get("match") || "M004").replace(/[^A-Za-z0-9_-]/g, "");
 // ?lang= keeps the language across a change of match (matchPicker)
 // ?delay= (delay.js): the picture runs that many seconds behind the desk; 0, today's page, by default
 const delay = delayFrom(params.get("delay"));
