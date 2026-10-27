@@ -105,6 +105,12 @@ export const TEXT = {
     fHeadline: "Headline", fBody: "Text", emptyTitle: "The {name} headline cannot be empty.", factsLabel: "Facts: ",
     yourActions: "Your actions", colMinute: "Minute", costHead: "What the agents cost",
     y_ai_off: "AI graphics switched off", y_ai_on: "AI graphics switched on", y_undo: "Last action undone",
+    // Watch for (forecast.js): the storyline forecasts and their prepared lines
+    w_head: "Watch for", w_note: "Code forecast from the facts, tested on simulated matches only", w_pTitle: "Chance it happens by full time",
+    w_pre: "Pre-approve line", w_preOn: "Pre-approved", w_aired: "Prepared line on air", w_notAired: "Not pre-approved, nothing aired",
+    w_empty: "Nothing to watch for right now.", w_slot_minute: "minute", w_slot_score: "score",
+    a_prepared_approved: "prepared line pre-approved", a_prepared_withdrawn: "pre-approval withdrawn", a_prepared_aired: "prepared text on air",
+    y_prepared_approved: "Prepared line pre-approved: {title_en}", y_prepared_withdrawn: "Pre-approval withdrawn: {title_en}", y_prepared_aired: "Prepared text on air: {title_en}",
     keysDesk: "In the control desk", key_a: "Put the story on air", key_e: "Edit the story", key_r: "Reject the story, or take it off air",
     key_jk: "Next or previous story", key_u: "Undo the last decision",
     k_goal: "Goal", k_key_pass: "Key pass", k_momentum_swing: "Momentum swing", k_comeback: "Comeback", k_top_sprint: "Top sprint",
@@ -194,6 +200,11 @@ export const TEXT = {
     fHeadline: "Titolo", fBody: "Testo", emptyTitle: "Il titolo ({name}) non può essere vuoto.", factsLabel: "Fatti: ",
     yourActions: "Le tue azioni", colMinute: "Minuto", costHead: "Quanto sono costati gli agenti",
     y_ai_off: "Grafiche IA spente", y_ai_on: "Grafiche IA accese", y_undo: "Ultima azione annullata",
+    w_head: "Da tenere d'occhio", w_note: "Previsione fatta dal codice sui fatti, provata solo su partite simulate", w_pTitle: "Probabilità che accada entro il fischio finale",
+    w_pre: "Approva in anticipo", w_preOn: "Approvata in anticipo", w_aired: "Frase preparata in onda", w_notAired: "Non approvata, non è andato in onda niente",
+    w_empty: "Niente da tenere d'occhio, per ora.", w_slot_minute: "minuto", w_slot_score: "risultato",
+    a_prepared_approved: "frase preparata approvata in anticipo", a_prepared_withdrawn: "approvazione in anticipo ritirata", a_prepared_aired: "testo preparato in onda",
+    y_prepared_approved: "Frase preparata approvata in anticipo: {title_it}", y_prepared_withdrawn: "Approvazione in anticipo ritirata: {title_it}", y_prepared_aired: "Testo preparato in onda: {title_it}",
     keysDesk: "Nella regia", key_a: "Manda in onda la storia", key_e: "Modifica la storia", key_r: "Respingi la storia o mandala fuori onda",
     key_jk: "Storia successiva o precedente", key_u: "Annulla l'ultima decisione",
     k_goal: "Gol", k_key_pass: "Passaggio chiave", k_momentum_swing: "Cambio di inerzia", k_comeback: "Rimonta", k_top_sprint: "Scatto più veloce",
@@ -283,6 +294,11 @@ export const TEXT = {
     fHeadline: "Titular", fBody: "Texto", emptyTitle: "El titular ({name}) no puede quedar vacío.", factsLabel: "Datos: ",
     yourActions: "Tus acciones", colMinute: "Minuto", costHead: "Lo que costaron los agentes",
     y_ai_off: "Gráficos de IA apagados", y_ai_on: "Gráficos de IA encendidos", y_undo: "Última acción deshecha",
+    w_head: "Atentos a", w_note: "Previsión del código a partir de los datos, probada solo en partidos simulados", w_pTitle: "Probabilidad de que ocurra antes del final",
+    w_pre: "Aprobar por adelantado", w_preOn: "Aprobada por adelantado", w_aired: "Frase preparada en antena", w_notAired: "No aprobada, no salió nada en antena",
+    w_empty: "Nada que vigilar por ahora.", w_slot_minute: "minuto", w_slot_score: "marcador",
+    a_prepared_approved: "frase preparada aprobada por adelantado", a_prepared_withdrawn: "aprobación por adelantado retirada", a_prepared_aired: "texto preparado en antena",
+    y_prepared_approved: "Frase preparada aprobada por adelantado: {title_es}", y_prepared_withdrawn: "Aprobación por adelantado retirada: {title_es}", y_prepared_aired: "Texto preparado en antena: {title_es}",
     keysDesk: "En la realización", key_a: "Emitir la historia", key_e: "Editar la historia", key_r: "Rechazar la historia o quitarla de antena",
     key_jk: "Historia siguiente o anterior", key_u: "Deshacer la última decisión",
     k_goal: "Gol", k_key_pass: "Pase clave", k_momentum_swing: "Cambio de dominio", k_comeback: "Remontada", k_top_sprint: "Sprint más rápido",
@@ -1332,7 +1348,7 @@ export class Desk {
     // "23' Goal, rejected: a number": this visitor's own actions first, in match minutes
     const mine = humans.map((r) => {
       const s = this.byId.get(r.story_id);
-      const line = s ? `${this.minuteText(s)}' ${kindName(s.kind, lang)}, ${what(r)}` : TEXT.en[`y_${r.action}`] ? tx(`y_${r.action}`) : cap(what(r), lang);
+      const line = s ? `${this.minuteText(s)}' ${kindName(s.kind, lang)}, ${what(r)}` : TEXT.en[`y_${r.action}`] ? tx(`y_${r.action}`, r.detail) : cap(what(r), lang);
       return h("li", { title: utc(r) }, line);
     });
     return h("div", { className: "audit" },

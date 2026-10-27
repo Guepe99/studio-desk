@@ -1,0 +1,60 @@
+{
+ "params": {
+  "rate0": 0.014587,
+  "per_shot": 0.132174,
+  "stage": [
+   0.457,
+   1.1883,
+   0.9556,
+   1.3653,
+   1.4339,
+   0.6501
+  ],
+  "scorer_share": 0.2064,
+  "p1_min": 46.142,
+  "p2_min": 47.005,
+  "chase": 2.0,
+  "late": 0.5,
+  "prior_min": 1000000.0
+ },
+ "evaluation": {
+  "seed": 11,
+  "n_fit": 400,
+  "n_test": 400,
+  "scores": {
+   "second_goal": {
+    "n": 6344,
+    "n_matches": 382,
+    "base_rate": 0.0926,
+    "brier": 0.0809,
+    "brier_base": 0.0854,
+    "skill": 0.052
+   },
+   "comeback": {
+    "n": 3819,
+    "n_matches": 383,
+    "base_rate": 0.496,
+    "brier": 0.1928,
+    "brier_base": 0.2498,
+    "skill": 0.228
+   },
+   "clean_sheet": {
+    "n": 7594,
+    "n_matches": 400,
+    "base_rate": 0.2855,
+    "brier": 0.1756,
+    "brier_base": 0.2117,
+    "skill": 0.17
+   },
+   "late_goal": {
+    "n": 7113,
+    "n_matches": 400,
+    "base_rate": 0.1379,
+    "brier": 0.117,
+    "brier_base": 0.1183,
+    "skill": 0.011
+   }
+  },
+  "note": "Tested on simulated matches only (scripts/forecast_calibrate.py)."
+ }
+}

@@ -17,6 +17,7 @@ import { delayFrom, delayMatch, showDelay, delayUrl, DELAY_STRINGS } from "./del
 import { Highlights, HL_STRINGS } from "./highlights.js";
 import { WELCOME_STRINGS, wantsWelcome, openWelcome } from "./welcome.js";
 import { loadSeason, withSeason } from "./season.js";
+import { Watch } from "./forecast.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card", "season_card"];
 const STRINGS = {
@@ -151,8 +152,8 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
-let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let season = null;   // season.json (season.js): the kick-off card and the goal cards' season lines
+let match = null, host = null, desk = null, watch = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 let highlights = null;   // the highlights reel (highlights.js), once the match is loaded
 let audioLoaded;     // called once the voice and the booth have loaded (the welcome waits for it to turn the sound on)
@@ -438,11 +439,13 @@ function placeMenu() {
 }
 
 function cueSheet() {
-  return withSeason(desk.sheet(match.cues, state.audience, state.lang), season, match, state.lang);
+  const sheet = withSeason(desk.sheet(match.cues, state.audience, state.lang), season, match, state.lang);
+  return watch ? watch.sheet(sheet, state.audience, state.lang) : sheet; // Watch for: the pre-approved prepared lines
 }
 
 function refreshCues() {
   const sheet = cueSheet();
+  end = Math.max(end, watch?.until ?? 0); // a card held behind a prepared line still ends on screen
   // a momentum or team shape card due during a goal replay waits for its end: the 3D replay's goal camera
   // has the net across the foot of the picture, where the card sits
   host.setCues(holdForReplays(sheet, replays(match)), state.ts);
@@ -609,6 +612,7 @@ function tick(now) {
   activity.update(state.ts, state.seeked, onAir, state.lang);
   audBox.update(onAir, state.ts, state.lang, state.audience);
   desk.setLive([...host.live.values()].map((i) => i.cue));
+  watch?.update(state.ts, [...host.live.values()].map((i) => i.cue), desk.delay || 0);
   state.seeked = false;
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
@@ -872,6 +876,9 @@ async function main() {
   refreshCues();
   // hooks for tests and the lead's demo scripts
   window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; }, delay, highlights };
+  // Watch for (docs/forecast.md): only when the match has a forecast.json
+  const w = new Watch({ desk, state, onChange: refreshCues });
+  w.load(`data/${matchId}`).then((ok) => { if (ok) { watch = w; window.studioDesk.watch = w; } });
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),

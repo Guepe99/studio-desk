@@ -581,3 +581,34 @@ new MCP tool, one new export file and one new graphic. Design and sources: `docs
   turned into text at a time (503 while busy); 40 clips a day for the site and 15 per address answer
   429 `{status: "limit", reason}` past the cap; a Speech failure is 502. The audio is never stored or
   logged.
+
+## Forecast additions (feat/forecast, additive)
+
+Watch for: storyline forecasts made by code from the facts, and prepared lines the producer can
+pre-approve ([docs/forecast.md](forecast.md)). Nothing above changes.
+
+- `web/data/<match>/forecast.json` (static replay export, written by `studiodesk/export.py` and by
+  `python -m studiodesk.forecast <match_id>...`): `{match_id, kinds, step_s, steps, items, evaluation}`.
+  `steps`: `[{ts, items: [{id, kind, team_id, player_id, p, fact_ids, reason: {en, it, es}}]}]`, every
+  60 s of match time and at each goal, each step built from the facts with `ts <= step.ts` only.
+  `items`: one per forecast id, `{id, kind, team_id, player_id, title, template, hit, at,
+  trigger_fact_id, line, line_fact_ids}` (`title`, `template`, `line` by language; `template` keeps the
+  slots `{minute}`, `{score}`, `{Minute}`, `{Score}` open; `line` is the filled line, null when the event
+  did not happen; `at` is when the item ended). The page shows an outcome only once the replay reaches `at`.
+- Forecast ids: `W-second_goal-<player_id>`, `W-comeback-<fact_id of the score fact that opened the
+  deficit>`, `W-clean_sheet-<team_id>`, `W-late_goal`. Kinds: `second_goal`, `comeback`, `clean_sheet`,
+  `late_goal`.
+- MCP tool `get_forecasts(match_id, ts=None)`: the open forecasts at `min(ts, clock)` from the facts up to
+  then, `{match_id, ts, items}`. Read-only. Served by `python -m studiodesk.mcp_server`; it is not in
+  `TOOLS`, so the agents and Ask the studio do not get it.
+- Prepared cues (browser only, never in `cues.json`): `cue_id` `P-<forecast id>`, `story_id` null,
+  `graphic` `why_card`, `ts` the trigger fact's `ts`, `duration_s` 6, payload `{kind: "why", title, body,
+  fact_ids, prepared: true, forecast_id}`. Made only for a line pre-approved before its event. A
+  why_card of the sheet that would start while one is on air waits for its end (`due` keeps its time).
+- Audit actions (this tab's `localAudit`, as the generated graphics' decisions): `prepared_approved`,
+  `prepared_withdrawn`, `prepared_aired`, `story_id` the forecast id, `detail` `{prepared: true,
+  forecast, title_en, title_it, title_es}` (`prepared_aired` also `cue_id`, `lang`; its `ts` is the
+  event's). The "Your actions" list passes `detail` to the `y_<action>` string.
+- `data/forecast.sqlite` (git-ignored, through `studiodesk/db.py`): tables `forecast_runs`,
+  `forecast_samples`, `forecast_scores`, `forecast_reliability` from `scripts/forecast_calibrate.py`.
+  `studiodesk/forecast_params.json` holds the fitted parameters and the test scores.

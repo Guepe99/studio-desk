@@ -198,11 +198,36 @@ def get_season(match_id: str, kind: str | None = None, team_id: str | None = Non
     return rows
 
 
+def get_forecasts(match_id: str, ts: float | None = None) -> dict:
+    """Watch for: the probability, by the end of the match, of each open storyline (second_goal, comeback,
+    clean_sheet, late_goal) at match time ts (default and maximum: the clock), computed by code from the
+    facts up to then (docs/forecast.md). Each item names the facts behind it. Tested on simulated matches only."""
+    from . import forecast  # the model; it reads no table itself
+    now = _now() if ts is None else min(float(ts), _now())
+    m = _rows("SELECT home_team_id, away_team_id, period1_s, period2_s FROM matches WHERE match_id = ?", (match_id,))
+    if not m:
+        return {"error": f"unknown match {match_id}"}
+    m = m[0]
+    facts = _rows("SELECT fact_id, kind, ts, period, team_id, player_id, value FROM facts WHERE match_id = ? AND ts <= ? "
+                  "AND kind IN ('score', 'team_shots', 'player_goals')", (match_id, now))
+    lineups = {r["player_id"]: (r["on_ts"], r["off_ts"] if r["off_ts"] is not None and r["off_ts"] <= now else None)
+               for r in _rows("SELECT player_id, on_ts, off_ts FROM lineups WHERE match_id = ? AND on_ts <= ?",
+                              (match_id, now))}
+    p1, end = m["period1_s"], m["period1_s"] + m["period2_s"]
+    g = forecast.Game(facts, m["home_team_id"], m["away_team_id"], p1 if p1 <= now else None, lineups,
+                      end if end <= now else None)
+    return {"match_id": match_id, "ts": None if math.isinf(now) else now, "items": forecast.forecasts(g, now)}
+
+
 TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum, get_team_totals, get_scorers,
          get_season)
+
+
 server = FastMCP("studiodesk")
 for _fn in TOOLS:
     server.add_tool(_fn, annotations=ToolAnnotations(readOnlyHint=True))
 
 if __name__ == "__main__":
+    # served to MCP clients; kept out of TOOLS, so the agents and Ask the studio do not get it
+    server.add_tool(get_forecasts, annotations=ToolAnnotations(readOnlyHint=True))
     server.run()
