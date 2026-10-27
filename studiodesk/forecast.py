@@ -37,7 +37,7 @@ DEFAULT = {"rate0": 0.0145, "per_shot": 0.1, "prior_min": 45.0, "stage": [1.0] *
 # the matches have a planted comeback and goals from minute 81 are rarer than in real football, so before a
 # probability becomes a word its odds are moved from the simulator's event rate to a real-football rate
 # (prior shift, Saerens, Latinne and Decaestecker 2002). Sources in docs/forecast.md: the team that scores
-# first wins 71.1% of Premier League matches (CIES, 2015-2019), so the side behind levels in at least 28.9%;
+# first wins 71.1% of top-flight English matches (CIES, 2015-2019), so the side behind levels in at least 28.9%;
 # 18% of goals came from the 80th minute in 2024/25 at about 2.9 a match, so a late goal in about 40%.
 # The words follow the IPCC likelihood scale: unlikely below 1/3, likely from 2/3.
 REAL_RATE = {"comeback": 0.29, "late_goal": 0.40}
@@ -47,7 +47,7 @@ LEVELS = ((1 / 3, "unlikely"), (2 / 3, "possible"), (math.inf, "likely"))
 def load_params(path=PARAMS_FILE):
     if not Path(path).exists():
         return dict(DEFAULT)
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
     sim = {k: v["base_rate"] for k, v in data.get("evaluation", {}).get("scores", {}).items()}
     return {**DEFAULT, **data["params"], "sim_rate": sim}
 
@@ -176,12 +176,6 @@ def late_goal_by(g, ts):
     return None
 
 
-# Hook for season facts (feat/season, after both merge): functions (g, ts, params) -> items in the format of
-# forecasts(), for milestone kinds such as a player's 10th goal of the season from his season tally plus the
-# second_goal rate. Each new kind also needs a branch in resolve(), TITLES and TEMPLATES.
-EXTRA_KINDS = []
-
-
 def forecasts(g, ts, params=None):
     """The open forecasts at ts with their probability and the facts behind them. Reads facts <= ts only."""
     params = params or load_params()
@@ -222,8 +216,6 @@ def forecasts(g, ts, params=None):
         lam = params["late"] * sum(push[t] * r[t] for t in r) * exposure(g, ts, params, late=True)
         goals = [last.get(("score", t)) for t in (g.home, g.away)]
         add("W-late_goal", "late_goal", 1 - math.exp(-lam), [*goals, shots[g.home], shots[g.away]])
-    for extra in EXTRA_KINDS:
-        out += extra(g, ts, params)
     return out
 
 
@@ -392,7 +384,7 @@ def export_from(meta, facts, params_path=PARAMS_FILE):
                                "trigger_fact_id": res["fact"]["fact_id"] if res["fact"] else None,
                                "line": {lang: fill(m, g, it, res["ts"], lang) for lang in LANGS} if res["hit"] else None,
                                "line_fact_ids": list(dict.fromkeys(fact_ids)) if res["hit"] else []}
-    summary = json.loads(Path(params_path).read_text()).get("evaluation", {}) if Path(params_path).exists() else {}
+    summary = json.loads(Path(params_path).read_text(encoding="utf-8")).get("evaluation", {}) if Path(params_path).exists() else {}
     return {"match_id": match_id, "kinds": list(KINDS), "step_s": STEP_S, "steps": steps, "items": list(items.values()),
             "evaluation": summary}
 
@@ -400,7 +392,7 @@ def export_from(meta, facts, params_path=PARAMS_FILE):
 def write(conn, match_id, out_dir):
     out = Path(out_dir) / match_id / "forecast.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(export(conn, match_id), ensure_ascii=False, allow_nan=False, separators=(",", ":")))
+    out.write_text(json.dumps(export(conn, match_id), ensure_ascii=False, allow_nan=False, separators=(",", ":")), encoding="utf-8")
     return out
 
 

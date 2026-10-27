@@ -33,8 +33,8 @@ WAIT_S = 10.0
 # F0 may still answer 429 "resource constraints" while Speech scales up; Microsoft's advice is to try again
 # (speech-services-quotas-and-limits): two more tries after these pauses
 BUSY_RETRY_S = (1.0, 2.0)
-# all the tries end within this, so the Speech slot is free before the page gives up at 30 s (ask-voice.js)
-BUSY_BUDGET_S = 25.0
+# all the tries end within this, so with the WAIT_S queue the call is over before the page gives up at 30 s (ask-voice.js)
+BUSY_BUDGET_S = 30.0 - WAIT_S - 2.0
 
 
 def available() -> bool:
@@ -46,7 +46,7 @@ def wav_problem(data: bytes) -> str | None:
     try:
         with wave.open(io.BytesIO(data)) as w:
             shape, frames = (w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getcomptype()), w.getnframes()
-    except (wave.Error, EOFError):
+    except (wave.Error, EOFError, RuntimeError):  # RuntimeError: a chunk size past the end
         return "the audio is not a WAV file"
     if shape != (1, 2, RATE, "NONE"):
         return "the audio is not 16 kHz mono 16-bit PCM"

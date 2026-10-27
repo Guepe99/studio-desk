@@ -67,11 +67,11 @@ export default class SeasonCard extends SdGraphic {
         `<span class="form">${(Array.isArray(r.form) ? r.form : []).filter((x) => w.res[x]).map((x) => `<span class="r ${x}">${w.res[x]}</span>`).join("")}</span>`,
       ])].join("");
     const h = d.h2h, lines = [];
-    if (h && int(h.matchweek) !== null) {
+    if (h && int(h.matchweek) !== null && int(h.home_goals) !== null && int(h.away_goals) !== null) {
       lines.push([w.met, `${w.week.replace("{n}", int(h.matchweek))}: ${short(h.home)} ${int(h.home_goals)}-${int(h.away_goals)} ${short(h.away)}`]);
     }
     for (const s of Array.isArray(d.scorers) ? d.scorers : []) {
-      lines.push([`${w.top}, ${short(s.side)}`, `${esc(s.name)}, ${w.goals(int(s.goals))}`]);
+      lines.push([`${w.top}, ${short(s.side)}`, int(s.goals) === null ? esc(s.name) : `${esc(s.name)}, ${w.goals(int(s.goals))}`]);
     }
     $(".more").innerHTML = lines.map(([l, v]) => `<div class="line"><span class="lbl">${esc(l)}</span><span class="val">${v}</span></div>`).join("");
     $(".factslot").innerHTML = this.factsHtml(d.fact_ids);

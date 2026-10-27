@@ -199,7 +199,7 @@ def test_concurrent_questions_never_share_a_clock(studio):
     assert srv._clock == 0.0
 
 
-# --- review findings (feat/ask-fixes) -------------------------------------------------------------
+# --- declined answers, caps, costs, safety and what the model may read --------------------------------------------
 
 MOMENTUM = "F-MOMENTUM-000002"  # 7.8/10 at 180 s, label "Momentum 7.8/10, min 1-3"
 
@@ -434,7 +434,7 @@ def test_the_storylines_table_is_never_read(studio, monkeypatch):
     assert "storylines" not in seen
 
 
-# --- review 2 (feat/ask-fixes-2): the probes on the real M001, at 3100 s when the score is 2-1 ----------------
+# --- the real M001 at 3100 s, when the score is 2-1 ---------------------------------------------------------------
 
 SP, PA, S1, S3 = "F-SPRINT_SPEED-000001", "F-PASS_ACCURACY-000001", "F-SCORE-000001", "F-SCORE-000003"
 SC0, SC7 = "F-SPRINT_COUNT-000001", "F-SPRINT_COUNT-000003"  # 0 and 7 sprints by half-time
@@ -516,7 +516,7 @@ def test_review_2_good_answers_from_m001_pass(m001, answer, ids, lang):
     assert m001(answer, ids, lang=lang) == "answered", reason()
 
 
-# --- judge, 25/10: the showcase questions at ?match=M001&t=2400 are answered from code-counted totals ----------
+# --- M001 at 2400 s: answers from code-counted team totals --------------------------------------------------------
 
 TOTALS_2400 = {("team_shots", "T01"): 4, ("team_shots", "T02"): 2, ("team_shots_on_target", "T01"): 3,
                ("team_shots_on_target", "T02"): 0, ("team_corners", "T01"): 3, ("team_corners", "T02"): 0}
@@ -563,7 +563,7 @@ def test_m001_control_question_at_2400_is_answered_from_the_totals(m001):
                 ids, ts=2400.0) == "answered", reason()
 
 
-# --- judge 2, 26/10: the questions Ask refused at ?match=M001&t=2400 -------------------------------------------
+# --- questions Ask answers from the stories on air and the new facts, at ?match=M001&t=2400 ---------------------------
 
 def held_at(ts, monkeypatch):
     monkeypatch.setattr(ask, "STORIES_DIR", config.ROOT / "replays")  # the committed pack, as web/data ships it
@@ -882,7 +882,7 @@ def test_an_ordinal_minute_in_an_answer_is_a_cited_minute():
                                                           {later["fact_id"]}, (2, 1)))
 
 
-# --- review 3, 27/10: a leaked placeholder, a one-sided comparison, an unrounded share ---------------------------
+# --- placeholders, one-sided comparisons and rounded shares -------------------------------------------------------
 
 def test_a_leaked_fact_id_placeholder_never_reaches_the_page(m001, studio):
     got = totals_at(2400.0)

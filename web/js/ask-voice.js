@@ -72,10 +72,14 @@ export class AskVoice {
     if (this.busy || this.ask.busy) return;
     this.busy = this.ask.busy = true; // no question goes out while one is being recorded or transcribed
     this.chunks = [];
+    const run = (this.pending = {}); // cancel() clears it while the permission prompt is open
     try {
       this.ctx = new AudioContext(); // made before the first await, in the click: Safari starts it suspended otherwise
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      if (this.pending !== run) return stream.getTracks().forEach((tr) => tr.stop()); // cancelled meanwhile
+      this.stream = stream;
       await this.ctx.audioWorklet.addModule("js/ask-voice-worklet.js");
+      if (this.pending !== run) return; // cancel() already released the microphone
       const node = new AudioWorkletNode(this.ctx, "ask-voice-tap");
       let n = 0;
       node.port.onmessage = (e) => {
@@ -86,10 +90,13 @@ export class AskVoice {
       this.ctx.createMediaStreamSource(this.stream).connect(node);
       node.connect(this.ctx.destination); // pulls the node through the graph; its output is silence
     } catch {
+      if (this.pending !== run) return;
+      this.pending = null;
       this.release();
       this.busy = this.ask.busy = false;
       return this.status("voiceMicOff");
     }
+    this.pending = null;
     this.recording = true;
     this.timer = setTimeout(() => this.stop(), MAX_S * 1000 + 500); // in case the blocks stop coming
     this.status("voiceRec");
@@ -103,9 +110,10 @@ export class AskVoice {
     this.stream = this.ctx = null;
   }
 
-  // the panel closed or questions were turned off: nothing is sent
+  // the panel closed or questions were turned off: nothing is sent, even if the permission prompt is still open
   cancel() {
-    if (!this.recording) return;
+    if (!this.recording && !this.pending) return;
+    this.pending = null;
     this.recording = this.busy = this.ask.busy = false;
     this.release();
     this.chunks = [];

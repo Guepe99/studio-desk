@@ -204,7 +204,7 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
                 raise OSError("network")
             if "empty" in text:
                 return {}
-            # the judge's headline: football words read as violence at the lowest severity, 2
+            # a match headline: football words read as violence at the lowest severity, 2
             return {"Hate": 4 if "nasty" in text else 0, "Violence": 6 if "gore" in text else 2 if "close range" in text else 0}
 
     monkeypatch.setattr(safety, "AzureSafety", Fake)
@@ -213,6 +213,7 @@ def test_an_edit_goes_through_content_safety_when_the_site_has_it(desk, monkeypa
     assert seen == []
     monkeypatch.setattr(api, "SAFETY_ENDPOINT", "https://cs.example")
     monkeypatch.setattr(api, "_edit_safety", None)
+    monkeypatch.setattr(api, "EDIT_CHECKS_PER_CLIENT_PER_DAY", 10)  # this test is about the checks, not the cap
     assert _edit(c, {"en": "Kind words", "title_en": "Headline"}).status_code == 200 and seen == ["Kind words\nHeadline"]
     r = _edit(c, {"en": "nasty words"})
     assert r.status_code == 422 and r.json()["detail"] == "content safety flagged the text for hate (severity 4). It stays off air."

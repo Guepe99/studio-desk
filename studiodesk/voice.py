@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -28,7 +29,10 @@ from xml.sax.saxutils import escape
 
 from . import config
 
-RESOURCE, GROUP, REGION = "studiodesk-speech", "rg-studiodesk", "swedencentral"
+# the Speech resource of infra/main.bicep; another deployment sets its own names in the environment
+RESOURCE = os.environ.get("SPEECH_RESOURCE", "studiodesk-speech")
+GROUP = os.environ.get("SPEECH_GROUP", "rg-studiodesk")
+REGION = os.environ.get("SPEECH_REGION", "swedencentral")
 ENDPOINT = f"https://{REGION}.tts.speech.microsoft.com/cognitiveservices/v1"
 OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
 BITRATE = 48_000  # constant bit rate of OUTPUT_FORMAT: duration = bytes * 8 / BITRATE
@@ -122,7 +126,7 @@ def eligible(stories, lang):
             if (s.get("verifier") or {}).get("status") in ELIGIBLE_VERIFIER
             and s.get("default_status") in ELIGIBLE_STATUS
             and s.get("safety") != "flagged"
-            and (s.get("texts") or {}).get(lang, "").strip()]
+            and ((s.get("texts") or {}).get(lang) or "").strip()]
 
 
 def azure_key():
@@ -130,7 +134,7 @@ def azure_key():
     where Entra ID tokens are not accepted (infra/main.bicep, the speech resource)."""
     if os.environ.get("SPEECH_KEY"):
         return os.environ["SPEECH_KEY"]
-    az = os.environ.get("AZ", str(Path.home() / ".local" / "bin" / "az"))
+    az = os.environ.get("AZ") or shutil.which("az") or "az"
     return subprocess.run([az, "cognitiveservices", "account", "keys", "list", "-n", RESOURCE, "-g", GROUP,
                            "--query", "key1", "-o", "tsv"], capture_output=True, text=True, check=True).stdout.strip()
 
@@ -193,16 +197,16 @@ def build(match_id, lang="en", src=None, out=None, synth=None, dry_run=False, lo
         raise SystemExit(f"no voice configured for '{lang}' yet (configured: {', '.join(VOICES)})")
     src = source_dir(match_id, src)
     out = Path(out) if out else config.ROOT / "replays" / match_id
-    stories = json.loads((src / "stories.json").read_text())
+    stories = json.loads((src / "stories.json").read_text(encoding="utf-8"))
     manifest_path = out / "voice.json"
-    old = json.loads(manifest_path.read_text()) if manifest_path.exists() else []
+    old = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else []
     previous = {r["story_id"]: r for r in old if r["lang"] == lang}
     rows, made, others = [], 0, [r for r in old if r["lang"] != lang]
 
     def write_manifest(listed):
         out.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(json.dumps(sorted(others + listed, key=lambda r: (r["story_id"], r["lang"])),
-                                            indent=1) + "\n")
+                                            indent=1) + "\n", encoding="utf-8")
 
     try:
         for s in eligible(stories, lang):

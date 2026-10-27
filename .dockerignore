@@ -7,3 +7,6 @@ data/raw
 web/data
 *.egg-info
 .claude
+.tts
+node_modules
+.env

@@ -544,7 +544,7 @@ export class Booth {
       kinds = [type];
     } else if (type === "cross") kinds = ["cross"];
     else if (type === "clearance" && this.last && ["cross", "shot", "corner_crossed", "freekick_crossed"].includes(this.last.type_name)) kinds = ["clearance"];
-    else if (type === "keeper_claim" && this.last?.type_name?.includes("cross")) kinds = ["keeper_claim"], slots.keeper = e.player_id;
+    else if (type === "keeper_claim" && this.last?.type_name?.includes("cross")) { kinds = ["keeper_claim"]; slots.keeper = e.player_id; }
     if (!kinds) return;
     const p = this.say("pbp", kinds, slots, at, "C");
     if (p) {

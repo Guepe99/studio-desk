@@ -211,7 +211,7 @@ def build(texts, lang, out, lines, render=None, dry_run=False, log=print, names_
     out = Path(out)
     cfg = lines["voices"][lang]
     manifest = out / "booth.json"
-    doc = json.loads(manifest.read_text()) if manifest.exists() else {"clips": []}
+    doc = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {"clips": []}
     keep = {(r["lang"], r["key"]): r for r in doc["clips"] if r["lang"] != lang}  # this language: rebuilt below
     jobs = []
     for k, (role, text) in sorted(texts.items()):
@@ -256,7 +256,7 @@ def main(argv=None):
         return
     if not re.fullmatch(r"M\d{3}|DEMO", a.what):
         sys.exit("what is shared, M001..M999 or DEMO")
-    meta = json.loads(((a.src or config.ROOT / "web" / "data" / a.what) / "meta.json").read_text())
+    meta = json.loads(((a.src or config.ROOT / "web" / "data" / a.what) / "meta.json").read_text(encoding="utf-8"))
     out = a.out or config.ROOT / ("tests/web/booth-demo" if a.what == "DEMO" else f"replays/{a.what}")
     build(match_texts(lines, a.lang, meta), a.lang, out, lines,
           dry_run=a.dry_run, names_=match_names(a.lang, meta))

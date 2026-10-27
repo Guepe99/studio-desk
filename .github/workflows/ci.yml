@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: "22.23.1"
       - run: pip install -c constraints.txt -e '.[dev,agents]'  # tests/test_agents.py imports the Agent Framework
+      - run: ruff check studiodesk scripts tests examples
       # the seed build lets tests/test_replays.py check the committed packs (it fails, not skips, under CI)
       - run: python -m studiodesk.sim build --matches 4 --seed 7 && python -m studiodesk.facts build --all
       - run: pytest -q

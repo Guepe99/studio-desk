@@ -19,7 +19,7 @@ export const TOON = {
   tones: [1.0, 0.8, 0.58],
   edges: [0.42, -0.08],
   soft: 0.02,
-  shadowTint: [0.86, 0.84, 1.08],   // shadows lean blue-violet instead of going grey
+  shadowTint: [0.86, 0.86, 1.08],   // shadows lean blue-violet instead of going grey; green follows red (one vec4 slot)
 };
 
 // GLSL of the ramp, also handy for a test: k(d) = lit above edges[0], mid down to edges[1], then shadow

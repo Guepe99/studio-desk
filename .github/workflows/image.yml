@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       REPO: ${{ github.repository }}

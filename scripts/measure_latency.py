@@ -1,4 +1,6 @@
-"""Times N operator model pings against a deployed Studio Desk. Usage: measure_latency.py URL N
+"""Times N operator model pings against a deployed Studio Desk. Usage: ADMIN_TOKEN=<token> measure_latency.py URL N
+
+ADMIN_TOKEN is the deployment's admin token (the server reads the same variable).
 
 Each ping is one paid Azure OpenAI call on the deployment: never run it from tests."""
 import json
@@ -6,11 +8,13 @@ import math
 import statistics
 import sys
 import time
+import os
 import urllib.request
-from pathlib import Path
 
+if len(sys.argv) != 3 or not os.environ.get("ADMIN_TOKEN"):
+    sys.exit("usage: ADMIN_TOKEN=<token> measure_latency.py URL N")
 url, n = sys.argv[1].rstrip("/"), int(sys.argv[2])
-token = (Path(__file__).resolve().parent.parent / "out" / "admin-token.txt").read_text().strip()
+token = os.environ["ADMIN_TOKEN"]
 model, total = [], []
 for _ in range(n):
     req = urllib.request.Request(f"{url}/api/admin/model-ping", method="POST", headers={"x-admin-token": token})

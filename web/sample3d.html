@@ -15,7 +15,7 @@
 </head>
 <body>
   <main id="app" class="s3d">
-    <div id="frame" aria-label="3D match broadcast">
+    <div id="frame" role="region" aria-label="3D match broadcast">
       <canvas id="view3d"></canvas>
       <div id="stage">
         <div id="scorebug" aria-live="off">
@@ -31,7 +31,7 @@
       </div>
     </div>
     <aside id="side">
-      <div id="frame2d" aria-label="2D pitch, same clock"><canvas id="pitch"></canvas></div>
+      <div id="frame2d" role="region" aria-label="2D pitch, same clock"><canvas id="pitch"></canvas></div>
       <p class="cap">2D view, same clock</p>
       <div id="controls">
         <button id="play" class="ctl icon playing" type="button" aria-label="Pause">

@@ -1,4 +1,4 @@
-"""HTTP API and static site (docs/CONTRACT.md, API). Skeleton: health, one model call, the web page."""
+"""HTTP API and static site (docs/CONTRACT.md, API)."""
 import asyncio
 import hashlib
 import json
@@ -40,12 +40,14 @@ async def _startup(app):
         pass
     # the agents' imports take seconds on half a CPU: done now, the page's 4 s Ask probe finds them ready
     async def ready():
+        await asyncio.to_thread(telemetry.setup)  # Application Insights, only with its connection string
+        if not ENDPOINT:
+            return
         try:
-            await asyncio.to_thread(telemetry.setup)  # Application Insights, only with its connection string
             await asyncio.to_thread(_ask_ready)
         except HTTPException:
             pass  # no model: the probe gets its 503 as before
-    warm = asyncio.create_task(ready()) if ENDPOINT else None
+    warm = asyncio.create_task(ready())
     yield
     if warm:
         warm.cancel()
@@ -329,9 +331,10 @@ def _story_row(conn, match_id: str, story_id: str) -> dict | None:
 
 _edit_safety = None  # the Content Safety client for edits, built on the first edit
 # An edit check costs 1 to 4 of the F0 tier's 5,000 text records a month (config.py, next to Ask's 40 questions a
-# day), so it is counted before the call: an edit the cap stops is refused, never put on air unchecked
-EDIT_CHECKS_PER_DAY = 20
-EDIT_CHECKS_PER_CLIENT_PER_DAY = 10
+# day): 30 x 4 + 40 a day stays under 5,000 in a 31-day month. It is counted before the call: an edit the cap stops
+# is refused, never put on air unchecked. The per-client share is small so that no single address uses up the day.
+EDIT_CHECKS_PER_DAY = 30
+EDIT_CHECKS_PER_CLIENT_PER_DAY = 6
 # shortcut: counted in this process's memory, right for the single replica; move it to a table if the app scales out
 _edit_checks = {"day": "", "all": 0, "by_client": {}}
 # the in-memory daily counters (edit checks, frame-rate reports, decision events): sync routes run on pool threads
@@ -429,8 +432,11 @@ def list_matches():
     for meta in sorted((WEB / "data").glob("*/meta.json")):
         if not re.fullmatch(MATCH_PATTERN, meta.parent.name):
             continue
-        m = json.loads(meta.read_text(encoding="utf-8"))
-        side = {t["side"]: t for t in m["teams"]}
+        try:
+            m = json.loads(meta.read_text(encoding="utf-8"))
+            side = {t["side"]: t for t in m["teams"]}
+        except (ValueError, KeyError, TypeError):
+            continue  # a half-written export: the other matches still list
         out.append({"match_id": m["match_id"], "home": side["home"]["name"], "away": side["away"]["name"],
                     "home_score": m["home_score"], "away_score": m["away_score"]})
     return out
@@ -503,6 +509,9 @@ def post_decision(d: Decision, request: Request, response: Response):
             story = _story_row(conn, d.match_id, d.story_id)
         if story is None:
             raise HTTPException(404, "unknown story for this match")
+        with _runtime() as conn:  # a session over its action cap is refused before it uses an edit check
+            if sid := _session(conn, request, response, create=False):
+                _spend(conn, sid)
         # checked outside the write lock: Content Safety is a network call
         if why := _edit_refused(d.match_id, story, d.edited_text, _client(request)):
             with _runtime(write=True) as conn:  # a refused edit is an action too

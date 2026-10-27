@@ -1,10 +1,10 @@
 """Write web/data/DEMO/: a small invented match in the replay export shapes of docs/CONTRACT.md.
 
-The web page is built against this fixture while the real simulator and export do not exist yet.
+The web page and its tests run on this fixture without the simulated matches or a model run.
 Two 3-minute periods at 10 fps, a 4-4-2 each side, passes, a goal for each team, a saved shot and
 a cue sheet that uses all four graphics for the analyst and casual audiences, plus team, player and kids cues. Every number in a cue is the value of
 a fact it cites; the recaps come from studiodesk/export.py. Stories, their why cards in en, it and
-es, and the agent traces come from scripts/demo_stories.py. Stdlib + numpy only.
+es, and the agent traces come from scripts/demo_stories.py.
 
     .venv/bin/python scripts/make_demo_fixture.py [out_dir]
 """

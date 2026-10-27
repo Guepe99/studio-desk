@@ -305,7 +305,10 @@ def goal_candidates(m, score_fact, event=None):
     """A goal, and a comeback when the scoring team trailed just before this goal and is now level
     (RULES: a team that was behind is now level or ahead). One goal moves the score by one, so a
     comeback fires once per deficit, at the equaliser, and never again on the goals after it.
-    `event` is the shot that scored (from get_events), for where it was taken from."""
+    `event` is the shot that scored (from get_events), for where it was taken from.
+    An own goal gets no story: the goal lines name the player as the scorer for his own team."""
+    if (event or {}).get("result_name") == "owngoal":
+        return []
     shot = [f for kind in ("shot_speed", "shot_distance") for f in m.kind(kind)
             if f["source_event_ids"] == score_fact["source_event_ids"]]
     out = [_cand("goal", score_fact["ts"], [score_fact, *shot], score_fact["team_id"], score_fact["player_id"],
@@ -743,6 +746,8 @@ def _paired_minutes(text, spans, most):
             out[i] = mins[j][2]
             used.add(j)
     return out
+
+
 _ASK_NOT_A_NUMBER = re.compile(
     r"\b(?:first|second)[- ]half\b|\bhalf[- ]time\b|\bhalfway\b|\bfirst[- ]time\b|\bfirst touch\b|"
     r"\bsecond balls?\b|\b(?:first|second) post\b|\bboth (?:teams|sides)\b|"
@@ -1569,7 +1574,7 @@ STYLE_REASONS = ((r"score said", "the score said more than once"),
                  (r"another line already starts", "the same opening as an earlier line"))
 
 
-def reason(problem, story=None):  # noqa: ARG001 - story kept for callers; notes no longer carry fact ids
+def reason(problem):
     """The desk's plain words for one problem: "a distance or place that does not fit the shot"."""
     head = problem.split(":", 1)[0].strip()
     return REASONS.get(head) or next((r for p, r in STYLE_REASONS if re.match(p, problem)), "a failed check")
@@ -1913,7 +1918,7 @@ def risk(story):
         return r  # the score and pass accuracy written by code: the half-time and full-time card always airs
     r += config.AUTO_APPROVE_RISK if story.get("kind") in JUDGEMENT_KINDS else 0.0  # a reading waits, whatever text airs
     r += {"pass": 0.0, "rewritten": 0.05 if story.get("style_only") else 0.2,
-          "template": 0.3, "pending": 0.3}[story["verifier"]["status"]]  # pending: on air, not yet verified  # a rewrite for style alone fixed no fact
+          "template": 0.3, "pending": 0.3}[story["verifier"]["status"]]  # a style-only rewrite fixed no fact; pending: on air, not yet verified
     r += config.AUTO_APPROVE_RISK if story.get("unjudged") else 0.0  # claims without numbers not checked
     r += 0.1 if story["player_id"] else 0.0              # claims about one person
     r += 0.25 * (1 - min(max(story.get("confidence", 0.5), 0.0), 1.0))

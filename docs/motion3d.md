@@ -55,8 +55,8 @@ and cross-faded over 6 frames.
   awareness rig unless `?motion=procedural`.
 - Emotions (`awareness.js`, option `motion`): the facts and events that start an emotion are the
   same as before; only the clip changes. Each stand-in maps to its real clips, picked per player
-  and event by hash (a scorer gets one of four celebrations, teammates a hug, a high five or a
-  jump). A one-shot clip lasts its own length; a longer window chains the next variant.
+  and event by hash (a scorer gets one of four celebrations, teammates a hug, a high five, a
+  jump or arms up). A one-shot clip lasts its own length; a longer window chains the next variant.
 - Full-body clips (knee slide, jump, crouch) play on the whole body only while the player is
   nearly still (under 1.5 m/s) and no ball action or leg pose holds him; otherwise they are masked
   to the upper body over the locomotion. The awareness driver also forces upper body only when the
@@ -68,8 +68,8 @@ and cross-faded over 6 frames.
 
 ## Goalkeeper clips
 
-Six full-body clips for the keeper, generated and retargeted the same way but not yet played by the
-scene (a separate driver will): `GK_Dive_L`, `GK_Dive_R` (full-stretch dive, 2.5 s), `GK_Low_L`,
+Six full-body clips for the keeper, generated and retargeted the same way and played by the keeper
+driver (`web/js/keeper3d-rig.js`, see "The keeper" below): `GK_Dive_L`, `GK_Dive_R` (full-stretch dive, 2.5 s), `GK_Low_L`,
 `GK_Low_R` (low dive, 2 s), `GK_Catch` (catch at chest height, 2 s) and `GK_Tip` (jump to tip the
 ball over, 2.5 s). The prompts are in `scripts/motion/clips.json`; the first prompts, worded as
 "a goalkeeper dives to his left", gave a keeper lying down in place or diving forwards, so the
@@ -106,14 +106,13 @@ them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
 - Limits seen: the jockey is a single sideways shuffle, so it looks the same whichever way the
   defender actually drifts. A celebration often plays on the upper body only, because the tracked
   scorer is still running (above 1.5 m/s): in the celebration still the scorer runs with his hands
-  to his face, while the procedural still shows both arms up. The goalkeeper clips are in the glb
-  but nothing in the scene plays them yet.
+  to his face, while the procedural still shows both arms up.
 - A bug found on the way, present in the procedural mode too: when the first two animations
   Babylon blends on a skeleton both have weight 0, its weighted slerp divides 0 by 0 and the bones
   become NaN, so the player disappears. Clips are now advanced only while their weight is above 0.
   The 20 s sweep found 40 NaN frames on the motion page and 1 on the procedural page before the
   fix, 0 after it.
-- Frames per second, software WebGL on this machine, the same 20 s window measured in the order
+- Frames per second, software WebGL on a shared 2-vCPU server, the same 20 s window measured in the order
   procedural, motion, procedural, motion: 5.1, 15.6, 12.4, 15.4 (an earlier run: 24.0, 11.5,
   29.5). The noise between runs is larger than any difference between the modes, so the clips
   cost no measurable frame rate here; a real GPU was not measured.
@@ -137,7 +136,7 @@ them 0.44 m. Foot slide with the root curve applied: 0.01 to 0.09 m/s.
 
 ## Kicks with the whole body
 
-Until tappa 3 only the kicking leg moved (`LEG_KEYS` in `web/js/ball3d.js`), so a shot and a pass
+Until stage 3 only the kicking leg moved (`LEG_KEYS` in `web/js/ball3d.js`), so a shot and a pass
 looked the same from the broadcast camera: the trunk and the arms kept the run. Now every leg
 action also has keys for the standing leg, the pelvis, the trunk and both arms (`SUPPORT_KEYS`,
 `BODY_KEYS`, `bodyPose`), driven by the same ball events and the same weight, which fades in over
@@ -167,7 +166,7 @@ and players of the football games complain first about kicks without a plant ste
 ### What we adopted
 
 Times are seconds from foot-ball contact, angles degrees, for a right-foot kick (a left-foot kick
-is mirrored). The windows are the ones of `docs/ball3d.md`: 0.5 s either side for the shot and
+is mirrored). The windows are `LEG_WINDOW` in `web/js/ball3d.js`: 0.5 s either side for the shot and
 the long ball, 0.42 and 0.4 for the pass.
 
 | | Shot | Long ball, cross | Short pass |
@@ -210,7 +209,7 @@ is part of the reach measured on the probe, so the foot still meets the ball.
 
 ## The goal
 
-The review of the tappa 3 clip found that the goal did not read as a goal: the ball stopped on
+The review of the stage 3 clip found that the goal did not read as a goal: the ball stopped on
 the line (the tracking ball ends at about 104.77 m), the net stayed flat, the keeper crouched,
 nobody reacted for a second and the camera cut to a frozen close-up. This section is the research
 behind the fix and what was built. The data and the simulator are unchanged: everything here is
@@ -262,7 +261,7 @@ so the reactions start in it.
   of a celebrating arm); the team-mate sprinting over steps round whoever is in his way, so a
   player kneeling in his path is not shoved off his knees.
 - **No fact chips on TV** (`web/js/sample3d.js`): the 3D page asks the graphics for
-  `v_showFactIds: false`; the 2D analyst page keeps them.
+  `v_showFactIds: false`, as the 2D page does (`web/js/app.js`); the desk shows each fact's label instead.
 - **Cameras** (`web/js/scene3d/camera.js`, `web/js/scene3d/sightline.js`). Camera 1 tightens to
   30 m and leans towards the goal mouth inside 30 m of a goal line; on a goal it punches in from
   1.6 s before (the strike) to 16 m across, aimed 4 m out from where the ball enters the net, so the

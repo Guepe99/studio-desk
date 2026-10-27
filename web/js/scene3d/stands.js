@@ -152,8 +152,8 @@ export function buildStadium(scene, match, profile, rnd) {
 
   const tiers = [], shells = [], roofs = [], fronts = [];
   const people = [];   // [worldX, worldY, worldZ, rotY, end, row]
-  // gantry: the near side, where the broadcast camera sits; no crowd in front of it
-  const stand = (len, front, depth, rotY, end, gantry = false) => {
+  // cameraSide: the near side, where the broadcast camera sits; no crowd in front of it
+  const stand = (len, front, depth, rotY, end, cameraSide = false) => {
     const root = new B.TransformNode("stand", scene);
     root.rotation.y = rotY;
     const rake = Math.atan2(15.5, depth), slope = Math.hypot(15.5, depth);
@@ -173,7 +173,7 @@ export function buildStadium(scene, match, profile, rnd) {
     const c = Math.cos(rotY), s = Math.sin(rotY);
     // no crowd under the camera: the nearest heads would fill the bottom of the broadcast frame
     for (const [x, d, h, row] of seatGrid(len, depth, profile.crowd, rnd)) {
-      if (gantry && Math.abs(x) < GANTRY_HALF) continue;
+      if (cameraSide && Math.abs(x) < CAMERA_GAP_HALF) continue;
       const z = front + d;
       people.push([x * c + z * s, h, -x * s + z * c, rotY, end, row]);
     }
@@ -211,7 +211,7 @@ export function buildStadium(scene, match, profile, rnd) {
       }
     }
   };
-  const GANTRY_HALF = 40;
+  const CAMERA_GAP_HALF = 40;
   stand(2 * FRONT_E, FRONT_S, SIDE_D, 0, "side");                // far side
   stand(2 * FRONT_E, FRONT_S, SIDE_D, Math.PI, "side", true);    // near side
   stand(2 * FRONT_S, FRONT_E, END_D, Math.PI / 2, "away");   // right end (x > 0)

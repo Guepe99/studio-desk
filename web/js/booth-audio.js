@@ -61,8 +61,10 @@ export class BoothAudio {
   /** The plan for this language and the studio clips this visitor can hear (host.cues is the visitor's sheet). */
   plan() {
     const { lang, audience } = this.state, desk = this.voice.desk;
-    // stories held, rejected or with the AI off never speak, so the booth does not leave room for them
-    const rows = (this.voice.rows ?? []).filter((r) => r.lang === lang && desk.byId.has(r.story_id) && desk.onAir(desk.byId.get(r.story_id)));
+    // stories held, rejected, with the AI off or edited in this language never speak (voice.js allowed()), so the
+    // booth does not leave room for them and talks there itself
+    const rows = (this.voice.rows ?? []).filter((r) => r.lang === lang && desk.byId.has(r.story_id) && desk.onAir(desk.byId.get(r.story_id))
+      && !desk.decisions.get(r.story_id)?.edited_text?.[lang]);
     const id = `${lang}|${audience}|${rows.map((r) => r.story_id).join()}`;
     if (!this.plans.has(id)) {
       const durations = new Map();

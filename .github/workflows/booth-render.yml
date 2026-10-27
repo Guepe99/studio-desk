@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12.3"
           cache: pip
-      - run: pip install -e .
+      - run: pip install -c constraints.txt -e .
       - run: |
           python -m studiodesk.sim build --matches 4 --seed 7 && python -m studiodesk.facts build --all
           for m in M001 M002 M003 M004; do python -m studiodesk.export "$m"; done
@@ -59,7 +59,7 @@ jobs:
             ~/.cache/pip
           key: kokoro-${{ hashFiles('scripts/booth-kokoro-setup.sh', 'scripts/booth-kokoro-requirements.txt') }}
       - run: scripts/booth-kokoro-setup.sh  # venv, model and voices, checked by SHA256
-      - run: pip install -e .
+      - run: pip install -c constraints.txt -e .
       - run: python -m studiodesk.booth "${{ matrix.what }}" --lang "${{ matrix.lang }}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:

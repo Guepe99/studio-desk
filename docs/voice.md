@@ -35,8 +35,8 @@ and narration, Ximena's multilingual one for narration; neither tag is a comment
 Spain Spanish voice matches the phrasebook, which is written in Spain Spanish ("el área pequeña",
 "zapatazo"). Not chosen: the `MAI-Voice-2` voices (`it-IT-Luca`, `es-ES-Marta`), whose `excited` and
 `shouting` styles would suit a goal, because they are a different, newer family we have not
-priced or tried on F0; worth a listen if the product owner wants more energy. Nobody has listened to the
-Italian and Spanish clips yet: the product owner should, as for English.
+priced or tried on F0. Known limit: the Italian and Spanish clips have not been checked by ear, as the
+English ones were.
 
 ## What is read
 
@@ -72,9 +72,9 @@ Italian and Spanish clips yet: the product owner should, as for English.
 ## In the image
 
 `Dockerfile` copies `replays/` and lays each `replays/<m>/` over `web/data/<m>/` after the
-export, so `voice.json` and `voice/` land next to the replay files. To try it locally without
-Docker, symlink them: `ln -s ../../../replays/M001/voice.json web/data/M001/` and the same for
-`voice/` (the static server of the tests follows symlinks; the API's StaticFiles does not).
+export, so `voice.json` and `voice/` land next to the replay files. Locally, the
+`cp -r replays/. web/data/` step of the README's [Run it locally](../README.md#run-it-locally) does the
+same.
 
 ## In the page (`web/js/voice.js`)
 

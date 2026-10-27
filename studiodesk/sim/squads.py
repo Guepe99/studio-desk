@@ -1,6 +1,4 @@
 """Invented clubs, venues, crests and squads. Every name passes studiodesk.names.is_forbidden."""
-import numpy as np
-
 from ..names import is_forbidden
 
 PLACES = ["Harbour Vale", "Kestrel Bay", "Ashmoor", "Redwick", "Larkhaven", "Corvane", "Wrenmouth",

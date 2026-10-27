@@ -1,14 +1,15 @@
 """Stories, story cues and agent traces for the DEMO fixture, in the shapes of docs/CONTRACT.md.
 
-What the agents (studiodesk/agents) will write, made by hand from the fixture's own facts so the
-control desk can be built and tested before they exist. Every number in a story text or a cue is
+What the agents (studiodesk/agents) write, made by hand from the fixture's own facts so the
+control desk can be tested without a model run. Every number in a story text or a cue is
 the value of a fact the story cites. Token counts, latencies and costs are illustrative.
 
     stories, cues, traces = build(meta, events, facts, cues)   # called by make_demo_fixture.py
 """
 from datetime import datetime, timedelta, timezone
 
-AUTO_APPROVE_RISK = 0.35  # studiodesk/config.py; repeated so the script runs without the package
+from studiodesk.config import AUTO_APPROVE_RISK  # make_demo_fixture.py puts the package on the path
+
 MODEL = "gpt-5-mini"
 PRICE_IN, PRICE_OUT = 0.25e-6, 2.0e-6  # USD per token, illustrative
 RUN_ID = "R-000001"

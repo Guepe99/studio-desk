@@ -15,12 +15,16 @@ class MatchClock:
     def __init__(self, match_id, speed=1.0, conn=None):
         own = conn is None
         conn = conn or db.matches()
-        self.events = [dict(r) for r in conn.execute(
-            "SELECT * FROM events WHERE match_id = ? ORDER BY ts, event_id", (match_id,))]
-        self.end = conn.execute("SELECT period1_s + period2_s FROM matches WHERE match_id = ?",
-                                (match_id,)).fetchone()[0]
-        if own:
-            conn.close()
+        try:
+            row = conn.execute("SELECT period1_s + period2_s FROM matches WHERE match_id = ?", (match_id,)).fetchone()
+            if row is None:
+                raise KeyError(f"unknown match {match_id}")
+            self.end = row[0]
+            self.events = [dict(r) for r in conn.execute(
+                "SELECT * FROM events WHERE match_id = ? ORDER BY ts, event_id", (match_id,))]
+        finally:
+            if own:
+                conn.close()
         self.match_id, self.speed, self.now = match_id, speed, 0.0
 
     def _wait(self, ts, start):

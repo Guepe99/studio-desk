@@ -97,7 +97,7 @@ What ships:
 
 **Does the anime case avoid it? No.** The cause is the post-processing, not the style of the input.
 An anime image has the same thin parts: hair spikes, ears, fingers, the shirt hem. Our parallel
-TRELLIS trial (branch feat/trellis3d) got the double wall again, together with flat hands and thin
+TRELLIS trial (branch archive/trellis3d) got the double wall again, together with flat hands and thin
 arms. A voxel remesh to one shell would fix the wall, but it does not give:
 - clean eye and mouth geometry, which a face needs to change expression;
 - a separate hair mesh to recolour;
@@ -127,7 +127,7 @@ at run time.
 - The head gets one uniform scale of 1.4, for anime proportions without chibi.
 - VRoid's spine runs near the back and its arms sit behind the chest, so on the mannequin's clips
   the body stooped. The spine, chest, neck and head are tilted back about the pelvis (3 to 8
-  degrees, `TILT`), and the same idle clip stands the anime body as upright as today's footballer.
+  degrees, `TILT`), and the same idle clip stands the anime body as upright as the realistic footballer.
 - Each vertex moves by the weighted sum of its joints' maps, as skinning would move it.
 - Normals and blend-shape deltas follow the linear part.
 - The weights are moved onto the mannequin's 65 joints, keeping the four largest.
@@ -180,7 +180,7 @@ joints of the anime body part of the way back to their rest pose (`relaxJoints`)
 - the fingers by 45%, so the hands hang in a soft curl instead of in the mannequin's fists (at 70%
   they hung flat and fanned out), except while the jumping fist celebration plays;
 - the upper spine, neck and head by 50% while a dejected motion clip plays. The yellow player in
-  the goal still is on `M_crouch_head_down`, which today's footballers play too; on a 1.4x head
+  the goal still is on `M_crouch_head_down`, which the realistic footballers play too; on a 1.4x head
   with big hair its head-down pose read as a slump.
 
 **Faces in the match.** `scene3d.js` calls `p.face(r, v, ts)` after the clips:
@@ -205,9 +205,7 @@ toon terminator went polygonal in the close-ups. Since 19 Oct the near body is V
 (8,084 triangles) and the near hair keeps 45%; the far LOD did not change. Measured on the DEMO
 sample, low profile, software WebGL 1, two runs each: 3.99 and 3.86 frames/s before, 3.64 and
 3.96 after (291,407 against 431,199 vertices in the scene); `anime3d-shots` 5.18 against 5.00.
-The difference is inside the noise of this shared server. The fingers curl more since the same day (45% back to rest, see above). Same frames before and
-after both changes: `out/shots/motion3d-anime-soft-pair.png` (players 2 and 3, zoomed) and
-`motion3d-anime-soft-clips-pair.png` (idle, jog, sprint).
+The difference is inside the noise of a shared server. The fingers curl more since the same day (45% back to rest, see above).
 
 ## Results
 
@@ -218,17 +216,19 @@ Stills (`tests/web/anime3d-shots.mjs`, software WebGL 1): `out/shots/anime3d-com
 - The faces read as anime in the close-ups: big eyes with highlights, small nose, line mouth;
   determined, joy (closed eyes, open mouth) and frustration differ clearly.
 - Ten players in the variants still give ten style and colour pairs (4 styles, 6 colours there).
-- At the broadcast distance all 22 players are on the far body (one draw each).
+- A player switches to the far body (one draw) under `LOD_COVERAGE` in `web/js/players3d.js`, 0.08% of
+  the screen or about 45 px of height in a 720 px frame, so the wide broadcast shot keeps the near body.
 - Frames/s, low profile, software WebGL 1, 22 players on, 1100x618, four fresh pages in turns
   (default, anime, default, anime), every frame read back so the GPU work is counted:
-  4.42 and 4.05 with today's footballers, 4.86 and 4.61 with the anime ones.
+  4.42 and 4.05 with the realistic footballers, 4.86 and 4.61 with the anime ones.
   An earlier count without the read back gave 6.40 and 10.32 against 32.70 and 27.63. It only
-  measured how fast the page queued frames: today's footballers happen to wait for the GPU inside
+  measured how fast the page queued frames: the realistic footballers happen to wait for the GPU inside
   the render call (140 ms of CPU time per frame), the anime ones do not (3 ms).
 - Where the time goes, one frame read back: the stadium alone takes 130 to 150 ms, the 22 players
   add 33 to 62 ms with either look. Turning the toon shading or the outline off changes nothing
-  measurable at the broadcast distance, where every player is on the far body. On this shared
-  server single frames vary by up to 50%, so only the four-turn averages are worth comparing.
+  measurable at the broadcast distance (measured with the earlier LOD switch, when every player there
+  was on the far body). On a shared server single frames vary by up to 50%, so only the four-turn
+  averages are worth comparing.
 
 - Feet (`tests/web/feet3d.mjs`, every boot's lowest vertex against the grass): before the fix the
   soles sank on both looks, 2.1 cm at the median when planted and up to 21 cm in single frames.

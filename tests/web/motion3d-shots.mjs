@@ -81,7 +81,7 @@ const plan = (page) => page.evaluate(() => {
     if (!best || pts.length > best.n) best = { c, n: pts.length };
   }
   // the scorer as the layer found him (the celebrate emotion of this goal)
-  const cel = tl.goal === null ? null : aw.emotions.find((e) => e.kind === "celebrate" && Math.abs(e.t0 - tl.goal - 0.3) < 1e-6);
+  const cel = tl.goal === null ? null : aw.emotions.find((e) => e.kind === "celebrate" && e.t0 >= tl.goal && e.t0 - tl.goal < 0.5);
   return { defend: best, goal: cel ? tl.goal - tl.from : null, scorer: cel?.i ?? null };
 });
 const celebCam = (ts, sc, m) => {

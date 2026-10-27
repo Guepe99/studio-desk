@@ -6,7 +6,6 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from studiodesk import db
 from studiodesk import mcp_server as srv
 from studiodesk.export import export
 from studiodesk.facts import season as sf

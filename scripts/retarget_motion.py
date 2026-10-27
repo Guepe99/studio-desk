@@ -83,13 +83,14 @@ def m2q(m):
             r = np.sqrt(1 + np.trace(M, axis1=-2, axis2=-1)) * 2
             q[s] = np.stack([(M[:, 2, 1] - M[:, 1, 2]) / r, (M[:, 0, 2] - M[:, 2, 0]) / r, (M[:, 1, 0] - M[:, 0, 1]) / r, r / 4], -1)
         else:
-            i = c - 1; j = (i + 1) % 3; l = (i + 2) % 3
-            r = np.sqrt(1 + M[:, i, i] - M[:, j, j] - M[:, l, l]) * 2
+            i = c - 1
+            j, m2 = (i + 1) % 3, (i + 2) % 3
+            r = np.sqrt(1 + M[:, i, i] - M[:, j, j] - M[:, m2, m2]) * 2
             v = np.empty((len(M), 4))
             v[:, i] = r / 4
             v[:, j] = (M[:, j, i] + M[:, i, j]) / r
-            v[:, l] = (M[:, l, i] + M[:, i, l]) / r
-            v[:, 3] = (M[:, l, j] - M[:, j, l]) / r
+            v[:, m2] = (M[:, m2, i] + M[:, i, m2]) / r
+            v[:, 3] = (M[:, m2, j] - M[:, j, m2]) / r
             q[s] = v
     return q / np.linalg.norm(q, axis=-1, keepdims=True)
 
@@ -106,7 +107,6 @@ def continuous(q):
 def slerp(a, b, u):
     d = np.sum(a * b, -1, keepdims=True)
     b = np.where(d < 0, -b, b)
-    d = np.abs(d)
     out = a * (1 - u) + b * u   # nlerp is enough for neighbouring poses
     return out / np.linalg.norm(out, axis=-1, keepdims=True)
 
@@ -183,7 +183,8 @@ class Skeleton:
                 return
             if i in self.parent and self.parent[i] in self.joints:
                 visit(self.parent[i])
-            seen.add(i); out.append(i)
+            seen.add(i)
+            out.append(i)
         for i in self.joints:
             visit(i)
         return out
@@ -350,7 +351,7 @@ def write_glb(clips, sk: Skeleton, path):
         if normalized:
             a["normalized"] = True
         if minmax:
-            a["min"] = [float(arr.min())]; a["max"] = [float(arr.max())]
+            a["min"], a["max"] = [float(arr.min())], [float(arr.max())]
         accs.append(a)
         return len(accs) - 1
 

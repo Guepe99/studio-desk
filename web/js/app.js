@@ -584,6 +584,7 @@ function onAirStory() {
 
 let lastFrame = null;
 function tick(now) {
+  requestAnimationFrame(tick); // first: a throw below costs one frame, not the replay
   // a stall of the page (a 3D replan) keeps the clock in real time; a gap over 1 s is a hidden tab
   const gap = lastFrame === null ? 0 : (now - lastFrame) / 1000;
   let dt = gap > 1 ? 0.1 : gap;
@@ -617,7 +618,6 @@ function tick(now) {
   const range = $("#seek-range");
   if (document.activeElement !== range || state.playing) range.value = String(state.ts);
   $("#seek-marks .fill").style.width = `${(state.ts / end) * 100}%`;
-  requestAnimationFrame(tick);
 }
 
 // The Radar box takes the first spot along the foot of the frame (centre, right, left) that no graphic
@@ -731,8 +731,9 @@ function wireControls() {
   });
   // Space toggles play with focus in the broadcast or its controls (a single-key shortcut scoped to them,
   // WCAG 2.1.4); keyup is swallowed too so a focused button does not click as well. On the gear Space opens
-  // the settings menu, in the menu it picks the item (a menu button), on the minimap it swaps the pictures.
-  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls") && !e.target.closest('#settings-wrap, #radar, #proof-bar');
+  // the settings menu, in the menu it picks the item (a menu button), on the minimap it swaps the pictures,
+  // and on any other button (Voice, a goal, Next key moment) it presses that button (WCAG 2.1.1).
+  const spaceKey = (e) => e.code === "Space" && e.target.tagName !== "SELECT" && !!e.target.closest?.("#frame, #controls") && !e.target.closest('#settings-wrap, #radar, #proof-bar, button:not(#play), [role="button"]');
   window.addEventListener("keydown", (e) => {
     if (!spaceKey(e)) return;
     e.preventDefault();
@@ -749,7 +750,7 @@ function wireControls() {
     else if (act === "step") seek(state.ts + x);
     else if (act === "fraction") seek(end * x);
     else if (act === "voice") { if (!$("#voice").hidden) $("#voice").click(); }
-    else if (act === "fullscreen") (document.fullscreenElement ? document.exitFullscreen() : $("#app").requestFullscreen()).catch(() => {});
+    else if (act === "fullscreen") (document.fullscreenElement ? document.exitFullscreen?.() : $("#app").requestFullscreen?.())?.catch(() => {}); // old Safari: no Promise
     else if (act === "keys") $("#keys").showModal();
     range.value = String(state.ts);
   });
@@ -910,7 +911,8 @@ async function main() {
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
-  await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
+  // the voice and Ask buttons may appear; one that fails to load does not hold back the booth and the audio hook
+  for (const r of await Promise.allSettled([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()])) if (r.status === "rejected") console.error(r.reason);
   // the booth and the crowd follow the same button (docs/commentary.md)
   const b = new BoothAudio({ base: `data/${matchId}`, match, host, state, voice: v });
   if (await b.load()) {

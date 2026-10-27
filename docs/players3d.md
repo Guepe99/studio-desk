@@ -2,7 +2,8 @@
 
 `web/vendor/players/footballer.glb` replaces the grey mannequin with a dressed footballer. It is
 built offline by `scripts/build_footballer.py` and dressed per player at load time by
-`web/js/players3d.js`. `?players=mannequin` on `sample3d.html` brings the old look back.
+`web/js/players3d.js`. The 3D view opens on the anime look ([docs/anime3d.md](anime3d.md));
+`?players=footballer` shows this one and `?players=mannequin` the old mannequin.
 
 ## What is in the file
 
@@ -53,8 +54,8 @@ Every number colour passes a contrast check (WCAG ratio at least 2.5, otherwise 
 white). The data contract has no captain field, so the scene never sets the armband today; the
 stills test paints it on one player with `paintShirt`.
 
-The near body hands over to the far body when the player covers less than 0.6 % of the screen
-(about 120 px of height in a 720 px frame). All near primitives share the bounds of the skin part,
+The near body hands over to the far body when the player covers less than 0.08 % of the screen
+(`LOD_COVERAGE` 0.0008, about 45 px of height in a 720 px frame). All near primitives share the bounds of the skin part,
 so they switch together.
 
 ## Sources and licences
@@ -70,7 +71,7 @@ Considered and not used:
   skins...) are shared under CC0" ([licence](https://static.makehumancommunity.org/about/license.html),
   [FAQ on closed-source use](https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html)).
   Its bodies and skins are closer to a real person than the UBC one, but it has its own
-  skeleton and needs Blender to export and rebind, which this machine does not have. The rebind in
+  skeleton and needs Blender to export and rebind, which the build machine does not have. The rebind in
   `build_footballer.py` would take a MakeHuman body the same way; it is the first upgrade to try.
 - **Paid store models** (the product owner's reference is one): their licences forbid redistributing the
   model in an extractable form, and this repository is public.
@@ -104,5 +105,3 @@ Considered and not used:
   The collar is a painted band.
 - Boots are smoothed feet: no sole, no studs.
 - The hands are closed fists in most clips (the mannequin's animation).
-- Babylon 9 blends a bone to NaN when the first two clips evaluated in a frame both weigh 0;
-  the stills test only evaluates weighted clips. The scene's own clip blending should do the same.

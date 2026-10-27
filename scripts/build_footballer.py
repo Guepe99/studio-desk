@@ -11,7 +11,7 @@ eyes), cloth is smoothed and pushed out a little over the skin, shirt, shorts an
 the kit textures the page draws, and a decimated one-draw copy is added for the far view. The clips of mannequin.glb are
 copied in unchanged, so the scene loads this file in its place.
 
-    .venv/bin/python scripts/build_footballer.py ~/tools/ubc/"Universal Base Characters[Standard]"
+    .venv/bin/python scripts/build_footballer.py <path-to-UBC-download>
 
 Needs ffmpeg (textures) and npx with @gltf-transform/cli 4.5.1 (simplify, quantize).
 """
@@ -20,7 +20,6 @@ import base64
 import json
 import struct
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -574,4 +573,5 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("ubc", help='folder "Universal Base Characters[Standard]" of the unzipped pack')
     ap.add_argument("--out", type=Path, default=OUT)
-    build(ap.parse_args().ubc, ap.parse_args().out)
+    a = ap.parse_args()
+    build(a.ubc, a.out)

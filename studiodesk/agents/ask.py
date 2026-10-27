@@ -200,7 +200,7 @@ def stories_on_air(match_id, ts, p1, names):
                      "minute": rules.stoppage(rules.minute(s["ts"], period, p1), period),
                      "team": names.get(s.get("team_id")), "player": names.get(s.get("player_id")), "fact_ids": ids}
             # only an analysis the AI judge passed; a pack from before `analysis_judged` has none unjudged
-            # (the judge answered every round of the committed packs, traces.json, checked 26/10)
+            # (the judge answered every round of the committed packs, traces.json)
             if s.get("analysis_en") and verifier.get("analysis_judged", True) is True:
                 story["analysis"] = s["analysis_en"]
             out.append(story)

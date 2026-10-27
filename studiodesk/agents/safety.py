@@ -20,7 +20,8 @@ from collections import Counter
 from . import rules
 
 API_VERSION = "2024-09-01"
-RESOURCE = ("studiodesk-safety", "rg-studiodesk")  # account, resource group
+# account and resource group of infra/main.bicep, used only when no endpoint is set; another deployment sets its own
+RESOURCE = (os.environ.get("CONTENT_SAFETY_RESOURCE", "studiodesk-safety"), os.environ.get("CONTENT_SAFETY_GROUP", "rg-studiodesk"))
 MAX_CALLS = 100
 FLAG_SEVERITY = 2
 # A producer's edit, and a visitor's question or answer in Ask, is flagged only from severity 4 (medium): at 2, the

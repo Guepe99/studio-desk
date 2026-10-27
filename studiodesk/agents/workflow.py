@@ -198,10 +198,10 @@ class InProcessMCPTool(MCPTool):
         raise NotImplementedError
 
 
-
 def _n(k, one, many=None):
     """"1 story", "2 stories": a count with its noun for the traces."""
     return f"{k} {one if k == 1 else many or one + 's'}"
+
 
 def _tool_text(result):
     if result.structuredContent is not None:

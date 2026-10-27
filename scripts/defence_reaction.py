@@ -44,7 +44,7 @@ def measures(meta, events, pos, ball):
     is_gk = np.array([p in gk for p in ents])
     p2 = ts >= meta["period1_s"]
     out = {}
-    near_d, cy, by, line, bdist, away, facing, near_n, run_d, run_close, cf = [], [], [], [], [], [], [], 0, [], [], []
+    near_d, cy, by, line, bdist, facing, near_n, run_d, run_close, cf = [], [], [], [], [], [], 0, [], [], []
     vel = np.zeros_like(xy)
     vel[2:-2] = (xy[4:] - xy[:-4]) / (4 / fps)
     for f in range(0, F, 2):

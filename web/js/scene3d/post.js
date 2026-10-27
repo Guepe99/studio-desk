@@ -123,7 +123,8 @@ export function setupPost(scene, cameras, profile) {
   const setDof = (on) => {
     if (on === dof || !pipe.depthOfFieldEnabled) return;
     dof = on;
-    const mgr = scene.postProcessRenderPipelineManager, next = (pipe.bloomEnabled ? pipe.bloom._effects[0] : null) ?? pipe.imageProcessing;
+    // the private fields below (_effects, _name, _depthRenderer) were checked against the vendored Babylon 9.29.0
+  const mgr = scene.postProcessRenderPipelineManager, next = (pipe.bloomEnabled ? pipe.bloom._effects[0] : null) ?? pipe.imageProcessing;
     if (on) mgr.enableEffectInPipeline("broadcast", pipe.depthOfField._name, cameras); else mgr.disableEffectInPipeline("broadcast", pipe.depthOfField._name, cameras);
     pipe.depthOfField._effects[0].autoClear = on;
     if (next) next.autoClear = !on;

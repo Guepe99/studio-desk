@@ -254,11 +254,11 @@ export function dressFootballer(lib, pid, { team, gk = false, keeper, shirt = nu
 // --- anime footballers (?players=anime, docs/anime3d.md) ---------------------------------------------
 // Hair styles of anime.glb and anime colours. Original characters only: no style and colour pair
 // copies a known anime or game character (spiky hair never takes the two palest colours). Natural, muted
-// colours only: the owner found green, blue and bright red hair too loud (18/10/2026).
+// colours only: green, blue and bright red hair read as too loud on the pitch.
 export const ANIME_HAIR = ["hair_messy", "hair_spiky", "hair_swept", "hair_crop"];
 // natural tones from black to platinum, any of them on any skin; no copper or auburn (under the
-// toon light auburn reads as copper), which the owner found unrealistic, and not only dark ones,
-// which read as too uniform (18/10/2026)
+// toon light auburn reads as copper, which looks unrealistic), and not only dark ones, which read as
+// too uniform
 export const ANIME_HAIR_COLOURS = ["#1d1d26", "#3a2a22", "#5e3a26", "#8a5a36", "#a8783f", "#c9a25e", "#e2c88e", "#d9d3c9"];
 export const EYE_COLOURS = ["#3a6fd8", "#2f9a6a", "#8a5a2b", "#6b4bb8", "#c07a1e", "#3d4a5c"];
 // dark or neutral boots: the face and the hair carry the colour, not the feet

@@ -83,10 +83,10 @@ def azure_client(endpoint=None):
 
     endpoint = endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
     if not endpoint:
-        raise SystemExit("set AZURE_OPENAI_ENDPOINT=https://<account>.openai.azure.com (or use --fake)")
+        raise RuntimeError("set AZURE_OPENAI_ENDPOINT=https://<account>.openai.azure.com (or use --fake)")
     token = get_bearer_token_provider(DefaultAzureCredential(exclude_interactive_browser_credential=True),
                                       "https://cognitiveservices.azure.com/.default")
-    try:  # the provider caches the token: fetched now, the first story waits for the model only (16 s live on 20/10)
+    try:  # the provider caches the token: fetched now, the first story waits for the model only
         token()
     except Exception:  # noqa: BLE001 - the first model call tries again and its failure is handled there
         pass

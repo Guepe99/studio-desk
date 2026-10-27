@@ -24,6 +24,7 @@ def connect(path: Path, readonly: bool = False) -> sqlite3.Connection:
                 if conn.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
                     conn.execute("PRAGMA journal_mode=WAL")
                     conn.executescript(SCHEMA.read_text())
+                    # CREATE IF NOT EXISTS does not add columns to an existing table: each new column needs its ALTER here
                     if "story_ids" not in {r[1] for r in conn.execute("PRAGMA table_info(traces)")}:  # runtime db from before
                         conn.execute("ALTER TABLE traces ADD COLUMN story_ids TEXT DEFAULT '[]'")
                     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

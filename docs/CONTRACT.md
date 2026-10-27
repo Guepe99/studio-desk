@@ -66,8 +66,8 @@ control of the ball, or NULL.
 | `top_sprint` | a sprint above 34 km/h |
 | `comeback` | a team that trailed draws level: once per deficit, at the equaliser |
 
-The table is only read by the evaluation script and the dataset export. The MCP server and the
-agents never read it.
+The table is only read by `scripts/eval_stories.py` and `scripts/measures.py`. The MCP server and
+the agents never read it.
 
 ### Calibration files (committed, produced once by `scripts/calibrate.py`)
 
@@ -128,7 +128,8 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
 - `audit`: who did what, when, with which model, tokens and cost.
 - `session_decisions`: per-visitor approvals. The base replay never changes, and each visitor
   sees their own overlay.
-- `sessions` and `usage_daily`: the caps for the "live" button.
+- `sessions` and `usage_daily`: visitor sessions and the day's model cost; `studiodesk/api.py`
+  stops Ask the studio once that cost passes `DAILY_COST_STOP_USD`.
 
 ## Audiences, languages, graphics
 
@@ -201,11 +202,8 @@ button.
 | GET | `/api/decisions?match_id=` | this visitor's overlay |
 | DELETE | `/api/decisions?match_id=&story_id=` | undo: drops this visitor's decision on the story (audit action `undo`) |
 | POST | `/api/kill` | `{on: bool}`: per-session AI kill switch |
-| POST | `/api/live` | starts a live run if the caps allow; otherwise 429 with the reason |
-| GET | `/api/live/{run_id}/stream` | server-sent events: stories, cues, traces as they happen |
-
-Live caps (`studiodesk/config.py`): 2 runs per session per day, 20 per day for the whole site,
-and an automatic stop once the day's cost passes $25.
+| POST | `/api/live` | 501: live runs are not available, only the replay |
+| GET | `/api/live/{run_id}/stream` | 501, as `/api/live` |
 
 ### Control desk additions (feat/desk, additive)
 
@@ -361,14 +359,14 @@ Agents only learn about an event when the clock releases it, in replay generatio
 
 ## Page additions (feat/moments, additive)
 
-- "Next key moment": a button that always moves forward: it seeks to 3 seconds before the first
+- "Next key moment": a button that always moves forward: it seeks to 6 seconds before the first
   key moment of the current audience whose lead-in starts more than 0.5 s after the current time.
   A key moment is a story cue (template cues without a story are skipped); a story cue that starts
   while an earlier story cue, of any story, is still on air (or within 1 s of its end) belongs to
   the same moment. A jump faster than 1x sets the speed back to 1x. The label is "Next key moment"
   while the stories load, "No more key moments" past the last one and "No key moments" when the
   sheet has none (both aria-disabled, and a press says so in a polite live region). With the AI
-  graphics off there are no story cues: a key moment is then a goal (a `score` fact, not AI), 3 seconds
+  graphics off there are no story cues: a key moment is then a goal (a `score` fact, not AI), 6 seconds
   before it, and the labels are "Next goal", "No more goals" and "No goals". The N key does
   the same, and Space plays and pauses, only with the focus in the broadcast frame or its controls
   (WCAG 2.1.4) and without Ctrl, Alt, Meta or Shift; the frame takes the focus once the page loads.
@@ -466,7 +464,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   pseudo-stories. They are decided in the browser tab only and never sent to `/api/decisions`, which
   takes `S-` ids.
 
-## Judge fixes (fix/judge-desk, additive)
+## Team totals, edit checks and missed stories (additive)
 
 - Fact kinds: `team_shots`, `team_shots_on_target`, `team_corners` (a running count per team since
   kick-off: one fact at 0 at kick-off and one at every change, `source_event_ids` the events counted)
@@ -491,7 +489,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - The desk's audit total from a replay counts agent steps that used the model (the traces); the
   audit table, and so docs/MEASURES.md, counts model calls.
 
-## Judge 2 fixes (fix/judge2-desk, additive)
+## Scorers, pass accuracy and decision events (additive)
 
 - Fact kinds: `player_goals` (a player's goals since kick-off, own goals not counted: one fact at 0 at
   the player's kick-off or entry and one at every goal, `source_event_ids` the goals counted) and
@@ -511,7 +509,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   any category, and Prompt Shields on the question is unchanged.
 - An edit whose text is the verifier's proposal is written to the audit table as `used_proposal`
   (`session_decisions` keeps `edited`).
-- Each audit write of a desk decision (`approved`/`edited`/`killed`, `used_proposal`, `edit_refused`, `undo`, `ai_off`/`ai_on`) also
+- Each audit write of a desk decision (`approved`/`edited`/`rejected`, `used_proposal`, `edit_refused`, `undo`, `ai_off`/`ai_on`) also
   logs an Application Insights custom event `studiodesk.decision` on the `studiodesk.decision` logger,
   with `decision_action`, `decision_match_id`, `decision_story_id`, `decision_langs` and
   `decision_session` (a salted hash of the session id). No text and no client address. At most 5,000

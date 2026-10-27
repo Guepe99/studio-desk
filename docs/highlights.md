@@ -79,8 +79,8 @@ The strip is built from existing strings and data, in the page's language: the g
 `goalAt` ("Goal, Okowande (RED), 10'"), the desk's story kind names ("Big chance", "Grande occasione",
 "Ocasión clara"), player names and team codes from `meta.json`, the minute from the match clock and
 the score from the `score` facts. The new strings are the menu items, the Stop button, the strip's tag,
-the half-time and full-time offer and the message when a part has no moments (`HL_STRINGS` in `highlights.js`); the Italian and Spanish
-ones wait for a native speaker's review.
+the half-time and full-time offer and the message when a part has no moments (`HL_STRINGS` in `highlights.js`). Known limit: the
+Italian and Spanish ones have not been reviewed by a native speaker.
 
 ## Reel lengths on the four replays
 

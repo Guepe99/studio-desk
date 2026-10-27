@@ -155,8 +155,8 @@ The numbers in `web/js/awareness.js` carry these rule numbers.
 | R7 | No fast backpedal | backwards faster than 4.5 m/s, or beaten by the carrier: turn and run | F15 |
 | R8 | Closing defender jockeys | within 3.5 m of the carrier and under 3.5 m/s: side-on, 35 deg off the carrier towards the nearer touchline | F11, F12 |
 | R9 | Open body | an attacker under 3 m/s within 30 m of the ball keeps it within 45 deg of the chest, chest turned towards the goal he attacks | F17-F19 |
-| R10 | Scorer | arms up from goal + 0.3 s, 9 s | F23, F25, F26 |
-| R11 | Teammates | nearest first, from goal + 0.5 s, 0.12 s apart, arms up, fist (Yes) or clap, facing the scorer; the keeper a fist; the nearest outfield team-mate (within 30 m) sprints over from 0.3 s before the goal, his track plus an offset to 1 m beside the scorer at about 7.5 m/s over the gap, stepping round whoever is in his way, joining in on arrival, held 8 s, eased back over 4 s | F23, F24 |
+| R10 | Scorer | arms up from goal + 0.15 s, 9 s | F23, F25, F26 |
+| R11 | Teammates | nearest first, from goal + 0.3 s, 0.05 s apart, arms up, fist (Yes) or clap, facing the scorer; the keeper a fist; the nearest outfield team-mate (within 30 m) sprints over from 0.3 s before the goal, his track plus an offset to 1 m beside the scorer at about 7.5 m/s over the gap, stepping round whoever is in his way, joining in on arrival, held 8 s, eased back over 4 s | F23, F24 |
 | R12 | Conceding side | from their own goal outwards, from goal + 0.35 s, 0.07 s apart plus up to 0.15 s at random, 3-6 s of hands on head, hands on hips, slumped or palms out, in turn so neighbours differ; nobody stands within 1 m of the beaten keeper lying on the grass; the keeper shakes his head, then hands on hips | F26, F27 (durations J) |
 | R13 | Near miss | a shot off target that ends by the frame (within 2.5 m of a post or the bar line), or one saved within 2.5 s: shooter hands on head 2.5 s, two teammates within 20 m 2 s; the keeper points to organise | F27 |
 | R14 | Foul | fouled player goes down and rolls (players.js `tumble`, Roll from 0.1 s after the contact), then appeals 1.6 s, fouler palms up 1.5 s, two teammates within 12 m arm up | F21 |
@@ -183,11 +183,6 @@ protest 3, call 2, organise 1. Weights ease in over 0.25 s and out over 0.4 s.
   (25/35/40% of the yaw, 40/60% of the pitch), clamped to R1 around the chest. The head chain uses
   its own world matrices (checked equal to Babylon's) because `computeWorldMatrix` on 22 chains
   cost 3-4 ms a frame.
-- **A bug outside this layer, reported to the lead:** Babylon 9.29 clamps an animatable's weight to
-  [0, 1], so the ×6 upper-body boost in `players.js` does nothing and every emotion clip ends up
-  blended about half way with the run cycle: raised arms come out level. This layer applies its
-  emotions again after the animations, so they read at full strength; other emotion sources
-  through the same interface still get the half blend.
 
 ## Clips
 

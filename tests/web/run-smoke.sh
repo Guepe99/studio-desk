@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Serves web/ and runs tests/web/smoke.mjs against it on the DEMO fixture.
-# On this server Playwright's own Chromium misses system libraries, so the browser runs in the
-# foto-chromium:1 docker image (~/bin/pagine/Dockerfile) and Playwright connects over CDP.
+# By default the browser runs in foto-chromium:1, a local Alpine Chromium docker image that is not
+# built from this repo, and Playwright connects to it over CDP.
 # Elsewhere (CDP=0) Playwright launches its own Chromium.
 #
 #   scripts/with-lock.sh chromium tests/web/run-smoke.sh [script.mjs [args...]]

@@ -7,6 +7,8 @@ made it (`<runtime-dir>/runtime16-<match>.sqlite`: traces and audit) and, for th
 the hidden `storylines` table of `data/matches.sqlite` (`STUDIODESK_MATCHES_DB` overrides it). Like
 scripts/eval_stories.py, this is an evaluation script: agents, the MCP server and the API never read
 the storylines. Nothing is written but the markdown page.
+When a runtime database is missing (they are not in the repo), it prints the pack-based measures
+and leaves the page as it is.
 
 For the comparison with the rules alone it also runs the workflow once per match with the model off
 (offline, no Azure, about a minute a match, in a temporary database); --no-rules skips it.
@@ -31,8 +33,10 @@ from studiodesk.agents.llm import FakeChatClient  # noqa: E402
 import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
-RUNTIME = "runtime16-{}.sqlite"  # the run of out/regen16-agents.sh (27 Oct 2026) that made the committed packs
-# out/live16.sh: M001 from 5:00 to 20:00 at real speed; the start file holds the wall time it was launched
+# the run that made the committed packs, one per match: python -m studiodesk.agents run <match> --speed 0 --runtime <this file>
+RUNTIME = "runtime16-{}.sqlite"
+# a real-speed run of M001 from 5:00 to 20:00 (--speed 1 --from-ts 300 --to-ts 1200); the start file holds the UTC
+# wall time it was launched (date -u +%Y-%m-%dT%H:%M:%S.%NZ). Neither database is in the repo.
 LIVE = {"match": "M001", "runtime": "live16-M001.sqlite", "start": "live16-start.txt", "from_ts": 300.0, "to_ts": 1200.0, "speed": 1.0}
 ANALYST = re.compile(r"(\d+) analys[ie]s(?:, (\d+) replaced by the facts)?")
 
@@ -113,6 +117,16 @@ def at(s):
     return datetime.fromisoformat(s).timestamp()
 
 
+def median(xs):
+    xs = list(xs)
+    return statistics.median(xs) if xs else None
+
+
+def f1(x):
+    """One decimal, or n/a for a measure with nothing to measure."""
+    return "n/a" if x is None else f"{x:.1f}"
+
+
 def _model_off(schema, payload):
     raise ConnectionError("model off")
 
@@ -180,7 +194,7 @@ def timing(traces, stories):
         cues.append(at(cue[0]["at"]) - start)
         sids = json.loads(rs[0]["story_ids"]) if isinstance(rs[0]["story_ids"], str) else rs[0]["story_ids"]
         waits += [(by_id[i]["kind"], ts - by_id[i]["ts"]) for i in sids or [] if i in by_id]
-    return {"rounds": len(walls), "walls": walls, "wall_median_s": statistics.median(walls), "wall_max_s": max(walls),
+    return {"rounds": len(walls), "walls": walls, "wall_median_s": median(walls), "wall_max_s": max(walls, default=None),
             "cues": cues, "waits": waits, "wall_total_s": sum(walls)}
 
 
@@ -211,17 +225,30 @@ def measure_live(runtime, start_file):
 
 
 def measure(match_id, pack, runtime, mconn):
+    """The pack-based measures, and the runtime ones when the runtime database exists."""
     stories = json.loads((pack / "stories.json").read_text())
-    with closing(db.connect(runtime, readonly=True)) as rt:
-        audit = [dict(r) for r in rt.execute("SELECT * FROM audit WHERE match_id = ?", (match_id,))]
-        traces = [dict(r) for r in rt.execute("SELECT * FROM traces WHERE match_id = ?", (match_id,))]
     storylines = [dict(r) for r in mconn.execute(
         "SELECT story_id, kind, ts_start, ts_end, team_id, player_id FROM storylines WHERE match_id = ?", (match_id,))]
     p1, p2 = mconn.execute("SELECT period1_s, period2_s FROM matches WHERE match_id = ?", (match_id,)).fetchone()
     found, planted = storylines_found(storylines, stories)
-    return {"match_id": match_id, "found": found, "planted": planted, "minutes": (p1 + p2) / 60,
-            **blocked(stories), **on_air(stories), **analyses(stories, traces), **usage(audit, traces),
-            **timing(traces, stories)}
+    row = {"match_id": match_id, "found": found, "planted": planted, "minutes": (p1 + p2) / 60,
+           **blocked(stories), **on_air(stories)}
+    if not runtime.exists():
+        return row
+    with closing(db.connect(runtime, readonly=True)) as rt:
+        audit = [dict(r) for r in rt.execute("SELECT * FROM audit WHERE match_id = ?", (match_id,))]
+        traces = [dict(r) for r in rt.execute("SELECT * FROM traces WHERE match_id = ?", (match_id,))]
+    return {**row, **analyses(stories, traces), **usage(audit, traces), **timing(traces, stories)}
+
+
+def pack_section(rows):
+    """The measures that need only the packs and the match database, for a clone without the runtime databases."""
+    lines = ["| match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI "
+             "| proposals on the desk |", "|---|---|---|---|---|---|"]
+    for r in rows:
+        lines.append(f"| {r['match_id']} | {r['found']} of {r['planted']} | {r['numbers']} | {r['names']} "
+                     f"| {r['phrasebook']} / {r['template']} / {r['ai']} | {r['proposals']} |")
+    return "\n".join(lines)
 
 
 def total(rows):
@@ -268,7 +295,7 @@ def markdown(rows, live=None, rules_rows=None):
         lines.append(f"| {r['match_id']} | {r['found']} of {r['planted']} | {r['numbers']} | {r['names']} "
                      f"| {r['phrasebook']} / {r['template']} / {r['ai']} | {r['proposals']} | {r['calls']} "
                      f"| {r['tokens_in']:,} / {r['tokens_out']:,} | {r['cost_usd']:.3f} "
-                     f"| {r['wall_median_s']:.1f} / {r['wall_max_s']:.1f} | {r['model_s'] / r['minutes']:.1f} |")
+                     f"| {f1(r['wall_median_s'])} / {f1(r['wall_max_s'])} | {r['model_s'] / r['minutes']:.1f} |")
     lines.append(f"| all | {t['found']} of {t['planted']} | {t['numbers']} | {t['names']} "
                  f"| {t['phrasebook']} / {t['template']} / {t['ai']} | {t['proposals']} | {t['calls']} "
                  f"| {t['tokens_in']:,} / {t['tokens_out']:,} | {t['cost_usd']:.3f} | | "
@@ -277,7 +304,7 @@ def markdown(rows, live=None, rules_rows=None):
     cues = [w for r in rows for w in r["cues"]]
     waits = [w for r in rows for w in r["waits"]]
     goal_max = max((w for k, w in waits if k == "goal"), default=0.0)
-    over = t["trace_tokens"] / (t["tokens_in"] + t["tokens_out"])
+    over = t["trace_tokens"] / (t["tokens_in"] + t["tokens_out"]) if t["tokens_in"] + t["tokens_out"] else 1
     traces_note = ("The traces of the agent steps add up to the same tokens." if over == 1 else
                    f"The traces of the agent steps add up to {over:.3f} times those tokens (${t['trace_cost_usd']:.3f}), "
                    "so they do not match the audit, which is the figure to quote.")
@@ -286,7 +313,9 @@ def markdown(rows, live=None, rules_rows=None):
 What the system did on the {n} replay matches ({", ".join(r["match_id"] for r in rows)}), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
 databases of the run that made them (`out/{RUNTIME.format('<match>')}`, traces and audit). Rerun the
-script after a regeneration; every number below comes from it.
+script after a regeneration; every number below comes from it. The runtime databases are not in the
+repo, so from a clone the script prints only the numbers that need the packs and the match database
+(storylines found, numbers and names blocked, text on air, the run with the rules alone).
 
 {chr(10).join(lines)}
 
@@ -324,7 +353,7 @@ replaced the same way. {t['analyses_kept']} of the analyst's own notes stayed wi
 ## Tokens and cost
 
 {t['calls']} model calls used {t['tokens_in']:,} input and {t['tokens_out']:,} output tokens, ${t['cost_usd']:.3f} in all
-(${t['cost_usd'] / n:.3f} a match), counted from the audit table, one row per model call. {traces_note}
+(${t['cost_usd'] / max(n, 1):.3f} a match), counted from the audit table, one row per model call. {traces_note}
 The desk's audit log reads the replay's traces, one row per agent step, so it shows {t['steps']} agent steps
 that used the model: a step can call it more than once (the verifier checks the texts again after a
 rewrite).
@@ -342,12 +371,12 @@ The Content Safety checks (one call per story,
 The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
 real time, and the replay places each graphic at its story's moment in the match, not where the
 round ended. What their traces measure:
-the director cued a round's graphics {statistics.median(cues):.1f} seconds of wall time after the round began at the median, at
-most {max(cues):.1f} seconds, once the story finder had chosen; the whole round (story finder, director, analyst, three
-commentators, verifier, rewrites) took {statistics.median(walls):.1f} seconds at the median, at most {max(walls):.1f} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
+the director cued a round's graphics {f1(median(cues))} seconds of wall time after the round began at the median, at
+most {f1(max(cues, default=None))} seconds, once the story finder had chosen; the whole round (story finder, director, analyst, three
+commentators, verifier, rewrites) took {f1(median(walls))} seconds at the median, at most {f1(max(walls, default=None))} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
-was a median of {statistics.median(w for _, w in waits):.1f} seconds of match time before its round (goals at most
+was a median of {f1(median(w for _, w in waits))} seconds of match time before its round (goals at most
 {goal_max:.1f} seconds, other stories at most {max((w for k, w in waits if k != 'goal'), default=0.0):.1f} seconds).
 """
 
@@ -364,6 +393,12 @@ def main():
     with closing(db.connect(mcp_server.DB_PATH, readonly=True)) as mconn:
         rows = [measure(m, a.replays / m, a.runtime_dir / RUNTIME.format(m), mconn) for m in a.matches]
         rules_rows = [] if a.no_rules else [rules_only(m, mconn) for m in a.matches]
+    missing = [r["match_id"] for r in rows if "calls" not in r]
+    if missing:  # the runtime databases are not in the repo: a clone reproduces the pack-based measures only
+        print(f"No runtime database for {', '.join(missing)} in {a.runtime_dir}: the runtime sections are skipped "
+              f"and {a.out} is not rewritten.")
+        print(pack_section(rows) + "\n\n" + rules_section(rows, rules_rows))
+        return
     live = measure_live(a.runtime_dir / LIVE["runtime"], a.runtime_dir / LIVE["start"])
     old = a.out.read_text() if a.out.exists() else ""
     kept = old[old.index(FOUNDRY):] if FOUNDRY in old else ""  # written by scripts/foundry_evals.py, always last

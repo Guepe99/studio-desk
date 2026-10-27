@@ -190,12 +190,12 @@ try {
   }, cut);
   console.log(`broadcast camera: ball within ${(tv.worst * 100).toFixed(0)}% of the half frame, cameras ${tv.cams}, scorer close-up ${tv.celebration.length} frames (off centre ${Math.max(...tv.celebration)}), then ${tv.after}`);
   if (tv.celebration.length < 5 || Math.max(...tv.celebration) > 0.35) fail(`no close shot of the scorer after the goal: ${JSON.stringify(tv.celebration)}`);
-  if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on the gantry: ${JSON.stringify(tv)}`);
+  if (tv.cams.join() !== "tv" || tv.pos) fail(`broadcast camera not fixed on its platform: ${JSON.stringify(tv)}`);
   if (!(tv.punchWorst < 1)) fail(`the ball leaves the frame in a punch-in: ${tv.punchWorst}`);
   if (!(tv.worst < 0.9) || !tv.moved) fail(`broadcast camera loses the ball or never pans: ${JSON.stringify(tv)}`);
   if (tv.replay === "tv" || !/^replay/.test(tv.after)) fail(`no replay camera after the cut: ${JSON.stringify(tv)}`);
   const med = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
-  const spot = Math.atan2(18, 68) * 180 / Math.PI;   // the gantry is fixed at (0, 18, -68), checked above
+  const spot = Math.atan2(18, 68) * 180 / Math.PI;   // the camera platform is fixed at (0, 18, -68), checked above
   const lens = { hfov: [Math.min(...tv.hfov), Math.max(...tv.hfov)].map((v) => +v.toFixed(1)), width: [Math.min(...tv.width), Math.max(...tv.width)].map((v) => +v.toFixed(1)),
     pitch: +med(tv.pitch).toFixed(1), tight: tv.tight.length ? Math.min(...tv.tight) : 0,
     tightPitch: tv.tightPitch.length ? [Math.min(...tv.tightPitch), Math.max(...tv.tightPitch)].map((v) => +v.toFixed(1)) : [],

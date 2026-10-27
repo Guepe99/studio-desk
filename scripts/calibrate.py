@@ -9,17 +9,16 @@ Run once, offline. It writes three small committed files and nothing else:
 socceraction is used only here, in its own venv, never in the project venv:
 
     python3 -m venv ~/.cache/studiodesk/calib-venv
-    ~/.cache/studiodesk/calib-venv/bin/pip install socceraction==1.5.3 ijson==3.3.0 multimethod==1.10
+    ~/.cache/studiodesk/calib-venv/bin/pip install socceraction==1.5.3 ijson==3.3.0 multimethod==1.10 pandas==2.3.3 numpy==1.26.4
     ~/.cache/studiodesk/calib-venv/bin/python scripts/calibrate.py
 
-Raw files (downloaded here if missing, checked by MD5) stay in
-~/progetti/inside-the-game/data/raw/wyscout/, git-ignored. Events are streamed one match at a
+Raw files (downloaded here if missing, checked by MD5) stay in the repo's
+data/raw/wyscout/, git-ignored. Events are streamed one match at a
 time with ijson, so peak memory stays far below loading a 190 MB league file whole.
 """
 
 import argparse
 import json
-import math
 import resource
 import urllib.request
 import zipfile
@@ -30,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parent.parent
-RAW = Path.home() / "progetti/inside-the-game/data/raw/wyscout"
+RAW = REPO / "data/raw/wyscout"
 XT_OUT = REPO / "studiodesk/facts/xt_grid.json"
 AVG_OUT = REPO / "studiodesk/sim/wyscout_averages.json"
 CALIBRATION = REPO / "studiodesk/sim/calibration.json"

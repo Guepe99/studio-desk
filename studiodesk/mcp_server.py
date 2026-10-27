@@ -27,7 +27,7 @@ from . import config, db
 
 DB_PATH = Path(os.environ.get("STUDIODESK_MATCHES_DB", config.MATCHES_DB))
 # shortcut: one clock per process, so one live run per process; give each run its own clock when the
-# tappa 3 agents run two matches in the same process.
+# agents run two matches in the same process.
 _clock = float(os.environ["STUDIODESK_CLOCK"]) if os.environ.get("STUDIODESK_CLOCK") else None
 _local_clock = ContextVar("studiodesk_clock", default=None)  # per request: concurrent visitors at different times
 

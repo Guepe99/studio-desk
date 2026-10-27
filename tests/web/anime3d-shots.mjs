@@ -206,7 +206,7 @@ try {
   }
   const goal = await page.evaluate(() => {
     const s = window.sample3d, sc = s.scene, aw = sc.awareness.aw, tl = s.tl;
-    const cel = tl.goal === null ? null : aw.emotions.find((e) => e.kind === "celebrate" && Math.abs(e.t0 - tl.goal - 0.3) < 1e-6);
+    const cel = tl.goal === null ? null : aw.emotions.find((e) => e.kind === "celebrate" && e.t0 >= tl.goal && e.t0 - tl.goal < 0.5);
     window.__scorer = cel?.i ?? null;
     return cel ? tl.goal - tl.from : null;
   });

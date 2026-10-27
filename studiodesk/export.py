@@ -32,7 +32,7 @@ def _parsed(rows, *cols):
 
 
 def _dump(path, obj):
-    path.write_text(json.dumps(obj, ensure_ascii=False, allow_nan=False, separators=(",", ":")))
+    path.write_text(json.dumps(obj, ensure_ascii=False, allow_nan=False, separators=(",", ":")), encoding="utf-8")
 
 
 def meta(conn, match_id):
@@ -171,7 +171,8 @@ def export(match_id, conn, out_root, runtime=None):
     season = season_facts(conn, match_id)
     from . import forecast  # Watch for (docs/forecast.md)
     watch = forecast.export(conn, match_id)
-    # everything is built before the first write: a failure above leaves the old folder as it was
+    # everything is built before the first write: a failure above leaves the old folder as it was (the writes
+    # below are not atomic, so a failure among them can leave old and new files side by side)
     _dump(out / "meta.json", m)
     with open(out / "tracking.f32", "wb") as fh:
         for (blob,) in conn.execute("SELECT pos FROM tracking_frames WHERE match_id = ? ORDER BY frame", (match_id,)):
@@ -193,7 +194,7 @@ def index(out_root):
     the score would spoil the replay."""
     rows = []
     for p in sorted(Path(out_root).glob("*/meta.json")):
-        m = json.loads(p.read_text())
+        m = json.loads(p.read_text(encoding="utf-8"))
         rows.append({"match_id": m["match_id"], "home": m["teams"][0]["name"], "away": m["teams"][1]["name"]})
     _dump(Path(out_root) / "matches.json", rows)
 

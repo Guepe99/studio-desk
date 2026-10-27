@@ -13,7 +13,7 @@ export default class WhyCard extends SdGraphic {
 .card { padding: 22px 30px 26px 34px; box-shadow: inset 8px 0 0 var(--pink), var(--shadow); }
 .title { font-weight: 800; font-size: 44px; line-height: 1.08; }
 .body { margin-top: 14px; font-weight: 400; font-size: ${BODY_PX}px; line-height: ${LINE}; color: var(--lilac-100); white-space: pre-line; }
-/* the season lines under a goal (web/js/season.js): a green rule, one line each */
+/* the season lines under a goal (web/js/season.js): a purple rule, then one line each after a green square */
 .season { margin-top: 14px; padding-top: 12px; border-top: 3px solid var(--purple-400); display: grid; row-gap: 6px; }
 .season div { font-weight: 700; font-size: 28px; line-height: 1.15; }
 .season div::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 12px; border-radius: 3px; background: var(--green); }

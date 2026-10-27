@@ -87,7 +87,7 @@ voice.
     .venv/bin/python -m studiodesk.booth M001 --lang en   # replays/M001/booth/en/ + replays/M001/booth.json
     .venv/bin/python -m studiodesk.booth M001 --lang it --dry-run   # count only
 
-Build on CI. On the VPS (2 shared vCPUs, about 65% of them taken by the host) the full set would take about
+Build on CI. On a shared 2-vCPU server (about 65% of the CPU taken by the host) the full set would take about
 11 hours, so it runs on GitHub-hosted runners: `.github/workflows/booth-render.yml`, one job per language
 and clip set, each running the same command as above with the same setup script, its clips uploaded as an
 artifact. To merge them:
@@ -169,7 +169,7 @@ about -19.5 LUFS. The crowd files are levelled so the bed sits about -27 LUFS be
 `scripts/booth-render.mjs` mixes a stretch of a replay to one mp3 the way the page plays it, with the voice
 and crowd stems as wav, for listening and level checks:
 
-    node scripts/booth-render.mjs M001 en 475 715 /tmp/telecronaca-en.mp3
+    node scripts/booth-render.mjs M001 en 475 715 /tmp/commentary-en.mp3
 
 ## Live use
 
@@ -187,7 +187,7 @@ added took 3 to 6 min per runner job, setup included (run 39482620053). One thre
 | where | real-time factor | one match, three languages |
 |---|---|---|
 | GitHub-hosted runner (4 vCPU), one job per language, 20 Oct 2026 | 0.4 to 1.0 | 2.5 to 3.5 min each, about 6 min with setup, in parallel |
-| this VPS (2 vCPU, about 65% steal), 40 clips | 4.3 (12 with two threads) | about 50 min, one language after the other |
+| a shared 2-vCPU server (about 65% steal), 40 clips | 4.3 (12 with two threads) | about 50 min, one language after the other |
 
 The production container's CPU was not measured. On a dedicated vCPU we expect the runner's figures, an
 estimate from the RTF and not a measurement. So for a live match the per-match names can be rendered on

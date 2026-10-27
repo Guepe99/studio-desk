@@ -77,8 +77,7 @@ def simulate(conn, match_no, seed, league, cal, comeback):
                  (mid, seed, home.id, away.id, venues[home.id], periods[0], periods[1], config.FPS, 0, 0, GENERATOR_VERSION))
     conn.executemany("INSERT INTO lineups VALUES (?,?,?,?,?)", lineups)
     conn.executemany("INSERT INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", events)
-    facts = [f | {"fact_id": f["fact_id"]} for f in compute(conn, mid, xt_grid=None)
-             if f["kind"] in ("score", "team_shots", "player_goals")]
+    facts = [f for f in compute(conn, mid, xt_grid=None) if f["kind"] in ("score", "team_shots", "player_goals")]
     return forecast.Game(facts, home.id, away.id, periods[0], {r[1]: (r[3], r[4]) for r in lineups}, sum(periods))
 
 
@@ -215,7 +214,7 @@ def save(res, path=DB_FILE):
 def tables(res):
     lines = ["| kind | forecasts | matches | event rate (fit set) | Brier, model | Brier, naive | skill |", "|---|---|---|---|---|---|---|"]
     for k, s in res["scores"].items():
-        lines.append(f"| {k} | {s['n']} | {s['n_matches']} | {s['base_rate']:.3f} | {s['brier']:.4f} | {s['brier_base']:.4f} | {s['skill']:+.3f} |")
+        lines.append(f"| {k} | {s['n']} | {s['n_matches']} | {s['base_rate']:.3f} | {s['brier']:.4f} | {s['brier_base']:.4f} | {'n/a' if s['skill'] is None else f"{s['skill']:+.3f}"} |")
     lines += ["", "| kind | forecast | n | mean forecast | observed |", "|---|---|---|---|---|"]
     for k, bins in res["reliability"].items():
         for b in bins:

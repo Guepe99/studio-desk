@@ -8,7 +8,7 @@ export const SEASON_CARD_S = 12;
 export const SEASON_STRINGS = {
   en: { goal: "{n} league goal of the season", first: "First league goal of the season", run: "Scored in {n} league matches in a row" },
   it: { goal: "{n} gol in campionato in questa stagione", first: "Primo gol in campionato in questa stagione", run: "A segno in {n} partite di campionato di fila" },
-  es: { goal: "{n} gol en Liga esta temporada", first: "Primer gol en Liga esta temporada", run: "Ha marcado en {n} partidos de liga seguidos" },
+  es: { goal: "{n} gol en liga esta temporada", first: "Primer gol en liga esta temporada", run: "Ha marcado en {n} partidos de liga seguidos" },
 };
 
 /** 10 as "10th", "10°" or "10.º". */

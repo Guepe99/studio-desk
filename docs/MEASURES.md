@@ -3,7 +3,9 @@
 What the system did on the 4 replay matches (M001, M002, M003, M004), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
 databases of the run that made them (`out/runtime16-<match>.sqlite`, traces and audit). Rerun the
-script after a regeneration; every number below comes from it.
+script after a regeneration; every number below comes from it. The runtime databases are not in the
+repo, so from a clone the script prints only the numbers that need the packs and the match database
+(storylines found, numbers and names blocked, text on air, the run with the rules alone).
 
 | match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI | proposals on the desk | model calls | tokens in / out | cost (USD) | round, median / max (s) | model time per match minute (s) |
 |---|---|---|---|---|---|---|---|---|---|---|

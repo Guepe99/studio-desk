@@ -13,8 +13,9 @@ param roleAssignmentNames = {
   openAiUser: '2df303a0-8a97-493e-bcab-003f317cf7a3'
   speechUser: 'a1cb9f70-4711-496e-b41a-0fd87a85933c'
 }
-// The live Content Safety account reports no customSubDomainName; its endpoint is
-// https://studiodesk-safety-e2606.cognitiveservices.azure.com/. Empty keeps the property out of the request.
+// The live Content Safety account has its own host, https://studiodesk-safety-e2606.cognitiveservices.azure.com/,
+// which takes Entra ID tokens, but the API reports its customSubDomainName as null; sending a value would
+// try to change it. Empty keeps the property out of the request.
 param safetySubdomain = ''
 // Speech gets its custom subdomain with the first deployment that has this line (checked free on 27 Oct 2026);
 // it is permanent. The app's Speech User assignment was made with the Azure CLI on 27 Oct 2026.

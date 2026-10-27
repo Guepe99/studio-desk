@@ -38,7 +38,7 @@ def track(ts, ev, players, periods, story, cal, rng):
     """Positions (F, 1 + N, 3) float32 and the ball owner index per frame (-1 for none).
 
     `players`: dict of arrays over the N squad players: top_kmh, home, slot, on_ts, off_ts,
-    formation (per player, his team's), and `shift_to` (formation after a shape shift, or "").
+    formation (per player, his team's).
     `story`: planted storylines with times on the `ts` axis.
     """
     c = lambda k: cal[k]["value"]  # noqa: E731

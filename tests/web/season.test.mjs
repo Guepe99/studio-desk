@@ -54,7 +54,7 @@ test("the card: the two clubs' lines, the last meeting and the top scorers, each
 test("goal lines: the tally with this goal, the run, a first goal; in three languages", () => {
   assert.deepEqual(goalLines(SEASON, 176, "en"), ["6th league goal of the season", "Scored in 3 league matches in a row"]);
   assert.deepEqual(goalLines(SEASON, 203, "it"), ["7° gol in campionato in questa stagione"]);
-  assert.deepEqual(goalLines(SEASON, 300, "es"), ["Primer gol en Liga esta temporada"]);
+  assert.deepEqual(goalLines(SEASON, 300, "es"), ["Primer gol en liga esta temporada"]);
   assert.deepEqual(goalLines(SEASON, 999, "en"), []);
   assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 111].map((n) => ordinal(n, "en")),
     ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "111th"]);
@@ -107,6 +107,15 @@ test("season card: words, ordinals and form letters follow the language", () => 
     assert.ok($(".more").innerHTML.includes(met), `${lang} last meeting`);
     assert.ok($(".more").innerHTML.includes("Okowande"), lang);
   }
+});
+
+test("season card: a last meeting or a scorer without its numbers prints no null", () => {
+  const data = seasonCard(SEASON, MATCH);
+  data.h2h = { ...data.h2h, away_goals: null };
+  data.scorers = data.scorers.map((s) => ({ ...s, goals: undefined }));
+  const more = render(SeasonCard, data, "en")(".more").innerHTML;
+  assert.ok(!more.includes("null") && !more.includes("undefined") && !more.includes("Last meeting"), more);
+  assert.ok(more.includes("Okowande"), more);
 });
 
 test("why card: the season lines under the body, escaped; none without them", () => {

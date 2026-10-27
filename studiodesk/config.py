@@ -10,8 +10,6 @@ FORBIDDEN_NAMES = ROOT / "data" / "forbidden_names.txt"
 FPS = 10
 AUTO_APPROVE_RISK = 0.35
 MAX_GRAPHICS_ON_SCREEN = 2
-LIVE_RUNS_PER_SESSION_PER_DAY = 2
-LIVE_RUNS_PER_DAY = 20
 DAILY_COST_STOP_USD = 25.0
 ASK_PER_SESSION_PER_DAY = 10
 # The Content Safety resource is on the free tier F0: 5,000 text records a month. One question makes 3 calls

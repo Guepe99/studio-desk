@@ -8,9 +8,10 @@ as plain sentences: its facts from the ledger (label, value, unit, what it measu
 events. Groundedness, relevance, coherence and fluency run on Foundry with gpt-5-mini as the judge, through
 the Agent Framework's `FoundryEvals`, one eval run per language.
 
-This script calls Azure and costs tokens; tests only build the items (tests/test_foundry_evals.py).
-Per-item results go in the table `foundry_evals` of `--db`; the summary replaces the "Foundry evaluators"
-section at the end of `--out`.
+This script calls Azure and costs tokens; tests only build the items (tests/test_foundry_evals.py). It needs
+FOUNDRY_PROJECT_ENDPOINT, the endpoint of a Foundry project you can run evaluations on.
+Per-item results go in the table `foundry_evals` of `--db`, committed as each language finishes; the summary
+replaces the "Foundry evaluators" section at the end of `--out`.
 """
 import argparse
 import asyncio
@@ -29,8 +30,7 @@ from studiodesk import config, db, mcp_server  # noqa: E402
 from studiodesk.agents import rules  # noqa: E402
 from studiodesk.facts.engine import formation_name  # noqa: E402
 
-PROJECT = os.environ.get("FOUNDRY_PROJECT_ENDPOINT",
-                         "https://studiodesk-ai-89965b.services.ai.azure.com/api/projects/studiodesk")
+PROJECT = os.environ.get("FOUNDRY_PROJECT_ENDPOINT")  # https://<resource>.services.ai.azure.com/api/projects/<project>
 EVALUATORS = ("groundedness", "relevance", "coherence", "fluency")
 LANG_NAME = {"en": "English", "it": "Italian", "es": "Spanish"}
 MAX_ITEMS, SEED = 400, 20261021
@@ -120,8 +120,9 @@ def _get(obj, key):
     return obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
 
 
-async def run(items):
-    """Rows for the table: one per item and evaluator, one Foundry eval run per language."""
+async def run(items, save=None):
+    """Rows for the table: one per item and evaluator, one Foundry eval run per language. save(rows) gets
+    each language's rows as soon as that language is done, so a later failure does not lose them."""
     from agent_framework import EvalItem, Message
     from agent_framework.foundry import FoundryEvals
     from azure.ai.projects.aio import AIProjectClient
@@ -150,6 +151,7 @@ async def run(items):
             by_text = {}
             for it in batch:
                 by_text.setdefault((it["query"], it["response"], it["context"]), []).append(it)
+            done = len(rows)
             async for oi in await oai.evals.runs.output_items.list(run_id=res.run_id, eval_id=res.eval_id):
                 ds = oi.datasource_item or {}
                 it = by_text[(ds["query"], ds["response"], ds["context"])].pop(0)
@@ -162,6 +164,8 @@ async def run(items):
                                  "lang": lang, "evaluator": r.name, "score": r.score,
                                  "passed": None if r.passed is None else int(r.passed), "reason": reason,
                                  "tokens_in": _get(usage, "prompt_tokens"), "tokens_out": _get(usage, "completion_tokens")})
+            if save:
+                save(rows[done:])
     return rows, runs
 
 
@@ -234,15 +238,22 @@ def main():
     ap.add_argument("--db", type=Path, default=config.ROOT / "out" / "foundry-evals.sqlite")
     ap.add_argument("--out", type=Path, default=config.ROOT / "docs" / "MEASURES.md")
     a = ap.parse_args()
+    if not PROJECT:
+        raise SystemExit("Set FOUNDRY_PROJECT_ENDPOINT to the endpoint of your Foundry project "
+                         "(https://<resource>.services.ai.azure.com/api/projects/<project>).")
     matches = a.matches or sorted(p.name for p in a.replays.glob("M*") if (p / "stories.json").exists())
     items = [it for mid in matches for it in build_items(mid, a.replays / mid)]
     picked = sample(items)
     print(f"{len(picked)} of {len(items)} items from {', '.join(matches)}")
-    rows, _ = asyncio.run(run(picked))
-    with closing(db.connect(a.db)) as conn, conn:
+    # db.connect also creates the project's other tables in this file: unused, harmless
+    with closing(db.connect(a.db)) as conn:
         conn.execute(TABLE)
-        for r in rows:
-            db.insert(conn, "foundry_evals", r)
+
+        def save(rows):
+            with conn:
+                for r in rows:
+                    db.insert(conn, "foundry_evals", r)
+        rows, _ = asyncio.run(run(picked, save))
     packs = f"the {len(matches)} replay packs ({', '.join(matches)})"
     text = section(rows, len(picked), len(items), packs)
     write_section(a.out, text)

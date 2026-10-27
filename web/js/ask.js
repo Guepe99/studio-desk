@@ -146,7 +146,7 @@ export class Ask {
       const facts = data.fact_ids ?? [];
       this.log.unshift({ question, lang, answer: data.answer, declined: data.status !== "answered", facts,
         moment: data.status === "answered" ? answerMoment(facts, this.factById, this.eventById, ts) : null });
-      this.left = data.questions_left;
+      this.left = data.questions_left ?? this.left;
       this.status = "";
       this.input.value = "";
       this.announce(data.answer, lang);

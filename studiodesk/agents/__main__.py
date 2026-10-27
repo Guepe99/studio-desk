@@ -42,10 +42,13 @@ def main(argv=None):
         if args.cmd == "safety":
             print(json.dumps({"safety": safety.check_match(rt, args.match_id, safety.AzureSafety())}, indent=2))
             return
-        client = FakeChatClient() if args.fake else azure_client()
+        try:
+            client = FakeChatClient() if args.fake else azure_client()
+        except RuntimeError as e:
+            raise SystemExit(str(e)) from None
+        # not committed here: the run's own writes commit it, so a run that fails before them keeps the old one
         for table in ("stories", "cues", "traces"):
             rt.execute(f"DELETE FROM {table} WHERE match_id = ?", (args.match_id,))
-        rt.commit()
         summary = asyncio.run(run_match(args.match_id, client, rt, speed=args.speed, from_ts=args.from_ts,
                                         to_ts=args.to_ts, model_name="fake" if args.fake else None))
         if not (args.fake or args.no_safety):

@@ -130,6 +130,17 @@ test("a blocked microphone, too short a clip, a cap and a closed panel", async (
   assert.equal(t.log.sent.length, 0);
   assert.equal(t.log.stopped, 1);
   assert.equal(t.ask.busy, false);
+
+  t = rig();
+  const started = t.button.click(); // the permission prompt is open
+  t.voice.cancel(); // the panel closed before the visitor answered it
+  await started;
+  assert.equal(t.voice.recording, false);
+  assert.equal(t.log.stopped, 1); // the granted microphone is let go at once
+  assert.equal(t.ask.busy, false);
+  assert.ok(!t.ask.statuses.includes("voiceRec"));
+  await t.button.click(); // and a new press records again
+  assert.equal(t.voice.recording, true);
 });
 
 test("hidden when the server has no Speech or the browser cannot record", () => {

@@ -9,6 +9,8 @@ export const inScope = (el) => !!el?.closest?.("#frame, #controls") && !el.close
 export function shortcut(e) {
   if (e.ctrlKey || e.metaKey || e.altKey || !inScope(e.target)) return null;
   if (e.key === "?") return e.repeat ? null : ["keys"];
+  const digit = /^(?:Digit|Numpad)([0-9])$/.exec(e.code ?? "")?.[1]; // by position: on AZERTY the digits need Shift
+  if (digit) return ["fraction", Number(digit) / 10];
   if (e.shiftKey || !e.key) return null;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (/^[0-9]$/.test(k)) return ["fraction", Number(k) / 10];

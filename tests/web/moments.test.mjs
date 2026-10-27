@@ -101,6 +101,10 @@ test("the video player keys, scoped as N is", () => {
   assert.deepEqual(key("ArrowRight", frame, { repeat: true }), ["step", 5]); // held down it keeps moving
   assert.deepEqual(key("0"), ["fraction", 0]);
   assert.deepEqual(key("7"), ["fraction", 0.7]);
+  assert.deepEqual(key("1", frame, { code: "Digit1", shiftKey: true }), ["fraction", 0.1]); // AZERTY: Shift and the & key
+  assert.deepEqual(key("&", frame, { code: "Digit1" }), ["fraction", 0.1]);
+  assert.deepEqual(key("3", frame, { code: "Numpad3" }), ["fraction", 0.3]);
+  assert.equal(key("1", at("textarea"), { code: "Digit1" }), null);
   assert.deepEqual(key("m"), ["voice"]);
   assert.deepEqual(key("f"), ["fullscreen"]);
   assert.deepEqual(key("?", frame, { shiftKey: true }), ["keys"]);

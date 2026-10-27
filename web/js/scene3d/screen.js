@@ -1,4 +1,4 @@
-// The stadium's big screens (plan step p66): the show's wordmark on two screens in the far corners of the
+// The stadium's big screens: the show's wordmark on two screens in the far corners of the
 // ground, both showing one texture (one draw call for the faces, one for the housings).
 //
 // Where: on legs in the open corner between the far side stand and each end stand, just behind the

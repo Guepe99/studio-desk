@@ -21,7 +21,7 @@ Output meshes, all skinned to the mannequin skeleton:
   anime_outline_<style>  body, face skin and that hair merged with smooth normals: the outline hull
                    (web/js/toon3d.js) in one draw
 
-    .venv/bin/python scripts/build_anime.py ~/tools/anime/dl
+    .venv/bin/python scripts/build_anime.py <path-to-anime-download>
 
 Needs ffmpeg (textures) and npx with @gltf-transform/cli 4.5.1 (simplify, quantize).
 """
@@ -536,7 +536,7 @@ def simplify_file(tmp, writer_fn, name, ratio, lock, error=0.01):
 def simplify_regions(tmp, region_prims, body, tr, ratio):
     def fn(lw):
         prims = region_prims(lw, body, tr)
-        lw.j["materials"] = [{"name": n} for n in ("skin", "kit_shirt", "kit_shorts", "kit_socks", "boots", "forearms", "hands")]
+        lw.j["materials"] = [{"name": n} for n in bf.REGIONS]
         names = [n for r, n in enumerate(bf.REGIONS) if (tr == r).any()]
         for p, n in zip(prims, names):
             p["material"] = bf.REGIONS.index(n)
