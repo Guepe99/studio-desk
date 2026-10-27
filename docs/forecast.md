@@ -153,10 +153,10 @@ it is wrong. So the panel shows no percentage, only a word, and the probability 
    the outputs of a classifier to new a priori probabilities*, Neural Computation 14(1), 2002):
    - `comeback`, real rate 0.29: the team that scores first wins 71.1% of Premier League matches (CIES
      Football Observatory, 2015 to 2019, https://football-observatory.com/IMG/sites/b5wp/2019/wp293/en/),
-     so the side that concedes first draws level at some point in at least 29% of them (a lower bound: a
+     so the side that concedes first draws level at some point in at least 28.9% of them (a lower bound: a
      side that wins after being pegged back counts among the 71.1%);
    - `late_goal`, real rate 0.40: 18% of Premier League goals in 2024/25 came from the 80th minute on, one
-     minute earlier than the kind counts (the Premier League, in an article on the 2025/26 season that gives
+     minute earlier than the kind counts from (the Premier League, in an article on the 2025/26 season that gives
      the 2024/25 figures,
      https://www.premierleague.com/en/news/4430518/more-late-goals-and-stoppage-time-winners-being-scored-in-2025-26),
      and 95 added-time goals were 8.5% of the total, about 2.9 goals a match, so about 0.53 late goals a match

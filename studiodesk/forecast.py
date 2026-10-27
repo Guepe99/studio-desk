@@ -37,7 +37,7 @@ DEFAULT = {"rate0": 0.0145, "per_shot": 0.1, "prior_min": 45.0, "stage": [1.0] *
 # the matches have a planted comeback and goals from minute 81 are rarer than in real football, so before a
 # probability becomes a word its odds are moved from the simulator's event rate to a real-football rate
 # (prior shift, Saerens, Latinne and Decaestecker 2002). Sources in docs/forecast.md: the team that scores
-# first wins 71.1% of Premier League matches (CIES, 2015-2019), so the side behind levels in at least 29%;
+# first wins 71.1% of Premier League matches (CIES, 2015-2019), so the side behind levels in at least 28.9%;
 # 18% of goals came from the 80th minute in 2024/25 at about 2.9 a match, so a late goal in about 40%.
 # The words follow the IPCC likelihood scale: unlikely below 1/3, likely from 2/3.
 REAL_RATE = {"comeback": 0.29, "late_goal": 0.40}
@@ -258,7 +258,7 @@ def timeline(g, params=None):
     """Forecast steps for the replay: every STEP_S of match time and at each fact the model reads (a goal, a
     shot), so the panel never lags a graphic already on air, until full time."""
     times = {round(k * STEP_S, 2) for k in range(int(g.end // STEP_S) + 1)}
-    times |= {math.ceil(f["ts"] * 100) / 100 for f in g.facts}  # up, so a step never falls before its fact
+    times |= {math.ceil(f["ts"] * 100 - 1e-6) / 100 for f in g.facts}  # up, never before its fact (595.7 * 100 is 59570.000...01)
     return [{"ts": t, "items": forecasts(g, t, params)} for t in sorted(times) if t < g.end - EPS]
 
 

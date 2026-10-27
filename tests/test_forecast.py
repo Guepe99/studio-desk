@@ -49,6 +49,8 @@ def test_a_step_at_each_fact_reads_that_fact():
     g = game(fact("F-SCORE-1", "score", 600.004, "T01", 1, "T01-9"), fact("F-PLAYER_GOALS-1", "player_goals", 600.004, "T01", 1, "T01-9"))
     st = next(s for s in forecast.timeline(g) if 600.0 < s["ts"] < 601.0)
     assert st["ts"] >= 600.004 and any("F-SCORE-1" in it["fact_ids"] for it in st["items"])
+    g = game(fact("F-SCORE-1", "score", 595.7, "T01", 1, "T01-9"))
+    assert 595.7 in [s["ts"] for s in forecast.timeline(g)]  # a fact already on the hundredth keeps its time
 
 
 def test_monotonic_where_it_should_be():
