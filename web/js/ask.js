@@ -9,6 +9,7 @@ const ASK_TIMEOUT_MS = 60000; // the server gives up on an answer at 55 s (confi
 // scored is a goal, any other shot a shot; a chance is the one play an xT fact is about (cumulative pass facts are not).
 const STRENGTH = { goal: 3, shot: 2, chance: 1 };
 const CHANCE_KINDS = new Set(["xt_added"]);
+const REDUCE = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
 
 /** A moment's button shows only while the clock is at or past its lead-in: a rewind before it hides it, so the
  *  button never jumps past the replay time, and the press itself (which lands at `at`) keeps it. */
@@ -128,6 +129,7 @@ export class Ask {
       data = await r.json().catch(() => null);
     } catch { r = null; }
     this.busy = false;
+    const logged = this.log.length;
     if (!r) this.status = "askNet";
     else if (r.status === 429) this.status = "askLimit";
     else if (r.status === 503) { this.status = "askOff"; this.turnOff(); }
@@ -150,6 +152,10 @@ export class Ask {
       this.announce(data.answer, lang);
     }
     this.render();
+    // the newest answer is first in the log, under the form: the panel (or the page) scrolls to show it arrive
+    if (this.log.length > logged && !this.panel.hidden) {
+      this.logEl.firstElementChild?.scrollIntoView({ block: "nearest", behavior: REDUCE.matches ? "auto" : "smooth" });
+    }
   }
 
   // every frame: while the panel is open the suggestions follow the clock, rebuilt only when one of their

@@ -6,6 +6,7 @@
 // Checks, in the 2D view and in the 3D view: a question asked after the first goal gets one "Watch it: goal, 10'"
 // button; pressing it lands LEAD_S before the goal's shot and plays; an answer citing no event gets no button;
 // a rewind before the moment's lead-in hides the button. Screenshot: out/shots/ask-replay-*.png.
+// At 1440x900 the newest answer is scrolled into view in the panel (out/shots/ask-1440-*.png).
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -39,6 +40,28 @@ async function ask(p, q) {
 }
 
 try {
+  // at 1440x900 the panel opens at the foot of the desk column and the log sits under the suggestions: the newest
+  // answer is scrolled into view, at once under prefers-reduced-motion and smoothly otherwise
+  for (const reducedMotion of ["reduce", "no-preference"]) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion });
+    const p = await ctx.newPage();
+    p.on("pageerror", (e) => check(false, `1440 ${reducedMotion}: page error ${e.message}`));
+    await stub(p);
+    await p.goto(new URL("?match=M001&lang=en&view=2d", base).href);
+    await p.waitForFunction(() => window.studioDesk?.match, null, { timeout: 20000 });
+    await p.locator("#ask-open").waitFor({ state: "visible", timeout: 20000 });
+    await p.evaluate(() => { window.studioDesk.setPlaying(false); window.studioDesk.seek(2400); });
+    await p.click("#ask-open");
+    for (const q of ["possession", "goal", "possession"]) await ask(p, q);
+    if (reducedMotion !== "reduce") await p.waitForTimeout(1200);
+    const seen = await p.evaluate(() => {
+      const li = document.querySelector("#ask-log li").getBoundingClientRect(), box = document.querySelector("#ask").getBoundingClientRect();
+      return li.top >= box.top - 1 && li.bottom <= box.bottom + 1 && li.top >= 0 && li.bottom <= innerHeight + 1;
+    });
+    check(seen, `1440 ${reducedMotion}: the newest answer is in view in the panel`);
+    await p.screenshot({ path: path.join(shots, `ask-1440-${reducedMotion}.png`) });
+    await ctx.close();
+  }
   for (const view of ["2d", "3d"]) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const p = await ctx.newPage();

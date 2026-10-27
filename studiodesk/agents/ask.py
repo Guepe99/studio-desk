@@ -11,6 +11,7 @@ import asyncio
 import functools
 import json
 import math
+import re
 import time
 from contextlib import closing
 
@@ -26,6 +27,10 @@ MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored t
 TOOL_RESULT_CHARS = 6000
 SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tried again after this
 STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows
+# an id or the field name where the answer should say what happened: "(fact_id)", "[F-SCORE-000001]", "S-000002"
+_ID = r"(?:fact[_ -]?ids?|story[_ -]?ids?|F-[A-Z_]+-\d+|S-\d{3,})"
+_PLACEHOLDER = re.compile(rf"\s*[\[(]\s*{_ID}(?:\s*[,;]\s*{_ID})*\s*[\])]", re.IGNORECASE)
+_LEAK = re.compile(rf"\b{_ID}\b|\bfact_\w*", re.IGNORECASE)
 
 DECLINED = {
     "en": "The studio cannot answer that from the match data so far. Ask about this match in English, Italian or Spanish.",
@@ -53,6 +58,11 @@ INSTRUCTIONS = (
     "in a full sentence that names the team (\"Redwick have completed 228 of 276 passes, 83%.\", "
     "\"Il Redwick ha completato 228 passaggi su 276, l'83%.\", \"El Redwick ha completado 228 de 276 pases, el 83%.\"). A player's goals so far are counted by code: read them with get_scorers and write the count with "
     "its noun (\"2 goals\"). To say which team has controlled the match or had more of the ball, cite those totals, and the latest momentum only when you read it. "
+    "A question that compares the teams (which is more dangerous, better, on top) gets the same counts for both "
+    "teams, each team named before its own counts (\"Redwick have 4 shots, 3 on target; Ostwick have 2 shots, 0 on "
+    "target\"), so the visitor sees the difference; when it also asks why, read get_stories as well and give "
+    "as the reason only what those counts show (more shots on target, more of the ball) or what a story's analysis "
+    "says, never a cause of your own. Write numbers exactly as the facts' labels show them (\"Possession 56%\" is 56%). "
     "For a why or how question about a moment (\"Why did they take the lead?\"), read get_stories, the stories already "
     "on air with the analysis the desk's judge passed: answer from the analysis of the story the question is about, in "
     "the answer's language, citing that story's fact_ids, and give no cause the analysis does not give (a story without "
@@ -218,15 +228,33 @@ def check(match_id, ts, text, ids, lang, p1):
         return "answer too long"
     if len(ids) > rules.MAX_ASK_FACTS:
         return "too many cited facts"
+    if _LEAK.search(text):  # what is left after unplaceholder: never on the page
+        return "fact id in the answer"
     with mcp_server.clock_at(ts):  # a fact after ts reads as unknown
         facts = [mcp_server.get_fact(match_id, i) for i in ids]
         info = mcp_server.get_match_info(match_id)
         score = info["score"]
     if any("error" in f for f in facts):
         return "cited fact unknown or after ts"
+    facts = [as_shown(f) for f in facts]
     who = [(t["name"], t["team_id"], None) for t in info["teams"]] + [(x["name"], x["team_id"], x["player_id"]) for x in info["players"]]
     flags = rules.check_answer(text, facts, p1, lang, set(ids), (score["home"], score["away"]), who)
     return flags[0].split(":")[0] if flags else ""
+
+
+def unplaceholder(text):
+    """Text without a bracketed id or field name the model left in it ("2 goals (fact_id)." reads "2 goals.")."""
+    return re.sub(r"\s+([.,;:!?])", r"\1", _PLACEHOLDER.sub("", text)).strip()
+
+
+def as_shown(f):
+    """A share with the value its label shows: possession 55.5 reads "Possession 56%" on the page, so an answer
+    must say 56%, never 55.5%. Only shares: a distance or a speed is on air with its decimal too (the stories'
+    analyses say "17.5 m" where the label says "18 m"), so its value stays."""
+    for mt in rules._NUM.finditer(rules.display_label(f)) if f["unit"] == "%" else ():
+        if mt.group(2) == "%" and rules._near(mt.group(1), f["value"]):
+            return {**f, "value": float(mt.group(1).replace(",", "."))}
+    return f
 
 
 def _charge_cut(usage):
@@ -271,7 +299,7 @@ async def answer(chat_client, match_id, ts, question, lang, p1, usage=None):
         usage.pop("pending_chars", None)
         return declined(lang, rules.brief_error(e), usage)
 
-    text = rules.local_words(rules.decimal_comma(rules.tidy(rules.minute_word(rules.strip_citations(out.answer), lang)), lang), lang)
+    text = rules.local_words(rules.decimal_comma(rules.tidy(rules.minute_word(unplaceholder(rules.strip_citations(out.answer)), lang)), lang), lang)
     ids = list(dict.fromkeys(i.strip().upper() for i in out.fact_ids))
     reason = check(match_id, ts, text, ids, lang, p1)
     if reason:

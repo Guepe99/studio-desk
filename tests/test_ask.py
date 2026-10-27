@@ -825,8 +825,12 @@ def test_answer_drops_a_dangling_see_and_says_goals_in_the_visitors_language():
     ("Redwick Wanderers have a pass accuracy of 56%.", ["F-TEAM_POSSESSION-000015"], "en", "declined"),
     ("Redwick Wanderers have 44.5% possession, Ostwick FC have 55.5% possession.",
      ["F-TEAM_POSSESSION-000015", "F-TEAM_POSSESSION-000016"], "en", "declined"),
-    ("Redwick Wanderers have 55.5% possession, Ostwick FC have 44.5% possession.",
+    ("Redwick Wanderers have 56% possession, Ostwick FC have 45% possession.",
      ["F-TEAM_POSSESSION-000015", "F-TEAM_POSSESSION-000016"], "en", "answered"),
+    # the page shows "Possession 56%" for 55.5: an answer says the share as shown, never the unrounded value
+    ("Redwick Wanderers have 55.5% possession, Ostwick FC have 44.5% possession.",
+     ["F-TEAM_POSSESSION-000015", "F-TEAM_POSSESSION-000016"], "en", "declined"),
+    ("Redwick Wanderers have 55.5% possession.", ["F-TEAM_POSSESSION-000015"], "en", "declined"),
 ])
 def test_a_number_belongs_to_the_team_or_player_it_is_said_of(m001, answer, ids, lang, status):
     assert m001(answer, ids, ts=2400.0, lang=lang) == status, reason()
@@ -875,3 +879,38 @@ def test_an_ordinal_minute_in_an_answer_is_a_cited_minute():
     assert rules.check_answer("Goal 1-0 by the 10th.", [first], 2700, "en", {first["fact_id"]}, (1, 0)) == []
     assert any("'10th'" in f for f in rules.check_answer("Goal 2-1 by the 10th.", [later], 2700, "en",
                                                           {later["fact_id"]}, (2, 1)))
+
+
+# --- review 3, 27/10: a leaked placeholder, a one-sided comparison, an unrounded share ---------------------------
+
+def test_a_leaked_fact_id_placeholder_never_reaches_the_page(m001, studio):
+    got = totals_at(2400.0)
+    ids = [got[("team_shots", "T01")]["fact_id"], got[("team_shots_on_target", "T01")]["fact_id"],
+           got[("team_possession", "T01")]["fact_id"], "F-PLAYER_GOALS-000024"]
+    studio.reply("Redwick Wanderers have been more dangerous with 4 shots, 3 on target and 56% possession. "
+                 "Hugo Okowande has 2 goals (fact_id).", ids)
+    r = studio.visitor().post("/api/ask", json=body(ts=2400.0)).json()
+    assert r["status"] == "answered", reason()
+    assert r["answer"] == ("Redwick Wanderers have been more dangerous with 4 shots, 3 on target and 56% possession. "
+                           "Hugo Okowande has 2 goals.")
+    for leak in ("Hugo Okowande has 2 goals, see fact_ids.", "Hugo Okowande has 2 goals [fact_ids].",
+                 "Hugo Okowande has 2 goals, as fact_id says.", "Hugo Okowande has 2 goals (S-000002).",
+                 "Hugo Okowande has 2 goals per FACT_ID."):
+        studio.reply(leak, ["F-PLAYER_GOALS-000024"])
+        r = studio.visitor().post("/api/ask", json=body(ts=2400.0)).json()
+        assert "fact_id" not in r["answer"].lower() and "S-000002" not in r["answer"], leak
+        assert r["status"] == "declined" or r["answer"] == "Hugo Okowande has 2 goals.", leak
+    assert json.loads(rows("audit")[-1]["detail"])["reason"] == "fact id in the answer"
+
+
+def test_a_comparison_names_both_teams_and_a_reason_only_from_the_facts(m001):
+    # the brief asks for both sides' counts and a reason only from them or a story's analysis (the fake model
+    # cannot show the model follows it); the checks pass such an answer and still refuse a number of its own
+    assert "for both teams" in ask.INSTRUCTIONS and "never a cause of your own" in ask.INSTRUCTIONS
+    got = totals_at(2400.0)
+    ids = [got[(k, t)]["fact_id"] for k in ("team_shots", "team_shots_on_target", "team_possession") for t in ("T01", "T02")]
+    assert m001("Redwick Wanderers have been more dangerous, with 4 shots, 3 on target and 56% possession; Ostwick FC "
+                "have 2 shots, 0 on target and 45% possession.", ids, ts=2400.0) == "answered", reason()
+    assert m001("Redwick Wanderers have been more dangerous, with 4 shots, 3 on target and 55.5% possession; Ostwick FC "
+                "have 2 shots, 0 on target.", ids, ts=2400.0) == "declined"
+    assert reason() == "number not in the facts"
