@@ -77,8 +77,10 @@ const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
 page.on("pageerror", (e) => fail(`page error: ${e.message}`));
-// static hosting: the desk's API calls 404 by design
-page.on("console", (m) => { if (m.type() === "error" && !m.location().url.includes("/api/")) fail(`console: ${m.text()}`); });
+// static hosting: the desk's API calls 404 by design, and so does season.json, optional and not in the DEMO fixture
+// (season.js); voice.json and booth.json are written above, so a 404 on them still fails
+const expected404 = (u) => u.includes("/api/") || u.endsWith("/data/DEMO/season.json");
+page.on("console", (m) => { if (m.type() === "error" && !expected404(m.location().url)) fail(`console: ${m.text()} (${m.location().url})`); });
 await page.goto(url);
 await page.waitForFunction(() => window.studioDesk?.voice, null, { timeout: 15000 });
 await page.evaluate(() => document.fonts.ready);
