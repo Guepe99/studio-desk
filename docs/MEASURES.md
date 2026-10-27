@@ -61,7 +61,7 @@ The Content Safety checks (one call per story,
 The committed AI run against the same workflow with the model off: every call fails, so each agent
 falls back to its written rules (the story finder keeps the must-tell candidates, goals, comebacks and
 recaps, and the first other one; the analyst falls back to the facts; the commentators to the phrasebook and the
-fact-only template). The model-off run uses today's code and no Content Safety; it costs nothing and
+fact-only template). The model-off run uses the current code and no Content Safety; it costs nothing and
 reproduces with `.venv/bin/python scripts/measures.py` (offline, about a minute a match).
 
 | match | storylines found, agents / rules | stories, agents / rules | AI proposals on the desk, agents / rules |

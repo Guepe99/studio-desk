@@ -296,4 +296,5 @@ celebrates, the nearest team-mate is running in (he arrives after the clip ends)
 defenders slump in different poses at different times.
 
 Performance, `scene3d-perf.mjs high` with WebGL 2: 0.28 fps, 330 meshes, 431,806 vertices
-before; 0.29 fps (runs 0.3, 0.3, 0.4), 332 meshes, 434,314 vertices after the first pass; 0.48 fps (runs 0.5, 0.5, 0.5), 332 meshes, 434,314 vertices after the third (the machine was less loaded).
+without the goal work; 332 meshes and 434,314 vertices with it, at 0.29 fps (runs 0.3, 0.3, 0.4)
+in one measurement and 0.48 fps (runs 0.5, 0.5, 0.5) in a later one on a less loaded machine.

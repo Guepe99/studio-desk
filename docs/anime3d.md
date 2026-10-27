@@ -3,7 +3,7 @@
 Anime-style footballers: big eyes with highlights, a small nose, a line mouth,
 big stylised hair in saturated colours, flat cel shading with a crisp shadow edge, clean outlines,
 faces that change with the emotion. The style is generic anime: no character,
-hairstyle-plus-colour pair, kit or face is copied from any anime, manga or game, and no real person.
+hairstyle-plus-colour pair, kit or face is copied from any anime or manga, and no real person.
 
 What ships:
 
@@ -18,34 +18,15 @@ What ships:
 
 ### How anime-look 3D characters are made
 
-**Guilty Gear Xrd** (Junya C. Motomura, GDC 2015; [GDC Vault](https://gdcvault.com/play/1022031/GuiltyGearXrd-s-Art-Style-The),
-[video](https://www.youtube.com/watch?v=yhGjCzxJV3E), [slides](https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf)).
+Published talks on real-time anime rendering agree on these points:
 
 - The data lives in vertices, not textures: normals, vertex colours and UVs. Textures pixelate in close-ups.
-- Cel shading is binary: the surface is lit or not.
-- Head normals are edited by hand. A vertex colour sets how easily a part falls into shadow
-  ([forum recap](https://polycount.com/discussion/comment/2567482), secondary source).
-
-**The outline technique** comes from Motomura's later deck,
-[Guilty Gear Toon Line Control Techniques](https://docswell.com/s/ASW_Academy/5LVY67-GG-Toonline-Eng) (2025).
-
-- An inverted hull.
-- Line width comes from vertex-colour alpha and is scaled by camera distance times tan(FOV/2).
-- A smooth second normal set drives the hull.
-- Lines are removed in creases.
-
-**Blue Protocol** ([CEDEC 2021 coverage](https://www.gamebusiness.jp/article/2021/09/13/19051.html)).
-
-- The base or shade colour is picked by N·L, with tuned normals.
-- Outlines come from a G-buffer edge pass, with thickness adjusted for camera distance.
-- Shadow-map self-shadowing is avoided.
-
-**Genshin Impact.**
-
-- miHoYo's own talks describe a PBR-based stylised render
-  ([GDC 2021](https://www.gdconf.com/news/learn-about-making-genshin-impacts-open-world-gdc-2021),
-  [Unity talk](https://docswell.com/s/UnityJapan/KWRPQ5-210617-unity-dojo20211mihoyozhenzhongyi)).
-- Ramp textures and SDF face shadows are documented only in community recreations.
+- Cel shading is binary: the surface is lit or not, picked by N·L, and head normals are tuned by
+  hand so the face shades cleanly.
+- The outline is an inverted hull driven by a smooth second normal set. Its width is scaled by
+  camera distance times tan(FOV/2), and lines are removed in creases.
+- Faces avoid shadow-map self-shadowing.
+- Ramp textures and SDF face shadows are another route, documented mostly in community recreations.
 
 **VRM MToon** (MIT, [Santarh/MToon](https://github.com/Santarh/MToon);
 [spec](https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_materials_mtoon-1.0/README.md)).
@@ -159,12 +140,12 @@ Spiky hair never gets the two palest colours (pale blond, platinum): pale spikes
 - Two tones from the sun's angle with a crisp edge, smoothstep over 0.08 of N·L.
 - A cool shade tint, and a thin rim on the lit side.
 - The face never drops below 80% of the lit tone, so no hard terminator crosses the nose and
-  cheeks (anime faces are drawn lit; Blue Protocol avoids self-shadow for the same reason).
+  cheeks (anime faces are drawn lit, as above).
 - Image processing as the scene has it.
 - The outline is an inverted hull: one extra mesh per hair style (`anime_outline_<style>`), body,
   face skin and hair merged with smooth normals, drawn back faces only in a dark unlit material and
   pushed out along the normal by 9 mm. It is capped at 1.6 pixels, so lines stay thin at broadcast
-  distance (Xrd's distance-scaled width). One draw outlines the whole player; the expressions do
+  distance. One draw outlines the whole player; the expressions do
   not move it, which is invisible at 1.6 pixels.
 - The eyes, brows and mouth have no hull: their lines are drawn in the face texture.
 
@@ -194,11 +175,12 @@ joints of the anime body part of the way back to their rest pose (`relaxJoints`)
 | Draws per far player | 1 to 2 | 1 |
 
 The near body used to be simplified to 62% and the hair to 20%: the silhouette, the hands and the
-toon terminator went polygonal in the close-ups. Since 19 Oct the near body is VRoid's own mesh
+toon terminator went polygonal in the close-ups. The near body is now VRoid's own mesh
 (8,084 triangles) and the near hair keeps 45%; the far LOD did not change. Measured on the DEMO
 sample, low profile, software WebGL 1, two runs each: 3.99 and 3.86 frames/s before, 3.64 and
 3.96 after (291,407 against 431,199 vertices in the scene); `anime3d-shots` 5.18 against 5.00.
-The difference is inside the noise of a shared server. The fingers curl more since the same day (45% back to rest, see above).
+The difference is inside the run-to-run noise (the machine was running other jobs). The fingers also curl
+more now: 45% back to rest instead of 70% (see above).
 
 ## Results
 
@@ -220,7 +202,7 @@ Stills (`tests/web/anime3d-shots.mjs`, software WebGL 1): `out/shots/anime3d-com
 - Where the time goes, one frame read back: the stadium alone takes 130 to 150 ms, the 22 players
   add 33 to 62 ms with either look. Turning the toon shading or the outline off changes nothing
   measurable at the broadcast distance (measured with the earlier LOD switch, when every player there
-  was on the far body). On a shared server single frames vary by up to 50%, so only the four-turn
+  was on the far body). With other jobs on the machine single frames vary by up to 50%, so only the four-turn
   averages are worth comparing.
 
 - Feet (`tests/web/feet3d.mjs`, every boot's lowest vertex against the grass): before the fix the
