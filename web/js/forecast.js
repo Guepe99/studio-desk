@@ -66,8 +66,12 @@ export class Watch {
       this.data = await r.json();
     } catch { return false; }
     this.byId = new Map(this.data.items.map((it) => [it.id, it]));
-    this.el = h("section", { className: "watch", "aria-labelledby": "watch-head" });
-    this.desk.root.insertBefore(this.el, this.desk.bodyEl);
+    // the stories waiting for the producer stay on screen: closed on a short or narrow desk (one click opens it),
+    // and under the stories on the narrow drawer
+    this.el = h("details", { className: "watch" });
+    this.el.open = matchMedia("(min-width: 1100px) and (min-height: 900px)").matches;
+    if (matchMedia("(min-width: 1100px)").matches) this.desk.root.insertBefore(this.el, this.desk.bodyEl);
+    else this.desk.root.append(this.el);
     return true;
   }
 
@@ -135,7 +139,7 @@ export class Watch {
         h("p", { className: "w-line" }, it.line[lang] ?? it.line.en));
     });
     this.el.replaceChildren(
-      h("div", { className: "w-head" }, h("h3", { id: "watch-head" }, this.tx("w_head")), h("span", { className: "w-note" }, this.tx("w_note"))),
+      h("summary", { className: "w-head" }, h("h3", { id: "watch-head" }, this.tx("w_head")), h("span", { className: "w-note" }, this.tx("w_note"))),
       open.length || done.length ? h("ul", { className: "w-list" }, ...done, ...open) : h("p", { className: "w-empty" }, this.tx("w_empty")));
     if (focused) this.el.querySelector(`button[data-watch="${CSS.escape(focused)}"]`)?.focus();
   }

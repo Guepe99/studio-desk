@@ -1,8 +1,12 @@
-/* Watch for (web/js/forecast.js): the storyline forecasts between the desk's head and its stories. Compact:
+/* Watch for (web/js/forecast.js): the storyline forecasts between the desk's head and its stories, a <details>
+   closed on a short or narrow desk. Compact:
    at most 40% of the desk's height, scrolling inside; each forecast in four short lines and its button. */
 .watch { flex: none; max-height: 40%; overflow-y: auto; overscroll-behavior: contain; padding: 8px 16px 10px;
   background: var(--lilac-25); border-bottom: 1px solid var(--lilac-100); font-size: 14px; }
-.watch .w-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.watch .w-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; cursor: pointer; list-style: none; }
+.watch .w-head::-webkit-details-marker { display: none; }
+.watch .w-head::before { content: "\25B8"; align-self: center; transition: transform .15s; }
+.watch[open] .w-head::before { transform: rotate(90deg); }
 .watch h3 { margin: 0; font-size: 16px; font-weight: 800; }
 .watch .w-note { color: var(--purple-400); font-size: 13px; }
 .watch .w-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
@@ -25,4 +29,5 @@
 .watch .w-pre[aria-pressed="true"] { background: var(--purple); color: var(--page); }
 .watch .w-empty { margin: 4px 0 0; color: var(--purple-400); }
 @media (pointer: coarse) { .watch .w-pre { min-height: 44px; } }
-@media (max-width: 1099px) { .watch { max-height: 35%; } }
+@media (max-width: 1099px) { .watch { max-height: 35%; border-bottom: 0; border-top: 1px solid var(--lilac-100); } }
+.watch:not([open]) .w-note { display: none; }   /* closed: one line */

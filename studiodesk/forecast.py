@@ -239,20 +239,20 @@ def timeline(g, params=None):
 # --- words: reasons, prepared lines ----------------------------------------------------------------
 
 TITLES = {"second_goal": ("Second goal", "Doppietta", "Doblete"),
-          "comeback": ("Comeback", "Rimonta", "Reacción"),
+          "comeback": ("Comeback", "Rimonta", "Remontada"),
           "clean_sheet": ("Clean sheet", "Porta inviolata", "Portería a cero"),
           "late_goal": ("Late goal", "Gol nel finale", "Gol en el tramo final")}
 LANGS = ("en", "it", "es")
 # The prepared lines: phrasebook wording with slots that code fills at the event, from its facts.
 # {player} and {team} are known when the line is prepared; {minute} and {score} wait for the event.
 TEMPLATES = {
-    "second_goal": ("{player} strikes again {minute}: {score}.", "Ancora {player}! {Minute} segna: {score}.",
+    "second_goal": ("{player} strikes again {minute}: {score}.", "Ancora {player}! Doppietta {minute}: {score}.",
                     "¡Otra vez {player}! Gol {minute}: {score}."),
     "comeback": ("What a comeback! {Team} have fought all the way back: {score}.", "Che rimonta {team_di}! È {score}.",
                  "¡Qué reacción! {Team} iguala el partido, {score}."),
     "clean_sheet": ("Full time, and {team} keep a clean sheet: {score}.",
-                    "Finisce qui, e {team} chiude senza subire gol: {score}.",
-                    "Final del partido, y {team} termina sin encajar goles: {score}."),
+                    "Triplice fischio: {team} chiude senza subire gol, {score}.",
+                    "Final del partido: {team} deja la portería a cero, {score}."),
     "late_goal": ("Late goal {minute}! {Score}.", "Gol nel finale, {minute}! {Score}.",
                   "¡Gol en el tramo final, {minute}! {Score}."),
 }
@@ -276,12 +276,12 @@ def reason(m, g, item, ts, lang):
         P = m.required_name(item["player_id"])
         T = phrasebook.team(m, team, lang)  # mid-sentence: lower-case article in it/es
         n = _plural(shots(team), *shot_words)
-        return (f"{P} has scored once; {T} have {n} so far.", f"{P} ha già segnato; {T} ha {n} finora.",
+        return (f"{P} has scored once; {T} have {n} so far.", f"{P} ha già segnato; finora {n} per {T}.",
                 f"{P} ya ha marcado; {T} lleva {n}.")[i]
     if item["kind"] == "comeback":
         s = f"{score[g.home]}-{score[g.away]}"
         n = _plural(shots(team), *shot_words)
-        return (f"{T} trail {s}, with {n} so far.", f"{T} è sotto, {s}, con {n} finora.",
+        return (f"{T} trail {s}, with {n} so far.", f"{T} è sotto {s}, con {n} finora.",
                 f"{T} pierde {s}, con {n} hasta ahora.")[i]
     if item["kind"] == "clean_sheet":
         opp = phrasebook.team(m, g.other(team), lang, start=True)
@@ -291,7 +291,7 @@ def reason(m, g, item, ts, lang):
     goals = score[g.home] + score[g.away]
     gw = _plural(goals, *(("1 goal", "{} goals"), ("1 gol", "{} gol"), ("1 gol", "{} goles"))[i])
     n = _plural(shots(g.home) + shots(g.away), *shot_words)
-    return (f"{gw} and {n} in the match so far.", f"{gw} e {n} nella partita finora.",
+    return (f"{gw} and {n} in the match so far.", f"Finora {gw} e {n} in partita.",
             f"{gw} y {n} en el partido hasta ahora.")[i]
 
 
