@@ -10,9 +10,10 @@ export const WINDOWS = [
 ];
 export const DRIFT_S = 0.3;   // a window further than this from the reference clock is seeked back to it
 
-/** The broadcast page for one window: the existing ?match=&t=&audience=&lang=&view=&speed=&play= link. */
+/** The broadcast page for one window: the ?match=&t=&audience=&lang=&view=&speed=&play= link, and wall=1:
+ *  its desk is the multiviewer's, so it never talks to the server itself (app.js). */
 export function windowUrl({ match, t, audience, lang, view = "2d", speed = 1, play = false }) {
-  const p = new URLSearchParams({ match, t: String(t), audience, lang, view, speed: String(speed) });
+  const p = new URLSearchParams({ match, t: String(t), audience, lang, view, speed: String(speed), wall: "1" });
   if (play) p.set("play", "1");
   return `index.html?${p}`;
 }

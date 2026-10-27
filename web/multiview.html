@@ -9,24 +9,30 @@
   <link rel="icon" href="data:,">
   <!-- the palette, the font and the .ctl buttons of the broadcast page; nothing of that page is changed -->
   <link rel="stylesheet" href="css/broadcast.css">
+  <!-- the producer's desk of the broadcast page (desk.js), docked on the right; a drawer on narrow screens -->
+  <link rel="stylesheet" href="css/desk.css">
   <link rel="stylesheet" href="css/multiview.css">
   <script type="module" src="js/multiview.js"></script>
 </head>
 <body class="mv">
+  <div id="app">
   <header class="mv-head">
     <div class="mv-title">
       <h1>Studio Desk <span class="mv-tag">Multiview</span> <a id="mv-single" class="mv-back" href="index.html">Back to the single view</a></h1>
-      <p class="mv-lede">One producer desk drives four outputs: the same goal for four audiences in three languages, and every number on screen comes from the same fact ledger. Click a window to make it large and hear its commentary; click it again to see all four.</p>
+      <p class="mv-lede">One producer desk drives four outputs: the same goal for four audiences in three languages, and every number on screen comes from the same fact ledger. A decision on the desk applies to all four. Click a window to make it large, in 3D, and hear its commentary; click it again to see all four.</p>
     </div>
     <div class="mv-transport" role="group" aria-label="Master transport">
       <button id="mv-play" class="ctl icon" type="button" aria-label="Play all" aria-keyshortcuts="Space K">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M7 4.5v15l12-7.5z"/><path class="i-pause" d="M6 4.5h4.2v15H6z"/><path class="i-pause" d="M13.8 4.5H18v15h-4.2z"/></svg>
       </button>
       <div id="mv-goals" role="group" aria-label="Jump to a goal"></div>
-      <span id="mv-clock" class="mv-read" aria-label="Match clock">Loading</span>
+      <span id="mv-clock" class="mv-read" role="timer" aria-live="off" aria-label="Match clock">Loading</span>
       <span id="mv-sync" class="mv-read" title="The largest gap between a window and the reference clock">Sync</span>
+      <button id="desk-open" class="ctl" type="button" aria-controls="desk" aria-expanded="false">Desk <span class="count"></span><span class="off" hidden>offline</span></button>
     </div>
   </header>
   <main id="mv-wall" aria-label="Four outputs of one producer desk"></main>
+  </div>
+  <aside id="desk" aria-label="Control desk"></aside>
 </body>
 </html>

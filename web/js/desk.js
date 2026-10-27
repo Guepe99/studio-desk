@@ -315,10 +315,10 @@ export const TEXT = {
   },
 };
 
-/** A desk string in a page language, English when that language lacks it. */
 /** Italian "al 10'" but "all'8'", "all'11'", "all'80'": the article elides before a vowel sound (otto, undici, uno). */
 export function alMinute(m) { return /^(8|11?(?!\d))/.test(String(m)) ? `all'${m}'` : `al ${m}'`; }
 
+/** A desk string in a page language, English when that language lacks it. */
 export function tr(lang, key, vars = {}) {
   const v = TEXT[lang]?.[key] ?? TEXT.en[key];
   if (typeof v === "function") return v(vars);
@@ -333,7 +333,7 @@ export const agentName = (agent, lang = "en") => {
   const name = TEXT[lang]?.[`ag_${base}`] ?? TEXT.en[`ag_${base}`] ?? base.replace(/_/g, " ");
   return code ? `${name} ${code.toUpperCase()}` : name;
 };
-const AUTO_RISK = 0.35; // studiodesk/config.py AUTO_APPROVE_RISK
+const AUTO_RISK = 0.35; // the server's copy: studiodesk/config.py AUTO_APPROVE_RISK
 const HIGH_RISK = 0.6;  // ours: from here the reviewer reads the evidence before anything else
 export const riskBand = (r) => (r < AUTO_RISK ? "low" : r < HIGH_RISK ? "mid" : "high"); // an unknown risk counts as high
 const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself stays until the next decision
@@ -413,7 +413,9 @@ export const traceFailed = (t) => t.step === "fallback" || /(^| )fallback: |\bfa
 
 export class Desk {
   /** @param {HTMLElement} root  the #desk element
-   *  @param {{match, matchId: string, state, seek: (ts: number) => void, onChange: () => void}} opts */
+   *  @param {{match, matchId: string, state, seek: (ts: number) => void, onChange: () => void, delay?: number,
+   *    audiences?: string[], editNote?: string}} opts  audiences: the multiviewer's four, whose generated graphics
+   *    this desk lists (the audience on screen without it); editNote: a line over the editor and the AI proposal */
   constructor(root, opts) {
     Object.assign(this, opts);
     this.root = root;
@@ -599,11 +601,14 @@ export class Desk {
   // with a broadcast delay the desk runs that far ahead of the picture (delay.js): a story is listed once written at the live time
   visible(s, now = this.state.ts) { return s.ts <= now + (this.delay ?? 0) && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
-  /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
+  /** A generated graphic this desk lists: of the audience on screen, or of any window's (opts.audiences, multiview.js). */
+  ours(g) { return (this.audiences ?? [this.state.audience]).includes(g.audience); }
+  /** The stories reached, and the generated graphics of the audience on screen (or of every window's,
+   *  opts.audiences): of those still waiting,
    *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire).
    *  A filler is never listed: it shows in On air now only, while it is on screen (airRows). */
   shown() {
-    const gens = this.gens.filter((g) => g.audience === this.state.audience && !g.filler && this.visible(g));
+    const gens = this.gens.filter((g) => this.ours(g) && !g.filler && this.visible(g));
     const wait = gens.filter((g) => this.status(g) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b))[0];
     return [...this.stories.filter((s) => this.visible(s)), ...gens.filter((g) => g === wait || this.status(g) !== "needs_review")];
   }
@@ -1022,8 +1027,8 @@ export class Desk {
     const now = this.state.ts;
     this.liveCues = cues;
     this.live = new Set(cues.map((c) => c.story_id ?? this.genOf.get(slot(c))?.story_id).filter(Boolean));
-    // a story, or a generated graphic of the audience on screen, also counts once it is missed (3)
-    const reach = [...this.stories, ...this.gens.filter((g) => g.audience === this.state.audience)]
+    // a story, or a generated graphic of the audience on screen (or of every window's), also counts once it is missed (3)
+    const reach = [...this.stories, ...this.gens.filter((g) => this.ours(g))]
       .map((s) => (this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
     const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
     const a = document.activeElement, typing = this.root.contains(a) && a.matches("input, textarea");
@@ -1203,7 +1208,7 @@ export class Desk {
       h("p", { className: "why" },
         h("span", { className: `risk risk-${band}`, title: tx("riskTitle", { r: dec(risk, lang, 2), t: dec(AUTO_RISK, lang, 2) }) },
           h("b", {}, s.safety === "flagged" ? cap(tx("why_safety"), lang) : tx(`risk_${band}`)),
-          h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
+          h("span", { className: "meter", "aria-hidden": "true", style: `--auto-risk:${AUTO_RISK * 100}%` }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
         " ", tx(tip)),
       this.decisions.has(id) ? h("p", { className: "default" }, TEXT.en[`before_${this.defaultStatus(s)}`] ? tx(`before_${this.defaultStatus(s)}`)
         : tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
@@ -1246,7 +1251,7 @@ export class Desk {
     if (!p) return null;
     const text = p[lang] ?? p.en ?? "";
     const using = this.usedProposal(s);
-    return h("div", { className: "proposal" },
+    return h("div", { className: "proposal" }, using ? null : this.editLine(s),
       h("p", { className: "proposal-text" }, h("b", {}, this.tx(using ? "proposalOn" : "proposalOff")), h("span", { lang: p[lang] ? lang : "en" }, text)),
       using ? null : h("button", { type: "button", className: "ctl", "data-focus": `${s.story_id}:proposal`, disabled: this.locked(),
         onclick: () => this.decide(s, "edited", { ...p }) }, this.tx("useProposal")));
@@ -1263,6 +1268,9 @@ export class Desk {
     this.render();
     this.root.querySelector(`[data-focus="${CSS.escape(`${s.story_id}:text:${this.state.lang}`)}"]`)?.focus();
   }
+
+  // opts.editNote, when set: what an edit of a story replaces (the multiviewer: its line in every window)
+  editLine(s) { return this.editNote && !s.gen ? h("p", { className: "edit-note" }, this.editNote) : null; }
 
   // All three languages in one editor, the headline and the body of each: saving approves what goes on
   // air in every language, so the reviewer sees every one. Unchanged text saves as a plain approval.
@@ -1307,7 +1315,7 @@ export class Desk {
       if (Object.keys(texts).length) this.decide(s, "edited", texts); else this.decide(s, "approved");
     };
     const cancel = () => { this.endEdit(id); this.focusTo = `${id}:edited`; this.render(); };
-    return h("div", { className: "editor" }, sets,
+    return h("div", { className: "editor" }, this.editLine(s), sets,
       h("div", { className: "editor-bar" },
         h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, disabled: locked, onclick: cancel }, tx("cancel")),
         h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, disabled: locked, onclick: save }, tx("saveApprove"))));
@@ -1516,7 +1524,6 @@ export class Desk {
   }
 }
 
-// A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 // a template graphic has one cue per language: taking it out takes it out in every language
 const slot = (c) => `${c.graphic}|${c.due ?? c.ts}|${c.audience}`;   // a card held past a replay keeps its slot (view3d.js holdForReplays)
 // The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
@@ -1524,6 +1531,7 @@ const slot = (c) => `${c.graphic}|${c.due ?? c.ts}|${c.audience}`;   // a card h
 // name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do
 // the fillers (payload.filler, audiences.py fill_cues): they keep every sheet from going a minute with nothing.
 export const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
+// A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

@@ -911,8 +911,10 @@ async function main() {
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
+  // in a multiviewer window (?wall=1) the wall's own desk talks to the server and hands this one its decisions
+  const wallDesk = params.get("wall") === "1";
   // the voice and Ask buttons may appear; one that fails to load does not hold back the booth and the audio hook
-  for (const r of await Promise.allSettled([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()])) if (r.status === "rejected") console.error(r.reason);
+  for (const r of await Promise.allSettled([v.load().then(() => { voice = v; }), wallDesk ? null : desk.connect(), ask.probe()])) if (r.status === "rejected") console.error(r.reason);
   // the booth and the crowd follow the same button (docs/commentary.md)
   const b = new BoothAudio({ base: `data/${matchId}`, match, host, state, voice: v });
   if (await b.load()) {

@@ -247,7 +247,7 @@ export class View3D {
     if (this.mode === "2d" && !this.hint.box.hidden) this._hint(false);
     if (this.mode !== "2d" && !this.scene && !this.loading) {
       this._status(this.t("load3d"));
-      this.loading = this._load().then(() => this._status(""), (err) => {
+      this.loading = this._load().then(() => { this.loading = null; this._status(""); }, (err) => {
         this._status("");
         console.warn(`3D view: ${err.message}`);
         this.failed = true;
@@ -255,6 +255,17 @@ export class View3D {
         this._notice(() => this.t("fail3d").replace("{e}", err.message));
       });
     }
+    this._apply();
+  }
+
+  // Frees a built scene: its engine, meshes and GPU memory; the next set() to 3D builds it again. The
+  // multiviewer keeps one scene at a time this way. A scene still loading is left to finish first.
+  release() {
+    if (!this.scene || this.loading) return;
+    this.planning?.stop();
+    this.planning = null;
+    this.scene.engine.dispose();
+    this.scene = null;
     this._apply();
   }
 
