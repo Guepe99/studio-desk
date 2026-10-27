@@ -89,9 +89,9 @@ Every number that can reach the screen is a row in `facts`, with:
 
 Kinds produced by B: `pass_distance`, `pass_difficulty`, `pass_accuracy`, `ball_speed`,
 `shot_speed`, `sprint_speed`, `sprint_count`, `distance_covered`, `momentum`, `xt_added`,
-`press_intensity`, `line_height`, `score`; since feat/audiences also `checkin_touches`,
+`press_intensity`, `line_height`, `score`; also `checkin_touches`,
 `checkin_passes`, `checkin_distance`, `checkin_sprints`, `checkin_top_speed` (see Audiences additions);
-since feat/no-empty-minutes also `start_formation` (see Audiences additions).
+also `start_formation` (see Audiences additions).
 
 `momentum` is one fact per team per 5-minute window. The value runs 0..10 and `ts` is the end of
 the window. Window labels name display minutes that never overlap (`min 66-70`, `min 71-75`);
@@ -109,8 +109,8 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
     In a live run a story is saved as it goes on air with `"status": "pending"`, and its row is
     updated when the verifier is done; a finished run holds no `pending`.
     `flagged` is empty on `pass`; on `rewritten` it says what the earlier drafts got wrong, on
-    `template` why the drafts were not used (packs before feat/texts4 may hold other strings).
-    Since feat/phrasebook it also holds `on_air` (`"phrasebook"` or `"template"`: who wrote
+    `template` why the drafts were not used (older packs may hold other strings).
+    It also holds `on_air` (`"phrasebook"` or `"template"`: who wrote
     `texts`, always code), `opener` (the phrasebook exclamation id, or null) and, when the AI's
     lines passed every check in all three languages, `proposals` (`{"en", "it", "es"}`), shown on
     the desk and put on air only by a person's `edited` decision. `status` then describes the AI's
@@ -133,7 +133,7 @@ the window after 45' or 90' reads `first-half stoppage time` or `second-half sto
 
 ## Audiences, languages, graphics
 
-- Audiences: `analyst`, `casual`, `kids` (feat/audiences), `player:<player_id>`, `team:<team_id>`.
+- Audiences: `analyst`, `casual`, `kids`, `player:<player_id>`, `team:<team_id>`.
 - Languages: `en`, `it`, `es`.
 - At most 2 graphics on screen at once (the director enforces it).
 
@@ -146,10 +146,10 @@ is the OGraf `data` for that graphic:
 | `pass_shot` | `{mode: "pass"\|"shot", player_id, value, unit, quality, fact_ids}` |
 | `momentum` | `{home: [..], away: [..], window: n, fact_ids}` |
 | `why_card` | `{kind: "why"\|"recap"\|"checkin", title, body, fact_ids}` |
-| `team_stats` | `{when, rows: [{stat, home, away, home_v, away_v}], fact_ids}` (feat/analyst-stats) |
-| `lineup` | `{teams: [{side, formation, lines: [[{player_id, shirt, name}]]}], fact_ids}` (feat/no-empty-minutes) |
+| `team_stats` | `{when, rows: [{stat, home, away, home_v, away_v}], fact_ids}` |
+| `lineup` | `{teams: [{side, formation, lines: [[{player_id, shirt, name}]]}], fact_ids}` |
 
-Any payload may also carry `filler: true` (feat/no-empty-minutes, additive): a code cue added so that a
+Any payload may also carry `filler: true`: a code cue added so that a
 sheet never goes a minute with nothing on air (see Audiences additions). A graphic ignores the key.
 
 ## Replay export (static, no API needed)
@@ -177,7 +177,7 @@ Shapes (JSON, UTF-8; ids and columns as in the tables, JSON-text columns already
   sorted by `ts`.
 
 Until the agents exist, `export` writes a **template cue sheet** from the facts alone (no AI),
-audiences `analyst` and `casual` (and `kids`, a copy of `casual`, since feat/audiences), language `en`, `story_id` null: a nameplate for each top
+audiences `analyst` and `casual` (and `kids`, a copy of `casual`), language `en`, `story_id` null: a nameplate for each top
 sprint, a `pass_shot` for each shot and for the hardest passes, `momentum` at the end of every
 5-minute window, a `why_card` recap with template text at half-time and full time. `stories.json`
 and `traces.json` are then `[]`. At most 2 cues overlap for the same audience.
@@ -205,7 +205,7 @@ button.
 | POST | `/api/live` | 501: live runs are not available, only the replay |
 | GET | `/api/live/{run_id}/stream` | 501, as `/api/live` |
 
-### Control desk additions (feat/desk, additive)
+### Control desk additions
 
 | method | path | what |
 |---|---|---|
@@ -236,9 +236,9 @@ button.
 - Languages: the sheet for language L is the cues with `lang` L, plus the English template cues
   when L has no template cue of its own.
 
-### Control desk additions (feat/desk2, additive)
+### Control desk refinements
 
-These refine the feat/desk rules above; where they differ, these win.
+These refine the control desk rules above; where they differ, these win.
 
 - On air is an allow-list: a story's cues go on air only when its status is `auto_approved`,
   `approved` or `edited`. Any other `default_status` (missing, `pending`, unknown) is held.
@@ -284,7 +284,7 @@ Tools, all read-only over `matches.sqlite`, filtered to `ts <= clock` when the c
 `MatchClock(match_id, speed)` yields events one at a time at match time; `speed=1` is real time.
 Agents only learn about an event when the clock releases it, in replay generation too.
 
-## Agents additions (feat/agents2, additive)
+## Agents additions
 
 - New fact kinds from B, same columns as the others:
   - `shot_distance`: metres from the shot location to the centre of the goal attacked, one per
@@ -320,7 +320,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   for every match that has a pack. Every `fact_id` and `event_id` in a pack exists in the data
   rebuilt from the seed (`sim build --matches 4 --seed 7`, then `facts build --all`).
 
-## Voice additions (feat/voice, additive)
+## Voice additions
 
 - Optional per match: `replays/<match_id>/voice.json` and `replays/<match_id>/voice/<story_id>.<lang>.mp3`,
   written by `python -m studiodesk.voice <match_id>` (details in `docs/voice.md`) and copied with the
@@ -331,7 +331,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - The page plays a clip only when its `text_sha1` matches the story text it shows. A match with no
   `voice.json` (404) plays silent.
 
-## Ask the studio additions (feat/ask, additive)
+## Ask the studio additions
 
 - `POST /api/ask` with `{match_id, ts, question, lang}`: a visitor's question about the match at
   replay time `ts`. `question` is plain text, 1 to 280 characters; `lang` is `en`, `it` or `es`.
@@ -357,7 +357,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   client, never the address itself; `questions`). Every question writes one `audit` row,
   `action: "ask"`, with its tokens, cost and status; the question text is kept in `detail`.
 
-## Page additions (feat/moments, additive)
+## Page additions
 
 - "Next key moment": a button that always moves forward: it seeks to 6 seconds before the first
   key moment of the current audience whose lead-in starts more than 0.5 s after the current time.
@@ -380,7 +380,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   clamped to two lines; the full text is in the Traces tab of the desk. Its labels follow the page
   language (en, it, es); the agent output stays in English. It reads only the replay files; on a phone it folds to one line.
 
-## Audiences additions (feat/audiences, additive)
+## Audiences additions
 
 - `kids` audience: short, warm lines with the same true numbers. Its cue sheet is the `casual` one
   (same stories, times and graphics) with the kids line in each `why_card`.
@@ -402,7 +402,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   audience of the sheet in its languages, one fact per line in the body. A card starts within 30 s of its facts' `ts`, in a
   slot where it overlaps no other cue of that audience, ends before half-time or full time, and is
   dropped when no slot is free.
-- Team shape panels (feat/analyst-stats): a `team_stats` cue for the `analyst` audience, `story_id` null, 10 s,
+- Team shape panels: a `team_stats` cue for the `analyst` audience, `story_id` null, 10 s,
   at the end of every 5-minute window that has `formation`, `line_height`, `team_length`, `team_width` and
   `press_intensity` for both teams, in each language of the analyst sheet. Payload: `when`, the window in
   the cue's language ("Min 6-10", "Minuti 6-10", "Minutos 6-10", or the half's stoppage time); `rows`, one
@@ -412,7 +412,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   first 0.5 s step of the 60 s after the window where it overlaps no other analyst cue (timed on the English
   sheet) and ends before half-time or full time, else it is dropped. On the page, a momentum or team shape
   card due during a goal replay waits for its end, one after the other.
-- No empty minutes (feat/no-empty-minutes, `docs/desk.md`):
+- No empty minutes (`docs/desk.md`):
   - `start_formation`: one fact per team at `ts` 0, period 1, `unit` `formation`, `value` the team
     sheet's lines as digits from the starters' positions (`433.0` is 4-3-3), label
     `Starting formation 4-3-3, team sheet`. Written only for 11 starters with one keeper and three lines.
@@ -454,7 +454,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
   to that audience (`aria-pressed` on the current one). This visitor's edited text replaces every
   audience's line, as on the cue sheet.
 
-## Viewing additions (feat/ui-viewing, additive)
+## Viewing additions
 
 - `POST /api/perf` with `{match_id, fps_median, renderer|null, screen_w, screen_h, dpr}`: one anonymous
   frame-rate beacon per visit, sent after 30 s of 3D play. Fields are validated and clamped; no IP, user
@@ -520,7 +520,7 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - Desk: the audit table also lists the visitor's own decisions (class `a-human`), in time order.
 - Ask the studio in Analyst mode lists the cited facts by their `label_en`, the ids in the tooltip.
 
-## Season additions (feat/season, additive)
+## Season additions
 
 Nothing above changes: no fact id, cue id, story id, file or API is renamed or renumbered, and the files
 of `web/data/<match>/` keep their bytes. The season is new tables, new fact ids in their own table, one
@@ -572,7 +572,7 @@ new MCP tool, one new export file and one new graphic. Design and sources: `docs
   goals}], fact_ids}`, sides as `home`/`away` of this match). `why_card` takes an optional `season`
   array of strings, drawn under the body.
 
-## Voice question additions (feat/ask-voice, additive)
+## Voice question additions
 
 - `GET /api/ask` also returns `voice` (bool): true when Azure Speech is configured
   (`AZURE_SPEECH_ENDPOINT`), so the page may show its microphone button.
@@ -584,7 +584,7 @@ new MCP tool, one new export file and one new graphic. Design and sources: `docs
   429 `{status: "limit", reason}` past the cap; a Speech failure is 502. The audio is never stored or
   logged.
 
-## Forecast additions (feat/forecast, additive)
+## Forecast additions
 
 Watch for: storyline forecasts made by code from the facts, and prepared lines the producer can
 pre-approve ([docs/forecast.md](forecast.md)). Nothing above changes.
