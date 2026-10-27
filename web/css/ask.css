@@ -35,6 +35,7 @@
 .ask-you { color: var(--purple-400); font-size: 15px; overflow-wrap: anywhere; }
 .ask-a { margin-top: 4px !important; font-weight: 600; overflow-wrap: anywhere; }
 .ask-a.declined { color: var(--purple-400); font-weight: 400; font-style: italic; }
+.ask-watch { margin-top: 6px; height: auto; min-height: 32px; padding: 4px 10px; font-size: 14px; }
 .ask-facts { margin-top: 4px !important; font-size: 12px; font-weight: 600; color: var(--purple-400); overflow-wrap: anywhere; }
 @media (max-height: 500px) {
   #ask { padding: 8px 12px; font-size: 15px; }
