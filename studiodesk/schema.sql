@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS facts (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS facts_ts ON facts(match_id, ts);
 
--- season (feat/season): the league before the replays, events level, no tracking ------------
+-- season: the league before the replays, events level, no tracking ------------
 
 CREATE TABLE IF NOT EXISTS season_matches (     -- matchweeks before the replays' one
   season_match_id TEXT PRIMARY KEY,             -- SM-001..

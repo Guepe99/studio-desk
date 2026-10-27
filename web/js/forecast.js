@@ -17,7 +17,7 @@ export function stepAt(data, ts) {
 
 /** The prepared cues: one why_card per pre-approved line whose event happens after its approval, at the
  *  event's time, in the audience and language on air. story_id null: code's own text, so the broadcast
- *  delay (feat/broadcast-delay) leaves it on its event. */
+ *  delay leaves it on its event. */
 export function preparedCues(data, approvals, audience, lang) {
   const out = [];
   for (const it of data?.items ?? []) {
@@ -95,7 +95,7 @@ export class Watch {
     this.desk.render();
   }
 
-  /** Every frame. ts: the picture's time; delay: how far the desk runs ahead of it (feat/broadcast-delay). */
+  /** Every frame. ts: the picture's time; delay: how far the desk runs ahead of it. */
   update(ts, live, delay = 0) {
     if (!this.data) return;
     for (const c of live) {

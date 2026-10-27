@@ -182,7 +182,7 @@ def export(match_id, conn, out_root, runtime=None):
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
-    if season:  # feat/season, additive: a new file, the files above stay as they were
+    if season:  # a new file: the files above stay as they were
         _dump(out / "season.json", season)
     _dump(out / "forecast.json", watch)
     index(out_root)
