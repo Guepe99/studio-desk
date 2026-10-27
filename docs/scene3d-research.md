@@ -245,7 +245,7 @@ biggest tells. This section gives the rules the build follows, with numbers and 
   dark tones read as too uniform; copper and auburn read as unrealistic (18/10/2026).
 - Face: the players' anime face. `scripts/build_crowd_face.py` draws the face of
   `web/vendor/players/anime.glb` (eyes with highlights, lashes, brows, mouth, from its face atlas)
-  front-on into `web/vendor/crowd/face.png` (512 x 512, 28 KB): neutral and joy (the players'
+  front-on into `web/vendor/crowd/face.png` (512 x 512, 22 KB): neutral and joy (the players'
   "joy" morph target), each as colour plus a mask of iris and brows. A round face plate (two rings
   of 16, curved back at the sides) over the body's narrow head samples it, one texture for the
   whole crowd, so it stays one draw call. Per spectator: the skin and hair of the palettes, an
