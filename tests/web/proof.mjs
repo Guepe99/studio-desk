@@ -37,14 +37,16 @@ async function open(view, { width = 1280, height = 720, lang = "en", reduced = f
   return page;
 }
 
-// the latest moment with the most story graphics on air together, out of the goal replays (the 3D tags,
-// as the carrier's, are for open play): M001, the goal at 81' and the comeback it makes, after the replay
-const busiest = (page) => page.evaluate(() => {
+// the latest moment with the most story graphics on air together, out of the goal replays and the crowd and
+// stadium cutaways (the 3D tags, as the carrier's, are for open play; a cutaway follows each goal replay):
+// M001, the goal at 81' and the comeback it makes, after the replay and the cutaway
+const busiest = (page) => page.evaluate(async () => {
   const sd = window.studioDesk, sheet = sd.desk.sheet(sd.match.cues, sd.state.audience, sd.state.lang).filter((c) => c.story_id);
-  const reps = sd.view3d.reps ?? [];
+  const { cutawayPlan } = await import(new URL("js/scene3d/cutaway.js", location.href).href);
+  const away = [...(sd.view3d.reps ?? []), ...cutawayPlan(sd.match)];
   let best = null;
-  for (const t of [...sheet.map((c) => c.ts + 2), ...reps.map((r) => r.to + 1)]) {
-    if (reps.some((r) => r.from <= t && t < r.to)) continue;
+  for (const t of [...sheet.map((c) => c.ts + 2), ...away.map((r) => r.to + 1)]) {
+    if (away.some((r) => r.from <= t && t < r.to)) continue;
     const n = sheet.filter((x) => x.ts <= t && t < x.ts + x.duration_s).length;
     if (!best || n >= best.n) best = { t, n };
   }
@@ -78,7 +80,7 @@ const state = (page) => page.evaluate(() => {
     numbers: [...panel.querySelectorAll(".proof-nums li")].map((li) => li.textContent), bad: panel.querySelectorAll(".proof-nums li.bad").length,
     checks: [...panel.querySelectorAll(".proof-checks dd")].map((d) => d.textContent),
     cited: [...(pr.proof?.players ?? [])].sort(), ringed: sd.pitch.drawn.players.filter((x) => x.cited).map((x) => x.id).sort(),
-    pitchShown: sd.view3d.shown !== "3d", tags, carrier: !document.querySelector("#carrier").hidden,
+    pitchShown: sd.view3d.shown !== "3d", tags, shot: sd.view3d.scene?.cams.mode ?? "", ts: sd.state.ts, carrier: !document.querySelector("#carrier").hidden,
     overPicture: !panel.hidden && p.left < frame.right && frame.left < p.right && p.top < frame.bottom && frame.top < p.bottom,
     blank: /\b(null|undefined|NaN)\b/.test(panel.textContent), hscroll: document.documentElement.scrollWidth > window.innerWidth, animations: panel.getAnimations({ subtree: true }).length,
   };
@@ -108,7 +110,7 @@ async function check(page, tag, { threeD = false } = {}) {
   if (!s.cited.length) fail(`${tag}: no cited player`);
   if (s.pitchShown && s.ringed.join() !== s.cited.filter((id) => s.ringed.includes(id)).join()) fail(`${tag}: 2D rings ${s.ringed} for ${s.cited}`);
   if (s.pitchShown && !s.ringed.length) fail(`${tag}: no 2D ring`);
-  if (threeD && (!s.tags.length || s.tags.length > s.cited.length)) fail(`${tag}: ${s.tags.length} 3D tags for ${s.cited.length} cited players`);
+  if (threeD && (!s.tags.length || s.tags.length > s.cited.length)) fail(`${tag}: ${s.tags.length} 3D tags for ${s.cited.length} cited players (camera ${s.shot}, at ${s.ts})`);
   if (!threeD && s.tags.length) fail(`${tag}: 3D tags on the 2D page`);
   return s;
 }
