@@ -44,7 +44,7 @@ async function open(view, { noWebGL = false, quiet = false } = {}) {
   const tag = `${view ?? "default"}${noWebGL ? " without WebGL" : ""}`;
   // the desk's api/ calls and voice.json 404 on static hosting; without WebGL Babylon says so
   page.on("console", (m) => {
-    if (m.type() === "error" && !quiet && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`);
+    if (m.type() === "error" && !quiet && !/\/api\/|(voice|booth|season)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`);
   });
   // after the test loses the WebGL context on purpose, Babylon work already under way fails to make textures
   page.on("pageerror", (e) => { if (page.lostOnPurpose && /Unable to create texture/.test(e.message)) console.log(`after the lost context: ${e.stack?.split("\n").slice(0, 4).join(" | ")}`); else fail(`${tag} page error: ${e.message}`); });

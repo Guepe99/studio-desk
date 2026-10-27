@@ -27,6 +27,7 @@ export const STRINGS = {
     ap_edited: "Edited and approved by the producer", ap_proposal: "The AI proposal, put on air by the producer", ap_template: "A template graphic needs no approval",
     ap_rejected: "Taken off air by the producer", ap_expired: "Off air: missed, its moment passed before anyone put it on air", ap_needs_review: "Waiting for the producer",
     offAir: "This graphic is no longer on air.",
+    season: "Season so far", seasonNumbers: "Every number on this card is one of the season facts below, copied by code.",
   },
   it: {
     show: "Mostra le prove: {what}", word: "Prove", bar: "Le prove delle grafiche in onda", title: "Le prove: {what}", close: "Chiudi",
@@ -43,6 +44,7 @@ export const STRINGS = {
     ap_edited: "Modificata e approvata dalla regia", ap_proposal: "La proposta dell'IA, mandata in onda dalla regia", ap_template: "Una grafica standard non ha bisogno di approvazione",
     ap_rejected: "Tolta dalla regia", ap_expired: "Fuori onda: persa, il suo momento è passato prima che qualcuno la mandasse in onda", ap_needs_review: "In attesa della regia",
     offAir: "Questa grafica non è più in onda.",
+    season: "La stagione fin qui", seasonNumbers: "Ogni numero di questa grafica è uno dei fatti della stagione qui sotto, copiato dal codice.",
   },
   es: {
     show: "Ver las pruebas: {what}", word: "Pruebas", bar: "Las pruebas de los gráficos en antena", title: "Las pruebas: {what}", close: "Cerrar",
@@ -59,6 +61,7 @@ export const STRINGS = {
     ap_edited: "Editada y aprobada por la realización", ap_proposal: "La propuesta de la IA, puesta en antena por la realización", ap_template: "Un gráfico estándar no necesita aprobación",
     ap_rejected: "Retirado por la realización", ap_expired: "Fuera de antena: perdida, su momento pasó antes de que alguien la pusiera en antena", ap_needs_review: "A la espera de la realización",
     offAir: "Este gráfico ya no está en antena.",
+    season: "La temporada hasta ahora", seasonNumbers: "Cada cifra de este gráfico es uno de los datos de la temporada de abajo, copiado por el código.",
   },
 };
 
@@ -89,6 +92,17 @@ export const FACT_KINDS = {
     team_shots: "Tiros hasta ahora", team_shots_on_target: "Tiros a puerta hasta ahora", team_corners: "Saques de esquina hasta ahora", team_possession: "Posesión hasta ahora",
     team_pass_accuracy: "Precisión en el pase hasta ahora", player_goals: "Goles hasta ahora" },
 };
+
+// the season facts (season.js, docs/CONTRACT.md Season additions); it and es for native review
+const SEASON_KINDS = {
+  en: { season_matchweek: "Matchweek", season_position: "Place in the table", season_points: "League points", season_goal_difference: "Goal difference",
+    season_form: "Points from the last five", season_h2h: "Goals in the last meeting", season_goals: "League goals this season", season_scoring_run: "League matches in a row with a goal" },
+  it: { season_matchweek: "Giornata", season_position: "Posizione in classifica", season_points: "Punti in campionato", season_goal_difference: "Differenza reti",
+    season_form: "Punti nelle ultime cinque", season_h2h: "Gol nell'ultimo confronto", season_goals: "Gol in campionato in questa stagione", season_scoring_run: "Partite di campionato di fila in gol" },
+  es: { season_matchweek: "Jornada", season_position: "Puesto en la clasificación", season_points: "Puntos de liga", season_goal_difference: "Diferencia de goles",
+    season_form: "Puntos en los últimos cinco", season_h2h: "Goles en el último enfrentamiento", season_goals: "Goles de liga esta temporada", season_scoring_run: "Partidos de liga seguidos marcando" },
+};
+for (const [lang, more] of Object.entries(SEASON_KINDS)) Object.assign(FACT_KINDS[lang], more);
 export const EVENT_KINDS = {
   en: { clearance: "Clearance", corner_crossed: "Corner into the box", corner_short: "Short corner", cross: "Cross", dribble: "Run with the ball",
     foul: "Foul", freekick_crossed: "Free kick into the box", freekick_short: "Short free kick", shot_freekick: "Free-kick shot", goalkick: "Goal kick", interception: "Interception",
@@ -301,7 +315,7 @@ export class Proof {
   what(cue) {
     const s = cue.story_id && this.desk.byId.get(cue.story_id);
     const g = s || this.desk.genFor(cue);
-    return g ? this.desk.what(g) : "";
+    return g ? this.desk.what(g) : cue.graphic === "season_card" ? px(this.state.lang, "season") : "";
   }
 
   // The cues on air now (host.live): a new set or a new language redraws the bar
@@ -369,7 +383,7 @@ export class Proof {
       onAir ? null : h("p", { className: "proof-off" }, px(lang, "offAir")),
       h("h3", {}, px(lang, "onScreen")),
       w.numbers.length ? h("ul", { className: "proof-nums" }, w.numbers.map((n) => h("li", { className: n.ok ? "" : "bad" },
-        h("b", {}, n.text), " ", n.about))) : h("p", { className: "proof-note" }, px(lang, "noNumbers")),
+        h("b", {}, n.text), " ", n.about))) : h("p", { className: "proof-note" }, px(lang, cue.graphic === "season_card" ? "seasonNumbers" : "noNumbers")),
       h("h3", {}, px(lang, "facts")),
       h("table", { className: "proof-facts" },
         h("thead", {}, h("tr", {}, h("th", { scope: "col" }, px(lang, "colWhat")), h("th", { scope: "col" }, px(lang, "colValue")), h("th", { scope: "col" }, px(lang, "colMinute")))),

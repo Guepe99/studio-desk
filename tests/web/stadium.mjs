@@ -36,7 +36,7 @@ async function open(query, viewport = { width: 1280, height: 720 }) {
   const ctx = await browser.newContext({ viewport });
   const page = await ctx.newPage();
   page.setDefaultTimeout(300000);
-  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`console: ${m.text()}`); });
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth|season)\.json/.test(m.location()?.url ?? "")) fail(`console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`page error: ${e.message}`));
   await page.goto(new URL(`index.html?match=${MATCH}${query}`, base).href);
   await page.waitForFunction(() => window.studioDesk?.view3d, null, { timeout: 120000 });

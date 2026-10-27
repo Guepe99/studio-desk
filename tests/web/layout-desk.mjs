@@ -71,7 +71,7 @@ async function run(w, h) {
   const tag = `${w}x${h}`, touch = w < 1100 || h < 500;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
   const page = await ctx.newPage();
-  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth|season)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   await page.goto(new URL(`index.html?match=${MATCH}&view=2d`, base).href);
   await page.waitForFunction(() => window.studioDesk?.desk?.ready && window.studioDesk.match, null, { timeout: 60000 });

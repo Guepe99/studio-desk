@@ -178,7 +178,28 @@ def get_scorers(match_id: str, player_id: str | None = None) -> list[dict]:
     return [f for f in latest if f["player_id"] == player_id] if player_id else [f for f in latest if f["value"] > 0]
 
 
-TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum, get_team_totals, get_scorers)
+def get_season(match_id: str, kind: str | None = None, team_id: str | None = None,
+               player_id: str | None = None) -> list[dict]:
+    """Season context, counted by code from the league's earlier matchweeks (season_facts). Before kick-off:
+    season_matchweek, and per club season_position, season_points, season_goal_difference (the table before
+    this matchweek); for the two clubs season_form (points from the last five, the letters W D L in
+    detail.results) and season_h2h (goals each scored in this season's earlier meeting, its matchweek in
+    detail); per player on the team sheet season_goals (league goals before kick-off). At each goal of this
+    match, season_goals again (the tally with it: "10th league goal of the season") and season_scoring_run (the
+    league matches in a row he has scored in). Each fact names its season rows in source_season."""
+    sql, args = "SELECT * FROM season_facts WHERE match_id = ? AND ts <= ?", [match_id, _now()]
+    for col, val in (("kind", kind), ("team_id", team_id), ("player_id", player_id)):
+        if val is not None:
+            sql, args = sql + f" AND {col} = ?", args + [val]
+    rows = [_fact(r) for r in _rows(sql + " ORDER BY ts, fact_id", args)]
+    for r in rows:
+        r["source_season"] = json.loads(r["source_season"])
+        r["detail"] = json.loads(r["detail"]) if r["detail"] else None
+    return rows
+
+
+TOOLS = (get_match_info, get_events, get_facts, get_fact, get_player, get_momentum, get_team_totals, get_scorers,
+         get_season)
 server = FastMCP("studiodesk")
 for _fn in TOOLS:
     server.add_tool(_fn, annotations=ToolAnnotations(readOnlyHint=True))

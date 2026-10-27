@@ -9,7 +9,8 @@ from studiodesk import db
 
 def test_cues_take_every_graphic_of_the_contract_and_nothing_else(tmp_path):
     conn = db.connect(tmp_path / "m.sqlite")
-    graphics = sorted(p.name for p in (Path(__file__).parents[1] / "web" / "graphics").iterdir() if p.name != "shared")
+    # season_card is drawn by the page from season.json, never a stored cue (CONTRACT, Season additions)
+    graphics = sorted(p.name for p in (Path(__file__).parents[1] / "web" / "graphics").iterdir() if p.name not in ("shared", "season_card"))
     assert graphics == ["lineup", "momentum", "nameplate", "pass_shot", "team_stats", "why_card"]  # CONTRACT, Graphics
     for i, g in enumerate(graphics):
         conn.execute("INSERT INTO cues VALUES ('M001', ?, NULL, 0.0, 5.0, ?, 'analyst', 'en', '{}')", (f"C-{i}", g))

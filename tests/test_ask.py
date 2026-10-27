@@ -424,7 +424,7 @@ def test_the_storylines_table_is_never_read(studio, monkeypatch):
     monkeypatch.setattr(db, "connect", watched)
     calls = {"get_match_info": {}, "get_events": {"from_ts": 0, "to_ts": 100}, "get_facts": {},
              "get_fact": {"fact_id": SPRINT}, "get_player": {"player_id": "T01-1"}, "get_momentum": {},
-             "get_team_totals": {}, "get_scorers": {}, "get_stories": {}}
+             "get_team_totals": {}, "get_scorers": {}, "get_season": {}, "get_stories": {}}
     assert sorted(calls) == sorted([fn.__name__ for fn in srv.TOOLS] + ["get_stories"])
     for name, args in calls.items():
         studio.fake.responder = lambda schema, p, n=name, a=args: {"tool_call": {"name": n, "arguments": {"match_id": "M001", **a}}}

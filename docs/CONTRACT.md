@@ -517,3 +517,55 @@ Agents only learn about an event when the clock releases it, in replay generatio
 - Next key moment on a paused replay jumps and plays at 1x.
 - Desk: the audit table also lists the visitor's own decisions (class `a-human`), in time order.
 - Ask the studio in Analyst mode lists the cited facts by their `label_en`, the ids in the tooltip.
+
+## Season additions (feat/season, additive)
+
+Nothing above changes: no fact id, cue id, story id, file or API is renamed or renumbered, and the files
+of `web/data/<match>/` keep their bytes. The season is new tables, new fact ids in their own table, one
+new MCP tool, one new export file and one new graphic. Design and sources: `docs/season.md`.
+
+- **The season.** `python -m studiodesk.sim build --matches 4 --seed 7` also writes a double round robin
+  of the 8 clubs (`studiodesk/sim/season.py`) when the replays are one whole matchweek (2 x matches =
+  clubs). The replays M001..M004 are **matchweek 10**; matchweeks 1 to 9 (36 matches) are played by the
+  same event engine, events only, no tracking, no planted storylines. Each replay's pairing met once, in
+  matchweek 3, home and away swapped. The season has its own random stream (`[seed, 2026]`), so the
+  replays' events, tracking and facts are the same with or without it. Same seed, same season.
+- **Tables** (`matches.sqlite`, STRICT):
+  - `season_matches(season_match_id 'SM-001'.., matchweek, home_team_id, away_team_id, home_score, away_score, seed)`
+  - `season_goals(season_match_id, goal_no, minute, team_id, player_id, own_goal)`: `team_id` is the club
+    the goal counts for, `player_id` the player who scored it (an own goal counts for the other club and
+    never for the player). `minute` is the display minute (1 to 45+, 46 to 90+).
+  - `season_fixtures(match_id, matchweek)`: the matchweek each replayed match sits in.
+  - `season_facts`: the fact ledger's columns plus `source_season` (JSON array of row references:
+    `"season_matches:SM-012"`, `"season_goals:SM-012/2"`, `"season_fixtures:M001"`) and `detail` (JSON or
+    NULL). Ids are `F-SEASON_<KIND>-<6 digits>`, numbered per kind and match as the fact ledger's;
+    `source_frames` is always NULL. `facts` itself is unchanged.
+- **Season fact kinds** (`studiodesk/facts/season.py`, written by `python -m studiodesk.facts build`):
+  before kick-off (ts 0, period 1): `season_matchweek`; for every club `season_position` (the table before
+  this matchweek: points, goal difference, goals scored, short name), `season_points`,
+  `season_goal_difference`; for the two clubs `season_form` (points from the last five, `detail.results`
+  the letters W, D, L, oldest first) and `season_h2h` (goals the club scored in the latest meeting,
+  `detail` {matchweek, home_team_id, away_team_id, meetings}); for every player on the team sheet
+  `season_goals` (league goals before kick-off). At each goal, at the `player_goals` fact's ts:
+  `season_goals` again (the tally with this goal, "6th league goal of the season") and, at the player's
+  first goal of the match when he also scored in the club's previous league match,
+  `season_scoring_run` (league matches in a row with a goal, this one included). In-match season facts
+  cite the goal events in `source_event_ids`.
+- **MCP tool** `get_season(match_id, kind?, team_id?, player_id?)`: the season facts up to the clock, as
+  every other tool (`ts <= clock`, `clock_at` included), `source_season` and `detail` parsed. Read-only,
+  in `TOOLS`, so Ask the studio has it too. `rules.check_answer` does not know season fact ids: an answer
+  citing one is declined as before.
+- **Export.** `web/data/<match>/season.json`: the season facts of the match, sorted by ts, JSON-text
+  columns parsed. Written only when the match has season facts; every other file is byte-identical
+  with or without it. `season.json` is optional: a replay without it (the DEMO fixture) plays without
+  the season, and its 404 is expected.
+- **Page** (`web/js/season.js`): the page adds to the visitor's sheet, for every audience and language,
+  a cue `SEASON-CARD` (`story_id` null, ts 0, 12 s, graphic `season_card`, top right) and, on the first
+  `why_card` of kind `why` of each goal (matched through the `score` fact's goal event), an optional
+  `payload.season`: the scorer's tally and run, in the card's language. The recorded cues in
+  `cues.json` are not changed; the desk, the booth and Next key moment ignore the season card. Its
+  numbers are copied by code from the season facts, which the proof panel lists.
+- **Graphics.** New `web/graphics/season_card/` (OGraf, payload `{matchweek, rows: [{side, pos, pts,
+  gd, form}], h2h: {matchweek, home, away, home_goals, away_goals} | null, scorers: [{side, name,
+  goals}], fact_ids}`, sides as `home`/`away` of this match). `why_card` takes an optional `season`
+  array of strings, drawn under the body.

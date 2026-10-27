@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 
 from .. import config, db
+from . import season
 from .engine import XT_GRID, build
 
 ap = argparse.ArgumentParser(prog="python -m studiodesk.facts")
@@ -17,5 +18,5 @@ args = ap.parse_args()
 conn = db.connect(args.db)
 ids = [r[0] for r in conn.execute("SELECT match_id FROM matches ORDER BY match_id")] if args.all else [args.match]
 for match_id in ids:
-    print(f"{match_id}: {build(conn, match_id, args.xt_grid)} facts")
+    print(f"{match_id}: {build(conn, match_id, args.xt_grid)} facts, {season.build(conn, match_id)} season facts")
 conn.close()

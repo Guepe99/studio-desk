@@ -49,7 +49,7 @@ const open = async (browser, [width, height], phone, query = `?match=${MATCH}`) 
   const ctx = await browser.newContext({ viewport: { width, height }, ...(phone ? { deviceScaleFactor: 2, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   // as in smoke.mjs: no API on the static site, and a match without clips has no voice.json
-  const optional = (m) => /\/api\/|\/(voice|booth)\.json$/.test(m.location()?.url ?? "");
+  const optional = (m) => /\/api\/|\/(voice|booth|season)\.json$/.test(m.location()?.url ?? "");
   page.on("console", (m) => { if (m.type() === "error" && !optional(m)) fail(`${width}x${height} console: ${m.text()}`); });
   page.on("pageerror", (e) => fail(`${width}x${height} page error: ${e.message}`));
   // the static site has no API: the probe (GET api/ask) answered available shows the Ask button

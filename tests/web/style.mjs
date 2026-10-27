@@ -38,7 +38,7 @@ async function open(viewport, view) {
   const page = await ctx.newPage();
   page.setDefaultTimeout(300000);   // software WebGL loads and draws slowly
   const tag = `${viewport.width}x${viewport.height}${view ? ` ${view}` : ""}`;
-  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()} (${m.location()?.url ?? "?"})`); });
+  page.on("console", (m) => { if (m.type() === "error" && !/\/api\/|(voice|booth|season)\.json/.test(m.location()?.url ?? "")) fail(`${tag} console: ${m.text()} (${m.location()?.url ?? "?"})`); });
   page.on("pageerror", (e) => fail(`${tag} page error: ${e.message}`));
   await page.goto(new URL(`index.html?match=${MATCH}${view ? `&view=${view}` : ""}`, base).href);
   await page.waitForFunction(() => window.studioDesk?.match && window.studioDesk.view3d, null, { timeout: 120000 });

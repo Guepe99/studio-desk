@@ -13,8 +13,9 @@ import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
+import { loadSeason, withSeason } from "./season.js";
 
-const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card"];
+const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card", "season_card"];
 const STRINGS = {
   en: {
     play: "Play", pause: "Pause", seek: "Match time", speed: "Playback speed", half2: "Jump to 2nd half",
@@ -125,6 +126,7 @@ const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck = $("#deck"), strip = $("#activity");
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
+let season = null;   // season.json (season.js): the kick-off card and the goal cards' season lines
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
 // the 3-2-1 before kick-off and the full-time strap; pips only with the Voice button on (countdown.js)
 const countdown = new Countdown($("#moment"), { lang: () => state.lang, sound: () => !!voice?.on && !$("#voice").hidden });
@@ -398,7 +400,7 @@ function placeMenu() {
 }
 
 function cueSheet() {
-  return desk.sheet(match.cues, state.audience, state.lang);
+  return withSeason(desk.sheet(match.cues, state.audience, state.lang), season, match, state.lang);
 }
 
 function refreshCues() {
@@ -739,7 +741,7 @@ async function main() {
     stage.classList.add("loading3d");   // the stadium still from the start; View3D takes it off once the scene is up
   }
   try {
-    match = await loadMatch(`data/${matchId}`);
+    [match, season] = await Promise.all([loadMatch(`data/${matchId}`), loadSeason(`data/${matchId}`)]);
   } catch (err) {
     $("#status").textContent = t("error").replace("{m}", matchId).replace("{e}", err.message);
     return;
@@ -804,6 +806,7 @@ async function main() {
   GRAPHICS.filter((g, i) => reg[i].status === "rejected").forEach(noGraphic);
   // The replay starts now and needs no API: until the stories load, only template graphics play.
   desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
+  for (const f of season ?? []) desk.factIndex.set(f.fact_id, f);   // the proof panel lists the season card's facts
   desk.render();
   moments = new Moments($("#next-moment"), { state, seek, setSpeed, play: () => setPlaying(true), t, live: $("#moments-live") });
   activity = new Activity(strip, desk, t);
