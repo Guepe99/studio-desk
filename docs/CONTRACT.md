@@ -259,7 +259,7 @@ These refine the feat/desk rules above; where they differ, these win.
 - An edit sends the languages that changed; the desk editor shows all three, so saving an edit
   means all three were reviewed. Saving unchanged text is an `approved` decision.
 - A 500 answers `{"detail": "internal error"}` with the security headers. The headers include
-  `Permissions-Policy` (camera, microphone, geolocation, payment, usb off); `script-src` has no
+  `Permissions-Policy` (camera, geolocation, payment, usb off; microphone for this origin only, `microphone=(self)`, for the voice question); `script-src` has no
   `blob:` (only `worker-src` does).
 - `GET /api/audit` also returns `actor: "auto"`, `action: "auto_approved"` rows for the stories
   the risk rule put on air, worked out from the replay's `stories.json` when read, with
@@ -569,3 +569,15 @@ new MCP tool, one new export file and one new graphic. Design and sources: `docs
   gd, form}], h2h: {matchweek, home, away, home_goals, away_goals} | null, scorers: [{side, name,
   goals}], fact_ids}`, sides as `home`/`away` of this match). `why_card` takes an optional `season`
   array of strings, drawn under the body.
+
+## Voice question additions (feat/ask-voice, additive)
+
+- `GET /api/ask` also returns `voice` (bool): true when Azure Speech is configured
+  (`AZURE_SPEECH_ENDPOINT`), so the page may show its microphone button.
+- `POST /api/ask/voice?lang=en|it|es` with an `audio/wav` body (16 kHz, 16-bit mono PCM, 0.2 to 10.5 s,
+  at most 336 KB) -> `{text}`, the words heard (at most 280 characters, `""` when none). The page puts
+  the text in the question box; the visitor checks it and sends it with `POST /api/ask` as before.
+  Another content type is 415, a malformed or out-of-range WAV is 422, a larger body 413. One clip is
+  turned into text at a time (503 while busy); 40 clips a day for the site and 15 per address answer
+  429 `{status: "limit", reason}` past the cap; a Speech failure is 502. The audio is never stored or
+  logged.
