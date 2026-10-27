@@ -93,9 +93,10 @@ app.add_middleware(BodyCap)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 # The pages load only their own files. Inline styles stay (graphics and seek marks set them); inline scripts do not.
 # blob: only for workers (Babylon builds its decoder workers from blobs), never for scripts.
+# frame-ancestors 'self': the multiviewer (multiview.html) frames four broadcast pages; no other site may frame them.
 CSP = ("default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
-       "connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+       "connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
                     "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": CSP,
                     "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), payment=(), usb=()"}

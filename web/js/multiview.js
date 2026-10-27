@@ -28,7 +28,6 @@ const wins = WINDOWS.map((w, i) => {
   fig.innerHTML = `<div class="mv-pic"><iframe tabindex="-1" inert allow="autoplay"></iframe><button class="mv-hit" type="button" aria-pressed="false"></button></div>
     <figcaption class="mv-umd"><span class="mv-src">${i + 1}</span><span class="mv-name"></span><span class="mv-meter" aria-hidden="true"><i></i></span><span class="mv-live">Audio</span></figcaption>`;
   const frame = fig.querySelector("iframe"), hit = fig.querySelector(".mv-hit");
-  frame.src = windowUrl({ match, t: start, audience: w.audience, lang: w.lang });
   frame.addEventListener("load", () => {
     const doc = frame.contentDocument, style = doc.createElement("style");
     style.textContent = PICTURE_ONLY;
@@ -41,6 +40,20 @@ const wins = WINDOWS.map((w, i) => {
   return { ...w, fig, frame, hit, name: fig.querySelector(".mv-name"), bar: fig.querySelector(".mv-meter i") };
 });
 const sd = (w) => w.frame.contentWindow?.studioDesk;
+
+// One window at a time: the four share the 25 MB tracking file, and when all four ask for it at once Chromium
+// fails the copies it is still caching (ERR_CACHE_WRITE_FAILURE). The next window opens when this one has its
+// match, so it reads the file from the cache, or after 20 s whatever happened.
+function open(k) {
+  const w = wins[k];
+  if (!w) return;
+  w.frame.src = windowUrl({ match, t: start, audience: w.audience, lang: w.lang });
+  const t0 = performance.now();
+  const wait = setInterval(() => {
+    if (sd(w)?.match || performance.now() - t0 > 20000) { clearInterval(wait); open(k + 1); }
+  }, 200);
+}
+open(0);
 
 function label(w) {
   const teams = Object.fromEntries(Object.entries(sd(w)?.match?.teams ?? {}).map(([id, t]) => [id, t.name]));

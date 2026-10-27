@@ -386,6 +386,7 @@ def test_server_error_carries_the_security_headers(desk, monkeypatch):
     assert r.status_code == 500 and r.json() == {"detail": "internal error"}
     assert r.headers["content-security-policy"] == api.CSP and "camera=()" in r.headers["permissions-policy"]
     assert "blob:" not in api.CSP.split("script-src")[1].split(";")[0]  # blobs only for workers
+    assert "frame-ancestors 'self'" in api.CSP  # the multiviewer frames its own pages, no other site may
 
 
 def test_schema_runs_once_per_version(tmp_path):
