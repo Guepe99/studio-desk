@@ -31,8 +31,9 @@ CARD = 256        # px per face
 SS = 3            # supersampling per axis
 # the square of the face drawn, as shares of the face skin's width: centred across, its centre this far
 # below the middle of the features (eyes to mouth), so the chin fits and the fringe line is above
-CROP_W = 1.0
+CROP_W = 0.82
 CROP_DY = 0.06
+LIP = (0.6, 0.26, 0.22)   # the closed mouth, as the players show it
 
 
 def _image(g, tex):
@@ -139,6 +140,13 @@ def build(src=ANIME, out=OUT):
         a = col[..., 3]
         rgb = down(col[..., :3], SS, a)
         cov = down(a[..., None], SS)
+        if not expr:
+            # the closed mouth: a hairline, near white in the atlas, that the players' lip shading reddens;
+            # drawn here in lip red, three times as dense and a row thicker, so it reads at crowd size
+            low = (np.arange(CARD) > CARD * 0.55)[:, None, None]
+            thick = np.clip(np.maximum(cov, np.roll(cov, 1, 0)) * 3, 0, 1)
+            cov = np.where(low, thick, cov)
+            rgb = np.where(low & (cov > 0), LIP, rgb)
         m = down(mask, SS, a)
         page[row * CARD:(row + 1) * CARD, :CARD] = np.c_[rgb.reshape(-1, 3), cov.reshape(-1, 1)].reshape(CARD, CARD, 4)
         page[row * CARD:(row + 1) * CARD, CARD:, :2] = m
