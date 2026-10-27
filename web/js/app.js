@@ -13,6 +13,7 @@ import { Activity } from "./activity.js";
 import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
+import { delayFrom, delayMatch, showDelay, delayUrl, DELAY_STRINGS } from "./delay.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card"];
 const STRINGS = {
@@ -119,6 +120,8 @@ const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const matchId = (params.get("match") || "M001").replace(/[^A-Za-z0-9_-]/g, "");
 // ?lang= keeps the language across a change of match (matchPicker)
+// ?delay= (delay.js): the picture runs that many seconds behind the desk; 0, today's page, by default
+const delay = delayFrom(params.get("delay"));
 const state = { ts: 0, playing: false, speed: 1, audience: "analyst", base: "analyst", lang: STRINGS[params.get("lang")] ? params.get("lang") : "en", seeked: true };
 const t = (key) => (STRINGS[state.lang] ?? STRINGS.en)[key] ?? STRINGS.en[key];
 
@@ -187,6 +190,7 @@ const HEAD_STRINGS = {
   es: { tagline: "Agentes de IA escriben los gráficos de TV de la repetición de un partido, y tú decides qué sale al aire", replay: "Repetición" },
 };
 for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[lang], more);
+for (const [lang, more] of Object.entries(DELAY_STRINGS)) Object.assign(STRINGS[lang], more);
 
 // Graphic text is never drawn under MIN_PX. A frame where the 17 px fact chips would be smaller gets the
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
@@ -247,6 +251,9 @@ function layout() {
   const mo = $("#moment"), mk = Math.max(1, MIN_PX / (38 * s));
   mo.style.scale = mk > 1 ? String(mk) : "";
   mo.style.top = bug > 1 ? `${sb.offsetTop + sb.offsetHeight * bug + 16}px` : "";
+  // the delay tag (28 px) magnified the same way, under the score bug as drawn
+  const dl = $("#delay-badge"), dk = Math.max(1, MIN_PX / (28 * s));
+  Object.assign(dl.style, { scale: dk > 1 ? String(dk) : "", top: bug > 1 ? `${sb.offsetTop + sb.offsetHeight * bug + 10}px` : "" });
   compact = SMALLEST * s < MIN_PX;
   deckMode = side ? "side" : COMPACT_PX * s < MIN_PX ? "below" : "";
   body.toggle("deck", !!deckMode);
@@ -306,6 +313,7 @@ function applyStrings() {
   view3d?.relabel();
   voice?.render();
   countdown.relabel();
+  showDelay($("#delay-badge"), delay, t);
 }
 
 function setPlaying(on) {
@@ -637,6 +645,7 @@ function wireControls() {
     else if (b.dataset.clear) { if (state.audience.startsWith(`${b.dataset.clear}:`)) setAudience(state.base); }
     else if (b.dataset.audience) pickAudience(b.dataset.audience);
     else if (b.dataset.lang) setLang(b.dataset.lang);
+    else if (b.dataset.delay) { if (Number(b.dataset.delay) !== delay) location.search = delayUrl(location.search, Number(b.dataset.delay), state, view3d?.mode); }
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
     else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
     else if (b.id === "keys-open") { setMenu(false, true); $("#keys").showModal(); }
@@ -731,6 +740,7 @@ async function matchPicker() {
 async function main() {
   applyStrings();
   checked("data-lang", state.lang);
+  checked("data-delay", delay);
   layout();
   $("#status").textContent = t("loading");
   const view = params.get("view") ?? defaultView(probe());
@@ -744,6 +754,7 @@ async function main() {
     $("#status").textContent = t("error").replace("{m}", matchId).replace("{e}", err.message);
     return;
   }
+  await delayMatch(match, `data/${matchId}`, delay);   // the cues as the delayed picture plays them
   end = Math.max(match.duration, ...match.cues.map((c) => c.ts + c.duration_s));
   matchPicker();
   $("#mh-venue").textContent = match.meta.venue_name ?? "";
@@ -803,7 +814,7 @@ async function main() {
   const reg = await Promise.allSettled(GRAPHICS.map((g) => host.register(g, `graphics/${g}/${g}.ograf.json`)));
   GRAPHICS.filter((g, i) => reg[i].status === "rejected").forEach(noGraphic);
   // The replay starts now and needs no API: until the stories load, only template graphics play.
-  desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues });
+  desk = new Desk($("#desk"), { match, matchId, state, seek, onChange: refreshCues, delay });
   desk.render();
   moments = new Moments($("#next-moment"), { state, seek, setSpeed, play: () => setPlaying(true), t, live: $("#moments-live") });
   activity = new Activity(strip, desk, t);
@@ -821,7 +832,7 @@ async function main() {
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; } };
+  window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; }, delay };
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),

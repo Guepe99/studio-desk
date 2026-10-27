@@ -34,6 +34,7 @@
         </div>
         <div id="overlay"></div>
         <div id="ai-off" data-i18n="aioff" hidden>AI off</div>
+        <div id="delay-badge" hidden></div>
         <div id="replay-badge" role="status"></div>
         <div id="moment" role="status" aria-atomic="true"><span></span></div>
         <div id="status" role="status"></div>
@@ -102,6 +103,14 @@
             <button type="button" role="menuitemradio" tabindex="-1" data-lang="it" lang="it" aria-label="Italiano" aria-checked="false">IT</button>
             <button type="button" role="menuitemradio" tabindex="-1" data-lang="es" lang="es" aria-label="Español" aria-checked="false">ES</button>
             <p id="why-lang" class="mg-why" aria-hidden="true" data-i18n="whyLang">The page, the graphics and the AI voice.</p>
+          </div>
+          <!-- the broadcast delay (delay.js): a change reloads the page at the same moment -->
+          <div class="mg chips" role="group" aria-labelledby="mg-delay" aria-describedby="why-delay"><p id="mg-delay" class="mh" aria-hidden="true" data-i18n="delay">Broadcast delay</p>
+            <button type="button" role="menuitemradio" tabindex="-1" data-delay="0" aria-checked="true">0 s</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-delay="5" aria-checked="false">5 s</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-delay="10" aria-checked="false">10 s</button>
+            <button type="button" role="menuitemradio" tabindex="-1" data-delay="15" aria-checked="false">15 s</button>
+            <p id="why-delay" class="mg-why" aria-hidden="true" data-i18n="whyDelay">The picture runs this far behind the desk, as on live TV.</p>
           </div>
           <div class="mg" role="group" aria-labelledby="mg-more"><p id="mg-more" class="mh" aria-hidden="true" data-i18n="more">More</p>
             <button id="minimap" type="button" role="menuitemcheckbox" tabindex="-1" aria-checked="false" data-i18n="minimap" aria-describedby="why-more">Minimap</button>

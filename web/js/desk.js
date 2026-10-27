@@ -558,7 +558,8 @@ export class Desk {
   genFor(cue) { return this.genOf.get(slot(cue)); }
   firstOf(s) { return this.firstAt.get(s.story_id) ?? s.ts; }
   /** Listed: the match has reached its facts (live, it is written only then), and its first graphic has aired or airs within LOOKAHEAD_S. */
-  visible(s, now = this.state.ts) { return s.ts <= now && this.firstOf(s) <= now + LOOKAHEAD_S; }
+  // with a broadcast delay the desk runs that far ahead of the picture (delay.js): a story is listed once written at the live time
+  visible(s, now = this.state.ts) { return s.ts <= now + (this.delay ?? 0) && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
   /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
    *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire).

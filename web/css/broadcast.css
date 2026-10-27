@@ -349,3 +349,8 @@ li[data-agent="verifier"] { --agent: var(--green); }
 .aud-pick:hover { background: var(--lilac-100); }
 .aud-pick[aria-pressed="true"] { background: var(--green); }
 .aud-text { margin: 6px 0 0; font-size: 15px; line-height: 1.35; color: var(--purple); overflow-wrap: anywhere; }
+
+/* Broadcast delay (delay.js): a small tag under the score bug while the picture runs behind the desk */
+#delay-badge { position: absolute; left: 56px; top: 116px; height: 44px; padding: 0 18px; display: flex; align-items: center;
+  background: var(--purple-700); color: var(--lilac-100); font: 700 28px/1 var(--font); border-radius: var(--r-box); box-shadow: var(--shadow); transform-origin: 0 0; }
+#delay-badge[hidden] { display: none; }
