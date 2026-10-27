@@ -23,6 +23,7 @@ body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 /* fixed widths: the readouts change every frame and must not move the buttons beside them */
 .mv-read { display: inline-block; font: 700 15px/1 var(--font); font-variant-numeric: tabular-nums; white-space: pre; color: var(--page); }
 #mv-clock { min-width: 13ch; }
+.mv-error { max-width: 60ch; margin: 0; font-size: 17px; line-height: 24px; font-weight: 600; color: var(--page); }
 #mv-sync { min-width: 11ch; font-size: 13px; font-weight: 600; color: var(--lilac-100); }
 
 #mv-wall { flex: 1 1 0; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, auto); justify-content: center; align-content: center; gap: 12px; padding: 4px 16px 16px; }

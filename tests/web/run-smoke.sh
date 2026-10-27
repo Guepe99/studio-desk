@@ -44,8 +44,9 @@ cleanup() { kill "$SERVER" 2>/dev/null || true; docker stop "$CONT" >/dev/null 2
 trap cleanup EXIT
 
 # WebGL pages (anything but the 2D pages) need the image with the software Vulkan driver.
-# voice.mjs needs MP3 decoding, which the foto-chromium build lacks: it runs in the Playwright image.
-WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs|ask-voice.mjs) echo 0 ;; voice.mjs) echo 2 ;; *) echo 1 ;; esac)}
+# voice.mjs and multiview.mjs need MP3 decoding (the booth's lines and crowd), which the foto-chromium build
+# lacks (decodeAudioData rejects MP3 there): they run in the Playwright image.
+WEBGL=${WEBGL:-$(case "$SCRIPT" in smoke.mjs|desk.mjs|ask-voice.mjs) echo 0 ;; voice.mjs|multiview.mjs) echo 2 ;; *) echo 1 ;; esac)}
 if [ "${CDP:-1}" = 1 ]; then
   CDPPORT=$(free_port)
   IMAGE=foto-chromium:1
@@ -61,6 +62,9 @@ if [ "${CDP:-1}" = 1 ]; then
     IMAGE=mcr.microsoft.com/playwright:v1.48.0-jammy
     BIN=/ms-playwright/chromium-1140/chrome-linux/chrome
     GL=(--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist)
+    # multiview.mjs: WebGL 1, so its large 3D window takes the low profile as in the Mesa image; at the high
+    # profile (4x MSAA, shadows) SwiftShader draws that 1920 px window too slowly for a screenshot in 30 s
+    [ "$SCRIPT" = multiview.mjs ] && GL+=(--disable-webgl2)
   fi
   docker run -d --rm --name "$CONT" --shm-size=1g --network host "$IMAGE" \
     "$BIN" --headless --no-sandbox --hide-scrollbars "${GL[@]}" \

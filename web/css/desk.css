@@ -156,7 +156,7 @@ body { display: flex; }
 .risk b { color: var(--purple); }
 .meter { display: inline-block; width: 56px; height: 6px; border-radius: 3px; background: var(--lilac-100); position: relative; overflow: hidden; }
 .meter span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--purple-400); }
-.meter::after { content: ""; position: absolute; left: 35%; top: 0; bottom: 0; width: 2px; background: var(--purple); }
+.meter::after { content: ""; position: absolute; left: var(--auto-risk); top: 0; bottom: 0; width: 2px; background: var(--purple); }
 .story-text { margin: 4px 0 0; font-size: 16px; font-weight: 500; line-height: 1.35; max-width: 60ch; }
 .proposal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0 0 8px; padding: 8px 12px; border-radius: var(--r-box); background: var(--lilac-50); }
 .proposal-text { margin: 0; color: var(--purple-400); max-width: 60ch; overflow-wrap: anywhere; }

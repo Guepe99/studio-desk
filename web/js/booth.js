@@ -531,7 +531,7 @@ export class Booth {
       const dist = this.eventFact(e, "pass_distance");
       const long = dist && dist.value >= RULES.longPassM;
       const back = this.attacksUp(e.team_id) ? e.end_x < e.start_x - 8 : e.end_x > e.start_x + 8;
-      // every pass names its receiver, own half included (the owner's rule over A4's final third)
+      // every pass names its receiver, own half included (this overrides A4's final third)
       kinds = long ? ["pass_long", "pass"] : back ? ["back_pass", "pass"] : ["pass"];
     } else if (type === "take_on") kinds = [res === "success" ? "take_on" : "take_on_fail"];
     else if (type === "interception" || type === "tackle") {
@@ -628,7 +628,7 @@ export class Booth {
     return [e.team_id, e.type_name === "pass" ? e.related_player_id : e.player_id];
   }
 
-  /** The owner's rule over A6: outside the goal hold, a studio clip and the breaks, the booth is never silent over
+  /** Stricter than A6: outside the goal hold, a studio clip and the breaks, the booth is never silent over
    * 6 s. In play a possession or build-up line, or a co opinion; in a dead ball the restart, a pause line or the co;
    * after a goal the celebration, then the kick-off. The co comes in while it is under its share (C3), never in the
    * final third (C2). */

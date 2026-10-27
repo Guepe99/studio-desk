@@ -22,9 +22,9 @@ const PALETTE = 8;     // texels of the body's region palette (scripts/build_foo
 const REGION = [0, 1, 2, 2, 3, 0, 0, 5];   // skin, shirt, shorts, socks, boots, forearms, hands, eyes
 export const HEAD_SCALE = 1.3;   // anime proportions: a bigger head (and hair) on the same body
 // hair colours: black and brown for two thirds, then dark blonde, blonde, platinum, grey and
-// light brown, any of them on any skin; no copper or auburn, which the owner found unrealistic. HAIR_SHARE: the share of each, in the order of HAIR.
+// light brown, any of them on any skin; no copper or auburn, which look unrealistic. HAIR_SHARE: the share of each, in the order of HAIR.
 export const HAIR = ["#1d1a26", "#3d2619", "#6e3d22", "#a98a55",
-  "#d9bf86", "#e0dad0", "#8c8680", "#9a7048"];   // natural tones only since 18/10/2026: the owner found the loud ones too bright
+  "#d9bf86", "#e0dad0", "#8c8680", "#9a7048"];   // natural tones only: loud ones read as too bright
 export const HAIR_SHARE = [0.26, 0.20, 0.20, 0.12, 0.10, 0.04, 0.04, 0.04];
 export function pickHair(r) {
   let k = 0;

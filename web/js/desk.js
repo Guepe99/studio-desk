@@ -315,10 +315,10 @@ export const TEXT = {
   },
 };
 
-/** A desk string in a page language, English when that language lacks it. */
 /** Italian "al 10'" but "all'8'", "all'11'", "all'80'": the article elides before a vowel sound (otto, undici, uno). */
 export function alMinute(m) { return /^(8|11?(?!\d))/.test(String(m)) ? `all'${m}'` : `al ${m}'`; }
 
+/** A desk string in a page language, English when that language lacks it. */
 export function tr(lang, key, vars = {}) {
   const v = TEXT[lang]?.[key] ?? TEXT.en[key];
   if (typeof v === "function") return v(vars);
@@ -333,7 +333,7 @@ export const agentName = (agent, lang = "en") => {
   const name = TEXT[lang]?.[`ag_${base}`] ?? TEXT.en[`ag_${base}`] ?? base.replace(/_/g, " ");
   return code ? `${name} ${code.toUpperCase()}` : name;
 };
-const AUTO_RISK = 0.35; // studiodesk/config.py AUTO_APPROVE_RISK
+const AUTO_RISK = 0.35; // the server's copy: studiodesk/config.py AUTO_APPROVE_RISK
 const HIGH_RISK = 0.6;  // ours: from here the reviewer reads the evidence before anything else
 export const riskBand = (r) => (r < AUTO_RISK ? "low" : r < HIGH_RISK ? "mid" : "high"); // an unknown risk counts as high
 const UNDO_MS = 10000; // how long an "Undone" notice stays; the Undo itself stays until the next decision
@@ -1205,7 +1205,7 @@ export class Desk {
       h("p", { className: "why" },
         h("span", { className: `risk risk-${band}`, title: tx("riskTitle", { r: dec(risk, lang, 2), t: dec(AUTO_RISK, lang, 2) }) },
           h("b", {}, s.safety === "flagged" ? cap(tx("why_safety"), lang) : tx(`risk_${band}`)),
-          h("span", { className: "meter", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
+          h("span", { className: "meter", "aria-hidden": "true", style: `--auto-risk:${AUTO_RISK * 100}%` }, h("span", { style: `width:${Math.round(Math.min(1, Math.max(0, risk)) * 100)}%` }))),
         " ", tx(tip)),
       this.decisions.has(id) ? h("p", { className: "default" }, TEXT.en[`before_${this.defaultStatus(s)}`] ? tx(`before_${this.defaultStatus(s)}`)
         : tx("defaultWas", { s: status(this.defaultStatus(s)).toLocaleLowerCase(lang) })) : null,
@@ -1518,7 +1518,6 @@ export class Desk {
   }
 }
 
-// A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 // a template graphic has one cue per language: taking it out takes it out in every language
 const slot = (c) => `${c.graphic}|${c.due ?? c.ts}|${c.audience}`;   // a card held past a replay keeps its slot (view3d.js holdForReplays)
 // The graphics the code adds per audience (studiodesk/agents/audiences.py _generated: the kids sheet, the
@@ -1526,6 +1525,7 @@ const slot = (c) => `${c.graphic}|${c.due ?? c.ts}|${c.audience}`;   // a card h
 // name plate, pass and shot, from the fact ledger alone) go on air by the risk rule, as they always did. So do
 // the fillers (payload.filler, audiences.py fill_cues): they keep every sheet from going a minute with nothing.
 export const GEN_WAITS = (c) => !c.payload?.filler && (c.audience === "kids" || c.payload?.kind === "checkin" || c.graphic === "team_stats");
+// A key next to a button label; the button's aria-keyshortcuts says it to a screen reader
 const kbd = (k) => h("kbd", { "aria-hidden": "true" }, k.toUpperCase());
 
 // A live region announces any text change, the same text included: write only a new one.

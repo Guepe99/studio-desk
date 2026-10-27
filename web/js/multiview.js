@@ -12,7 +12,17 @@ const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const match = (params.get("match") || "M004").replace(/[^A-Za-z0-9_-]/g, "");
 // the fan window follows the away team, and with no t= the four start 6 s before the first goal (590 on M001)
-const [meta, facts] = await Promise.all(["meta", "facts"].map((f) => fetch(`data/${match}/${f}.json`).then((r) => r.json())));
+const json = (f) => fetch(`data/${match}/${f}.json`).then((r) => { if (!r.ok) throw new Error(`${f}.json: HTTP ${r.status}`); return r.json(); });
+const [meta, facts] = await Promise.all(["meta", "facts"].map(json)).catch((e) => {
+  // a match that is not there: say so on the wall instead of "Loading" for ever
+  $("#mv-clock").textContent = "Not loaded";
+  const p = document.createElement("p");
+  p.className = "mv-error";
+  p.setAttribute("role", "alert");
+  p.textContent = `Match ${match} could not be loaded (${e.message}). Check the match in the address, or go back to the single view.`;
+  $("#mv-wall").append(p);
+  throw e;
+});
 const away = meta.teams[1].team_id;
 const goal = Math.min(...facts.filter((f) => f.kind === "score").map((f) => f.ts));
 const start = Number.isFinite(Number(params.get("t"))) && params.has("t") ? Number(params.get("t")) : Number.isFinite(goal) ? Math.round(goal) - 6 : 0;
