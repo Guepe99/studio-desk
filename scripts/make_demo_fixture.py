@@ -18,6 +18,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from studiodesk.agents import audiences  # noqa: E402
+from studiodesk import forecast  # noqa: E402
 from studiodesk.export import recap  # noqa: E402
 from studiodesk.names import find_forbidden  # noqa: E402
 
@@ -435,6 +436,8 @@ def main(out_dir: Path) -> Path:
     for name, rows in (("meta", meta), ("events", events), ("facts", facts), ("cues", cues),
                        ("stories", stories), ("traces", traces)):
         out_dir.joinpath(f"{name}.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    # Watch for, as studiodesk/export.py writes it (docs/forecast.md)
+    out_dir.joinpath("forecast.json").write_text(json.dumps(forecast.export_from(meta, facts), ensure_ascii=False), encoding="utf-8")
     return out_dir
 
 

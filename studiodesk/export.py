@@ -168,6 +168,8 @@ def export(match_id, conn, out_root, runtime=None):
         stories, traces, cues = [], [], template_cues(m, facts, events)
     from .agents import audiences  # every audience's line, the kids sheet and the player check-ins
     stories, cues = audiences.apply(m, facts, events, stories, cues)
+    from . import forecast  # Watch for (docs/forecast.md)
+    watch = forecast.export(conn, match_id)
     # everything is built before the first write: a failure above leaves the old folder as it was
     _dump(out / "meta.json", m)
     with open(out / "tracking.f32", "wb") as fh:
@@ -178,6 +180,7 @@ def export(match_id, conn, out_root, runtime=None):
     _dump(out / "stories.json", stories)
     _dump(out / "cues.json", cues)
     _dump(out / "traces.json", traces)
+    _dump(out / "forecast.json", watch)
     index(out_root)
     return out
 
