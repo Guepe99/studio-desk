@@ -20,6 +20,12 @@ the tracking data, the 2D page, the export and the facts do not change.
 - **Dribbling**: a player who keeps the ball between events gets a touch every 0.6 to 1.0 s
   (faster runs, longer touches), alternating with the strong foot; between touches the ball runs
   ahead of him and slows down.
+- **Moves with a still ball** (`SKILLS`, `_skills`): a receiver who keeps a still ball (under
+  1 m/s) gets a sole roll, a drag-back, a step-over, a shoulder feint or a shimmy from 0.32 s after
+  his first touch to 0.45 s before his next kick. On M001, of the 533 receptions kept 1 s or more,
+  474 show a move (308 before the shimmy and these margins, which were 0.45 and 0.55 s); every
+  one kept 1.17 s or more gets one, except two before a set piece. Under 1 s there is no room
+  and none gets one. Details and the full counts in `docs/flow3d.md`.
 - **Spin**: the ball rolls without slipping on the ground (axis across the run, rate v/R), and in
   the air keeps the spin of the kick (backspin when lofted).
 - **Foot on the ball**: the player is shifted (motion warping) by up to 3 m around each contact so

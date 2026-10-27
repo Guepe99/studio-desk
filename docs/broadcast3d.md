@@ -88,7 +88,7 @@ of the crowd and the stadium, as on TV and in a football game. The rules we foll
 | A "public" camera filming the crowd is one of 13 camera classes of a match broadcast; one camera change every 9 s on average (583 a game), replay shots 6.8 s on average | 200 fully annotated games | SoccerNet-v2 (Deliège et al., CVPR Workshops 2021), camera shot segmentation |
 | Football games show the stadium from the air and fans waving flags and scarves | drone shots of the stadium, banners and flags in the stands | EA SPORTS FIFA 23 coverage (NME) and EA's visuals deep dive |
 | Length of one cutaway | 4 to 5 s | our choice: no source gives one; it is shorter than the 9 s average shot and the 6.8 s replay shot above, so the restart is never missed |
-| How often | at least 60 s apart, always one within 150 s when a stoppage allows, 55% of the stoppages in between | our choice: no source gives a rate; this gives about one every two and a half minutes, at about half of the stoppages |
+| How often | every stoppage with room for a shot, unless the previous cutaway ended under 20 s before | our choice: no source gives a rate. The first rule (at least 60 s apart, about half of the stoppages) left most pauses on camera 1, and the product owner noticed: "during pauses there are no cutaway shots". Now about one a minute (median 51 s apart on M001) |
 | Back on camera 1 before the restart | 4 s before a throw-in (the taker picks the ball up 1.6 s before it), 3 s before any other restart | our choice, over the 0.5 s floor the tight shots keep |
 
 Sources: https://www.champions-journal.com/1000/directors-cut ,
@@ -104,8 +104,9 @@ What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
   line itself, so a ball still in the air never counts). After a foul it comes right after camera
   2's tight shot of the fouler, cutting straight from it. No cutaway and no cut to camera 2 above
   4x, the fastest speed the goal replays play at: at 16x a 4 s shot would only flash by (camera 1
-  stays on, and lets a goal's punch-in go as it does a shot's). A stoppage
-  with a goal is left to the celebration and the goal replay. The match data has no substitutions
+  stays on, and lets a goal's punch-in go as it does a shot's). After a goal the celebration and
+  the goal replay come first, then one cutaway before the kick-off, cut straight from the replay
+  (11.5 s after the goal: `CELEBRATION[1]` plus `REPLAY_LEN`). The match data has no substitutions
   and no half-time break (the second half starts 1.3 s after the first ends), so neither gets one.
 - **Which shot**, by restart and never the same kind twice in a row (a hash of the match id and the
   event id picks the first or second preference):
@@ -130,9 +131,10 @@ What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
   seek, a replay and a video frame agree. With `prefers-reduced-motion` camera 1 holds the wide shot
   throughout: no cutaway, no cut to camera 2, no goal replay, no punch-in and no slide along its
   rail (`cutaway.js` REDUCE).
-- **On M001:** 39 cutaways, 20 in the first half and 19 in the second, of 83 restarts: 15 fans,
-  13 end, 11 stadium, back on camera 1 between 9.5 and 27 s before the restart. M002 to M004 get
-  40 to 42.
+- **On M001:** 83 cutaways, 43 in the first half and 40 in the second, for 83 restarts and 4 goals
+  (the stoppages left out had a cutaway end under 20 s before, or no room between the ball going
+  out and the restart): 30 fans, 26 end, 27 stadium, back on camera 1 between 10.3 and 69 s before
+  the restart (median 13.2 s). M002 to M004 get 84 to 90 (they were 39 to 42 with the first rule).
 - **No new geometry:** the shots use the replay camera, free outside replays, and the existing
   stands and crowd. Frame cost on M001, match paused, median of four renders finished on the GPU
   (SwiftShader, high profile, 1280 x 720; compare only): the stadium shot 6.2 s and 177 draw
@@ -142,7 +144,8 @@ What the scene does (`web/js/scene3d/cutaway.js`, used by `camera.js`):
 
 Tests: `node --test tests/web/cutaway.test.mjs` (the plan on M001 is the same twice, no event
 inside a cutaway, the next event is the restart, the cut back comes in time, no overlap with tight
-shots or replays, spacing and variety; a throw-in too soon gets none),
+shots or replays, spacing and variety; at least 85% of the stoppages get one and the median gap is
+under 60 s; one kick-off cutaway per goal, after its replay; a throw-in too soon gets none),
 `MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh layout-camera.mjs` (reduced motion
 holds camera 1 through a cutaway, without it the cutaway cuts). Stills:
 `WEBGL=2 MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh cutaway3d-stills.mjs <tag>`

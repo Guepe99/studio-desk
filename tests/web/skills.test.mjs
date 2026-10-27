@@ -20,7 +20,7 @@ function load(id) {
   return new Match(j("meta.json"), j("events.json"), j("facts.json"), j("cues.json"), new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4));
 }
 
-const SKILL = new Set(["roll", "drag", "stepover", "feint"]);
+const SKILL = new Set(["roll", "drag", "stepover", "feint", "shimmy"]);
 const SET = new Set(["freekick_crossed", "freekick_short", "shot_freekick", "shot_penalty", "goalkick", "corner_crossed", "corner_short", "throw_in"]);
 const m = load("M001") ?? load("DEMO");
 const span = [0, Math.min(m?.duration ?? 0, 1500)];

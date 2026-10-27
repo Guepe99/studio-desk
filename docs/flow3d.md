@@ -289,8 +289,8 @@ as mechanical.
 - **Moves with a still ball.** Games show the holder with skill moves rather than an idle loop
   (EA FC guides: insider-gaming.com/all-new-skill-moves-in-ea-fc-26-simplified-skills-explained,
   games.gg/ea-sports-fc-27/guides/ea-fc-27-skill-moves-complete-guide). No public source gives
-  their timings, so the four moves here (sole roll, drag-back, step-over, shoulder feint) were
-  keyed by hand on the leg rig that the kicks already use.
+  their timings, so the five moves here (sole roll, drag-back, step-over, shoulder feint and a
+  quick shimmy) were keyed by hand on the leg rig that the kicks already use.
 
 ### Measured causes (before)
 
@@ -329,12 +329,15 @@ motion look mechanical. Windows of 20 s from 0, 120, 280, 512, 530 (minute 8) an
 - **Ball at the feet** (`ball3d.js` `SKILLS`, `_skills`, `_moved`; `ball3d-rig.js`). Where the
   holder keeps a still ball before his own kick, the plan fills the gap with moves drawn from a
   generator seeded by player and moment: a sole roll (0.12 m out and back under the sole), a
-  drag-back and a touch that returns it (0.26 m), a step-over and a shoulder feint, 0.15 to
-  0.5 s apart. Never before a free kick, corner, penalty, goal kick or throw-in, never within
-  0.55 s of the kick, and only while he is within 1.5 m of the ball. The ball's offset eases
-  with smoothstep and always ends at 0, so the tracking position is unchanged at the kick. On
-  M001's first 1500 s: 503 moves (108 rolls, 218 feints, 104 step-overs, 73 drags), 181 of them
-  moving the ball, the ball plan's worst miss of the tracking 1.20 m (limit 1.5).
+  drag-back and a touch that returns it (0.26 m), a step-over, a shoulder feint and a shimmy (the
+  feint at 0.6 of its timing, 0.4 s, which fits a short hold), 0.15 to 0.5 s apart, from 0.32 s
+  after the first touch. Never before a free kick, corner, penalty, goal kick or throw-in, never
+  within 0.45 s of the kick, and only while he is within 1.5 m of the ball. The ball's offset eases
+  with smoothstep and always ends at 0, so the tracking position is unchanged at the kick.
+  On the whole of M001: 802 moves (290 shimmies, 202 feints, 122 rolls, 110 step-overs, 78 drags;
+  503 before the shimmy and the shorter margins), the ball plan's worst miss of the tracking
+  1.20 m (limit 1.5). Of the 533 receptions the receiver keeps for 1 s or more, 474 show a move
+  (308 before): every one kept 1.17 s or more, except two before a set piece.
 
 ### Numbers on M001 (high profile, WebGL 2)
 

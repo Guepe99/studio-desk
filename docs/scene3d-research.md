@@ -235,16 +235,24 @@ biggest tells. This section gives the rules the build follows, with numbers and 
 - 3D spectator: the CC0 mannequin body (about 360 triangles, `scripts/build_spectator.py`) with
   hair, a face and a scarf added at load time; 579 triangles in all. One thin-instanced mesh, one
   draw call.
-- Style: anime, to match the players. Head and hair at 1.3 times life size, two tall eyes and a
-  mouth, flat colours, toon shading (below), and on high a thin dark outline (1.2 cm, Babylon's
+- Style: anime, to match the players. Head and hair at 1.3 times life size, the players' own face
+  (below), flat colours, toon shading (below), and on high a thin dark outline (1.2 cm, Babylon's
   outline renderer). Low has no outline: in lavapipe it costs a second pass.
 - Hair: a weighted palette of natural colours, any of them on any skin: black 26%, dark brown
   20%, brown 20%, dark blonde 12%, blonde 10%, platinum, grey and light brown 4% each.
   A first version drew all 12 colours evenly and read as confetti; the next one kept 10% vivid
   heads (pink, sky blue, teal, violet, silver), which the product owner found too loud; one with only
   dark tones read as too uniform; copper and auburn read as unrealistic (18/10/2026).
-- Face: a round face plate (12 segments, curved back at the sides) over the body's narrow head,
-  with two tall eyes and a mouth; the crown of the hair is spiky, the lower part a tighter mass.
+- Face: the players' anime face. `scripts/build_crowd_face.py` draws the face of
+  `web/vendor/players/anime.glb` (eyes with highlights, lashes, brows, mouth, from its face atlas)
+  front-on into `web/vendor/crowd/face.png` (512 x 512, 28 KB): neutral and joy (the players'
+  "joy" morph target), each as colour plus a mask of iris and brows. A round face plate (two rings
+  of 16, curved back at the sides) over the body's narrow head samples it, one texture for the
+  whole crowd, so it stays one draw call. Per spectator: the skin and hair of the palettes, an
+  iris colour from six (tinting the iris as the players' material does), brows in the hair colour,
+  and a smile (the joy face) on a quarter of them and on everyone while cheering. A first version
+  drew two dark dots and no mouth or brows; the product owner asked for the players' face
+  (27/10/2026). The crown of the hair is spiky, the lower part a tighter mass.
 - Low profile: cards only. In lavapipe one row of 3D spectators and the hair cards together cost
   about a quarter of the frame rate (4.4 against 6.0 frames/s in a probe that switched them off),
   so on low the head card paints dark hair on itself (a cap to the brow and the sides) and there
