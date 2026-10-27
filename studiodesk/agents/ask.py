@@ -27,9 +27,11 @@ MAX_ANSWER_CHARS = 400   # two short sentences; longer means the model ignored t
 TOOL_RESULT_CHARS = 6000
 SAFETY_RETRY_S = 60.0    # a Content Safety client that could not be built is tried again after this
 STORIES_DIR = config.ROOT / "web" / "data"  # <match_id>/stories.json, the replay the page shows
-# an id or the field name where the answer should say what happened: "(fact_id)", "[F-SCORE-000001]", "S-000002"
-_ID = r"(?:fact[_ -]?ids?|story[_ -]?ids?|F-[A-Z_]+-\d+|S-\d{3,})"
-_PLACEHOLDER = re.compile(rf"\s*[\[(]\s*{_ID}(?:\s*[,;]\s*{_ID})*\s*[\])]", re.IGNORECASE)
+# an id or the field name where the answer should say what happened: "(fact_id)", "[F-SCORE-000001]", "S-000002",
+# "(id_fatto)"; a bare "(id)" only inside brackets, where it cannot be a word of the answer
+_ID = r"(?:fact[_ -]?ids?|story[_ -]?ids?|ids?[_ -](?:fatt[oi]|hechos?|stori[ae]|historias?)|F-[A-Z_]+-\d+|S-\d{3,})"
+_IN = rf"(?:{_ID}|ids?)"
+_PLACEHOLDER = re.compile(rf"\s*[\[(]\s*{_IN}(?:\s*[,;]\s*{_IN})*\s*[\])]", re.IGNORECASE)
 _LEAK = re.compile(rf"\b{_ID}\b|\bfact_\w*", re.IGNORECASE)
 
 DECLINED = {

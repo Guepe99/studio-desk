@@ -204,7 +204,7 @@ export const TEXT = {
     fHeadline: "Titolo", fBody: "Testo", emptyTitle: "Il titolo ({name}) non può essere vuoto.", factsLabel: "Fatti: ",
     yourActions: "Le tue azioni", colMinute: "Minuto", costHead: "Quanto sono costati gli agenti",
     y_ai_off: "Grafiche IA spente", y_ai_on: "Grafiche IA accese", y_undo: "Ultima azione annullata",
-    w_head: "Da tenere d'occhio", w_note: "Stima del codice sui fatti, tarata su partite simulate e detta in parole per il calcio vero. Le parole sottolineate si riempiono quando succede.",
+    w_head: "Da tenere d'occhio", w_note: "Stima del codice sui fatti, tarata su partite simulate ed espressa a parole per il calcio vero. Le parole sottolineate si riempiono quando succede.",
     w_pTitle: "Quanto è probabile entro il fischio finale, nel calcio vero", w_lvl_unlikely: "Improbabile", w_lvl_possible: "Possibile", w_lvl_likely: "Probabile",
     w_pre: "Approva in anticipo", w_preOn: "Approvata in anticipo", w_aired: "Frase preparata in onda", w_notAired: "Non approvata, niente in onda",
     w_empty: "Niente da tenere d'occhio, per ora.", w_slot_minute: "nel minuto in cui arriva", w_slot_score: "il nuovo risultato", w_slot_final: "il risultato finale",

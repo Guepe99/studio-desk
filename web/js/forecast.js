@@ -127,7 +127,7 @@ export class Watch {
       const it = this.byId.get(f.id), on = this.approvals.has(f.id);
       return h("li", { className: `w-item${on ? " on" : ""}`, "data-watch": f.id },
         h("div", { className: "w-top" }, h("span", { className: "w-title" }, it.title[lang] ?? it.title.en),
-          h("span", { className: `w-p w-${f.level}`, title: this.tx("w_pTitle") }, this.tx(`w_lvl_${f.level}`))),
+          f.level && h("span", { className: `w-p w-${f.level}`, title: this.tx("w_pTitle") }, this.tx(`w_lvl_${f.level}`))),  // an older export has no word
         h("p", { className: "w-reason" }, f.reason[lang] ?? f.reason.en),
         h("p", { className: "w-line" }, line(it.template[lang] ?? it.template.en, it.kind)),
         h("button", { type: "button", className: "ctl w-pre", "aria-pressed": String(on), "data-watch": f.id,

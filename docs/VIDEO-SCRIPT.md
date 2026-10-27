@@ -1,6 +1,6 @@
 # Video script
 
-A demo of about 115 seconds, under the two-minute limit. Judges may score an entry from the video and the text alone, and may stop watching at two minutes (Official Rules, sections 4.4, 4.8 and 6), so the video shows what each judging criterion asks for while it shows the product working. It follows one producer through one match, M001, in the order of the brief's pipeline: the problem, events turned into facts, the agents at work, an edit the desk refuses within the first 41 seconds, her decision on one story, the same goal for three audiences, a viewer's question, the enterprise controls, the measured numbers, a change of shape the agents read, what is missing today with the roadmap, and the address.
+A demo of about 115 seconds, under the two-minute limit. The Official Rules (sections 4.4 and 6) ask for a video under two minutes, so it shows the product working and covers each criterion of section 6 along the way. It follows one producer through one match, M001, in the order of the brief's pipeline: the problem, events turned into facts, the agents at work, an edit the desk refuses within the first 41 seconds, her decision on one story, the same goal for three audiences, a viewer's question, the enterprise controls, the measured numbers, a change of shape the agents read, what is missing today with the roadmap, and the address.
 
 ## Voice and sound
 

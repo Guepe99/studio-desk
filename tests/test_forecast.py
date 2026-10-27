@@ -44,6 +44,13 @@ def test_probabilities_in_range_with_their_facts(match_db):
             assert it["fact_ids"] and all(known[f]["ts"] <= st["ts"] + 1e-6 for f in it["fact_ids"])
 
 
+def test_a_step_at_each_fact_reads_that_fact():
+    """A goal at 600.004 s: rounding its step to 600.0 would put it before the goal, a minute behind the graphic."""
+    g = game(fact("F-SCORE-1", "score", 600.004, "T01", 1, "T01-9"), fact("F-PLAYER_GOALS-1", "player_goals", 600.004, "T01", 1, "T01-9"))
+    st = next(s for s in forecast.timeline(g) if 600.0 < s["ts"] < 601.0)
+    assert st["ts"] >= 600.004 and any("F-SCORE-1" in it["fact_ids"] for it in st["items"])
+
+
 def test_monotonic_where_it_should_be():
     goal = [fact("F-SCORE-1", "score", 600.0, "T01", 1, "T01-9"), fact("F-PLAYER_GOALS-1", "player_goals", 600.0, "T01", 1, "T01-9")]
     g = game(*goal)

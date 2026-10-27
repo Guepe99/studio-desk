@@ -1,6 +1,7 @@
 """Ask the studio, offline: POST /api/ask with FakeChatClient in place of gpt-5-mini and a stub for Content Safety."""
 import asyncio
 import json
+import re
 from contextlib import closing
 from types import SimpleNamespace
 
@@ -895,10 +896,12 @@ def test_a_leaked_fact_id_placeholder_never_reaches_the_page(m001, studio):
                            "Hugo Okowande has 2 goals.")
     for leak in ("Hugo Okowande has 2 goals, see fact_ids.", "Hugo Okowande has 2 goals [fact_ids].",
                  "Hugo Okowande has 2 goals, as fact_id says.", "Hugo Okowande has 2 goals (S-000002).",
-                 "Hugo Okowande has 2 goals per FACT_ID."):
+                 "Hugo Okowande has 2 goals (id).", "Hugo Okowande has 2 goals (id_fatto).",
+                 "Hugo Okowande has 2 goals [id_hecho, id].", "Hugo Okowande has 2 goals (ids).",
+                 "Hugo Okowande has 2 goals, vedi id_fatto.", "Hugo Okowande has 2 goals per FACT_ID."):
         studio.reply(leak, ["F-PLAYER_GOALS-000024"])
         r = studio.visitor().post("/api/ask", json=body(ts=2400.0)).json()
-        assert "fact_id" not in r["answer"].lower() and "S-000002" not in r["answer"], leak
+        assert not re.search(r"fact_id|\bids?\b|\bid_", r["answer"], re.I) and "S-000002" not in r["answer"], leak
         assert r["status"] == "declined" or r["answer"] == "Hugo Okowande has 2 goals.", leak
     assert json.loads(rows("audit")[-1]["detail"])["reason"] == "fact id in the answer"
 

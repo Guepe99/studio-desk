@@ -36,7 +36,7 @@ const { chromium } = require("playwright");
 const base = process.argv[2] ?? "http://127.0.0.1:8765/";
 const MATCH = process.env.MATCH ?? "DEMO";
 const PFX = MATCH === "DEMO" ? "layout" : `layout-${MATCH}`;
-const SIZES = process.env.SIZES ? JSON.parse(process.env.SIZES) : [[1280, 720], [1440, 900], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
+const SIZES = process.env.SIZES ? JSON.parse(process.env.SIZES) : [[1280, 720], [1280, 560], [1440, 900], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 const failures = [];
@@ -330,10 +330,12 @@ async function run(w, h) {
         // the desk's own sticky head over a scrolled row is scrolling, not covering: only something outside the desk counts
         if (!hit?.closest("#desk")) out.push(`${el.textContent.trim().slice(0, 20)} under ${hit?.closest("[id]")?.id ?? hit?.tagName}`);
       }
-      return { n, out };
+      return { n, out, list: document.querySelector("#desk .desk-body").clientHeight };
     });
     await shot(page, `${PFX}-${tag}-ask.png`);
     await page.evaluate(() => { document.querySelector("#ask").hidden = true; });
+    // a wide but short window keeps a story row over the panel, with Watch for open too (78 px before ask.css kept 380 px)
+    expect(under.list >= 100, `${tag}: with Ask open the story list is ${under.list} px tall`);
     expect(under.n > 0 && !under.out.length, `${tag}: with Ask open, ${under.out.length} of ${under.n} desk controls are covered ${JSON.stringify(under.out.slice(0, 5))}`);
   }
   await ctx.close();
