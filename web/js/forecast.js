@@ -1,6 +1,6 @@
 // Watch for (docs/forecast.md): the producer's storyline forecasts from data/<match>/forecast.json, made by code
-// from the facts (studiodesk/forecast.py). Each open forecast shows its probability, a reason from the facts and
-// a prepared line whose minute and score code fills when the event happens. A line the producer pre-approves
+// from the facts (studiodesk/forecast.py). Each open forecast shows a word (unlikely, possible, likely), a reason from
+// the facts and a prepared line whose minute and score code fills when the event happens. A line the producer pre-approves
 // goes on air as a why_card at the event's own time; a line nobody pre-approved never airs. The decisions stay
 // in this tab, in the desk's audit trail, as the generated graphics' do.
 import { h, tr } from "./desk.js";
@@ -66,10 +66,9 @@ export class Watch {
       this.data = await r.json();
     } catch { return false; }
     this.byId = new Map(this.data.items.map((it) => [it.id, it]));
-    // the stories waiting for the producer stay on screen: closed on a short or narrow desk (one click opens it),
-    // and under the stories on the narrow drawer
+    // the stories waiting for the producer stay on screen: closed at every width (one click opens it), and under
+    // the stories on the narrow drawer
     this.el = h("details", { className: "watch" });
-    this.el.open = matchMedia("(min-width: 1100px) and (min-height: 900px)").matches;
     if (matchMedia("(min-width: 1100px)").matches) this.desk.root.insertBefore(this.el, this.desk.bodyEl);
     else this.desk.root.append(this.el);
     return true;
@@ -115,19 +114,22 @@ export class Watch {
   }
 
   render(step, recent, now) {
-    const lang = this.state.lang, pct = new Intl.NumberFormat(lang, { style: "percent" });
+    const lang = this.state.lang;
     const focused = document.activeElement?.closest?.("[data-watch]")?.dataset.watch;
-    const slot = (name) => h("span", { className: "w-slot" }, this.tx(`w_slot_${name.toLowerCase()}`));
-    // the template with its open slots as chips: {minute} and {score} wait for the event
-    const line = (text) => String(text).split(/(\{\w+\})/).filter(Boolean).map((part) => (/^\{\w+\}$/.test(part) ? slot(part.slice(1, -1)) : part));
+    // the template's open slots as plain words, underlined: {minute} and {score} wait for the event
+    const slot = (name, kind) => {
+      const key = name.toLowerCase() === "minute" ? "w_slot_minute" : kind === "clean_sheet" ? "w_slot_final" : "w_slot_score";
+      const text = this.tx(key);
+      return h("span", { className: "w-slot", title: this.tx("w_slotTitle") }, name[0] === name[0].toUpperCase() ? text[0].toUpperCase() + text.slice(1) : text);
+    };
+    const line = (text, kind) => String(text).split(/(\{\w+\})/).filter(Boolean).map((part) => (/^\{\w+\}$/.test(part) ? slot(part.slice(1, -1), kind) : part));
     const open = (step?.items ?? []).map((f) => {
       const it = this.byId.get(f.id), on = this.approvals.has(f.id);
       return h("li", { className: `w-item${on ? " on" : ""}`, "data-watch": f.id },
         h("div", { className: "w-top" }, h("span", { className: "w-title" }, it.title[lang] ?? it.title.en),
-          h("span", { className: "w-p", title: this.tx("w_pTitle") }, pct.format(f.p))),
-        h("div", { className: "w-bar", "aria-hidden": "true" }, h("span", { style: `width:${Math.round(f.p * 100)}%` })),
+          h("span", { className: `w-p w-${f.level}`, title: this.tx("w_pTitle") }, this.tx(`w_lvl_${f.level}`))),
         h("p", { className: "w-reason" }, f.reason[lang] ?? f.reason.en),
-        h("p", { className: "w-line" }, line(it.template[lang] ?? it.template.en)),
+        h("p", { className: "w-line" }, line(it.template[lang] ?? it.template.en, it.kind)),
         h("button", { type: "button", className: "ctl w-pre", "aria-pressed": String(on), "data-watch": f.id,
           onclick: () => this.toggle(f.id, this.state.ts + (this.desk.delay || 0)) }, this.tx(on ? "w_preOn" : "w_pre")));
     });

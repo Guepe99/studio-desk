@@ -5,14 +5,21 @@ same generator as the demo matches. Nothing here says how the model would do on 
 
 ## What the producer sees
 
-The control desk has a **Watch for** panel above the stories. While the replay plays, it lists the
-storylines that could still happen before full time, each with:
+The control desk has a **Watch for** panel above the stories (under them on a phone). It starts closed at
+every width, one line, and the visitor opens it. While the replay plays, it lists the storylines that could
+still happen before full time, each with:
 
-- its probability, made by code from the facts up to the replay time (no model calls);
+- a word, **Unlikely**, **Possible** or **Likely**, made by code from the facts up to the replay time (no
+  model calls; see [On screen: words, not percentages](#on-screen-words-not-percentages));
 - a one-line reason from the same facts ("Ostwick trail 2-0, with 1 shot so far.");
-- a prepared line from the phrasebook, with open slots for the minute and the score, which code fills
-  from the facts when the event happens;
+- a prepared line from the phrasebook that reads as a whole sentence: the parts code fills from the facts
+  when the event happens are plain words, underlined, such as "in the minute it comes", "the new score" or
+  "the final score" (the panel's note says so in the language on air);
 - a **Pre-approve line** button.
+
+The panel's facts never lag the clock: the export writes a forecast step at every fact the model reads (each
+goal and each shot) as well as every match minute, so paused at 7:56 the panel counts the shot of 7:50 whose
+graphic is on air.
 
 A pre-approved line goes on air as a why_card at the event's own time (the fact that triggers it), for
 6 seconds, so it ends before the agents' own card on the same goal (about 6.3 s after it). A line nobody
@@ -132,7 +139,41 @@ open, so the forecasts of one match are not independent: the match counts are th
   the fit ignores them. On real data they would matter, and the same script would refit them.
 - Half the simulated matches have a planted comeback, so the comeback and clean sheet probabilities are
   far from real football (a 2-0 deficit at 13' gives a 44% comeback). They are calibrated to the
-  simulator, which is what the replays are made from.
+  simulator, which is what the replays are made from. That is why the panel shows words, not these numbers.
+
+## On screen: words, not percentages
+
+A producer reads "Comeback 65%" for a side 1-0 down at 10' as a claim about football, and in real football
+it is wrong. So the panel shows no percentage, only a word, and the probability behind it stays in
+`forecast.json` and in the MCP tool for anyone who wants to check it. `forecast.level()` makes the word:
+
+1. **Shift to real football.** For the two kinds the simulator gets most wrong, the model's odds are moved
+   from the simulator's event rate (the `base_rate` in `forecast_params.json`) to a real-football rate, the
+   standard correction for a model trained on other base rates (Saerens, Latinne and Decaestecker, *Adjusting
+   the outputs of a classifier to new a priori probabilities*, Neural Computation 14(1), 2002):
+   - `comeback`, real rate 0.29: the team that scores first wins 71.1% of Premier League matches (CIES
+     Football Observatory, 2015 to 2019, https://football-observatory.com/IMG/sites/b5wp/2019/wp293/en/),
+     so the side that concedes first draws level at some point in about 29% of them;
+   - `late_goal`, real rate 0.40: 18% of Premier League goals in 2024/25 came from the 80th minute on
+     (https://www.premierleague.com/en/news/4430518/more-late-goals-and-stoppage-time-winners-being-scored-in-2025-26),
+     and 95 added-time goals were 8.5% of the total, about 2.9 goals a match, so about 0.53 late goals a match
+     and at least one in 1 - e^-0.53, about 41%.
+
+   `second_goal` and `clean_sheet` are left as they are: their simulator rates are near real football, or
+   the model is already low (a second goal is at most 0.33).
+2. **Three words, the IPCC likelihood scale** (Mastrandrea et al., *Guidance Note for Lead Authors of the
+   IPCC Fifth Assessment Report on Consistent Treatment of Uncertainties*, 2010,
+   https://www.ipcc.ch/site/assets/uploads/2017/08/AR5_Uncertainty_Guidance_Note.pdf): **Unlikely** below
+   1/3, **Possible** from 1/3 ("about as likely as not"), **Likely** from 2/3.
+
+What it gives: a side 1-0 down at 10' reads Possible (the model's 0.65 becomes 0.44), 2-0 down at 41' reads
+Unlikely (0.32 becomes 0.16), a late goal reads Possible for most of the match, and a team that has not
+conceded by minute 90 reads Likely to keep a clean sheet. A comeback never reads Likely on the four replays.
+`test_words_are_honest_for_real_football` holds these cases.
+
+The shift is coarse: the simulator's rate is counted over every 5-minute step a forecast is open, the real
+rates per match, and the real rates are league averages that ignore the teams. The words are honest about
+how often such a thing happens in real football, no more.
 
 ## Where it lives
 
