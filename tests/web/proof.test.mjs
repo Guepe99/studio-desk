@@ -1,5 +1,6 @@
 // web/js/proof.js: what the "Show proof" panel lists for each graphic of the DEMO and M001-M004 packs.
 //   node --test tests/web/proof.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -98,7 +99,7 @@ test("M001 goal at 10': the numbers, the facts, the event and the checks, in Ita
   const pr = proofOf(cue, P.ctx(cue)), w = proofWords(pr, { match: P.match, minute: P.minute, lang: "it", what: "Gol 10'" });
   assert.deepEqual(pr.numbers.map((x) => [x.text, x.kind]), [["10'", "minute"], ["92", "value"], ["1-0", "score"]]);
   assert.equal(pr.numbers[1].src.fact.fact_id, "F-SHOT_SPEED-000002");
-  assert.equal(w.numbers[1].about, "Velocità del tiro, Chidi Okowande, 92,1 km/h al minuto 10".replace("Chidi Okowande", P.match.players["T01-9"].name));
+  assert.equal(w.numbers[1].about, `Velocità del tiro, ${P.match.players["T01-9"].name}, 92,1 km/h al minuto 10`);
   assert.equal(w.numbers[2].about, "il risultato dopo il gol al minuto 10");
   assert.deepEqual(w.facts[0], { what: "Risultato, Redwick Wanderers", value: "1-0", minute: "10'" });
   assert.deepEqual(w.events.map((e) => [e.minute, e.kind]), [["10'", "Gol"]]);

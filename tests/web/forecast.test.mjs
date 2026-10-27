@@ -118,7 +118,7 @@ test("the panel's words: a level, never a percentage, and slots that read as wor
 });
 
 const M001 = new URL("../../web/data/M001/forecast.json", import.meta.url);
-test("M001: the brace at 13' is a prepared line that airs on its goal", { skip: !existsSync(M001) && "no web/data/M001/forecast.json" }, () => {
+test("M001: the brace at 13' is a prepared line that airs on its goal", { skip: !existsSync(M001) && !process.env.CI && "no web/data/M001/forecast.json" }, () => {
   const data = JSON.parse(readFileSync(M001, "utf8"));
   const it = data.items.find((x) => x.id === "W-second_goal-T01-9");
   assert.equal(it.hit, true);

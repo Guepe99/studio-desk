@@ -20,7 +20,7 @@ const events = [
 const match = { meta: { entities: ["ball", "T01-4", "T01-5"] } };
 
 // Positions: the ball rolls out and stops at the line at 54 s; the taker walks to it and stands
-// beside it from 56 s, 13.2 s before the throw (a Premier League throw-in waits 15 to 18 s).
+// beside it from 56 s, 13.2 s before the throw (a top-flight throw-in waits 15 to 18 s).
 const lerp = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
 const clamp = (u) => Math.min(1, Math.max(0, u));
 const tracked = {
@@ -130,7 +130,8 @@ test("a taker who runs to the ball picks it up once he has slowed down", () => {
 
 // On the exported matches: every throw-in, the shown root as the scene draws it.
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/data");
-const IDS = ["M001", "M002", "M003", "M004"].filter((id) => existsSync(path.join(DATA, id, "meta.json")));
+// under CI the export must be there: a missing match fails instead of shrinking the list
+const IDS = ["M001", "M002", "M003", "M004"].filter((id) => process.env.CI || existsSync(path.join(DATA, id, "meta.json")));
 test("on the exported matches every taker moves under 5 cm a frame from a second before the pick-up to the release", { skip: !IDS.length }, () => {
   for (const id of IDS) {
     const dir = path.join(DATA, id), j = (f) => JSON.parse(readFileSync(path.join(dir, f), "utf8"));

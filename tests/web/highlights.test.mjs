@@ -1,5 +1,6 @@
 // web/js/highlights.js: which moments a highlights reel plays, in which order and for how long, on the four replays.
 //   node --test tests/web/highlights.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

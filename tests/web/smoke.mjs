@@ -586,6 +586,7 @@ try {
       return t.sort((a, b) => a - b)[150];
     });
     console.log(`pitch: median draw ${ms.toFixed(2)} ms at 1280x720`);
+    // measured 0.1 to 0.2 ms in software Chromium: the median of 300 draws needs a 40x slowdown to reach 8 ms
     if (ms > 8) fail(`pitch: median draw ${ms.toFixed(2)} ms, over half a 60 Hz frame`);
   });
 
@@ -622,7 +623,8 @@ try {
   await check("reduced motion", async () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     const ms = await render("pass_shot", { mode: "shot", player_id: "T01-9", value: 101, unit: "km/h", quality: "Goal", fact_ids: [] }, { goto: 0 });
-    if (ms > 150) fail(`reduced motion: the in animation still ran for ${ms.toFixed(0)} ms`);
+    // the full in animation lasts 1120 ms (the bar: 520 ms delay, 600 ms run); 500 ms leaves a loaded machine room
+    if (ms > 500) fail(`reduced motion: the in animation still ran for ${ms.toFixed(0)} ms`);
     await unprobe();
     await page.emulateMedia({ reducedMotion: "no-preference" });
   });

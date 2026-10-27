@@ -1,4 +1,4 @@
-// The 3D scene's review fixes: the drivers are asked once per player and time in a frame and
+// The 3D scene: the drivers are asked once per player and time in a frame and
 // the picture is the same, a 64x frame puts the facing spring at rest instead of thousands of
 // steps, the keepers' shirts stand apart from both teams and the grass and are the same in 2D and
 // 3D, a keeper rig on a match without players and a failed 3D load leave nothing broken behind.
@@ -91,7 +91,7 @@ const T0 = 1540, SPAN = [T0 - 15, T0 + 105];
 // a seek, 1 s at 1x and 60 fps, 1.3 s at 4x, 2 s of 4x at 10 fps
 const DTS = [0, ...Array(60).fill(1 / 60), ...Array(20).fill(4 / 60), ...Array(5).fill(0.4)];
 
-test("M001: each driver answers a player once per time in a frame, and the frame is the same", { skip: (!raw || !motion) && "no web/data/M001 or motion clips" }, () => {
+test("M001: each driver answers a player once per time in a frame, and the frame is the same", { skip: (!raw || !motion) && !process.env.CI && "no web/data/M001 or motion clips" }, () => {
   const a = scene(raw, SPAN, true), b = scene(raw, SPAN, false);
   let ts = T0, shown = 0;
   for (const dt of DTS) {
@@ -108,7 +108,7 @@ test("M001: each driver answers a player once per time in a frame, and the frame
   assert.ok(a.poseFrame === null, "the kept answers end with render()");
 });
 
-test("M001: frames up to 1 s step the facing spring, a 64x frame puts it at its resting point", { skip: (!raw || !motion) && "no web/data/M001 or motion clips" }, () => {
+test("M001: frames up to 1 s step the facing spring, a 64x frame puts it at its resting point", { skip: (!raw || !motion) && !process.env.CI && "no web/data/M001 or motion clips" }, () => {
   const s = scene(raw, SPAN, true);
   // the steps of the facing spring as update() takes them, from the state before the frame
   const stepped = (yaw, yawV, prev, target, dt) => {
@@ -200,7 +200,7 @@ test("team colours that are not #rrggbb are left out of the keepers' pick", () =
   assert.ok(PT.deltaE(kits.away, "#7a3fb8") >= 25, "away keeper apart from the valid away colour");
 });
 
-test("a keeper rig on a match without players builds, with the procedural poses", { skip: (!raw || !motion) && "no web/data/M001 or motion clips" }, () => {
+test("a keeper rig on a match without players builds, with the procedural poses", { skip: (!raw || !motion) && !process.env.CI && "no web/data/M001 or motion clips" }, () => {
   const scene3 = new B.Scene(new B.NullEngine());
   // a probe skeleton with the bones the rig reads, and a clip of every keeper name already there
   const root = new B.TransformNode("gk-probe-root", scene3);

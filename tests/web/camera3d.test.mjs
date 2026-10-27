@@ -9,14 +9,14 @@ const view = (ts) => ({ ts, replay: false, cuts: false });
 
 for (const id of ["M001", "M002", "M003", "M004"]) {
   const m = await loadMatch(id);
-  test(`${id}: the second half opens on the kick-off, not on where the first half ended`, { skip: !m && `no web/data/${id}` }, async () => {
+  test(`${id}: the second half opens on the kick-off, not on where the first half ended`, { skip: !m && !process.env.CI && `no web/data/${id}` }, async () => {
     const c = await cameras(m), h = m.meta.period1_s, t = h + 0.02;
     c.update(view(t), t, 0);   // the page jumps across the break
     const aim = c.tv.getTarget().x + 52.5, ball = m.at(0, t)[0];
     assert.ok(Math.abs(aim - ball) < 8, `aim at x ${aim.toFixed(1)}, ball at ${ball.toFixed(1)}`);
   });
 
-  test(`${id}: one long frame moves camera 1 as many short ones do`, { skip: !m && `no web/data/${id}` }, async () => {
+  test(`${id}: one long frame moves camera 1 as many short ones do`, { skip: !m && !process.env.CI && `no web/data/${id}` }, async () => {
     const c = await cameras(m), h = m.meta.period1_s;
     let worst = 0, sum = 0, n = 0;
     for (let t = 200; t < m.duration - 10; t += 97) {

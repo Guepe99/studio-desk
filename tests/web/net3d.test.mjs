@@ -20,7 +20,7 @@ function load(id) {
 }
 
 const m = load("M001");
-test("M001: a scored ball keeps its speed over the line, presses the net and stays in the goal", { skip: !m && "no web/data/M001" }, () => {
+test("M001: a scored ball keeps its speed over the line, presses the net and stays in the goal", { skip: !m && !process.env.CI && "no web/data/M001" }, () => {
   const g = m.goals[0], plan = new BallPlan(m, [g.ts - 12, g.ts + 10], { ballR: 0.11 });
   const at = (t) => plan.ball(t), end = at(g.ts).x > PITCH_L / 2 ? 1 : -1, line = end > 0 ? PITCH_L : 0;
   // the tracking ball stops short of the netting; the drawn one crosses the line at speed

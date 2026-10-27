@@ -637,7 +637,7 @@ def test_a_line_pushed_back_by_the_other_team_is_not_a_shift():
     assert [(c["kind"], c["team_id"], c["note"]) for c in found] == [("tactical_shift", "T01", "line higher by 11 m")]
 
 
-# --- review fixes: numbers the code could not see, claims the ledger contradicts -----------------
+# --- numbers the code could not see, claims the ledger contradicts -------------------------------
 
 def test_numbers_in_words_glued_or_in_foreign_units_are_flagged():
     allowed = [(96.4, "speed"), (34.2, "speed"), (3.0, None)]
@@ -791,7 +791,7 @@ def test_style_rations_loud_words_and_openings_over_a_match():
                                                                        "big_chance"))
 
 
-# --- verifier review 3 ---------------------------------------------------------------------------
+# --- the verifier: exact numbers and formations, citations, judged texts, comeback lines ---------
 
 SHAPE = [fact("formation", 1, 3000, 442.0, "formation", "Formation 4-4-2, min 46-50"),
          fact("shot_speed", 2, 3000, 96.4, "km/h", "Shot at 96.4 km/h")]

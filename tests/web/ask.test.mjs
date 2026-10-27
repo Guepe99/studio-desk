@@ -1,5 +1,6 @@
 // web/js/ask.js: the suggested questions follow the facts up to the replay time, also as the replay plays.
 //   node --test tests/web/ask.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

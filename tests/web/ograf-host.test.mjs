@@ -53,15 +53,15 @@ test("three overlapping cues: two on screen, the third waits for a slot", async 
 
 test("a graphic is taken off and disposed at its cue end", async () => {
   const h = host();
-  h.setCues([cue("a", 1, 2)], 0);
+  h.setCues([cue("solo", 1, 2)], 0);  // its own id: the first test's late stop of "a" lands in the shared log
   run(h, 0, 1.5);
-  const el = h.live.get("a").el;
+  const el = h.live.get("solo").el;
   assert.equal(el.attached, true);
   run(h, 1.6, 3);
   assert.equal(h.live.size, 0);
   await tick(20);
   assert.equal(el.attached, false);
-  assert.ok(log.some(([k, id]) => k === "stop" && id === "a"));
+  assert.ok(log.some(([k, id]) => k === "stop" && id === "solo"));
 });
 
 test("chain settles once the graphic has been played, not before", async () => {

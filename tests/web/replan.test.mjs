@@ -30,7 +30,7 @@ function load(id) {
 }
 const IDS = ["M001", "M002", "M003", "M004"];
 const M = Object.fromEntries(IDS.map((id) => [id, load(id)]));
-const skip = IDS.some((id) => !M[id]) && "no web/data/M001-M004";
+const skip = IDS.some((id) => !M[id]) && !process.env.CI && "no web/data/M001-M004";
 
 const now = (m, span) => {
   const ball = new BallPlan(m, span, { ballR: 0.11 });
@@ -68,7 +68,7 @@ test("the plans built in slices are the plans built at once, value by value", { 
   }
 });
 
-test("a window plan never holds the page for more than 20 ms at a time", { skip: !M.M001 && "no web/data/M001" }, async () => {
+test("a window plan never holds the page for more than 20 ms at a time", { skip: !M.M001 && !process.env.CI && "no web/data/M001" }, async () => {
   const m = M.M001;
   run(planning(m, [0, 120]));   // the page plans its first window at load, before play: the code is warm
   // each task the slices run, timed on this thread's CPU clock (the wall clock here also counts the
@@ -86,6 +86,7 @@ test("a window plan never holds the page for more than 20 ms at a time", { skip:
       await sliced(m, span);
       const cpu = Math.max(...tasks.map((t) => t.cpu)), wall = Math.max(...tasks.map((t) => t.wall)), sum = tasks.reduce((a, t) => a + t.cpu, 0);
       console.log(`M001 [${span}]: ${sum.toFixed(0)} ms of work in ${tasks.length} tasks, the longest ${cpu.toFixed(1)} ms of CPU (${wall.toFixed(1)} ms of wall clock)`);
+      // CPU time, so load does not move it; about 8 ms on the build machine, so a runner 2.5x slower still passes
       assert.ok(cpu < 20, `M001 [${span}]: one task held the page for ${cpu.toFixed(1)} ms`);
     }
   } finally {

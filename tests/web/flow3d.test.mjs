@@ -37,7 +37,7 @@ function onTarget(m) {
 
 for (const id of ["DEMO", "M001", "M002", "M003", "M004"]) {
   const m = load(id);
-  test(`${id}: smooth paths pass through every sample with continuous velocity`, { skip: !m }, () => {
+  test(`${id}: smooth paths pass through every sample with continuous velocity`, { skip: !m && !process.env.CI }, () => {
     const sm = smoothMatch(m), fps = m.meta.fps, h = 1e-3;   // float32 metres: a smaller step is noise
     let jumpS = 0, jumpL = 0, n = 0;
     for (let i = 1; i < m.n; i++) {
@@ -63,7 +63,7 @@ for (const id of ["DEMO", "M001", "M002", "M003", "M004"]) {
     assert.equal(sm.at(0, 10.05).join(), m.at(0, 10.05).join(), "the ball stays on the tracking line");
   });
 
-  test(`${id}: a keeper reaction for every shot on target, within the limits`, { skip: !m }, () => {
+  test(`${id}: a keeper reaction for every shot on target, within the limits`, { skip: !m && !process.env.CI }, () => {
     const plan = new BallPlan(m, [0, m.duration], { ballR: 0.11 });
     const rs = planKeeper(m, (t) => plan.ball(t), { ballR: 0.11 });
     const shots = onTarget(m);
@@ -107,7 +107,7 @@ test("solve: the body's reach lands on the ball for a full-stretch dive", () => 
 });
 
 const clipMatch = load("M001") ?? load("DEMO");   // web/data is git-ignored: skip on a fresh clone
-test("real clips: the contact frame lands on the crossing time and the hands on the ball", { skip: !clipMatch }, () => {
+test("real clips: the contact frame lands on the crossing time and the hands on the ball", { skip: !clipMatch && !process.env.CI }, () => {
   const m = clipMatch;
   // made-up dives: 2 m across in 1.5 s, the body down to the ground, hands 0.5 m past the root at 0.6 s
   const clip = (sg) => ({ len: 2.5, fps: 30, contact: 0.6, hand: [sg * 1.3, 1.1, 0.2],

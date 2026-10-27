@@ -100,7 +100,7 @@ export async function motionFlow(seconds) {
     if (k) stepMs.push(performance.now() - t0);
     const ball = sc.ball.position.clone();
     const ballV = prevBall ? Math.hypot(ball.x - prevBall.x, ball.z - prevBall.z) * HZ : 0;
-    // the drawn ball must never jump: more than 0.5 m in one frame while held
+    // the drawn ball must never jump: more than 0.25 m in one frame while held
     const moving = [];
     let holder = null, hd = 1.2;
     for (const r of R) {

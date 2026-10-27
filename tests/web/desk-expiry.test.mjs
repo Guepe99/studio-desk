@@ -1,6 +1,7 @@
 // A story waiting in Needs you past its moment is missed by itself, after a time that suits its kind, never airs
 // afterwards, is written to the audit with its reason, and waits again when the visitor seeks back before that time.
 //   node --test tests/web/desk-expiry.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

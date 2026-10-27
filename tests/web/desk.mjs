@@ -487,7 +487,7 @@ async function scenario(browser, w, h) {
   expect(sids.length && sids.every((x) => !/S-\d{6}/.test(x)) && sids.some((x) => /^Goal \d+'$/.test(x)), `${tag}: audit names stories ${JSON.stringify(sids.slice(0, 4))}`);
   expect(await page.$$eval(".log tr.a-agent", (n) => n.length) > 0, `${tag}: audit has no agent rows`);
   expect(await page.$$eval(".log tr.a-human", (n) => n.length) > 0, `${tag}: the audit table leaves out your decisions`);
-  // the replay's traces are steps, not calls (M001: 115 steps, 132 calls in MEASURES.md): the total says so
+  // the replay's traces are steps, not calls (docs/MEASURES.md counts both): the total says so
   const steps = await page.evaluate(() => {
     const t = document.querySelector("#desk .totals div"), d = window.studioDesk.desk;
     return { text: t.textContent, tip: t.title, n: d.traces.filter((x) => x.model).length };
@@ -682,11 +682,11 @@ async function edges(browser) {
   const t0 = Date.now();
   await page.goto(url);
   await page.waitForFunction(() => window.studioDesk?.desk?.loaded, null, { timeout: 15000 });
-  const t1 = Date.now(); // page load alone can pass 4 s under load: time the replay from here
   await page.evaluate(() => window.studioDesk.setPlaying(true));
-  await page.waitForFunction(() => window.studioDesk.state.ts > 0.5, null, { timeout: 3000 }).catch(() => {});
-  const hang = await page.evaluate(() => [window.studioDesk.state.ts, window.studioDesk.desk.online]);
-  expect(hang[0] > 0.5 && !hang[1] && Date.now() - t1 < 3000, `edges: the replay waits for a hanging API (ts ${hang[0]}, online ${hang[1]}, ${Date.now() - t1} ms)`);
+  // timed by the desk, not the host clock: the replay must play while connect() is still trying (not ready)
+  await page.waitForFunction(() => window.studioDesk.state.ts > 0.5 || window.studioDesk.desk.ready, null, { timeout: 10000 }).catch(() => {});
+  const hang = await page.evaluate(() => [window.studioDesk.state.ts, window.studioDesk.desk.online, window.studioDesk.desk.ready]);
+  expect(hang[0] > 0.5 && !hang[1] && !hang[2], `edges: the replay waits for a hanging API (ts ${hang[0]}, online ${hang[1]}, ready ${hang[2]})`);
   await seekTo(page, firstCue(cues, HELD.story_id) + 2);
   // until the desk knows this visitor's decisions, nothing can be pressed
   expect(await page.$eval("#ai-switch", (el) => el.disabled) && await page.$eval(`${card(HELD)} .act-approved`, (el) => el.disabled),
@@ -744,7 +744,8 @@ async function edges(browser) {
   }
   await rule(page, "d.decisions.delete(s.story_id); s.safety = 'flagged'; d.changed()", SWING.story_id);
   const swing = await rule(page, "return [d.status(s), d.onAir(s)]", SWING.story_id);
-  expect(swing[0] === "needs_review" && swing[1] === false || SWING.default_status !== "auto_approved", `edges: flagged story on air by itself ${swing}`);
+  // ALL is inside the swing's miss window (MISS_S 120 s after its slot), so undecided it waits, held
+  expect(JSON.stringify(swing) === '["needs_review",false]', `edges: flagged story on air by itself ${swing}`);
   await rule(page, "s.default_status = 'auto_approved'; s.safety = 'flagged'; d.changed()", AUTO.story_id);
   await rule(page, "d.decisions.delete(s.story_id); d.changed()", AUTO.story_id);
   expect(JSON.stringify(await rule(page, "return [d.status(s), d.onAir(s)]", AUTO.story_id)) === '["needs_review",false]', "edges: flagged auto-approved story on air by itself");

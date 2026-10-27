@@ -2,6 +2,7 @@
 // the desk lists none of them, the 3D view never moves one for a goal replay, and a substitute's sheet
 // still says when he comes on.
 //   node --test tests/web/fillers.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

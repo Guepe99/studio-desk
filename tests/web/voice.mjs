@@ -64,6 +64,7 @@ const cleanup = () => {
   rmSync(path.join(demo, "booth"), { recursive: true, force: true });
 };
 process.on("exit", cleanup);
+for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => process.exit(130)); // "exit" runs the cleanup; a signal alone skips it
 // a story speaks on its card: the why_card that shows the text its clip says
 const card = (s, audience = "analyst") => cues.find((c) => c.story_id === s.story_id && c.graphic === "why_card" && c.audience === audience && c.lang === "en");
 const firstCue = (s) => card(s).ts;
@@ -226,7 +227,7 @@ await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(
 // a new headline alone leaves the body, and so the clip, as it was
 await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "edited", { title_en: "A new headline" }); }, EDITED.story_id);
 await playFrom(firstCue(EDITED), 1);
-expect((await voice()).sid === EDITED.story_id, "a headline-only edit silenced the clip");
+expect((await voice()).sid === EDITED.story_id, "a headline-only edit keeps the clip");
 await page.evaluate((id) => { const d = window.studioDesk.desk; return d.decide(d.byId.get(id), "edited", { en: "Hand-written line." }); }, EDITED.story_id);
 await playFrom(firstCue(EDITED), 1);
 expect((await voice()).sid === null, "edited story stays silent");

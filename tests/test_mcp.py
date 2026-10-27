@@ -78,10 +78,12 @@ def test_lists_tools_through_the_sdk(server_db):
 
 def test_never_reads_the_answer_key():
     word = "story" + "lines"
-    # the agents and the API too; scripts/measures.py and scripts/eval_stories.py grade against it, so they may
-    paths = [ROOT / "studiodesk" / "mcp_server.py", ROOT / "studiodesk" / "api.py",
-             *(ROOT / "studiodesk" / "facts").glob("*.py"), *(ROOT / "studiodesk" / "agents").glob("*.py")]
-    assert len(paths) > 10
+    # every shipped module, Python and page; scripts/measures.py and scripts/eval_stories.py grade against it, so
+    # they may. The simulator plants and writes the table; report.py names it only to say it never reads it.
+    sim = ROOT / "studiodesk" / "sim"
+    allowed = {sim / "engine.py", sim / "build.py", sim / "tracking.py", sim / "report.py"}
+    paths = [p for p in (*(ROOT / "studiodesk").rglob("*.py"), *(ROOT / "web" / "js").rglob("*.js")) if p not in allowed]
+    assert len(paths) > 60 and ROOT / "studiodesk" / "booth.py" in paths and ROOT / "web" / "js" / "desk.js" in paths
     for path in paths:
         assert word not in path.read_text().lower(), path
 

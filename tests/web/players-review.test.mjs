@@ -1,4 +1,4 @@
-// The players' review fixes (docs/flow3d.md section 9): speed and smoothing stop at half time,
+// The players (docs/flow3d.md section 9): speed and smoothing stop at half time,
 // the motion loops hold and cross-fade, the head look gives way to the clips by their weight,
 // strides scale with the player's height, a seek faces from match time alone, and chained
 // celebration variants never dip.
@@ -36,7 +36,7 @@ function load(id) {
 // read the jump as a sprint
 for (const id of ["M001", "M002", "M003", "M004"]) {
   const raw = load(id);
-  test(`${id}: no speed or root artefact within 0.5 s of half time`, { skip: !raw && `no web/data/${id}` }, () => {
+  test(`${id}: no speed or root artefact within 0.5 s of half time`, { skip: !raw && !process.env.CI && `no web/data/${id}` }, () => {
     const m = T.smoothMatch(raw), fps = raw.meta.fps, half = raw.meta.period1_s, H = Math.round(half * fps);
     const segV = (i, k) => { const o0 = (k * raw.n + i) * 3, o1 = o0 + raw.n * 3; return Math.hypot(raw.pos[o1] - raw.pos[o0], raw.pos[o1 + 1] - raw.pos[o0 + 1]) * fps; };
     let n = 0, art = 0, worst = 0, off = 0;
@@ -62,7 +62,7 @@ for (const id of ["M001", "M002", "M003", "M004"]) {
   });
 }
 
-test("a motion loop holds past the diagonal, both ways (hysteresis)", { skip: !motion && "no clips.json" }, () => {
+test("a motion loop holds past the diagonal, both ways (hysteresis)", { skip: !motion && !process.env.CI && "no clips.json" }, () => {
   // turn the run in the character's frame from the backward loop's travel to the left sidestep's
   // and back, 0.5 degree a step, and note where the loop changes
   const a0 = Math.atan2(...motion.clips.M_jog_backward.dir), a1 = Math.atan2(...motion.clips.M_sidestep_left.dir);
@@ -84,7 +84,7 @@ function player(h) {
     anim: { loco: [group(), group(), group(), group()], cache, legs: [{}], get: (n) => (cache[n] ??= group()), upper: () => null } };
 }
 
-test("a change of motion loop is a cross-fade, never a swap in one frame", { skip: !motion && "no clips.json" }, () => {
+test("a change of motion loop is a cross-fade, never a swap in one frame", { skip: !motion && !process.env.CI && "no clips.json" }, () => {
   const p = player(1), dt = 1 / 60, L = ["M_jog_backward", "M_sidestep_left", "M_sidestep_right"];
   const r = { mode: "backpedal", action: null, emotion: null, runL: motion.clips.M_jog_backward.dir };
   const share = () => { const s = L.reduce((t, n) => t + (p.aw[n] ?? 0), 0); return L.map((n) => (p.aw[n] ?? 0) / s); };
@@ -100,7 +100,7 @@ test("a change of motion loop is a cross-fade, never a swap in one frame", { ski
   assert.ok(most < 0.2, `a loop's share moves by ${most.toFixed(2)} in a frame`);
 });
 
-test("strides scale with the player's height: a taller player steps less often at the same speed", { skip: !motion && "no clips.json" }, () => {
+test("strides scale with the player's height: a taller player steps less often at the same speed", { skip: !motion && !process.env.CI && "no clips.json" }, () => {
   // cycles per second of the forward run and of the backpedal loop at the same ground speed
   function rate(h, mode) {
     const p = player(h), dt = 1 / 60, r = { mode, action: null, emotion: null, runL: motion.clips.M_jog_backward.dir };
@@ -171,7 +171,7 @@ test("the head look gives way to the clips by their weight, never all at once", 
 });
 
 const demo = load("DEMO");
-test("chained celebration variants overlap: the emotion never dips between two", { skip: !(demo && motion) && "no DEMO or clips.json" }, () => {
+test("chained celebration variants overlap: the emotion never dips between two", { skip: !(demo && motion) && !process.env.CI && "no DEMO or clips.json" }, () => {
   const aw = new Awareness(demo, [0, demo.duration], { motion });
   const by = new Map();
   for (const e of aw.emotions) (by.get(e.i) ?? by.set(e.i, []).get(e.i)).push(e);

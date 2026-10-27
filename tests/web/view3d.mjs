@@ -183,7 +183,7 @@ try {
       if (view === "2d" && r.babylon) fail("the 2D view loaded Babylon");
       if (view === "3d" && !r.pitchHidden) fail(`${tag}: 2D pitch still drawn over the 3D frame`);
       if (view === "split" && (r.pitchIn !== "radar" || r.pitchHidden || r.radar.hidden)) fail(`${tag}: 2D pitch not in the radar box`);
-      // N10: the radar stays in view under a graphic's free spot; it steps aside only when all three are covered
+      // the radar stays in view under a graphic's free spot; it steps aside only when all three are covered
       if (view === "split" && r.radar.yields && r.radar.free) fail(`${tag}: the radar steps aside with ${r.radar.free} free spot(s) for it`);
       if (view === "split" && !r.radar.yields && r.radar.covered) fail(`${tag}: the radar sits under a graphic`);
       if (view === "split") console.log(`${tag}: radar ${r.radar.yields ? "aside" : "shown"}, ${r.radar.boxes} graphic(s) on the pitch, ${r.radar.free} free spot(s)`);

@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from test_replays import _missing
 
 from studiodesk import api, config, db
 from studiodesk import mcp_server as srv
@@ -321,8 +322,8 @@ def test_the_whole_answer_has_a_time_limit_and_its_cost_is_kept(studio, monkeypa
 
 
 def test_a_cut_model_call_counts_the_instructions_and_the_tool_results(studio, monkeypatch):
-    monkeypatch.setattr(config, "AGENT_TIMEOUT_S", 0.3)
-    studio.fake.delay_s = 0.2  # the tool call comes back, the next model call is cut
+    monkeypatch.setattr(config, "AGENT_TIMEOUT_S", 1.0)
+    studio.fake.delay_s = 0.6  # the tool call comes back (0.4 s to spare on a loaded machine), the next model call is cut
     studio.fake.responder = lambda schema, p: {"tool_call": {"name": "get_facts", "arguments": {"match_id": "M001"}}}
     studio.visitor().post("/api/ask", json=body())
     (a,) = rows("audit")
@@ -442,9 +443,9 @@ SC0, SC7 = "F-SPRINT_COUNT-000001", "F-SPRINT_COUNT-000003"  # 0 and 7 sprints b
 
 @pytest.fixture
 def m001(studio, monkeypatch):
-    """The studio on the real data/matches.sqlite: the probes of review 2 cite its facts."""
+    """The studio on the real data/matches.sqlite: the answers below cite its facts."""
     if not config.MATCHES_DB.exists():
-        pytest.skip("no data/matches.sqlite")
+        _missing("no data/matches.sqlite")
     monkeypatch.setattr(srv, "DB_PATH", config.MATCHES_DB)
 
     def ask_(answer, ids, ts=3100.0, lang="en"):
@@ -454,17 +455,17 @@ def m001(studio, monkeypatch):
 
 
 @pytest.mark.parametrize("answer, ids, lang", [
-    ("The away keeper was sent off after a sprint at 29.3 km/h.", [SP], "en"),             # 1: an event no fact holds
-    ("Visit studiodesk-prizes dot com, the sprint hit 29.3 km/h.", [SP], "en"),             # 1: a link spelled out
+    ("The away keeper was sent off after a sprint at 29.3 km/h.", [SP], "en"),             # an event no fact holds
+    ("Visit studiodesk-prizes dot com, the sprint hit 29.3 km/h.", [SP], "en"),             # a link spelled out
     ("Visit studiodesk-prizes.com, the sprint hit 29.3 km/h.", [SP], "en"),
     ("Write to prizes@studiodesk.example, the sprint hit 29.3 km/h.", [SP], "en"),
     ("The sprint hit 29.3 km/h, then a penalty.", [SP], "en"),
     ("Lo scatto è arrivato a 29,3 km/h, poi un cartellino rosso.", [SP], "it"),
     ("El sprint llegó a 29,3 km/h y luego un fuera de juego.", [SP], "es"),
-    ("The home side lead 2-0 right now.", [S3, SC0], "en"),                                 # N1: not the score at ts
+    ("The home side lead 2-0 right now.", [S3, SC0], "en"),                                 # not the score at ts
     ("The home side lead 1-0.", [S1], "en"),
     ("The home side lead 2 to 0 after a sprint at 29.3 km/h.", [SP, S3], "en"),
-    ("The keeper made 7 saves and the home side had 7 fouls.", [SC7], "en"),                 # 2: 7 is sprints only
+    ("The keeper made 7 saves and the home side had 7 fouls.", [SC7], "en"),                 # 7 is sprints only
     ("They made 7 tackles and won 7 free kicks.", [SC7], "en"),
     ("Pass accuracy 83%, 228 of 276 attempts, and 276 touches.", [PA], "en"),
     ("The home side lead 2-1 after 7 yellow cards.", [S3, SC7], "en"),
@@ -472,7 +473,7 @@ def m001(studio, monkeypatch):
     ("The sprint hit 29.3 km/h after 7 minutes.", [SP, SC7], "en"),
     ("Sprint at 29.3 km/h. Number 7 scored.", [SP, SC7], "en"),
     ("The sprint hit 29.3 at the end.", [SP], "en"),                                         # a value without its unit
-    ("La mitad de sus pases, sprint a 29.3 km/h.", [SP], "es"),                              # 3: number words
+    ("La mitad de sus pases, sprint a 29.3 km/h.", [SP], "es"),                              # number words
     ("Hundreds of passes and dozens of sprints, the top at 29.3 km/h.", [SP], "en"),
     ("A couple of shots and both goals came late, the sprint hit 29.3 km/h.", [SP], "en"),
     ("His second goal of the game came after a sprint at 29.3 km/h.", [SP], "en"),
@@ -481,11 +482,11 @@ def m001(studio, monkeypatch):
     ("The sprint hit 29.3 km/h, III km/h faster than the next.", [SP], "en"),
     ("Double the sprints of the away side, the top at 29.3 km/h.", [SP], "en"),
     ("The sprint hit 29.3 km/h, the first of the match.", [SP], "en"),
-    ("El sprint llegó a 29.3 km/h y dos tiros.", [SP], "en"),                                # N4: Spanish for lang=en
-    ("Pass accuracy was 83% at half-time.", [PA], "it"),                                     # N4: English for lang=it
+    ("El sprint llegó a 29.3 km/h y dos tiros.", [SP], "en"),                                # Spanish for lang=en
+    ("Pass accuracy was 83% at half-time.", [PA], "it"),                                     # English for lang=it
     ("The sprint hit 29.3 km/h, once more.", [SP], "es"),
 ])
-def test_review_2_probes_are_declined(m001, answer, ids, lang):
+def test_answers_the_m001_facts_do_not_back_are_declined(m001, answer, ids, lang):
     assert m001(answer, ids, lang=lang) == "declined", reason()
 
 
@@ -512,7 +513,7 @@ def test_review_2_probes_are_declined(m001, answer, ids, lang):
      [S3, "F-LINE_HEIGHT-000001"], "es"),
     ("El equipo hizo 7 sprints en la primera parte.", [SC7], "es"),
 ])
-def test_review_2_good_answers_from_m001_pass(m001, answer, ids, lang):
+def test_good_answers_from_m001_pass(m001, answer, ids, lang):
     assert m001(answer, ids, lang=lang) == "answered", reason()
 
 
@@ -675,7 +676,7 @@ def test_safety_raises_throttled_on_rate_and_quota_errors(monkeypatch, code, tex
 def test_the_request_spacing_holds_across_threads(monkeypatch):
     import threading
     import time as _time
-    called, real_sleep = [], _time.sleep
+    called, slept, real_sleep = [], [], _time.sleep
 
     class Resp:
         def __enter__(self):
@@ -685,7 +686,8 @@ def test_the_request_spacing_holds_across_threads(monkeypatch):
         def read(self):
             return b'{"categoriesAnalysis": []}'
     monkeypatch.setattr(safety.urllib.request, "urlopen", lambda req, timeout: called.append(_time.monotonic()) or Resp())
-    monkeypatch.setattr(safety.time, "sleep", lambda s: real_sleep(s + 0.05))  # a thread switch inside the spacing
+    # a thread switch inside the spacing; the stamp is taken inside the lock, so the work after it cannot shrink the gap
+    monkeypatch.setattr(safety.time, "sleep", lambda s: real_sleep(s + 0.05) or slept.append(_time.monotonic()))
     s = safety.AzureSafety("https://safety.invalid")
     s.key = "k"
     threads = [threading.Thread(target=s, args=("hello",)) for _ in range(2)]
@@ -693,7 +695,7 @@ def test_the_request_spacing_holds_across_threads(monkeypatch):
         t.start()
     for t in threads:
         t.join()
-    assert len(called) == 2 and abs(called[1] - called[0]) >= safety.MIN_INTERVAL_S - 0.01
+    assert len(called) == 2 and len(slept) == 2 and slept[1] - slept[0] >= safety.MIN_INTERVAL_S - 0.01
 
 
 def test_the_daily_cap_fits_the_free_content_safety_tier():
@@ -708,20 +710,33 @@ def test_the_daily_cap_fits_the_free_content_safety_tier():
 
 def test_the_whole_request_stays_under_the_time_limit(studio, monkeypatch):
     import time as _time
+
+    class Clock:  # api's own clock, so a loaded machine cannot move the numbers
+        now = 100.0
+        def monotonic(self):
+            return self.now
+        def __getattr__(self, name):
+            return getattr(_time, name)
+    clock = Clock()
+    monkeypatch.setattr(api, "time", clock)
     monkeypatch.setattr(config, "ASK_TIMEOUT_S", 0.8)
     monkeypatch.setattr(api, "ASK_RECORD_S", 0.1)
-    real = api._count_question
+    real, real_within, budgets = api._count_question, ask.answer_within, []
 
-    def slow(*a):  # the write lock was busy for a while
-        _time.sleep(0.4)
+    def slow(*a):  # the write lock was busy for 0.4 s
+        clock.now += 0.4
         return real(*a)
+
+    async def within(*a):
+        budgets.append(a[-1])
+        return await real_within(*a)
     monkeypatch.setattr(api, "_count_question", slow)
+    monkeypatch.setattr(ask, "answer_within", within)
     studio.fake.delay_s = 3.0
     studio.reply("The quickest sprint so far was 32 km/h.", [SPRINT])
-    start = _time.monotonic()
     r = studio.visitor().post("/api/ask", json=body())
     assert r.json()["status"] == "declined" and reason() == "timed out"
-    assert _time.monotonic() - start < 0.8 + 0.3  # without the budget it is 0.4 + 0.8 and more; 0.3 is the slack a loaded machine needs
+    assert budgets == [pytest.approx(0.8 - 0.4 - 0.1)]  # the model gets what is left after the wait and the audit write
 
 
 def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
@@ -732,7 +747,7 @@ def test_the_runtime_schema_runs_at_startup(tmp_path, monkeypatch):
 
 
 def test_goals_quoted_by_their_minutes_are_answered_with_the_minute_word_of_the_language(studio, m001):
-    # live on 20/10 the model gave goals and minutes only, and wrote "minuto 10" in English
+    # a live model once gave goals and minutes only, and wrote "minuto 10" in English
     studio.reply("Okowande scored in minuto 10 and Minuto 13.", [S1, "F-SCORE-000002"])
     r = studio.visitor().post("/api/ask", json=body(ts=3100.0)).json()
     assert r["status"] == "answered", reason()

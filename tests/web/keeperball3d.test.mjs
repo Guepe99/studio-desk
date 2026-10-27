@@ -1,6 +1,6 @@
 // The ball around the keepers and the goals (web/js/ball3d.js, web/js/keeper3d.js) on M001-M004,
 // planned on the scene's windows (view3d.js: 15 s back, 105 s ahead). docs/flow3d.md, "Ball" and
-// "Keeper", review fixes.
+// "Keeper".
 //   node --test tests/web/keeperball3d.test.mjs        (web/data is git-ignored: skips without it)
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -22,7 +22,7 @@ function load(id) {
 }
 const IDS = ["M001", "M002", "M003", "M004"];
 const M = Object.fromEntries(IDS.map((id) => [id, load(id)]));
-const skip = IDS.some((id) => !M[id]) && "no web/data/M001-M004";
+const skip = IDS.some((id) => !M[id]) && !process.env.CI && "no web/data/M001-M004";
 const span = (m, ts) => [Math.max(0, ts - 15), Math.min(m.duration, ts + 105)];
 const plan = (m, ts) => new BallPlan(m, span(m, ts), { ballR: 0.11 });
 const sorted = (m) => [...m.events].sort((a, b) => a.ts - b.ts);
@@ -102,7 +102,7 @@ test("a first-time kick is drawn as a kick, not a trap", { skip }, () => {
       const A = KICKS.has(e.type_name) && p.actors.get(m.index[e.player_id]);
       if (!A) continue;
       const trap = A.legs.find((l) => l.kind === "trap" && Math.abs(l.t - e.ts) < 0.15);
-      assert.ok(A.legs.some((l) => Math.abs(l.t - e.ts) < 0.01) || !trap, `${id} ${e.type_name} at ${e.ts}: a trap at ${trap?.t}`);
+      assert.ok(A.legs.some((l) => l.kind !== "trap" && Math.abs(l.t - e.ts) < 0.01) || !trap, `${id} ${e.type_name} at ${e.ts}: a trap at ${trap?.t}`);
     }
   }
 });

@@ -87,7 +87,7 @@ def test_club_without_article_in_italian_and_spanish():
 
 def test_an_article_on_top_of_a_merged_one_is_sent_back():
     doubled = lambda t, lang: [x for x in rules.style_issues(t, lang, "momentum_swing") if x.startswith("article twice")]  # noqa: E731
-    for text in ("La inercia del el Wrenmouth Sporting Club sube de 1,8/10 a 7,5/10.",  # M002 S-000004, 19/10
+    for text in ("La inercia del el Wrenmouth Sporting Club sube de 1,8/10 a 7,5/10.",  # M002 S-000004
                  "Remate de Lindqvist desde en el área pequeña, a bocajarro.",  # M004 S-000025
                  "Sostuvo la presión el del Harbour Vale: 4,6/10."):  # M004 S-000029
         assert doubled(text, "es"), text
@@ -208,7 +208,7 @@ BAD = [
      "1-0.", "calque", "Al minuto 14 Orvanelli porta in vantaggio il Tarnby Harriers, 0-1."),
     ("M001", "S-000015", "it", "Ostwick FC rimonta e pareggia al minuto 81: 2-2.", "club without its article",
      "L'Ostwick FC rimonta e pareggia al minuto 81: 2-2."),
-    # --- the native review of 19/10 (stage 4)
+    # --- lines a native speaker flagged in a later read of the packs
     # keeper words only for a saved shot
     ("M002", "S-000015", "it", "Conclusione di Vellacott dal limite dell'area, potente a 105,7 km/h e da 24,9 m: respinto da "
      "un difensore, il portiere era messo alla prova al minuto 69.", "shot outcome word",
@@ -374,7 +374,7 @@ def test_every_template_on_the_real_packs_passes_every_check(which, request):
                 assert bad == [], (mid, sid, lang, t, bad)
 
 
-# --- the native review of 19/10, offline ---------------------------------------------------------
+# --- lines a native speaker flagged, checked offline ----------------------------------------------
 
 def test_score_order_is_the_leaders_in_english_and_the_scoreboards_in_italian_and_spanish():
     m = rules.Match(SIDES)

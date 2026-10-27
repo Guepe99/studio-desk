@@ -1,6 +1,7 @@
 // web/js/delay.js: the broadcast delay's timing. The picture runs D seconds behind the desk, and a story
 // ready within D seconds of its moment goes on the picture at that moment.
 //   node --test tests/web/delay.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

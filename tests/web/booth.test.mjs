@@ -1,5 +1,6 @@
 // web/js/booth.js: the booth's plan for M001 from its events and facts, fed one input at a time.
 //   node --test tests/web/booth.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 // The clip manifests are the committed ones (web/booth/booth.json, replays/M001/booth.json); BOOTH_SHARED and
 // BOOTH_MATCH point elsewhere while they are being rendered.
 import { test } from "node:test";
@@ -33,7 +34,7 @@ test("a live run, one input at a time, makes the same plan as the replay", () =>
     const b = new Booth(options(lang));
     const started = [];
     for (const input of stream(lang)) started.push(...b.step(input).map((it) => it.t));
-    // nothing starts before the input that made it: every item's start is at or after the clock that fed it
+    // fed one input at a time, the live booth ends with the same plan the replay builds at once
     assert.deepEqual(JSON.stringify(b.plan), JSON.stringify(plans[lang]));
     assert.equal(started.length, plans[lang].length);
   }

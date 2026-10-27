@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
+from test_replays import _missing
 
 from studiodesk import mcp_server as srv
 from studiodesk.agents import rules
@@ -61,7 +61,7 @@ def test_items_from_a_hand_made_pack(match_db, tmp_path, monkeypatch):
 
 def test_items_from_the_replay_packs():
     if not srv.DB_PATH.exists():
-        pytest.skip("data/matches.sqlite not built")
+        _missing("data/matches.sqlite not built")
     matches = sorted(p.name for p in REPLAYS.glob("M*") if (p / "stories.json").exists())
     items = [it for mid in matches for it in fe.build_items(mid, REPLAYS / mid)]
     n = sum(len([t for t in s["texts"].values() if t]) for mid in matches

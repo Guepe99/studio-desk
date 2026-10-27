@@ -220,7 +220,7 @@ try {
   // darken; the grass 8 m in front of them, beyond every blob, must not change
   const ground = (on) => page.evaluate(async (on) => {
     const s = window.sample3d, sc = s.scene, B = window.BABYLON;
-    if (sc.grounding) sc.grounding.enabled = on;   // absent before broadcast3d: on and off match, the check fails
+    if (sc.grounding) sc.grounding.enabled = on;   // without the grounding layer on and off match: the check fails
     await window.__setTime(3.96); await window.__setTime(4);
     const eng = sc.engine, gl = eng._gl, w = eng.getRenderWidth(), h = eng.getRenderHeight();
     const cam = sc.scene.activeCamera, px = new Uint8Array(4), tm = cam.getTransformationMatrix(), vp = cam.viewport.toGlobal(w, h);
@@ -314,8 +314,8 @@ try {
   // flow and keeper (docs/flow3d.md). The ball is real size; every shot the keeper saves or
   // concedes in the clip window has a reaction that moves him (and does not with ?keeper off);
   // the players' paths have no 10 fps velocity steps, the body never snaps round in one frame,
-  // and planted feet at a jog barely slide. Limits sit between origin/main and this branch on
-  // this DEMO window (acceleration p95 24.2 -> 12.9 m/s2, jog slide median 0.111 -> 0.086 m).
+  // and planted feet at a jog barely slide. Limits sit between the values measured without and with
+  // the smoothing on this DEMO window (acceleration p95 24.2 -> 12.9 m/s2, jog slide median 0.111 -> 0.086 m).
   const kp = await page.evaluate(async () => {
     const s = window.sample3d, sc = s.scene, m = s.match, kr = sc.keeper ?? { reactions: [] }, [a, b] = sc.span;   // none: the check fails, not the page
     const ev = [...m.events].sort((x, y) => x.ts - y.ts), gk = new Set(m.meta.players.filter((p) => p.position === "GK").map((p) => p.player_id));

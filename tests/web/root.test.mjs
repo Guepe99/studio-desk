@@ -49,8 +49,9 @@ function jerks(f, i, from, to) {
 const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(p * a.length))];
 
 for (const id of ["DEMO", "M001"]) {
-  test(`${id}: the root keeps to the path and its jerk drops`, { skip: !load(id) && `web/data/${id} missing` }, () => {
-    const m = T.smoothMatch(load(id)), from = id === "DEMO" ? 5 : 480, to = from + 60;
+  const raw0 = load(id);
+  test(`${id}: the root keeps to the path and its jerk drops`, { skip: !raw0 && !process.env.CI && `web/data/${id} missing` }, () => {
+    const m = T.smoothMatch(raw0), from = id === "DEMO" ? 5 : 480, to = from + 60;
     const raw = [], sm = [];
     let worst = 0;
     for (let i = 1; i <= Math.min(22, m.n - 1); i++) {

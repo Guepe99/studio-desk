@@ -5,7 +5,7 @@
 //                             jockey, with the clips (-procedural: without)
 // It prints frames/s for ?motion=procedural and with the clips, twice each and interleaved, measured as
 // in players3d-shots.mjs, and fails when any bone goes NaN (a vanished player) over the 20 s.
-// The sheet uses web/vendor/players/footballer.glb when it is there (feat/players3d), else the mannequin.
+// The sheet uses web/vendor/players/footballer.glb when it is there, else the mannequin.
 //
 //   scripts/with-lock.sh chromium tests/web/run-smoke.sh motion3d-shots.mjs [match]
 import { createRequire } from "node:module";

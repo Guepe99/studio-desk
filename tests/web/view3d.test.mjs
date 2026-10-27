@@ -19,7 +19,7 @@ function load(id) {
 
 for (const id of ["M001", "M002", "M003", "M004"]) {
   const m = load(id);
-  test(`${id}: both angles of every goal replay show the strike and the ball crossing the line`, { skip: !m && `no web/data/${id}` }, () => {
+  test(`${id}: both angles of every goal replay show the strike and the ball crossing the line`, { skip: !m && !process.env.CI && `no web/data/${id}` }, () => {
     const reps = replays(m);
     assert.ok(reps.length, "no replay");
     for (const r of reps) {

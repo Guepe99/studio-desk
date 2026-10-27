@@ -32,7 +32,7 @@ try {
     const runs = [await fps(), await fps(), await fps()].sort((a, b) => a - b);
     return `${runs[1].toFixed(2)} fps (runs ${runs.map((r) => r.toFixed(1)).join(", ")})`;
   };
-  console.log(`profile ${await page.evaluate(() => JSON.stringify(window.sample3d.scene.debug ?? "before the overhaul"))}`);
+  console.log(`profile ${await page.evaluate(() => JSON.stringify(window.sample3d.scene.debug ?? "no debug profile"))}`);
   console.log(`scene: ${await page.evaluate(() => { const sc = window.sample3d.scene.scene, c = sc.getMeshByName("crowd3d");
     return JSON.stringify({ meshes: sc.meshes.length, active: sc.getActiveMeshes().length, vertices: sc.getTotalVertices(), crowd3d: c ? { verts: c.getTotalVertices(), instances: c.thinInstanceCount, outline: c.renderOutline } : null,
       outlines: sc.meshes.filter((m) => m.material?.name === "anime-outline").length }); })}`);

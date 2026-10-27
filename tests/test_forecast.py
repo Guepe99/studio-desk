@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
+from test_replays import _missing
 
 from studiodesk import config, db, forecast
 from studiodesk import mcp_server as srv
@@ -100,7 +101,6 @@ def test_reads_only_the_facts_up_to_now(match_db):
         assert forecast.forecasts(now, ts) == forecast.forecasts(full, ts)
 
 
-@pytest.mark.skipif(not REAL, reason="no data/matches.sqlite")
 @pytest.mark.parametrize("match_id, expected", [
     ("M001", {"W-second_goal-T01-9": (True, 772.6, "F-PLAYER_GOALS-000024"), "W-comeback-F-SCORE-000001": (True, 4908.1, "F-SCORE-000004"),
               "W-late_goal": (True, 4908.1, "F-SCORE-000004"), "W-clean_sheet-T01": (False, 3052.5, "F-SCORE-000003"),
@@ -110,6 +110,8 @@ def test_reads_only_the_facts_up_to_now(match_db):
     ("M004", {"W-clean_sheet-T07": (False, 1825.1, "F-SCORE-000001"), "W-comeback-F-SCORE-000001": (False, None, None)}),
 ])
 def test_resolves_on_the_replays(match_id, expected):
+    if not REAL:
+        _missing("no data/matches.sqlite")
     with closing(db.connect(config.MATCHES_DB, readonly=True)) as conn:
         g = forecast.Game.from_db(conn, match_id)
         data = forecast.export(conn, match_id)
@@ -126,8 +128,9 @@ def test_resolves_on_the_replays(match_id, expected):
                      "M004": {"W-clean_sheet-T07": False, "W-clean_sheet-T08": True}}[match_id]
 
 
-@pytest.mark.skipif(not REAL, reason="no data/matches.sqlite")
 def test_the_prepared_lines_on_m001():
+    if not REAL:
+        _missing("no data/matches.sqlite")
     with closing(db.connect(config.MATCHES_DB, readonly=True)) as conn:
         data = forecast.export(conn, "M001")
     it = next(i for i in data["items"] if i["id"] == "W-second_goal-T01-9")

@@ -1,4 +1,4 @@
-// Reduced motion holds the TV camera (layout review, finding 12): with prefers-reduced-motion the 3D
+// Reduced motion holds the TV camera: with prefers-reduced-motion the 3D
 // view stays on camera 1's wide shot through a crowd cutaway, a goal's punch-in, the tight shot of
 // the scorer and the goal replay (none plays), and camera 1 does not slide along its rail; without it
 // the same moments cut and slide (a check that the check sees them).

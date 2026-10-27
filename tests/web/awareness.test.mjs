@@ -26,7 +26,7 @@ function load(id) {
 }
 
 // Defenders within 15 m of the ball (team not in possession, outfield), every 0.2 s.
-export function measure(match, aw, t0, t1) {
+function measure(match, aw, t0, t1) {
   const ev = [...match.events].sort((a, b) => a.ts - b.ts);
   const r = { n: 0, headBefore: 0, headAfter: 0, backBefore: 0, backAfter: 0, modes: {}, flips: 0, players: 0, turn: [] };
   let e = 0;
@@ -99,7 +99,7 @@ function emotionsAfterGoals(match, aw) {
 
 const demo = load("DEMO");
 
-test("DEMO: defenders face and watch the ball, emotions after both goals", { skip: !demo && "no web/data/DEMO" }, () => {
+test("DEMO: defenders face and watch the ball, emotions after both goals", { skip: !demo && !process.env.CI && "no web/data/DEMO" }, () => {
   const aw = new Awareness(demo, [0, demo.duration]);
   const r = report("DEMO", demo, aw, 5, demo.duration - 1);
   assert.ok(r.n > 300, `${r.n} samples`);
@@ -114,7 +114,7 @@ test("DEMO: defenders face and watch the ball, emotions after both goals", { ski
   }
 });
 
-test("emotions come from facts and events only, and fit the clips", { skip: !demo && "no web/data/DEMO" }, () => {
+test("emotions come from facts and events only, and fit the clips", { skip: !demo && !process.env.CI && "no web/data/DEMO" }, () => {
   for (const m of [demo, load("M001")].filter(Boolean)) {
     const aw = new Awareness(m, [0, 1]);
     const facts = new Set(m.facts.map((f) => f.fact_id)), events = new Set(m.events.map((e) => `event:${e.event_id}`));
@@ -128,7 +128,7 @@ test("emotions come from facts and events only, and fit the clips", { skip: !dem
   }
 });
 
-test("pose and look are pure functions of time and stay in the neck range", { skip: !demo && "no web/data/DEMO" }, () => {
+test("pose and look are pure functions of time and stay in the neck range", { skip: !demo && !process.env.CI && "no web/data/DEMO" }, () => {
   const a = new Awareness(demo, [90, 110]), b = new Awareness(demo, [95, 110]);
   for (let t = 96; t < 109; t += 0.37) for (let i = 1; i < demo.n; i++) {
     const p = a.pose(i, t), q = b.pose(i, t);
@@ -141,7 +141,7 @@ test("pose and look are pure functions of time and stay in the neck range", { sk
   assert.equal(STEP, 0.05);
 });
 
-test("after a goal the nearest team-mate runs over; nobody stands on a body on the grass", { skip: !demo && "no web/data/DEMO" }, () => {
+test("after a goal the nearest team-mate runs over; nobody stands on a body on the grass", { skip: !demo && !process.env.CI && "no web/data/DEMO" }, () => {
   assert.ok(trapezoid(0, 0.2) === 0 && Math.abs(trapezoid(0.5, 0.2) - 0.5) < 1e-9 && Math.abs(trapezoid(1, 0.2) - 1) < 1e-9);
   const aw = new Awareness(demo, [0, demo.duration]);
   assert.ok(aw.joins.length > 0, "no team-mate runs to a scorer");
@@ -174,7 +174,7 @@ test("after a goal the nearest team-mate runs over; nobody stands on a body on t
 
 // web/vendor/motion (docs/motion3d.md): the same events and facts, played with the real clips
 const MOTION = path.resolve(DATA, "../vendor/motion/clips.json");
-test("with the motion clips: same sources, real clips, one-shots never outlast their clip", { skip: !(demo && existsSync(MOTION)) && "no DEMO or clips.json" }, () => {
+test("with the motion clips: same sources, real clips, one-shots never outlast their clip", { skip: !(demo && existsSync(MOTION)) && !process.env.CI && "no DEMO or clips.json" }, () => {
   const motion = JSON.parse(readFileSync(MOTION, "utf8"));
   const plain = new Awareness(demo, [0, 1]), aw = new Awareness(demo, [0, demo.duration], { motion });
   assert.deepEqual(new Set(aw.emotions.map((e) => e.src)), new Set(plain.emotions.map((e) => e.src)));
@@ -193,7 +193,7 @@ test("with the motion clips: same sources, real clips, one-shots never outlast t
 });
 
 const m001 = load("M001");
-test("M001: defenders face and watch the ball", { skip: !m001 && "no web/data/M001 (studiodesk.export M001)" }, () => {
+test("M001: defenders face and watch the ball", { skip: !m001 && !process.env.CI && "no web/data/M001 (studiodesk.export M001)" }, () => {
   const aw = new Awareness(m001, [0, m001.duration]);
   const r = report("M001", m001, aw, 5, m001.duration - 1);
   assert.ok(r.headAfter / r.n > 0.75 && r.backAfter / r.n < 0.15);
@@ -206,7 +206,7 @@ test("M001: defenders face and watch the ball", { skip: !m001 && "no web/data/M0
 // after a goal the drawn bodies (tracking plus the pose offset) never merge: team-mates keep their
 // shoulders apart, opponents stay out of a celebrating arm's reach
 for (const [id, mt] of [["DEMO", demo], ["M001", m001]]) {
-  test(`${id}: no two bodies overlap in the seconds after a goal`, { skip: !mt && `no web/data/${id}` }, () => {
+  test(`${id}: no two bodies overlap in the seconds after a goal`, { skip: !mt && !process.env.CI && `no web/data/${id}` }, () => {
     const aw = new Awareness(mt, [0, mt.duration]);
     let worst = Infinity, raw = Infinity;
     for (const g of mt.goals) {

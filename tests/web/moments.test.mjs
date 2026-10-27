@@ -1,6 +1,7 @@
 // web/js/moments.js and web/js/activity.js: where "Next key moment" lands and which steps the strip shows;
 // web/js/keys.js: the video player keys; web/js/match.js: the clock as a broadcast says it.
 //   node --test tests/web/moments.test.mjs
+//   (needs the exported packs in web/data, as in the README; without them the file fails, it does not skip)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -173,7 +174,7 @@ test("agent names", () => {
   assert.equal(agentName("studio_host"), "Studio host");
   assert.equal(agentName("human", "es"), "Tú");
   assert.equal(agentName("story_finder", "xx"), "Story finder"); // a missing language falls back to English
-  // every agent id of the replays has a display name, never the raw id (review finding 18)
+  // every agent id of the replays has a display name, never the raw id
   for (const id of ["story_finder", "analyst", "commentator_en", "commentator_it", "commentator_es", "verifier", "director", "human", "auto", "studio_host"]) {
     for (const lang of ["en", "it", "es"]) assert.ok(!agentName(id, lang).includes("_"), `${id} in ${lang}`);
   }

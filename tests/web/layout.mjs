@@ -1,4 +1,4 @@
-// Layout and controls of the broadcast page at the sizes of the style review, on M001 by default
+// Layout and controls of the broadcast page at the sizes below, on M001 by default
 // (its goals have scorers and it has voice clips; MATCH=DEMO works too, without the voice checks).
 //
 //   MATCH=M001 scripts/with-lock.sh chromium tests/web/run-smoke.sh layout.mjs
@@ -27,6 +27,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { LEAD_S } from "../../web/js/moments.js"; // before the goal's shot
 
 const require = createRequire(process.env.PLAYWRIGHT_FROM ?? `${homedir()}/bin/pagine/`);
 const { chromium } = require("playwright");
@@ -36,7 +37,6 @@ const MATCH = process.env.MATCH ?? "M001";
 const shots = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../out/shots");
 mkdirSync(shots, { recursive: true });
 const SIZES = [[1280, 720], [1920, 1080], [844, 390], [390, 844], [320, 568], [320, 180]];
-const LEAD_S = 6; // web/js/moments.js: before the goal's shot
 
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.log(`FAIL ${msg}`); };
@@ -166,7 +166,7 @@ try {
         cues: window.studioDesk.desk.sheet(m.cues, "analyst", "en").map((c) => ({ ts: c.ts, d: c.duration_s, graphic: c.graphic })) };
     });
 
-    // N8: no spoilers, a goal's button appears when the replay reaches the goal and stays after a seek back
+    // no spoilers, a goal's button appears when the replay reaches the goal and stays after a seek back
     await check(`${tag} goals revealed`, async () => {
       const shownGoals = () => page.evaluate(() => [...document.querySelectorAll("#goals button")].filter((b) => b.getClientRects().length).map((b) => Number(b.dataset.ts)));
       const at0 = await shownGoals();
@@ -181,7 +181,7 @@ try {
       if ((await shownGoals()).length !== goals.length) fail(`${tag}: back at kick-off the goals already seen are gone`);
     });
 
-    // N4: the score bug readable at every size: its smallest text at least 11 px, inside the picture
+    // the score bug readable at every size: its smallest text at least 11 px, inside the picture
     await check(`${tag} score bug`, async () => {
       const b = await page.evaluate(() => {
         let min = Infinity, what = "";
@@ -270,7 +270,7 @@ try {
       if (!short && !r.pick.w) fail(`${tag}: the match picker is not on screen`);
     });
 
-    // C9: the first screen holds the picture, the graphics and the controls, at a quiet and a busy moment
+    // the first screen holds the picture, the graphics and the controls, at a quiet and a busy moment
     if (w >= 390 && h >= 390) await check(`${tag} first screen`, () => showFirst(page, tag, cues));
 
     // 3: one row of buttons under the seek bar, the rest in the settings menu
@@ -383,7 +383,7 @@ try {
       }
       for (const [i, ts] of at.entries()) if (Math.abs(ts - Math.max(0, goals[i].shot - LEAD_S)) > 0.2) fail(`${tag}: goal ${goals[i].ts} button seeks to ${ts.toFixed(1)}`);
       if (w !== 1280 || bs.length < 2) return;
-      // N18: Tab goes seek bar, one goal, Play; the arrows move between the goals and do not seek
+      // Tab goes seek bar, one goal, Play; the arrows move between the goals and do not seek
       await page.focus("#seek-range");
       const order = [];
       for (let i = 0; i < 2; i++) {
@@ -449,7 +449,7 @@ try {
     await page.context().close();
   }
 
-  // C9 on short laptop windows, and in Italian (longer labels, more rows of controls)
+  // the first screen again on short laptop windows, and in Italian (longer labels, more rows of controls)
   for (const [size, lang] of [[[1280, 650], "en"], [[1366, 640], "en"], [[1280, 720], "it"], [[844, 390], "it"]]) {
     const tag = `${size.join("x")} ${lang}`, p = await open(browser, size, size[1] < 600);
     await check(`${tag} first screen`, async () => {
@@ -544,7 +544,7 @@ try {
   });
   await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
 
-  // N16: early in the match the momentum axis runs from kick-off to now: the bars fill it, the labels apart
+  // early in the match the momentum axis runs from kick-off to now: the bars fill it, the labels apart
   await check("momentum axis", async () => {
     await page.evaluate(() => document.querySelector('[data-audience="analyst"]').click());
     const first = moms.filter((c) => c.audience === "analyst")[0];
@@ -565,7 +565,7 @@ try {
     if (r.apart < 8) fail(`momentum axis: the kick-off and now labels are ${r.apart.toFixed(0)} px apart`);
   });
 
-  // N11: no momentum or team shape card during a goal replay (in 3D its card sat over the net), at any speed the replay plays at
+  // no momentum or team shape card during a goal replay (in 3D its card sat over the net), at any speed the replay plays at
   await check("momentum in replays", async () => {
     const reps = await page.evaluate(async () => (await import("./js/view3d.js")).replays(window.studioDesk.match));
     for (const rep of reps) for (const t of [rep.from + 0.3, (rep.from + rep.to) / 2, rep.to - 0.3]) {
@@ -617,7 +617,7 @@ try {
   });
   await page.context().close();
 
-  // N17: a player's name is never cut, in any story graphic of the four matches, on a laptop and a
+  // a player's name is never cut, in any story graphic of the four matches, on a laptop and a
   // phone (the compact variant) and on a large screen (the full one), in every language and audience
   if (MATCH === "M001") for (const id of ["M001", "M002", "M003", "M004"]) for (const size of [[1280, 720], [1920, 1080], [390, 844]]) {
     const p = await open(browser, size, size[0] < 600, `?match=${id}`);

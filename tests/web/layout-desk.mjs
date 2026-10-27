@@ -1,5 +1,5 @@
-// The desk and the agent strip as a first-time visitor meets them (layout review, findings 5, 9, 11,
-// 13, 14, 15, 17, 18, and the desk redesign in docs/desk.md), on the real page at 1280x720, 1440x900, 1920x1080,
+// The desk and the agent strip as a first-time visitor meets them (the desk design is in docs/desk.md; each check
+// below has a number that its failure messages repeat), on the real page at 1280x720, 1280x560, 1440x900, 1920x1080,
 // 844x390, 390x844, 320x568 and 320x180, static hosting (the desk works offline, in the tab), on the
 // DEMO fixture by default:
 // - the header is one line: at 1280x720 the desk's head with its tabs is at most 80 px tall, in
@@ -16,8 +16,8 @@
 // - 13: every agent name in the strip is whole (no ellipsis) and the strip shows no cost per agent
 // - 11: in Italian, <html lang> is "it" and the desk, the strip, the radar, the replay badge, the voice
 //   button and the graphics' kickers show no English word outside the agents' own output (marked lang="en")
-// - style review 2: the first card's primary action is in view without scrolling the desk (N7, in
-//   English, Italian and Spanish); "offline" on the Desk button is not the error colour (N14); docked,
+// - 19: the first card's primary action is in view without scrolling the desk (in English, Italian
+//   and Spanish); 20: "offline" on the Desk button is not the error colour; docked,
 //   the audit table fits the desk without its own sideways scroll and "What" is not one word a line
 // - docked, with the Ask panel open over the foot of the desk, no desk button or Details is under it
 // Screenshots: out/shots/layout-<size>-{en,audit,strip,it,ask}.png. SIZES='[[320,180]]' runs some sizes only.
@@ -129,7 +129,7 @@ async function run(w, h) {
     expect(top >= 0.4 * h - 1, `${tag}: the open sheet starts at ${Math.round(top)} px of ${h}`);
   }
   await seek(pick.at + 1);
-  // N7: the first card's primary action is on screen without scrolling the desk
+  // 19: the first card's primary action is on screen without scrolling the desk
   const firstAction = () => page.evaluate(() => {
     const b = document.querySelector("#desk .story .actions button"), desk = document.querySelector("#desk").getBoundingClientRect();
     if (!b) return { none: true };
@@ -137,11 +137,11 @@ async function run(w, h) {
     return { text: b.textContent, top: Math.round(r.top), bottom: Math.round(r.bottom), seen: r.top >= desk.top && r.bottom <= Math.min(desk.bottom, innerHeight) };
   });
   const roomy = h >= 700;   // a short window (a phone on its side) has no room for a whole card under the desk head
-  if (roomy) { const a = await firstAction(); expect(a.seen, `${tag} N7: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`); }
-  // N14: offline is a state of the desk, not an error
+  if (roomy) { const a = await firstAction(); expect(a.seen, `${tag} 19: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`); }
+  // 20: offline is a state of the desk, not an error
   if (drawer) {
     const off = await page.$eval("#desk-open .off", (el) => ({ hidden: el.hidden, color: getComputedStyle(el).color }));
-    expect(!off.hidden && off.color !== "rgb(230, 0, 35)", `${tag} N14: the Desk button's offline word ${JSON.stringify(off)}`);
+    expect(!off.hidden && off.color !== "rgb(230, 0, 35)", `${tag} 20: the Desk button's offline word ${JSON.stringify(off)}`);
   }
 
   // 5. one filled action where a decision waits, risk in words inside Details
@@ -213,7 +213,7 @@ async function run(w, h) {
   await shot(page, `${PFX}-${tag}-en.png`);
 
   // 14 and 18. the audit log: the last column in reach, people's names not ids
-  // LAYOUT_BREAK=1 widens the table past any phone (as the reviewer's run had it): the check must still find the last column
+  // LAYOUT_BREAK=1 widens the table past any phone (as a narrow window would): the check must still find the last column
   if (process.env.LAYOUT_BREAK === "1") await page.addStyleTag({ content: "#desk table.log { min-width: 640px; }" });
   await page.evaluate(() => document.querySelector("#tab-audit").click());
   await page.waitForTimeout(100);
@@ -239,7 +239,7 @@ async function run(w, h) {
     const wrap = t.closest(".log-wrap"), whatTh = [...t.querySelectorAll("th")].find((x) => x.textContent === "What");
     return { cut, who, cells: t.querySelectorAll("tbody tr").length, side: wrap ? wrap.scrollWidth - wrap.clientWidth : 0, what: Math.round(whatTh?.getBoundingClientRect().width ?? 0) };
   });
-  // old 14: docked, the table fits the desk as it is, and "What" has room for a few words a line
+  // 14: docked, the table fits the desk as it is, and "What" has room for a few words a line
   if (!drawer && process.env.LAYOUT_BREAK !== "1") expect(audit.side <= 1 && audit.what >= 110, `${tag} 14: docked audit table scrolls ${audit.side} px sideways, "What" is ${audit.what} px wide`);
   expect(!audit.none && audit.cells > 0, `${tag} 14: no audit rows after a decision`);
   expect(!audit.none && !audit.cut?.length, `${tag} 14: the audit log's last column is cut by ${JSON.stringify(audit.cut)}`);
@@ -283,14 +283,14 @@ async function run(w, h) {
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.lang) === "it", `${tag} 11: <html lang> stays ${await page.evaluate(() => document.documentElement.lang)}`);
   await openDesk();
-  // N7 again in Italian and Spanish, from the top of the desk
+  // 19 again in Italian and Spanish, from the top of the desk
   if (roomy) for (const lang of ["it", "es", "it"]) {
     await setLang(page, lang);
     await page.evaluate(() => { for (const el of [document.querySelector("#desk"), document.querySelector("#desk .desk-body")]) el.scrollTop = 0; });
     // the desk re-renders after a language switch: measure once it has settled
     let a = await firstAction();
     for (let i = 0; i < 30 && !a.seen; i++) { await page.waitForTimeout(100); a = await firstAction(); }
-    expect(a.seen, `${tag} N7 ${lang}: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`);
+    expect(a.seen, `${tag} 19 ${lang}: the first card's ${JSON.stringify(a.text)} is below the fold ${JSON.stringify(a)}`);
   }
   const leftovers = await englishIn(page, "#desk, #activity, #desk-open, #radar, #replay-badge, #voice");
   expect(!leftovers.length, `${tag} 11: English in the Italian page ${JSON.stringify(leftovers.slice(0, 6))}`);
