@@ -14,6 +14,7 @@ import { AudienceBox } from "./audiences.js";
 import { shortcut } from "./keys.js";
 import { Countdown } from "./countdown.js";
 import { delayFrom, delayMatch, showDelay, delayUrl, DELAY_STRINGS } from "./delay.js";
+import { Highlights, HL_STRINGS } from "./highlights.js";
 
 const GRAPHICS = ["nameplate", "pass_shot", "momentum", "team_stats", "lineup", "why_card"];
 const STRINGS = {
@@ -147,6 +148,7 @@ const frame = $("#frame"), stage = $("#stage"), controls = $("#controls"), deck 
 const pitch = new Pitch($("#pitch"));
 let match = null, host = null, desk = null, voice = null, booth = null, ask = null, end = 0, moments = null, activity = null, audBox = null, proof = null;
 let view3d = null;   // the 3D views (view3d.js), once the match is loaded
+let highlights = null;   // the highlights reel (highlights.js), once the match is loaded
 // the 3-2-1 before kick-off and the full-time strap; pips only with the Voice button on (countdown.js)
 const countdown = new Countdown($("#moment"), { lang: () => state.lang, sound: () => !!voice?.on && !$("#voice").hidden });
 // The controls' own strings (the layout's part of the page), in the same tables as the rest
@@ -209,6 +211,7 @@ const HEAD_STRINGS = {
 };
 for (const [lang, more] of Object.entries(HEAD_STRINGS)) Object.assign(STRINGS[lang], more);
 for (const [lang, more] of Object.entries(DELAY_STRINGS)) Object.assign(STRINGS[lang], more);
+for (const [lang, more] of Object.entries(HL_STRINGS)) Object.assign(STRINGS[lang], more);
 
 // Graphic text is never drawn under MIN_PX. A frame where the 17 px fact chips would be smaller gets the
 // compact variant (smallest type 30 stage px); where 30 px is still too small the graphics leave the pitch
@@ -265,6 +268,8 @@ function layout() {
   const bug = Math.max(1, MIN_PX / (38 * s)), sb = $("#scorebug");
   sb.style.transform = bug > 1 ? `scale(${bug})` : "";
   sb.classList.toggle("no-period", 30 * s * bug < MIN_PX);
+  // the highlights strip magnified the same way, and then under the score bug, across the frame
+  Object.assign($("#hl-strip").style, bug > 1 ? { transform: `scale(${bug})`, top: `${52 + 66 * bug}px`, maxWidth: `${(STAGE_W - 112) / bug}px` } : { transform: "", top: "", maxWidth: "" });
   // the countdown strap magnified the same way, and under the score bug when that one is magnified (a phone)
   const mo = $("#moment"), mk = Math.max(1, MIN_PX / (38 * s));
   mo.style.scale = mk > 1 ? String(mk) : "";
@@ -576,6 +581,7 @@ function tick(now) {
     state.ts += dt * state.speed;
     if (state.ts >= end) { state.ts = end; setPlaying(false); }
   }
+  highlights?.update(state.ts);   // a cut to the next clip is a seek: before anything draws
   // past the last tracking frame (full-time recap) the picture holds the last frame; the inset under
   // the 3D picture shows the time the 3D shows (a goal replay too)
   if (view3d?.shown !== "3d") pitch.draw(match, view3d?.main === "3d" ? viewAt(view3d.reps, Math.min(state.ts, match.duration), state.speed).ts : Math.min(state.ts, match.duration), [...host.live.values()].map((i) => i.cue));
@@ -667,6 +673,7 @@ function wireControls() {
     else if (b.id === "minimap") view3d?.pick(view3d.mode === "split" ? view3d.main : "split");
     else if (b.id === "half2") { setMenu(false, true); seek(match.meta.period1_s); }
     else if (b.id === "multiview-open") location.href = `multiview.html?match=${matchId}&t=${Math.floor(state.ts)}`;
+    else if (b.dataset.highlights) { setMenu(false, true); highlights.start(b.dataset.highlights); }
     else if (b.id === "keys-open") { setMenu(false, true); $("#keys").showModal(); }
   });
   // a menu button: Enter or ArrowDown opens it on its first item, ArrowUp on its last; arrows, Home and End move,
@@ -837,6 +844,7 @@ async function main() {
   desk.render();
   moments = new Moments($("#next-moment"), { state, seek, setSpeed, play: () => setPlaying(true), t, live: $("#moments-live") });
   activity = new Activity(strip, desk, t);
+  highlights = new Highlights({ match, state, desk, t, seek, setSpeed, setPlaying, stop: $("#hl-stop"), offerBtn: $("#hl-offer"), strip: $("#hl-strip"), live: $("#moments-live"), frame });
   // the menu's name for an audience: a player by his name, a team by its full name; null when not on the menu
   const audLabel = (aud) => {
     const b = document.querySelector(`#settings-menu [data-audience="${CSS.escape(aud)}"]`);
@@ -851,7 +859,7 @@ async function main() {
   proof = new Proof($("#proof-bar"), $("#proof"), { desk, match, state, pitch, view3d: () => view3d, onLayout: layout });
   refreshCues();
   // hooks for tests and the lead's demo scripts
-  window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; }, delay };
+  window.studioDesk = { state, match, host, desk, pitch, proof, countdown, get voice() { return voice; }, get booth() { return booth; }, seek, setPlaying, get end() { return end; }, delay, highlights };
   // 3D with the 2D minimap (split), or one picture alone (?view=2d or 3d): ?view= or what the device can draw;
   // any change of view re-lays the page
   view3d = new View3D(match, { canvas: $("#view3d"), pitch: $("#pitch"), stage, radar: $("#radar"), badge: $("#replay-badge"),
