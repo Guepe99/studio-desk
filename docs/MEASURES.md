@@ -2,16 +2,16 @@
 
 What the system did on the 4 replay matches (M001, M002, M003, M004), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
-databases of the run that made them (`out/runtime15-<match>.sqlite`, traces and audit). Rerun the
+databases of the run that made them (`out/runtime16-<match>.sqlite`, traces and audit). Rerun the
 script after a regeneration; every number below comes from it.
 
 | match | storylines found | numbers blocked | names blocked | on air: phrasebook / template / AI | proposals on the desk | model calls | tokens in / out | cost (USD) | round, median / max (s) | model time per match minute (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| M001 | 3 of 4 | 1 | 0 | 15 / 0 / 0 | 14 | 132 | 237,248 / 17,030 | 0.063 | 16.6 / 32.1 | 3.3 |
-| M002 | 4 of 4 | 2 | 0 | 24 / 0 / 0 | 21 | 210 | 375,275 / 25,467 | 0.095 | 15.7 / 34.1 | 5.2 |
-| M003 | 2 of 3 | 1 | 0 | 16 / 0 / 0 | 13 | 121 | 219,293 / 16,643 | 0.060 | 15.3 / 27.9 | 3.0 |
-| M004 | 2 of 3 | 1 | 0 | 28 / 0 / 0 | 19 | 229 | 402,181 / 28,181 | 0.102 | 17.5 / 33.0 | 5.8 |
-| all | 11 of 14 | 5 | 0 | 83 / 0 / 0 | 67 | 692 | 1,233,997 / 87,321 | 0.319 | | 4.3 |
+| M001 | 3 of 4 | 4 | 0 | 15 / 0 / 0 | 11 | 121 | 228,258 / 15,219 | 0.062 | 16.1 / 29.3 | 3.0 |
+| M002 | 4 of 4 | 7 | 0 | 24 / 0 / 0 | 18 | 211 | 392,555 / 24,606 | 0.093 | 20.4 / 53.8 | 6.2 |
+| M003 | 2 of 3 | 1 | 0 | 16 / 0 / 0 | 14 | 128 | 240,124 / 17,887 | 0.063 | 20.7 / 34.4 | 3.7 |
+| M004 | 2 of 3 | 2 | 0 | 28 / 0 / 0 | 22 | 231 | 415,552 / 27,973 | 0.103 | 17.2 / 31.1 | 6.0 |
+| all | 11 of 14 | 14 | 0 | 83 / 0 / 0 | 65 | 691 | 1,276,489 / 85,685 | 0.321 | | 4.7 |
 
 ## Hidden storylines found
 
@@ -25,7 +25,7 @@ player, when the storyline names one), within 60 seconds of the storyline. Only 
 Counted from the verifier's notes on each story: one count is one draft (a story in one language)
 whose earlier versions the verifier sent back, or dropped, because of a number (not in the fact
 ledger, written in words, with the wrong unit or letters stuck to it, a formation the facts do not
-give). Spacing slips and fact ids from another moment are not counted. 5 drafts were
+give). Spacing slips and fact ids from another moment are not counted. 14 drafts were
 blocked for a number and 0 for a real person's or club's name. A draft rewritten twice for the
 same reason counts once, so these are lower bounds.
 
@@ -34,14 +34,21 @@ same reason counts once, so these are lower bounds.
 Every one of the 83 stories carries code-written text for air: 83 from the
 commentator phrasebook, 0 from the fact-only template, 0 with the AI's own line. The risk
 rule puts 26 of them on air by themselves and holds 57 for the producer. In
-67 stories the AI's line passed every check in all three languages and waits on the desk as
+65 stories the AI's line passed every check in all three languages and waits on the desk as
 a proposal; it goes on air only when the producer presses **Use proposal** or edits the story.
+
+## The analyst's notes
+
+The analyst wrote 81 notes for the 83 stories, in 77 rounds. The code checks replaced
+25 of them with a note built from the facts alone, and the AI judge did not pass 3, which were
+replaced the same way. 53 of the analyst's own notes stayed with their stories, and the desk shows them under
+**Details**.
 
 ## Tokens and cost
 
-692 model calls used 1,233,997 input and 87,321 output tokens, $0.319 in all
+691 model calls used 1,276,489 input and 85,685 output tokens, $0.321 in all
 ($0.080 a match), counted from the audit table, one row per model call. The traces of the agent steps add up to the same tokens.
-The desk's audit log reads the replay's traces, one row per agent step, so it shows 624 agent steps
+The desk's audit log reads the replay's traces, one row per agent step, so it shows 626 agent steps
 that used the model: a step can call it more than once (the verifier checks the texts again after a
 rewrite).
 The Content Safety checks (one call per story,
@@ -57,39 +64,40 @@ reproduces with `.venv/bin/python scripts/measures.py` (offline, about a minute 
 
 | match | storylines found, agents / rules | stories, agents / rules | AI proposals on the desk, agents / rules |
 |---|---|---|---|
-| M001 | 3 / 3 of 4 | 15 / 15 | 14 / 0 |
-| M002 | 4 / 4 of 4 | 24 / 24 | 21 / 0 |
-| M003 | 2 / 1 of 3 | 16 / 15 | 13 / 0 |
-| M004 | 2 / 1 of 3 | 28 / 27 | 19 / 0 |
-| all | 11 / 9 of 14 | 83 / 81 | 67 / 0 |
+| M001 | 3 / 3 of 4 | 15 / 15 | 11 / 0 |
+| M002 | 4 / 4 of 4 | 24 / 24 | 18 / 0 |
+| M003 | 2 / 1 of 3 | 16 / 15 | 14 / 0 |
+| M004 | 2 / 1 of 3 | 28 / 27 | 22 / 0 |
+| all | 11 / 9 of 14 | 83 / 81 | 65 / 0 |
 
 With the model the agents found 11 of the 14 hidden storylines and wrote 83 stories; with
 the rules alone, 9 and 81. The
-commentators' lines passed every check in 67 stories and wait on the desk as proposals; with the
+commentators' lines passed every check in 65 stories and wait on the desk as proposals; with the
 model off there are 0. Either way, what goes on air is code-written text.
 
 ## Delay from event to graphic
 
 Measured on a real-speed run (`python -m studiodesk.agents run M001 --speed 1 --from-ts
 300 --to-ts 1200`): M001 from minute 5 to minute
-20, on Azure, the way the desk runs live. The 2 goals reached the director's cue 3.7 and 5.6 seconds after the shot; the big chance after 9.7 seconds, judged once the play had settled for a few seconds. These are upper bounds: they
+20, on Azure, the way the desk runs live. The 2 goals reached the director's cue 3.2 and 3.2 seconds after the shot; the big chance after 8.0 seconds, judged once the play had settled for a few seconds. These are upper bounds: they
 count from the second the workflow began, as its run id records it, before the match clock started; the
-program's start-up before that, 13.5 seconds, is left out. A story that needs a producer then waits for one; a story the director lets
+program's start-up before that, 12.7 seconds, is left out. A story that needs a producer then waits for one; a story the director lets
 air by itself is on screen at that moment.
 
 The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
 real time, and the replay places each graphic at its story's moment in the match, not where the
 round ended. What their traces measure:
-a round (story finder, director, analyst, three commentators, verifier, rewrites) took
-16.7 seconds of wall time at the median, at most 34.1 seconds; the 77 rounds took 3.6 seconds of wall time per minute
-of match. Model calls added up to 4.3 seconds per minute of match (calls in
+the director cued a round's graphics 2.3 seconds of wall time after the round began at the median, at
+most 6.7 seconds, once the story finder had chosen; the whole round (story finder, director, analyst, three
+commentators, verifier, rewrites) took 18.5 seconds at the median, at most 53.8 seconds; the 77 rounds took 4.0 seconds of wall time per minute
+of match. Model calls added up to 4.7 seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of 0.9 seconds of match time before its round (goals at most
 0.9 seconds, other stories at most 5.5 seconds).
 
 ## Foundry evaluators
 
-Computed by `scripts/foundry_evals.py` on 2026-10-21, not by `scripts/measures.py` (which keeps this section
+Computed by `scripts/foundry_evals.py` on 2026-10-27, not by `scripts/measures.py` (which keeps this section
 when it rewrites the page). The on-air text of each story was scored by four of Microsoft Foundry's built-in
 evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals` on the Foundry project
 `studiodesk`: all 249 items, every story of the 4 replay packs (M001, M002, M003, M004) in English, Italian and Spanish, one eval run per language. Each item gives the judge a neutral request ("Write the
@@ -101,13 +109,13 @@ a story that cites more than 5 events, only its shots). Scores run from 1 to 5; 
 
 | evaluator | English: mean, passed | Italian: mean, passed | Spanish: mean, passed | all languages: mean, passed |
 |---|---|---|---|---|
-| groundedness | 4.54, 80 of 83 | 4.77, 83 of 83 | 4.60, 80 of 83 | 4.64, 243 of 249 |
-| relevance | 4.12, 83 of 83 | 4.28, 83 of 83 | 4.29, 83 of 83 | 4.23, 249 of 249 |
-| coherence | 4.13, 83 of 83 | 4.51, 83 of 83 | 4.45, 83 of 83 | 4.36, 249 of 249 |
-| fluency | 3.42, 83 of 83 | 3.41, 83 of 83 | 3.58, 83 of 83 | 3.47, 249 of 249 |
+| groundedness | 4.71, 83 of 83 | 4.78, 83 of 83 | 4.76, 83 of 83 | 4.75, 249 of 249 |
+| relevance | 4.10, 81 of 83 | 4.36, 83 of 83 | 4.33, 83 of 83 | 4.26, 247 of 249 |
+| coherence | 4.11, 83 of 83 | 4.46, 83 of 83 | 4.37, 83 of 83 | 4.31, 249 of 249 |
+| fluency | 3.47, 83 of 83 | 3.43, 83 of 83 | 3.73, 83 of 83 | 3.55, 249 of 249 |
 
-Not passed: M001 S-000003 (goal, English, groundedness 2); M001 S-000013 (goal, English, groundedness 2); M001 S-000013 (goal, Spanish, groundedness 2); M002 S-000017 (goal, English, groundedness 2); M004 S-000018 (big chance, Spanish, groundedness 2); M004 S-000022 (tactical shift, Spanish, groundedness 2). The judge's reason for each is in the table named at the end of this section. 0 of 996 scores came back empty (the judge failed on that item); they count as not
-passed. The judge's calls used 1,396,853 input and 488,787 output tokens, about $1.327 at the gpt-5-mini price in
+Not passed: M002 S-000001 (pressing spell, English, relevance 2); M004 S-000006 (momentum swing, English, relevance 2). The judge's reason for each is in the table named at the end of this section. 0 of 996 scores came back empty (the judge failed on that item); they count as not
+passed. The judge's calls used 1,397,148 input and 476,963 output tokens, about $1.303 at the gpt-5-mini price in
 `studiodesk/config.py`, as the eval runs report them. Per-item scores, pass flags and the judge's reasons are
 in `out/foundry-evals.sqlite`, table `foundry_evals` (git-ignored): one row per story, language and evaluator,
 with the run time, the Foundry eval and run ids, the match, story, kind, language, evaluator, score, passed,

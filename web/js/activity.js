@@ -5,7 +5,7 @@
 // No live region: at 16x or 64x it would talk over everything, the strip is read on demand.
 import { traceFailed, agentName, kindName } from "./desk.js";
 
-const SHOWN = 7; // one hand-off chain: finder, analyst, three commentators, verifier, director
+const SHOWN = 7; // one hand-off chain: finder, director, analyst, three commentators, verifier
 const usd = (v, lang) => {
   const d = v >= 0.1 ? 2 : 4;
   return new Intl.NumberFormat(lang, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -21,7 +21,7 @@ export function reached(rows, now) {
 }
 
 /** Indexes of the latest reached step of each agent (at most SHOWN), oldest first: a chain with
- *  rewrites still shows the whole team, finder to director, rather than only its last few steps. */
+ *  rewrites still shows the whole team, finder to verifier, rather than only its last few steps. */
 export function latestPerAgent(rows, k) {
   const seen = new Set(), out = [];
   for (let i = k - 1; i >= 0 && out.length < SHOWN; i--) {

@@ -6,18 +6,18 @@ Leagues already pay for automated match stories. The Bundesliga's Data Story Fin
 
 Code computes every number from event and tracking data and stores it in a fact ledger with the events it comes from. Models never write a number. The lines that go on air automatically are assembled by code from phrases tied to the facts that justify them. The model's own lines wait on the desk as proposals, after a verifier has checked every number against the ledger. Stories above a risk threshold need the producer; the others air on their own and are marked as auto-approved in the audit log. If an agent fails, rules take over.
 
-The matches are synthetic. Our simulator, calibrated against public event data and published physical studies, generates the events, the tracking at 10 frames a second and 14 hidden storylines. The agents found 11 of them without ever seeing the answer key. A match costs $0.06 to $0.10 in model calls, and in one real-speed run the two goals were cued on screen 3.7 and 5.6 seconds after their shots.
+The matches are synthetic. Our simulator, calibrated against public event data and published physical studies, generates the events, the tracking at 10 frames a second and 14 hidden storylines. The agents found 11 of them without ever seeing the answer key. A match costs $0.06 to $0.10 in model calls, and in one real-speed run both goals were cued on screen 3.2 seconds after their shots.
 
 The Microsoft technologies:
 
 - **Microsoft Agent Framework** runs the workflows: a story finder, a rule-based director, an analyst, three commentators and a verifier, with fan-out and fan-in edges, audit middleware and OpenTelemetry spans.
-- **Microsoft Foundry** hosts the gpt-5-mini deployment the agents use, and its built-in evaluators gave the on-air texts a mean groundedness of 4.64 out of 5.
+- **Microsoft Foundry** hosts the gpt-5-mini deployment the agents use, and its built-in evaluators gave the on-air texts a mean groundedness of 4.75 out of 5.
 - **Azure Container Apps** hosts the site, and its managed identity reaches Microsoft Foundry without keys.
 - **Azure AI Content Safety** checks every story, and every question a visitor asks along with its answer.
 - **Azure Speech in Foundry Tools** voices the verified stories in three languages.
 - **Azure Monitor Application Insights** receives the agents' traces.
 - **Bicep and the Azure CLI** deploy the Container App and its monitoring.
-- **GitHub Actions** runs the 657 Python and 272 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
+- **GitHub Actions** runs the 659 Python and 272 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
 
 Also built on:
 

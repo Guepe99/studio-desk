@@ -3,7 +3,7 @@
     .venv/bin/python scripts/measures.py [--runtime-dir out] [--out docs/MEASURES.md] [--no-rules] [M001 M002 ...]
 
 Reads, per match: the AI pack `replays/<match>/stories.json`, the runtime database of the run that
-made it (`<runtime-dir>/runtime15-<match>.sqlite`: traces and audit) and, for the first measure only,
+made it (`<runtime-dir>/runtime16-<match>.sqlite`: traces and audit) and, for the first measure only,
 the hidden `storylines` table of `data/matches.sqlite` (`STUDIODESK_MATCHES_DB` overrides it). Like
 scripts/eval_stories.py, this is an evaluation script: agents, the MCP server and the API never read
 the storylines. Nothing is written but the markdown page.
@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import json
 import logging
+import re
 import statistics
 import sys
 import tempfile
@@ -30,9 +31,10 @@ from studiodesk.agents.llm import FakeChatClient  # noqa: E402
 import eval_stories  # noqa: E402
 
 MATCHES = ["M001", "M002", "M003", "M004"]
-RUNTIME = "runtime15-{}.sqlite"  # the run of out/regen15.sh that made the committed packs
-# out/live1x.sh: M001 from 5:00 to 20:00 at real speed; the start file holds the wall time it was launched
-LIVE = {"match": "M001", "runtime": "live1x-M001.sqlite", "start": "live1x-start.txt", "from_ts": 300.0, "to_ts": 1200.0, "speed": 1.0}
+RUNTIME = "runtime16-{}.sqlite"  # the run of out/regen16-agents.sh (27 Oct 2026) that made the committed packs
+# out/live16.sh: M001 from 5:00 to 20:00 at real speed; the start file holds the wall time it was launched
+LIVE = {"match": "M001", "runtime": "live16-M001.sqlite", "start": "live16-start.txt", "from_ts": 300.0, "to_ts": 1200.0, "speed": 1.0}
+ANALYST = re.compile(r"(\d+) analys[ie]s(?:, (\d+) replaced by the facts)?")
 
 # The verifier's fixed reasons (rules.REASONS) that block a number, and the one that blocks a name.
 # Spacing ("unit glued to a number") and fact ids from another moment are not counted as numbers.
@@ -73,6 +75,26 @@ def on_air(stories):
         v = s.get("verifier") or {}
         out[v.get("on_air") if v.get("on_air") in ("phrasebook", "template") else "ai"] += 1
         out["proposals"] += bool(v.get("proposals"))
+    return out
+
+
+def analyses(stories, traces):
+    """The analyst's notes: written by the model, replaced by the facts after the code checks (the analyst's
+    trace counts them) or after the AI judge (verifier.analysis_judged false), and kept. A note the code
+    replaced is still judged, so per round kept = written - replaced by code - not passed by the judge, at
+    least 0: a lower bound if the judge also failed a note the code had replaced."""
+    judged = {s["story_id"]: (s.get("verifier") or {}).get("analysis_judged", True) for s in stories}
+    out = {"analysis_rounds": 0, "analyses_written": 0, "analyses_code": 0, "analyses_judge": 0, "analyses_kept": 0}
+    for t in (t for t in traces if t["agent"] == "analyst"):
+        sids = json.loads(t["story_ids"]) if isinstance(t["story_ids"], str) else t["story_ids"] or []
+        m = ANALYST.match(t["output_summary"])
+        written, code = (int(m[1]), int(m[2] or 0)) if m else (0, 0)  # "fallback: ..." alone: none written
+        judge = sum(judged.get(i) is False for i in sids)
+        out["analysis_rounds"] += 1
+        out["analyses_written"] += written
+        out["analyses_code"] += code
+        out["analyses_judge"] += judge
+        out["analyses_kept"] += max(written - code - judge, 0)
     return out
 
 
@@ -143,20 +165,23 @@ model off there are {rt['proposals']}. Either way, what goes on air is code-writ
 
 def timing(traces, stories):
     """Per round (the hand-offs that share a match time ts): wall seconds from the start of its first
-    model call to the director's cues; per story: match seconds from its event to that round."""
+    model call to its last step (the verifier, or the director's cues when no AI tail ran) and to the
+    director's cues; per story: match seconds from its event to that round."""
     rounds, by_id = {}, {s["story_id"]: s for s in stories}
     for t in sorted(traces, key=lambda t: t["seq"]):
         rounds.setdefault(t["ts"], []).append(t)
-    walls, waits = [], []
+    walls, cues, waits = [], [], []
     for ts, rs in rounds.items():
         cue = [t for t in rs if t["agent"] == "director"]
         if not cue:
             continue
-        walls.append(at(cue[-1]["at"]) - (at(rs[0]["at"]) - rs[0]["latency_ms"] / 1000))
+        start = at(rs[0]["at"]) - rs[0]["latency_ms"] / 1000
+        walls.append(max(at(t["at"]) for t in rs) - start)
+        cues.append(at(cue[0]["at"]) - start)
         sids = json.loads(rs[0]["story_ids"]) if isinstance(rs[0]["story_ids"], str) else rs[0]["story_ids"]
         waits += [(by_id[i]["kind"], ts - by_id[i]["ts"]) for i in sids or [] if i in by_id]
     return {"rounds": len(walls), "walls": walls, "wall_median_s": statistics.median(walls), "wall_max_s": max(walls),
-            "waits": waits, "wall_total_s": sum(walls)}
+            "cues": cues, "waits": waits, "wall_total_s": sum(walls)}
 
 
 def live_delay(traces, stories, start_s, from_ts, speed):
@@ -195,13 +220,15 @@ def measure(match_id, pack, runtime, mconn):
     p1, p2 = mconn.execute("SELECT period1_s, period2_s FROM matches WHERE match_id = ?", (match_id,)).fetchone()
     found, planted = storylines_found(storylines, stories)
     return {"match_id": match_id, "found": found, "planted": planted, "minutes": (p1 + p2) / 60,
-            **blocked(stories), **on_air(stories), **usage(audit, traces), **timing(traces, stories)}
+            **blocked(stories), **on_air(stories), **analyses(stories, traces), **usage(audit, traces),
+            **timing(traces, stories)}
 
 
 def total(rows):
     keys = ("found", "planted", "numbers", "names", "stories", "phrasebook", "template", "ai", "proposals", "auto",
             "calls", "steps", "tokens_in", "tokens_out", "cost_usd", "model_s", "trace_tokens", "trace_cost_usd",
-            "rounds", "minutes", "wall_total_s")
+            "rounds", "minutes", "wall_total_s", "analysis_rounds", "analyses_written", "analyses_code", "analyses_judge",
+            "analyses_kept")
     return {k: sum(r[k] for r in rows) for k in keys}
 
 
@@ -247,6 +274,7 @@ def markdown(rows, live=None, rules_rows=None):
                  f"| {t['tokens_in']:,} / {t['tokens_out']:,} | {t['cost_usd']:.3f} | | "
                  f"{t['model_s'] / t['minutes']:.1f} |")
     walls = [w for r in rows for w in r["walls"]]
+    cues = [w for r in rows for w in r["cues"]]
     waits = [w for r in rows for w in r["waits"]]
     goal_max = max((w for k, w in waits if k == "goal"), default=0.0)
     over = t["trace_tokens"] / (t["tokens_in"] + t["tokens_out"])
@@ -257,7 +285,7 @@ def markdown(rows, live=None, rules_rows=None):
 
 What the system did on the {n} replay matches ({", ".join(r["match_id"] for r in rows)}), computed by
 `scripts/measures.py` from the committed AI packs (`replays/<match>/stories.json`) and the runtime
-databases of the run that made them (`out/runtime15-<match>.sqlite`, traces and audit). Rerun the
+databases of the run that made them (`out/{RUNTIME.format('<match>')}`, traces and audit). Rerun the
 script after a regeneration; every number below comes from it.
 
 {chr(10).join(lines)}
@@ -286,6 +314,13 @@ rule puts {t['auto']} of them on air by themselves and holds {t['stories'] - t['
 {t['proposals']} stories the AI's line passed every check in all three languages and waits on the desk as
 a proposal; it goes on air only when the producer presses **Use proposal** or edits the story.
 
+## The analyst's notes
+
+The analyst wrote {t['analyses_written']} notes for the {t['stories']} stories, in {t['analysis_rounds']} rounds. The code checks replaced
+{t['analyses_code']} of them with a note built from the facts alone, and the AI judge did not pass {t['analyses_judge']}, which were
+replaced the same way. {t['analyses_kept']} of the analyst's own notes stayed with their stories, and the desk shows them under
+**Details**.
+
 ## Tokens and cost
 
 {t['calls']} model calls used {t['tokens_in']:,} input and {t['tokens_out']:,} output tokens, ${t['cost_usd']:.3f} in all
@@ -307,8 +342,9 @@ The Content Safety checks (one call per story,
 The regenerations behind the replays ran with `--speed 0`, so the match clock did not wait for
 real time, and the replay places each graphic at its story's moment in the match, not where the
 round ended. What their traces measure:
-a round (story finder, director, analyst, three commentators, verifier, rewrites) took
-{statistics.median(walls):.1f} seconds of wall time at the median, at most {max(walls):.1f} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
+the director cued a round's graphics {statistics.median(cues):.1f} seconds of wall time after the round began at the median, at
+most {max(cues):.1f} seconds, once the story finder had chosen; the whole round (story finder, director, analyst, three
+commentators, verifier, rewrites) took {statistics.median(walls):.1f} seconds at the median, at most {max(walls):.1f} seconds; the {t['rounds']} rounds took {t['wall_total_s'] / t['minutes']:.1f} seconds of wall time per minute
 of match. Model calls added up to {t['model_s'] / t['minutes']:.1f} seconds per minute of match (calls in
 parallel counted each). Before a round starts, the workflow waits for its trigger: the story's event
 was a median of {statistics.median(w for _, w in waits):.1f} seconds of match time before its round (goals at most

@@ -315,7 +315,7 @@ export function tr(lang, key, vars = {}) {
   if (typeof v === "function") return v(vars);
   return v === undefined ? key : v.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
 }
-const AGENTS = [["story_finder", "ai"], ["analyst", "ai"], ["commentator", "ai"], ["verifier", "codeai"], ["director", "rules"]];
+const AGENTS = [["story_finder", "ai"], ["director", "rules"], ["analyst", "ai"], ["commentator", "ai"], ["verifier", "codeai"]];
 const HOW = Object.fromEntries(AGENTS);
 /** Display name of an agent id: commentator_it is "Commentator IT"; the desk's own actors (human,
  *  auto, studio_host) too. An id nobody named yet reads as words, never as a raw id. */
