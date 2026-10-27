@@ -8,7 +8,8 @@ import wave
 
 import httpx
 
-# https://<subdomain>.cognitiveservices.azure.com and the account's resource id: Entra ID tokens need both
+# the account's real-time speech to text host (https://<region>.stt.speech.microsoft.com, its "Speech to Text
+# (Standard)" endpoint; the custom subdomain answers 429 on F0) and its resource id, which Entra ID tokens need
 ENDPOINT = os.environ.get("AZURE_SPEECH_ENDPOINT", "").rstrip("/")
 RESOURCE_ID = os.environ.get("AZURE_SPEECH_RESOURCE_ID", "")
 LOCALES = {"en": "en-GB", "it": "it-IT", "es": "es-ES"}  # the page's languages
@@ -50,7 +51,7 @@ def transcribe(audio: bytes, lang: str, token: str) -> str:
     """The text Azure Speech heard in `audio`, "" when it heard no words; raises on any other outcome.
     `token` is a Microsoft Entra token for https://cognitiveservices.azure.com, sent as the API asks:
     aad#<resource id>#<token>."""
-    r = httpx.post(f"{ENDPOINT}/stt/speech/recognition/conversation/cognitiveservices/v1",
+    r = httpx.post(f"{ENDPOINT}/speech/recognition/conversation/cognitiveservices/v1",
                    params={"language": LOCALES[lang], "format": "simple", "profanity": "masked"},
                    headers={"Authorization": f"Bearer aad#{RESOURCE_ID}#{token}", "Content-Type": CONTENT_TYPE,
                             "Accept": "application/json"},

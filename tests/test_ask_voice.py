@@ -120,7 +120,7 @@ def reply(monkeypatch, status=200, body=None):
     def post(url, **kw):
         sent.update(url=url, **kw)
         return httpx.Response(status, json=body or {}, request=httpx.Request("POST", url))
-    monkeypatch.setattr(speech, "ENDPOINT", "https://studiodesk-speech.cognitiveservices.azure.com")
+    monkeypatch.setattr(speech, "ENDPOINT", "https://swedencentral.stt.speech.microsoft.com")
     monkeypatch.setattr(speech, "RESOURCE_ID", RID)
     monkeypatch.setattr(speech.httpx, "post", post)
     return sent
@@ -130,7 +130,7 @@ def reply(monkeypatch, status=200, body=None):
 def test_transcribe_sends_the_language_the_entra_token_and_the_format(monkeypatch, lang, locale):
     sent = reply(monkeypatch, body={"RecognitionStatus": "Success", "DisplayText": "Chi ha segnato?"})
     assert speech.transcribe(b"audio", lang, "tok") == "Chi ha segnato?"
-    assert sent["url"] == "https://studiodesk-speech.cognitiveservices.azure.com/stt/speech/recognition/conversation/cognitiveservices/v1"
+    assert sent["url"] == "https://swedencentral.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1"
     assert sent["params"]["language"] == locale
     assert sent["headers"]["Authorization"] == f"Bearer aad#{RID}#tok"
     assert sent["headers"]["Content-Type"] == "audio/wav; codecs=audio/pcm; samplerate=16000"

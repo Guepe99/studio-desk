@@ -144,7 +144,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_OPENAI_DEPLOYMENT', value: model.name }
             { name: 'ADMIN_TOKEN', secretRef: 'admin-token' }
             { name: 'AZURE_CONTENT_SAFETY_ENDPOINT', value: safetyEndpoint }
-            { name: 'AZURE_SPEECH_ENDPOINT', value: empty(speechSubdomain) ? '' : 'https://${speechSubdomain}.cognitiveservices.azure.com' }
+            { name: 'AZURE_SPEECH_ENDPOINT', value: empty(speechSubdomain) ? '' : 'https://${location}.stt.speech.microsoft.com' }
             { name: 'AZURE_SPEECH_RESOURCE_ID', value: speech.id }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'appinsights-connection-string' }
           ]
