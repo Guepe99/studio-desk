@@ -413,7 +413,9 @@ export const traceFailed = (t) => t.step === "fallback" || /(^| )fallback: |\bfa
 
 export class Desk {
   /** @param {HTMLElement} root  the #desk element
-   *  @param {{match, matchId: string, state, seek: (ts: number) => void, onChange: () => void}} opts */
+   *  @param {{match, matchId: string, state, seek: (ts: number) => void, onChange: () => void, delay?: number,
+   *    audiences?: string[], editNote?: string}} opts  audiences: the multiviewer's four, whose generated graphics
+   *    this desk lists (the audience on screen without it); editNote: a line over the editor and the AI proposal */
   constructor(root, opts) {
     Object.assign(this, opts);
     this.root = root;
@@ -601,7 +603,8 @@ export class Desk {
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
   /** A generated graphic this desk lists: of the audience on screen, or of any window's (opts.audiences, multiview.js). */
   ours(g) { return (this.audiences ?? [this.state.audience]).includes(g.audience); }
-  /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
+  /** The stories reached, and the generated graphics of the audience on screen (or of every window's,
+   *  opts.audiences): of those still waiting,
    *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire).
    *  A filler is never listed: it shows in On air now only, while it is on screen (airRows). */
   shown() {
@@ -1024,7 +1027,7 @@ export class Desk {
     const now = this.state.ts;
     this.liveCues = cues;
     this.live = new Set(cues.map((c) => c.story_id ?? this.genOf.get(slot(c))?.story_id).filter(Boolean));
-    // a story, or a generated graphic of the audience on screen, also counts once it is missed (3)
+    // a story, or a generated graphic of the audience on screen (or of every window's), also counts once it is missed (3)
     const reach = [...this.stories, ...this.gens.filter((g) => this.ours(g))]
       .map((s) => (this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
     const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
@@ -1248,7 +1251,7 @@ export class Desk {
     if (!p) return null;
     const text = p[lang] ?? p.en ?? "";
     const using = this.usedProposal(s);
-    return h("div", { className: "proposal" },
+    return h("div", { className: "proposal" }, using ? null : this.editLine(s),
       h("p", { className: "proposal-text" }, h("b", {}, this.tx(using ? "proposalOn" : "proposalOff")), h("span", { lang: p[lang] ? lang : "en" }, text)),
       using ? null : h("button", { type: "button", className: "ctl", "data-focus": `${s.story_id}:proposal`, disabled: this.locked(),
         onclick: () => this.decide(s, "edited", { ...p }) }, this.tx("useProposal")));
@@ -1265,6 +1268,9 @@ export class Desk {
     this.render();
     this.root.querySelector(`[data-focus="${CSS.escape(`${s.story_id}:text:${this.state.lang}`)}"]`)?.focus();
   }
+
+  // opts.editNote, when set: what an edit of a story replaces (the multiviewer: its line in every window)
+  editLine(s) { return this.editNote && !s.gen ? h("p", { className: "edit-note" }, this.editNote) : null; }
 
   // All three languages in one editor, the headline and the body of each: saving approves what goes on
   // air in every language, so the reviewer sees every one. Unchanged text saves as a plain approval.
@@ -1309,7 +1315,7 @@ export class Desk {
       if (Object.keys(texts).length) this.decide(s, "edited", texts); else this.decide(s, "approved");
     };
     const cancel = () => { this.endEdit(id); this.focusTo = `${id}:edited`; this.render(); };
-    return h("div", { className: "editor" }, sets,
+    return h("div", { className: "editor" }, this.editLine(s), sets,
       h("div", { className: "editor-bar" },
         h("button", { type: "button", className: "ctl", "data-focus": `${id}:cancel`, disabled: locked, onclick: cancel }, tx("cancel")),
         h("button", { type: "button", className: "ctl primary", "data-focus": `${id}:save`, disabled: locked, onclick: save }, tx("saveApprove"))));

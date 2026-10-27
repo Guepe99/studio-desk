@@ -4,25 +4,31 @@
 // controls with a style element of its own. Broadcast conventions: a name strip (UMD) under each picture,
 // a tally border on the window whose sound is live, and an audio meter on it. Beside the wall, the broadcast
 // page's own desk (desk.js) for the match: one decisions map, shared by the four windows' hidden desks.
-// The large window shows the 3D view, the small ones the 2D pitch (one 3D scene drawn at a time).
+// The large window shows the 3D view where the broadcast page would open in 3D (or with ?view=3d), the
+// small ones the 2D pitch; a window that leaves the large slot frees its scene, so one 3D scene lives at a time.
 import { WINDOWS, windowUrl, lagging, drift, umdLabel } from "./multiview-logic.js";
 import { Desk } from "./desk.js";
+import { probe, defaultView } from "./view3d.js";
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const match = (params.get("match") || "M004").replace(/[^A-Za-z0-9_-]/g, "");
-// the fan window follows the away team, and with no t= the four start 6 s before the first goal (590 on M001)
+// one line of text on the wall or in the desk, read out once (role=alert)
+function alertLine(where, text) {
+  const p = document.createElement("p");
+  p.className = "mv-error";
+  p.setAttribute("role", "alert");
+  p.textContent = text;
+  where.append(p);
+}
 const json = (f) => fetch(`data/${match}/${f}.json`).then((r) => { if (!r.ok) throw new Error(`${f}.json: HTTP ${r.status}`); return r.json(); });
 const [meta, facts] = await Promise.all(["meta", "facts"].map(json)).catch((e) => {
   // a match that is not there: say so on the wall instead of "Loading" for ever
   $("#mv-clock").textContent = "Not loaded";
-  const p = document.createElement("p");
-  p.className = "mv-error";
-  p.setAttribute("role", "alert");
-  p.textContent = `Match ${match} could not be loaded (${e.message}). Check the match in the address, or go back to the single view.`;
-  $("#mv-wall").append(p);
+  alertLine($("#mv-wall"), `Match ${match} could not be loaded (${e.message}). Check the match in the address, or go back to the single view.`);
   throw e;
 });
+// the fan window follows the away team, and with no t= the four start 6 s before the first goal (590 on M001)
 const away = meta.teams[1].team_id;
 const goal = Math.min(...facts.filter((f) => f.kind === "score").map((f) => f.ts));
 const start = Number.isFinite(Number(params.get("t"))) && params.has("t") ? Number(params.get("t")) : Number.isFinite(goal) ? Math.round(goal) - 6 : 0;
@@ -35,19 +41,28 @@ const PICTURE_ONLY = `
   html, body { overflow: hidden !important; background: #000 !important; }
   #frame { border-radius: 0 !important; box-shadow: none !important; outline: none !important; }`;
 
+// The large window in 3D only where the broadcast page itself opens in 3D (view3d.js defaultView): a software
+// renderer, WebGL 1 or a phone keep it in 2D, and the window says why. ?view=3d or ?view=2d decides instead.
+const env = probe();
+const can3d = params.get("view") === "3d" || (params.get("view") !== "2d" && defaultView(env) !== "2d");
+const no3d = params.get("view") === "2d" ? "2D only (view=2d in the address)" : !env.webgl2 ? "2D only: this browser has no WebGL 2"
+  : env.software ? "2D only: no graphics card, the 3D view would stall the wall" : "2D only on a phone";
+
 const wall = $("#mv-wall"), playBtn = $("#mv-play");
-let playing = false, live = -1, goalsBuilt = false, desk = null;
+let playing = false, live = -1, goalsBuilt = false, desk = null, deskTried = false;
 const meters = new WeakMap();   // AudioContext -> {an, buf}
 
 const wins = WINDOWS.map((w0, i) => {
   const w = w0.audience === "team:away" ? { ...w0, audience: `team:${away}` } : w0;
   const fig = document.createElement("figure");
   fig.className = "mv-win";
-  fig.innerHTML = `<div class="mv-pic"><iframe tabindex="-1" inert allow="autoplay"></iframe><button class="mv-hit" type="button" aria-pressed="false"></button></div>
+  fig.innerHTML = `<div class="mv-pic"><iframe tabindex="-1" inert allow="autoplay"></iframe><button class="mv-hit" type="button" aria-pressed="false"></button><p class="mv-note" role="status" hidden></p></div>
     <figcaption class="mv-umd"><span class="mv-src">${i + 1}</span><span class="mv-name"></span><span class="mv-meter" aria-hidden="true"><i></i></span><span class="mv-live">Audio</span></figcaption>`;
   const frame = fig.querySelector("iframe"), hit = fig.querySelector(".mv-hit");
   frame.addEventListener("load", () => {
-    const doc = frame.contentDocument, style = doc.createElement("style");
+    const doc = frame.contentDocument;
+    if (!doc) return;   // an error page (the window did not load) is not ours to style
+    const style = doc.createElement("style");
     style.textContent = PICTURE_ONLY;
     doc.head.append(style);
     frame.contentWindow.dispatchEvent(new Event("resize"));   // app.js lays the frame out again without the hidden rows
@@ -55,9 +70,10 @@ const wins = WINDOWS.map((w0, i) => {
   // the click is a user gesture in this page; same-origin windows share it, so their audio may start in it
   hit.addEventListener("click", () => listen(i));   // and the window grows, the others shrink beside it (fit)
   wall.append(fig);
-  return { ...w, fig, frame, hit, name: fig.querySelector(".mv-name"), bar: fig.querySelector(".mv-meter i") };
+  return { ...w, fig, frame, hit, name: fig.querySelector(".mv-name"), bar: fig.querySelector(".mv-meter i"), note: fig.querySelector(".mv-note") };
 });
-const sd = (w) => w.frame.contentWindow?.studioDesk;
+// a window that failed to load holds the browser's error page, another origin: it reads as not loaded
+const sd = (w) => { try { return w.frame.contentWindow?.studioDesk; } catch { return undefined; } };
 
 // One window at a time: the four share the 25 MB tracking file, and when all four ask for it at once Chromium
 // fails the copies it is still caching (ERR_CACHE_WRITE_FAILURE). The next window opens when this one has its
@@ -73,9 +89,9 @@ function open(k) {
 }
 open(0);
 
+const teamNames = (d) => Object.fromEntries(Object.entries(d?.match?.teams ?? {}).map(([id, t]) => [id, t.name]));
 function label(w) {
-  const teams = Object.fromEntries(Object.entries(sd(w)?.match?.teams ?? {}).map(([id, t]) => [id, t.name]));
-  const text = umdLabel(w, teams);
+  const text = umdLabel(w, teamNames(sd(w)));
   w.name.textContent = text;
   w.frame.title = text;
   w.hit.setAttribute("aria-label", `Listen to ${text}`);
@@ -126,9 +142,11 @@ $("#desk-open").addEventListener("click", () => {
 });
 matchMedia("(max-width: 1099px)").addEventListener("change", (e) => { if (!e.matches) desk?.setDrawer(false); });
 
-// The desk: built on the first window's match and clock (the others are kept on it), listing the generated
-// graphics of all four audiences. A decision lands in the one map the four windows' desks share, and each
-// window redraws its own cue sheet from it, as the broadcast page does after a decision (desk.js changed).
+// The desk: built on the match and clock of the first window that loads (the others are kept on it), listing
+// the generated graphics of all four audiences. Only this desk talks to the server: the windows' own desks
+// never connect (?wall=1, app.js) and take its decisions and AI switch. A decision lands in the one map the
+// four windows' desks share, and each window redraws its own cue sheet from it, as the broadcast page does
+// after a decision (desk.js changed).
 function share(w) {
   const d = sd(w)?.desk;
   if (!d || !desk) return;
@@ -136,7 +154,9 @@ function share(w) {
   d.changed();
 }
 async function buildDesk(d) {
-  desk = new Desk($("#desk"), { match: d.match, matchId: match, state: d.state, delay: 0, audiences: wins.map((w) => w.audience),
+  // an edited story line replaces that story's line for every audience (docs/CONTRACT.md): the desk says so
+  const editNote = `The editor shows the ${umdLabel(wins.find((w) => sd(w) === d), teamNames(d))} line. Saving an edit, or the AI proposal, puts it in all four windows, in each language changed.`;
+  desk = new Desk($("#desk"), { match: d.match, matchId: match, state: d.state, delay: 0, audiences: wins.map((w) => w.audience), editNote,
     seek: (ts) => { for (const w of wins) sd(w)?.seek(ts); }, onChange: () => { for (const w of wins) if (w.shared) share(w); } });
   desk.render();
   await desk.load();
@@ -170,7 +190,11 @@ function tick() {
   if (!ready.length) return;
   const ref = ready.includes(wins[live]) ? wins[live] : ready[0], r = sd(ref);
   if (!goalsBuilt) buildGoals(ref.frame.contentWindow);
-  if (!desk && sd(wins[0])?.match) buildDesk(sd(wins[0]));
+  // the desk on the first window that loaded (window 1 unless it failed)
+  if (!deskTried) {
+    deskTried = true;
+    buildDesk(sd(ready[0])).catch((e) => { console.error(e); alertLine($("#desk"), `The desk could not be built (${e.message}). The four windows still play.`); });
+  }
   // a window's desk exists from its match on; it takes the shared decisions once (later ones reach it through onChange)
   for (const w of ready) if (!w.shared && sd(w).desk && desk) { w.shared = true; share(w); }
   desk?.setLive(ready.flatMap((w) => [...sd(w).host.live.values()].map((i) => i.cue)));
@@ -185,9 +209,15 @@ function tick() {
     if (!d?.match) return;
     if (d.state.playing !== playing) d.setPlaying(playing);
     if (d.voice && d.voice.on !== (j === live)) sound(w, j === live);   // a voice that loaded after the click
-    // the large window in 3D, the rest in 2D; a window whose 3D view failed stays on its 2D pitch
-    const view = j === live && wall.classList.contains("focus") ? "3d" : "2d", v3 = d.view3d;
-    if (v3 && v3.mode !== view && !v3.failed && !v3.lost) v3.set(view);
+    // the large window in 3D, the rest in 2D; a window whose 3D view failed or was lost stays on its 2D pitch
+    const big = j === live && wall.classList.contains("focus"), view = big && can3d ? "3d" : "2d", v3 = d.view3d;
+    if (!v3) return;
+    if (v3.mode !== view && !v3.failed && !v3.lost) v3.set(view);
+    if (v3.mode === "2d") v3.release();   // one scene at a time: a window back in 2D frees its own
+    const why = !big ? "" : v3.lost ? "3D view lost (the graphics memory ran out): 2D picture" : v3.failed ? "3D view did not load: 2D picture"
+      : !can3d ? no3d : "";
+    if (w.note.textContent !== why) w.note.textContent = why;
+    w.note.hidden = !why;
   });
   const c = r.match.clock(Math.min(r.state.ts, r.match.duration));
   $("#mv-clock").textContent = `${c.label}' ${c.period === 1 ? "1H" : "2H"}  ${fmt(r.state.ts)}`;

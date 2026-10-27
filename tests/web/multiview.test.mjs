@@ -4,10 +4,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { WINDOWS, DRIFT_S, windowUrl, lagging, drift, umdLabel } from "../../web/js/multiview-logic.js";
 
-test("each window opens the broadcast page with its audience and language, in 2D", () => {
+test("each window opens the broadcast page with its audience and language, in 2D, its desk the wall's", () => {
   const u = new URL(windowUrl({ match: "M001", t: 590, audience: "team:T02", lang: "it" }), "http://x/");
   assert.equal(u.pathname, "/index.html");
-  assert.deepEqual(Object.fromEntries(u.searchParams), { match: "M001", t: "590", audience: "team:T02", lang: "it", view: "2d", speed: "1" });
+  assert.deepEqual(Object.fromEntries(u.searchParams), { match: "M001", t: "590", audience: "team:T02", lang: "it", view: "2d", speed: "1", wall: "1" });
   assert.equal(new URL(windowUrl({ match: "M001", t: 0, audience: "kids", lang: "en", play: true }), "http://x/").searchParams.get("play"), "1");
 });
 

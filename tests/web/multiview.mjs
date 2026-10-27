@@ -12,8 +12,13 @@
 // counts as a user gesture): a control first, an audio context made in a window before any click must stay
 // suspended, or the browser does not apply the rule and the check says SKIP; then a click on a window and on
 // Play must start that window's sound and no other.
-// No console errors but the API's 404s on static hosting. A match that does not exist shows an error, not
-// "Loading". Without the M001 and M004 exports in web/data the run says SKIP, and fails under CI.
+// The 3D checks use ?view=3d: this server has no GPU, so without it the large window stays 2D and says why
+// (checked on the page with no parameters). One 3D scene at a time, and a lost context falls back to 2D with
+// a line on the picture. Only the docked desk asks the server; Space and K in the desk leave play alone; the
+// AI switch reaches the four windows; a decision on another window's own graphic reaches that window; a
+// desk edit says what it replaces; window 1 failing still gives a desk from window 2.
+// No console errors but the API's 404s and 501s on static hosting. A match that does not exist shows an
+// error, not "Loading". Without the M001 and M004 exports in web/data the run says SKIP, and fails under CI.
 // Screenshots at 1920x1080, 1280x720 and 390x844: out/shots/multiview-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -42,13 +47,19 @@ const browser = process.env.CDP_URL ? await chromium.connectOverCDP(process.env.
 try {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const page = await ctx.newPage();
-  page.on("pageerror", (e) => fail(`page error: ${e.message}`));
-  // static hosting: the desk's and Ask's API calls (api/...) 404 by design; any other error fails
-  const apiMiss = (m) => /\b404\b/.test(m.text()) && new URL(m.location().url || "x:", base).pathname.startsWith("/api/");
-  page.on("console", (m) => { if (m.type() === "error" && !apiMiss(m)) fail(`console: ${m.text()} (${m.location().url})`); });
+  // after the test loses a WebGL context on purpose, Babylon work already under way fails to compile or make textures
+  let lostOnPurpose = false;
+  page.on("pageerror", (e) => { if (lostOnPurpose && /Unable to create texture/.test(e.message)) console.log(`     after the lost context: ${e.message}`); else fail(`page error: ${e.message}`); });
+  // static hosting: the desk's and Ask's API calls (api/...) 404 by design, and the 3D view's POST to api/perf
+  // gets 501 (the static server takes no POST); any other error fails
+  const apiMiss = (m) => /\b(404|501)\b/.test(m.text()) && new URL(m.location().url || "x:", base).pathname.startsWith("/api/");
+  const afterLoss = (m) => lostOnPurpose && /\/babylonjs\//.test(m.location().url ?? "");
+  page.on("console", (m) => { if (m.type() === "error" && !apiMiss(m) && !afterLoss(m)) fail(`console: ${m.text()} (${m.location().url})`); });
 
+  const sessions = [];
+  page.on("request", (r) => { if (new URL(r.url()).pathname === "/api/session") sessions.push(r.frame().parentFrame() ? "window" : "wall"); });
   const t0 = Date.now();
-  await page.goto(new URL("multiview.html?match=M001", base).href);
+  await page.goto(new URL("multiview.html?match=M001&view=3d", base).href);
   // loaded: every window has its match and its voice (the voice comes last in app.js)
   await page.waitForFunction(() => window.multiview?.wins.every((w) => window.multiview.sd(w)?.match && window.multiview.sd(w)?.voice), null, { timeout: 90000 });
   console.log(`     four windows loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -81,6 +92,7 @@ try {
     return { visible: getComputedStyle(document.querySelector("#desk")).visibility === "visible", beside: r.left >= wall.right - 1, needs: !!document.querySelector("#desk .sec-needs"), w: r.width }; });
   expect(deskBox.visible && deskBox.beside && deskBox.needs, `the desk is docked beside the wall with Needs you (${JSON.stringify(deskBox)})`);
   expect(await page.evaluate(() => window.multiview.wins.every((w) => window.multiview.sd(w).desk.decisions === window.multiview.desk.decisions)), "the four windows share the desk's decisions");
+  expect(sessions.join() === "wall", `only the docked desk asks the server for its session (${sessions.join() || "none"})`);
 
   // play: the four stay together
   await page.click("#mv-play");
@@ -118,13 +130,16 @@ try {
   expect(a.map((x) => x.on).join() === "false,false,true,false", "only window 3 has its sound on");
   expect(a[2].ctx === "running", `window 3's audio context is running (${a[2].ctx})`);
   expect(a[2].crowd + a[2].lines > 0, `window 3 plays the crowd or a line (crowd ${a[2].crowd}, lines ${a[2].lines})`);
-  // the meter follows the mix: its highest reading over 1 s
+  // the meter follows the mix: its highest reading over up to 5 s (a software-WebGL frame can hold the page's frames)
   let bar = 0;
-  for (let k = 0; k < 10; k++) { bar = Math.max(bar, await page.evaluate(() => Number(/scaleY\(([\d.]+)\)/.exec(window.multiview.wins[2].bar.style.transform)?.[1] ?? 0))); await page.waitForTimeout(100); }
+  for (let k = 0; k < 50 && bar <= 0.1; k++) { bar = Math.max(bar, await page.evaluate(() => Number(/scaleY\(([\d.]+)\)/.exec(window.multiview.wins[2].bar.style.transform)?.[1] ?? 0))); await page.waitForTimeout(100); }
   expect(bar > 0.1, `window 3's meter moves (up to ${bar})`);
 
   await page.click(".mv-win:nth-child(1) .mv-hit");
+  // window 1 builds its 3D scene meanwhile: in software WebGL that stalls the page for seconds
   await page.waitForTimeout(3000);
+  await page.waitForFunction(() => { const s = window.multiview.sd(window.multiview.wins[0]).booth?.status; return s && s.crowd + s.lines > 0; },
+    null, { timeout: 30000, polling: 500 }).catch(() => {});
   a = await audio();
   console.log(JSON.stringify(a));
   expect(a.map((x) => x.tally).join() === "true,false,false,false", "the tally moves to window 1");
@@ -144,16 +159,21 @@ try {
   const in3d = await up3d(0).then(() => true, () => false);
   let vs = await views();
   expect(in3d && vs.join() === "3d,2d,2d,2d", `the large window shows the 3D view, the others 2D (${vs.join()})`);
+  const scenes = () => page.evaluate(() => window.multiview.wins.map((w) => (window.multiview.sd(w).view3d.scene ? 1 : 0)).join(""));
+  expect(await scenes() === "1000", `one 3D scene: window 3's was freed when it left the large slot (${await scenes()})`);
   ts = await times();
   a = await audio();
   expect(spread(ts) <= 0.5 && a[0].on, `in 3D it keeps its time and its sound (${spread(ts).toFixed(3)} s, voice ${a[0].on})`);
   await page.screenshot({ path: path.join(shots, "multiview-focus.png") });
   await page.click(".mv-win:nth-child(1) .mv-hit");
   await page.waitForTimeout(1000);
+  // a software-WebGL frame of the large window can hold the page's next frame for a few seconds
+  await page.waitForFunction(() => window.multiview.wins.every((w) => window.multiview.sd(w).view3d.shown === "2d"), null, { timeout: 15000, polling: 250 }).catch(() => {});
   bx = await box();
   expect(bx.every((r) => r.w === bx[0].w), "clicked again: all four the same size");
   vs = await views();
   expect(vs.every((v) => v === "2d"), `back in the grid, all four in 2D (${vs.join()})`);
+  expect(await scenes() === "0000", `and no 3D scene is left (${await scenes()})`);
   await page.click(".mv-win:nth-child(1) .mv-hit");   // back to window 1 live for the checks below
   await up3d(0);
   await page.waitForTimeout(1000);
@@ -181,8 +201,73 @@ try {
   expect(after.every((n) => n === 0) && decided.every((d) => d === "rejected"), `Take off on the desk: the goal story leaves all four windows (${after.join()}; ${decided.join()})`);
   expect(await page.evaluate(() => window.multiview.wins.every((w) => ![...window.multiview.sd(w).host.live.values()].some((i) => i.cue.story_id === "S-000002"))), "and none of the four shows it");
 
+  // Space and K with the focus in the desk belong to the desk: play stays as it was
+  const playState = () => page.evaluate(() => [window.multiview.playing, ...window.multiview.wins.map((w) => window.multiview.sd(w).state.playing)].join());
+  const was = await playState();
+  await page.locator("#story-S-000002").focus();
+  await page.keyboard.press("k");
+  await page.waitForTimeout(300);
+  const afterK = await playState();
+  await page.locator("#story-S-000002").focus();
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(300);
+  const afterSpace = await playState();
+  // each key alone: two toggles in a row would cancel out
+  expect(afterK === was && afterSpace === was, `Space and K in the desk do not toggle play (${was} -> K ${afterK} -> Space ${afterSpace})`);
+
+  // the AI switch on the desk reaches the four windows, and back
+  const kills = () => page.evaluate(() => window.multiview.wins.map((w) => window.multiview.sd(w).desk.kill).join());
+  await page.locator("#desk #ai-switch").click();
+  await page.waitForTimeout(300);
+  const off = await kills(), storyCues = await page.evaluate(() => window.multiview.wins.map((w) => window.multiview.sd(w).host.cues.filter((c) => c.story_id).length).join());
+  await page.locator("#desk #ai-switch").click();
+  await page.waitForTimeout(300);
+  expect(off === "true,true,true,true" && /^0,0,0,0$/.test(storyCues) && await kills() === "false,false,false,false",
+    `the AI switch turns the AI graphics off in all four windows and back on (${off}; story cues ${storyCues}; then ${await kills()})`);
+
+  // a generated graphic of another window's audience (window 2, 3 or 4) on screen: taken off on the desk, it leaves that window
+  const gen = await page.evaluate(async () => {
+    const mv = window.multiview, dk = mv.desk;
+    for (const j of [1, 2, 3]) {
+      const aud = mv.sd(mv.wins[j]).state.audience;
+      for (const g of dk.gens.filter((g) => g.audience === aud && dk.firstOf(g) > 600).slice(0, 4)) {
+        dk.seek(dk.firstOf(g) + 0.5);
+        await new Promise((r) => setTimeout(r, 600));
+        if (document.querySelector(`#desk .sec-air #story-${g.story_id}`)) return { id: g.story_id, j, aud };
+      }
+    }
+    return null;
+  });
+  const genCues = () => page.evaluate((id) => window.multiview.wins.map((w) => { const d = window.multiview.sd(w); return d.host.cues.filter((c) => d.desk.genFor(c)?.story_id === id).length; }).join(), gen?.id);
+  const genBefore = gen && await genCues();
+  if (gen) await page.locator(`#desk #story-${gen.id} [data-key=r]`).click();
+  await page.waitForTimeout(300);
+  const genAfter = gen && await genCues();
+  const there = (n) => gen && new RegExp(`^${[0, 1, 2, 3].map((k) => (k === gen.j ? n : "0")).join(",")}$`);
+  expect(Boolean(gen) && there("[1-9]\\d*").test(genBefore) && there("0").test(genAfter),
+    `Take off on a ${gen?.aud} graphic (${gen?.id}) takes it out of window ${gen ? gen.j + 1 : "?"} (${genBefore} -> ${genAfter})`);
+
+  // an edit on the desk says whose wording it shows and that the line changes in all four windows
+  await page.evaluate(() => window.multiview.desk.seek(600));
+  await page.waitForTimeout(300);
+  await page.locator("#story-S-000002 [data-key=e]").click();
+  const note = await page.locator("#story-S-000002 .edit-note").textContent({ timeout: 5000 }).catch(() => null);
+  expect(/Analyst · EN/.test(note ?? "") && /all four windows/.test(note ?? ""), `the editor says what an edit replaces (${note})`);
+  await page.keyboard.press("Escape");
+
+  // window 4 large: window 1's scene is freed; then window 4's context is lost: 2D, and a line on its picture says so
+  await page.click(".mv-win:nth-child(4) .mv-hit");
+  const in3d4 = await up3d(3).then(() => true, () => false);
+  await page.waitForTimeout(500);
+  expect(in3d4 && await scenes() === "0001", `window 4 large in 3D, the only scene (${await scenes()})`);
+  lostOnPurpose = true;
+  await page.evaluate(() => window.multiview.sd(window.multiview.wins[3]).view3d.scene.engine._gl.getExtension("WEBGL_lose_context").loseContext());
+  const lost = await page.waitForFunction(() => { const w = window.multiview.wins[3]; return window.multiview.sd(w).view3d.shown === "2d" && !w.note.hidden && w.note.textContent; },
+    null, { timeout: 10000 }).then((h) => h.jsonValue(), () => null);
+  expect(Boolean(lost) && /lost/.test(lost), `a lost 3D context: the large window back in 2D, and it says so (${lost})`);
+  await page.click(".mv-win:nth-child(4) .mv-hit");   // all four the same size
+
   // 1280x720: the desk docked beside the wall, the four windows on screen, nothing sideways
-  await page.click(".mv-win:nth-child(1) .mv-hit");   // all four the same size
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.waitForTimeout(800);
   const mid = await page.evaluate(() => { const d = document.querySelector("#desk").getBoundingClientRect(), pics = [...document.querySelectorAll(".mv-pic")].map((e) => e.getBoundingClientRect());
@@ -247,6 +332,21 @@ try {
   console.log(JSON.stringify(dflt));
   expect(dflt.every((d) => d.match === "M004") && dflt[2].audience === "team:T08", `no parameters: M004, window 3 for its away team T08 (${dflt[2].audience})`);
   expect(dflt.every((d) => Math.abs(d.ts - (Math.round(goal4) - 6)) < 0.01), `no parameters: the four start 6 s before M004's first goal (${dflt[0].ts})`);
+  // this server draws in software: the large window stays 2D, and a line on it says why
+  await p3.click(".mv-win:nth-child(2) .mv-hit");
+  await p3.waitForTimeout(1500);
+  const refused = await p3.evaluate(() => { const w = window.multiview.wins[1]; return { mode: window.multiview.sd(w).view3d.mode, scene: !!window.multiview.sd(w).view3d.scene, note: w.note.hidden ? null : w.note.textContent }; });
+  expect(refused.mode === "2d" && !refused.scene && /2D only/.test(refused.note ?? ""), `no GPU: the large window stays 2D and says why (${JSON.stringify(refused)})`);
+
+  // window 1 does not load: the desk is built on window 2, and the page keeps running
+  const p5 = await ctx.newPage();
+  p5.on("pageerror", (e) => fail(`page error with window 1 down: ${e.message}`));
+  await p5.route((u) => u.pathname.endsWith("/index.html") && u.searchParams.get("audience") === "analyst", (r) => r.abort());
+  await p5.goto(new URL("multiview.html?match=M001", base).href);
+  const deskUp = await p5.waitForFunction(() => window.multiview.desk?.ready && window.multiview.desk.state === window.multiview.sd(window.multiview.wins[1]).state, null, { timeout: 60000 })
+    .then(() => true, () => false);
+  expect(deskUp && await p5.locator("#desk .sec-needs").count() === 1, "window 1 down: the desk is built on window 2");
+  await p5.close();
 
   // a match that is not there: an error on the wall, not "Loading" for ever (its 404s are expected here)
   const p4 = await ctx.newPage();

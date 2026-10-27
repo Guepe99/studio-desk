@@ -910,7 +910,9 @@ async function main() {
   requestAnimationFrame(tick);
   await desk.load();
   const v = new Voice({ base: `data/${matchId}`, host, desk, state, t, button: $("#voice") });
-  await Promise.all([v.load().then(() => { voice = v; }), desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
+  // in a multiviewer window (?wall=1) the wall's own desk talks to the server and hands this one its decisions
+  const wallDesk = params.get("wall") === "1";
+  await Promise.all([v.load().then(() => { voice = v; }), wallDesk ? null : desk.connect(), ask.probe()]); // the voice and Ask buttons may appear
   // the booth and the crowd follow the same button (docs/commentary.md)
   const b = new BoothAudio({ base: `data/${matchId}`, match, host, state, voice: v });
   if (await b.load()) {
