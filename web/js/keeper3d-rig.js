@@ -9,7 +9,7 @@
 // Real clips can replace the procedural ones by name (GK_Dive_L, GK_Dive_R, GK_Low_L, GK_Low_R,
 // GK_Catch, GK_Tip): a clip already in the file is never overwritten. Such a clip should be in
 // place (no root motion) and keyed on keeper3d.CLIP_KEYS; keeperRoot() gives the root curve.
-import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS } from "./keeper3d.js";
+import { planKeeper, keeperRoot, realRoot, CLIP_KEYS, CLIPS, GROUND, clearance } from "./keeper3d.js";
 import { nodesOf, chain, aim, turnWorld } from "./awareness-rig.js";
 import { THROW } from "./scene3d/players.js";
 
@@ -17,11 +17,19 @@ const B = window.BABYLON;
 const HALF_L = 52.5, HALF_W = 34;
 const smooth = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 
+// the joints _ground reads, each after its parent, so one pass from the pelvis updates them all
+export const BONES = ["pelvis", "spine_01", "spine_02", "spine_03", "neck_01", "Head", "clavicle_l", "upperarm_l", "lowerarm_l", "hand_l",
+  "clavicle_r", "upperarm_r", "lowerarm_r", "hand_r", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r", "calf_r", "foot_r", "ball_r"];
+const DOWN = 0.15;   // m the real clip's root is under the grass when he counts as down (body())
+// world matrices from the root down to node, without the array chain() builds
+const refresh = (n) => { if (n.parent) refresh(n.parent); n.computeWorldMatrix(true); };
+
 export class KeeperRig {
   constructor(s) {
     this.s = s;
     s.keeper = this;
     this.enabled = true;
+    this.ground = true;   // keep the body above the grass (_ground); off only to compare
     const probe = s.container.instantiateModelsToScene((n) => `gk-probe-${n}`, false, { doNotInstantiate: true });
     probe.animationGroups.forEach((g) => g.dispose());
     const P = nodesOf(probe.rootNodes[0], "gk-probe-");
@@ -59,7 +67,7 @@ export class KeeperRig {
   body(i, ts) {
     const r = this.at(i, ts), k = r && (r.real ? realRoot(r, ts) : keeperRoot(r, ts)), p = k && this.s.match.at(i, ts);
     // weight 0..1 as he goes down, so whoever stands there is eased off, not thrown
-    const w = !p ? 0 : r.real ? smooth((-k.lift - 0.15) / 0.35) : smooth((Math.abs(k.roll) - 0.3) / 0.6);
+    const w = !p ? 0 : r.real ? smooth((-k.lift - DOWN) / 0.35) : smooth((Math.abs(k.roll) - 0.3) / 0.6);
     if (w <= 0) return null;
     const n = Math.hypot(k.dx, k.dy), u = n > 0.3 ? [k.dx / n, k.dy / n] : r.u;   // he lies along his dive
     return [-0.8, 0, 0.8].map((a) => [p[0] + k.dx + u[0] * a, p[1] + k.dy + u[1] * a, w]);
@@ -115,7 +123,26 @@ export class KeeperRig {
         aimPart(lo, hand, target.subtractToRef(lo.getAbsolutePosition(), dir), w);
       }
     }
+    for (const p of this.s.players) this._ground(p, ts);   // after the arms, which can reach down
     for (const p of this.s.players) this._grip(p, ts);   // after the arms moved
+  }
+
+  // A keeper down after his dive rests on the grass: the whole body is raised until every joint
+  // clears its GROUND height (the clip's lying pose, on a smaller or larger player, sank into it).
+  // Only while a real clip has him down (its root more than DOWN under the grass, where body()
+  // starts easing the others off him): standing, setting or getting up he is never moved.
+  _ground(p, ts) {
+    if (!this.ground || !p.holder.isEnabled() || p.holder.position.y > -DOWN || !this.at(p.i, ts)?.real) return;
+    const y = (this._y ??= {});
+    let fresh = false;
+    for (const b of BONES) {
+      const n = p.anim.node(b);
+      if (!n) { y[b] = Infinity; continue; }
+      if (fresh) n.computeWorldMatrix(true); else { refresh(n); fresh = true; }   // parents come first in BONES
+      y[b] = n.getAbsolutePosition().y;
+    }
+    const up = clearance(y);
+    if (up > 0) { p.holder.position.y += up; p.holder.computeWorldMatrix(true); }
   }
 
   // A low ball straight at him is gathered stooping: bent forward from the hips, legs straight,

@@ -24,17 +24,30 @@ test(`${id}: cutaways only in dead time, never over a tight shot or a replay, ba
   const plan = cutawayPlan(m), again = cutawayPlan(load(id));
   assert.deepEqual(plan, again, "the same match gives the same plan");
   const half = m.meta.period1_s, per = [plan.filter((c) => c.from < half).length, plan.filter((c) => c.from >= half).length];
-  // regularly, not once a half, and not at every stoppage
-  const stoppages = m.events.filter((e) => RESTARTS.has(e.type_name)).length;
-  assert.ok(per.every((n) => n >= 8), `cutaways per half ${per}`);
-  assert.ok(plan.length < stoppages * 0.7, `${plan.length} cutaways for ${stoppages} stoppages`);
+  // at nearly every stoppage (docs/broadcast3d.md): a viewer watching a few minutes sees some
+  const stoppages = m.events.filter((e) => RESTARTS.has(e.type_name)).length + m.goals.length;
+  assert.ok(per.every((n) => n >= 30), `cutaways per half ${per}`);
+  assert.ok(plan.length >= stoppages * 0.85, `${plan.length} cutaways for ${stoppages} stoppages`);
+  const gaps = plan.slice(1).map((c, k) => c.from - plan[k].to).sort((a, b) => a - b);
+  assert.ok(gaps[gaps.length >> 1] <= 60, `median ${gaps[gaps.length >> 1]} s between cutaways`);
+  // after each goal whose kick-off leaves room, once the replay is over
+  const kickoffs = plan.filter((c) => !RESTARTS.has(m.events.find((e) => e.ts === c.restart).type_name));
+  assert.equal(kickoffs.length, m.goals.length, "one cutaway before each kick-off after a goal");
+  const reps = replays(m);
+  for (const c of kickoffs) {
+    // the goal this kick-off restarts after, and its replay (view3d.js), not any earlier goal's
+    const g = m.goals.filter((x) => x.ts < c.restart).at(-1), rep = reps.find((r) => r.from > g.ts && r.from < c.restart);
+    assert.ok(rep, `no replay for the goal at ${g.ts}`);
+    assert.ok(c.from >= rep.to - 1e-9, `kick-off cutaway at ${c.from} before the replay ends at ${rep.to}`);
+  }
   assert.ok(new Set(plan.map((c) => c.kind)).size >= 3, "at least three kinds of shot");
   const busy = [...tightStops(m).map(([a, b]) => [a, b]), ...replays(m).map((r) => [r.from, r.to])];
   for (const [k, c] of plan.entries()) {
     // no event inside the shot: the ball is dead throughout
     assert.ok(!m.events.some((e) => e.ts >= c.from && e.ts <= c.to), `event during the cutaway at ${c.from}`);
     const next = m.events.find((e) => e.ts > c.from);
-    assert.ok(RESTARTS.has(next.type_name) && next.ts === c.restart, `the next event at ${c.from} is the restart`);
+    const kickoff = m.goals.some((g) => g.ts < c.from && !m.events.some((e) => e.ts > g.ts + 1 && e.ts < next.ts));
+    assert.ok((RESTARTS.has(next.type_name) || kickoff) && next.ts === c.restart, `the next event at ${c.from} is the restart`);
     // the numbers of docs/broadcast3d.md, not the module's own: 4 s before a throw-in, 3 s before the rest
     assert.ok(next.ts - c.to >= (next.type_name === "throw_in" ? 4 : 3) - 1e-9,
       `back ${(next.ts - c.to).toFixed(2)} s before the ${next.type_name}`);
@@ -48,7 +61,7 @@ test(`${id}: cutaways only in dead time, never over a tight shot or a replay, ba
     for (const [a, z] of busy) assert.ok(c.to <= a || c.from >= z, `cutaway ${c.from}-${c.to} overlaps ${a}-${z}`);
     // the stadium shot never comes straight from a depth-of-field shot (its sky flashes green)
     if (c.kind === "stadium") assert.ok(!busy.some(([, z]) => Math.abs(z - c.from) < 1e-6), `stadium straight from a tight shot at ${c.from}`);
-    if (k) assert.ok(c.from - plan[k - 1].to >= CUTAWAY.gap[0] - 1e-9 && c.kind !== plan[k - 1].kind, `spacing and variety at ${c.from}`);
+    if (k) assert.ok(c.from - plan[k - 1].to >= CUTAWAY.gap - 1e-9 && c.kind !== plan[k - 1].kind, `spacing and variety at ${c.from}`);
     // the shot is defined over its whole length and moves only a little
     const s0 = cutawayShot(c, c.from), s1 = cutawayShot(c, c.to);
     assert.ok([...s0.pos, ...s0.aim, ...s1.pos, ...s1.aim].every(Number.isFinite));

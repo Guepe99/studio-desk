@@ -2,8 +2,7 @@
 
 Under the studio voice, the replay has a commentary booth: a play-by-play voice and a co-commentator, with a
 stadium crowd underneath. It works for any match, recorded or live, with no script written per match. The
-booth picks lines from templates as the events and the fact ledger arrive, the way a football video game
-does. Before kick-off it renders the clips: the shared ones once, the names from the line-up of each match.
+booth picks lines from templates as the events and the fact ledger arrive. Before kick-off it renders the clips: the shared ones once, the names from the line-up of each match.
 During play nothing is synthesised and nothing is called. The browser plays the clips back to back with the
 Web Audio API.
 
@@ -24,8 +23,8 @@ play-by-play hands over to him.
 | `it` | Paola Serrani, Kokoro `if_sara` | Marco Bellardi, Kokoro `im_nicola` |
 | `es` | Lucía Olmedo, Kokoro `ef_dora` | Andrés Calvete, Kokoro `em_alex` |
 
-All clips come from Kokoro-82M (Apache-2.0), which runs on our own CPU; the booth makes no Azure calls. The
-owner chose it by ear on 20 Oct 2026. He compared the same nine lines from Azure F0 (Andrew and Davis HD in
+All clips come from Kokoro-82M (Apache-2.0), which runs on our own CPU; the booth makes no Azure calls. It
+was chosen by ear, comparing the same nine lines from Azure F0 (Andrew and Davis HD in
 English, stitched from fragments; Alessio and Giuseppe in Italian; Tristan and Alvaro in Spanish) with
 Kokoro reading whole sentences. Chatterbox was dropped untried: its smallest export (q4, about 1.55 GB)
 does not fit the 2 GB disk cap next to Kokoro (1.7 GB), and the 2 shared vCPUs were already the bottleneck.
@@ -41,7 +40,7 @@ render.
 
 The templates sit in `web/booth/lines.json`: per voice, per language, per kind of moment. Each kind has
 several variants, and a routine one (pass, interception, tackle, cross, take-on, foul, clearance) has 10 to
-12, as [EA] asks. The fill-in kinds (A6: possession, build-up, back pass, restart, pause, celebration,
+12, as [AD] asks. The fill-in kinds (A6: possession, build-up, back pass, restart, pause, celebration,
 kick-off wait, and the co's opinions on shape and tempo and after a goal) have 10 to 16 each, with no
 numbers. The same variant never plays twice in a row. The placeholders are `{player}`,
 `{receiver}`, `{keeper}`, `{team}`, `{team2}` (with an `|of` form for Italian and Spanish articles),
@@ -119,14 +118,13 @@ The rules, from the research below:
   voice). Fouls, corners, free kicks and offsides are usually called (B, up to 1 s). Passes, take-ons,
   crosses, interceptions, tackles and clearances are called when the voice is free (C). Throw-ins, goal kicks
   and short free kicks are not called.
-- A4. Every pass names the receiver, own half included (the product owner's rule; the research names it in the final
+- A4. Every pass names the receiver, own half included (our rule; the research names it in the final
   third, on 30 m passes and into the other half). A pass 8 m or more backwards is called as a back pass. No
-  name twice within 6 s. At most 3 names in a row, then a 2 s pause [KI, QR, FT].
+  name twice within 6 s. At most 3 names in a row, then a 2 s pause [KI, QR].
 - A5. The goal call is short, then the booth holds 9 to 12 s while the crowd roars [GT, BK, TR]. A
   follow-up comes after the hold (long-range goal, sprint before the goal, or a plain one).
-- A6. The product owner's rule replaces the research here: "when nobody speaks, silence is really ugly", the way EA
-  FC fills a match. The booth is never silent for more than 6 s, except in the goal hold, during a studio
-  clip and its 1.5 s, at half-time and after full-time. After 3.5 s of silence it fills: in play with a
+- A6. Our rule replaces the research here, which favours silence [GT]: the booth is never silent
+  for more than 6 s, except in the goal hold, during a studio clip and its 1.5 s, at half-time and after full-time. After 3.5 s of silence it fills: in play with a
   possession or build-up line ("Redwick keeping it", "Name looking for an opening"), a fresh fact or a co
   opinion on shape and tempo; in a dead ball (a foul, an offside, a shot or save that ends play, a ball off
   the pitch, or 8 s without an event) with the restart for the team that did not touch it last, a pause line
@@ -144,7 +142,7 @@ The rules, from the research below:
   roar follows a goal. The whistle sounds at fouls (cards included), kick-offs and period ends.
 - C1. The co says why, never what was just said [CT, MK]. Colour comes from trends in the facts (momentum
   8/10 or more, press 4.5/10 or more, a line held 40 m or more or 18 m or less from goal, a shot of 100 km/h
-  or more, a sprint of 32 km/h or more, a formation change), never from a single pass [EA].
+  or more, a sprint of 32 km/h or more, a formation change), never from a single pass [AD].
 - C2. The co speaks in stoppages, never in the final third: within 15 s of a shot that ends play (always
   after a shot of 100 km/h or more, otherwise with probability 0.7), after a card, after the goal hold, in
   lulls with a fresh fact, and at half-time and full-time [LF, KL]. A generic stoppage line comes with
@@ -152,7 +150,7 @@ The rules, from the research below:
 - C3. The co keeps 20 to 30 % of the booth's speech. The planner steers to 23 to 27 % [KL].
 - C4. Handover: a 0.3 to 0.8 s pause, sometimes the co's first name or a question. The co hands back
   unmarked [KL].
-- C5. Co turns are one or two sentences [EA].
+- C5. Co turns are one or two sentences [AD].
 
 On M001, with the estimated durations used while the clips render, the planner makes 335 lines in English
 (332 in Italian, 346 in Spanish). The co's share is 23.7 to 24.1 %, the median gap between lines is 4.4
@@ -235,11 +233,8 @@ in all).
 - [BK] Bunkered on commentary silence. https://www.bunkered.co.uk/?p=74341
 - [CT] Clive Tyldesley, "How many commentators does it take...?"
   https://ctyldesley.substack.com/p/how-many-commentators-does-it-take
-- [MT] Martin Tyler interviews. https://offsiderulepodcast.com/2015/07/13/feature-martin-tyler-on-the-new-season-fifa-16-that-aguero-goal-and-much-more/,
-  https://grantwahl.substack.com/p/the-interview-martin-tyler
-- [FT] Video game commentary, FootballTransfers.
-  https://www.footballtransfers.com/us/transfer-news/uk-premier-league/2026/08/from-barry-davies-to-guy-mowbray-the-art-of-video-game-commentary-explained
-- [EA] Ernest Adams, "The Designer's Notebook: How to Write Sports Commentary".
+- [MT] Martin Tyler interview. https://grantwahl.substack.com/p/the-interview-martin-tyler
+- [AD] Ernest Adams, "The Designer's Notebook: How to Write Sports Commentary".
   https://www.gamedeveloper.com/audio/the-designer-s-notebook-how-to-write-sports-commentary
 - [MK] Martin Kelner, Sporting Intelligence.
   https://sportingintelligence832.substack.com/p/hit-the-post-pardon-the-profanity-but-no-shit-sherlock-270601
@@ -252,6 +247,6 @@ in all).
 - [QR] Quintero-Ramírez, Revista de Investigación Lingüística 25 (2022).
   https://revistas.um.es/ril/article/download/486281/334881/2012001
 
-Not verified: how EA FC picks and chains its lines at runtime; no talk or postmortem says. The share and
+The share and
 turn-length targets are derived from radio rugby [KL] and the SoccerNet corpus [LF], not measured on TV
 football.

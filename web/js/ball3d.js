@@ -56,18 +56,28 @@ const SET_PIECES = new Set(["freekick_crossed", "freekick_short", "shot_freekick
 // [kind, seconds from the start] and how the ball rolls [t0, t1, metres along his facing], so it
 // ends where it started; len: seconds the move takes; p: how often it is picked. A sole roll (the
 // ball out and back under the sole), a drag-back then a touch that puts it back, a step-over, a
-// feint with the shoulders.
+// feint with the shoulders, and a shimmy (the feint at 0.6 of its time) that fits the short holds.
 const SKILLS = {
   roll: { p: 0.3, len: 1.0, legs: [["roll", 0.3]], ball: [[0.3, 0.48, 0.12], [0.48, 0.66, -0.12]] },
   drag: { p: 0.25, len: 1.33, legs: [["drag", 0.3], ["touch", 1.05]], ball: [[0.3, 0.6, -0.26], [1.05, 1.3, 0.26]] },
   stepover: { p: 0.2, len: 0.8, legs: [["stepover", 0.35]], ball: [] },
   feint: { p: 0.25, len: 0.65, legs: [["feint", 0.3]], ball: [] },
+  shimmy: { p: 0.12, len: 0.4, legs: [["shimmy", 0.18]], ball: [] },
 };
+// seconds after the trap's contact the first move may start (the trap's window ends 0.32 s after it)
+const SKILL_FROM = 0.32;
 // seconds before and after contact that a leg action lasts, and the facing ramps
 export const LEG_WINDOW = { shot: [0.5, 0.5], long: [0.5, 0.5], pass: [0.42, 0.4], touch: [0.28, 0.28], trap: [0.42, 0.32],
-  roll: [0.3, 0.7], drag: [0.3, 0.45], stepover: [0.35, 0.45], feint: [0.3, 0.35] };
+  roll: [0.3, 0.7], drag: [0.3, 0.45], stepover: [0.35, 0.45], feint: [0.3, 0.35], shimmy: [0.18, 0.21] };
+// seconds before an event's contact its kick's backswing starts, so the last skill move ends by then;
+// a pass is drawn as a long ball once its flight is known (after the skills are planned), so it takes
+// the longer of the two
+const kickLead = (type) => {
+  const k = KICKS[type];
+  return k === "pass" ? Math.max(LEG_WINDOW.pass[0], LEG_WINDOW.long[0]) : k ? LEG_WINDOW[k][0] : Math.max(...Object.values(KICKS).map((x) => LEG_WINDOW[x][0]));
+};
 const YAW_RAMP = { shot: [0.6, 0.35], long: [0.6, 0.35], pass: [0.55, 0.3], touch: [0.3, 0.25], trap: [0.45, 0.3],
-  roll: [0.4, 0.4], drag: [0.4, 0.4], stepover: [0.4, 0.4], feint: [0.4, 0.4] };
+  roll: [0.4, 0.4], drag: [0.4, 0.4], stepover: [0.4, 0.4], feint: [0.4, 0.4], shimmy: [0.3, 0.3] };
 
 const smooth = (u) => { const t = Math.min(1, Math.max(0, u)); return t * t * (3 - 2 * t); };
 const ramp = (a, b, v) => smooth((v - a) / (b - a));
@@ -232,8 +242,9 @@ export class BallPlan {
     const rnd = mulberry(h);
     const names = Object.keys(SKILLS);
     // after the control (the trap's window ends 0.32 s after contact) and before the kick's backswing
-    for (let c = a + 0.45; ;) {
-      const fit = names.filter((n) => c + SKILLS[n].len <= b - 0.55);
+    const end = b - kickLead(next.type_name);
+    for (let c = a + SKILL_FROM; ;) {
+      const fit = names.filter((n) => c + SKILLS[n].len <= end);
       if (!fit.length) break;
       let r = rnd() * fit.reduce((s, n) => s + SKILLS[n].p, 0), name = fit[0];
       for (const n of fit) { r -= SKILLS[n].p; if (r <= 0) { name = n; break; } }
@@ -612,6 +623,8 @@ const LEG_KEYS = {
   stepover: [[-0.35, 4, 30, 0, 5], [-0.15, 30, 70, 10, -20], [0, 45, 80, 15, 10], [0.15, 30, 62, 10, 45], [0.3, 8, 36, 0, 30], [0.45, 2, 30, 0, 5]],
   feint: [[-0.3, 4, 30, 0, 5], [-0.1, 18, 45, 5, 22], [0, 16, 40, 5, 26], [0.15, 6, 34, 0, 10], [0.35, 2, 30, 0, 4]],
 };
+const quick = (keys) => keys.map(([t, ...v]) => [t * 0.6, ...v]);   // the shimmy: the feint at 0.6 of its time
+LEG_KEYS.shimmy = quick(LEG_KEYS.feint);
 // The standing leg. For the kicks it is the plant leg of the last, longer stride: it swings
 // through high, reaches out and lands heel first beside the ball about 0.1 s before contact, the
 // knee gives under the body, then the body rolls over it. Touches and traps only bend it a little.
@@ -624,7 +637,8 @@ const SUPPORT_KEYS = {
   // the feint sinks on the standing leg
   feint: [[-0.3, 12, 28, 0, 0], [-0.1, 18, 42, 0, 0], [0.05, 20, 46, 0, 0], [0.35, 12, 28, 0, 0]],
 };
-const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5, roll: 0.5, drag: 0.5, stepover: 0.5, feint: 0.6 };
+SUPPORT_KEYS.shimmy = quick(SUPPORT_KEYS.feint);
+const SUPPORT_W = { shot: 0.9, long: 0.9, pass: 0.8, touch: 0.35, trap: 0.5, roll: 0.5, drag: 0.5, stepover: 0.5, feint: 0.6, shimmy: 0.6 };
 
 // The rest of the body during a kick, for a kick with the right foot (the rig mirrors a left-foot
 // kick). Keys [t, pelvis, shoulders, lean, bend, freeAbd, freeFlex, kickAbd, kickFlex] in degrees:
@@ -655,8 +669,9 @@ const BODY_KEYS = {
   stepover: [[-0.35, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -10, 6, 4, -6, 30, 0, 25, 0], [0, -16, 10, 5, -10, 38, 5, 30, 0], [0.2, -6, 4, 6, -4, 32, 0, 24, 0], [0.45, 0, 0, 2, 0, 12, 0, 12, 0]],
   feint: [[-0.3, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -8, 8, 6, -12, 35, 0, 25, 0], [0.05, -10, 10, 8, -14, 40, 0, 26, 0], [0.2, -4, 4, 5, -5, 25, 0, 18, 0], [0.35, 0, 0, 2, 0, 12, 0, 12, 0]],
 };
+BODY_KEYS.shimmy = quick(BODY_KEYS.feint);
 // How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
-const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35, roll: 0.5, drag: 0.5, stepover: 0.7, feint: 0.7 };
+const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35, roll: 0.5, drag: 0.5, stepover: 0.7, feint: 0.7, shimmy: 0.7 };
 const ELBOW = [30, 55];   // degrees of elbow bend in the arm poses: free arm, kicking-side arm
 
 // Value j of keys [t, v1, v2, ...] at t, in radians: Catmull-Rom tangents, so the foot keeps its

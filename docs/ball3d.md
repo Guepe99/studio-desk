@@ -9,8 +9,8 @@ the tracking data, the 2D page, the export and the facts do not change.
 - **The ball keeps the tracking path but not its clock.** Between two anchors (event times,
   arrivals, dribble touches) the ball's clock is bent with a linear deceleration profile, so it
   leaves the foot fast and slows down. At every anchor it is exactly the tracking ball. Each bend
-  is measured against the tracking ball and softened until the gap stays under 1.2 m (the brief
-  allows 1.5 m). On DEMO the worst gap is 1.00 m, on M001 1.12 m, and 0 at every event.
+  is measured against the tracking ball and softened until the gap stays under 1.2 m (the bound
+  is 1.5 m). On DEMO and on the whole of M001 the worst gap is 1.20 m, and 0 at every event.
 - **Kicks** (passes, crosses, shots, set pieces, clearances): backswing, cocking, a fast swing
   through the ball and a follow-through, timed so the foot is on the ball at the event time.
   The kicker is turned to face where the ball goes. The run-up, the trunk, the pelvis and the arms
@@ -20,6 +20,13 @@ the tracking data, the 2D page, the export and the facts do not change.
 - **Dribbling**: a player who keeps the ball between events gets a touch every 0.6 to 1.0 s
   (faster runs, longer touches), alternating with the strong foot; between touches the ball runs
   ahead of him and slows down.
+- **Moves with a still ball** (`SKILLS`, `_skills`): a receiver who keeps a still ball (under
+  1 m/s) gets a sole roll, a drag-back, a step-over, a shoulder feint or a shimmy from 0.32 s after
+  his first touch to the start of his next kick's backswing (0.5 s before a long ball or a shot,
+  and before a pass too, which is only known to be long once its flight is planned). On M001
+  every reception kept 1.22 s or more gets one, except two before a set piece. Under that there
+  is no room for the shortest move and none gets one. Details and the full counts in
+  `docs/flow3d.md`.
 - **Spin**: the ball rolls without slipping on the ground (axis across the run, rate v/R), and in
   the air keeps the spin of the kick (backspin when lofted).
 - **Foot on the ball**: the player is shifted (motion warping) by up to 3 m around each contact so
@@ -42,7 +49,7 @@ the tracking data, the 2D page, the export and the facts do not change.
 | Touches and possession from tracking | possession within 0.5 m, lost beyond 1 m | https://arxiv.org/html/2506.22503v1 ; https://pmc.ncbi.nlm.nih.gov/articles/PMC10624867/ |
 | Receiving | body open to the ball, the touch absorbs the rebound | https://pmc.ncbi.nlm.nih.gov/articles/PMC7573254 ; https://www.tsukuba.ac.jp/en/research-news/20260806143000.html |
 | Contact matched to an event time | motion warping of the root | Unreal Engine docs: https://dev.epicgames.com/documentation/unreal-engine/motion-warping-in-unreal-engine |
-| How games do it | contact-aware clips, motion matching, ML-blended touches | https://gdcvault.com/play/1027595/Animation-Summit-FIFA-22-s ; https://gdcvault.com/play/1023280/Motion-Matching-and-The-Road ; https://80.lv/articles/ea-uses-machine-learning-for-animations-in-fifa-22 ; https://arxiv.org/html/2504.21216v2 ; https://history.siggraph.org/?p=100135 |
+| Contact-aware clips and motion matching | clips chosen and blended so the foot meets the ball | https://gdcvault.com/play/1023280/Motion-Matching-and-The-Road ; https://arxiv.org/html/2504.21216v2 ; https://history.siggraph.org/?p=100135 |
 
 Note on the numbers we bent on purpose:
 
@@ -57,7 +64,7 @@ Note on the numbers we bent on purpose:
 ## Animation licences
 
 No animation file was added. Quaternius UAL1 Standard and UAL2 (CC0) have no kick, pass or trap
-clip; the "Kick" in the paid UAL1 tiers is a combat kick. Mixamo is excluded by the brief, the
+clip; the "Kick" in the paid UAL1 tiers is a combat kick. Mixamo is excluded, the
 Bandai Namco motion dataset is CC BY-NC. CMU mocap subject 10 has kick takes (free to use and
 redistribute, not to resell: http://mocap.cs.cmu.edu/faqs.php) but would need retargeting to
 this skeleton. The motions are therefore procedural joint keys on the mannequin we already ship

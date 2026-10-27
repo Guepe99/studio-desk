@@ -5,9 +5,9 @@
 /* while the 3D view loads (view3d.js): a still of the stadium (scripts/poster3d.mjs) instead of the 2D pitch */
 #stage.loading3d { background: var(--grass) url("../img/stadium3d.jpg") center / cover; }
 #stage.loading3d #pitch { visibility: hidden; }
-/* The minimap (the "split" view): the small picture in a box at the bottom centre of the frame, as in a
-   football game; a click swaps the two. 440 x 291 stage px = the pitch and a margin (1420 x 940 from
-   x 250, y 100) at RADAR = 440 / 1420 (view3d.js), shown at 0.7 (app.js RADAR_K, as small as a game's radar)
+/* The minimap (the "split" view): the small picture in a box at the bottom centre of the frame; a click
+   swaps the two. 440 x 291 stage px = the pitch and a margin (1420 x 940 from
+   x 250, y 100) at RADAR = 440 / 1420 (view3d.js), shown at 0.7 (app.js RADAR_K, small enough to leave the play in view)
    and magnified from its bottom left corner on a small frame (app.js sets scale). Under the graphics: app.js moves it to the right or the left of the foot when a
    graphic covers the centre, and sets .radar-yield when they cover all three. */
 #radar { position: absolute; left: 740px; bottom: 20px; width: 440px; height: 291px; padding: 0; overflow: hidden;
@@ -34,7 +34,7 @@
   letter-spacing: .08em; text-transform: uppercase; border-radius: var(--r-box); }
 #replay-badge:not(.on) { padding: 0; }
 
-/* the shirt and surname over the player on the ball (view3d.js _carrier), as in a football game: under the graphics */
+/* the shirt and surname over the player on the ball (view3d.js _carrier): under the graphics */
 #carrier, .cited-tag { position: absolute; left: 0; top: 0; padding: 6px 12px 7px; white-space: nowrap; pointer-events: none;
   background: rgb(20 10 40 / .72); color: #fff; font: 700 24px/1 var(--font); border-radius: 6px; }
 #carrier::after, .cited-tag::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -7px;

@@ -31,7 +31,7 @@
 //
 // After BEACON_S of 3D play the page sends one anonymous line to api/perf (api.py): the median frame
 // rate, the GPU's name when the browser gives it, the screen size and pixel ratio, the match.
-import { CELEBRATION, REDUCE } from "./scene3d/cutaway.js";
+import { CELEBRATION, REDUCE, REPLAY_LEN } from "./scene3d/cutaway.js";
 import { slices, SLICE_MS } from "./slices.js";
 
 const SLOW_FPS = 10, WARMUP_S = 20, FPS_WINDOW_S = 10, BEACON_S = 30;
@@ -41,7 +41,7 @@ const PLAN_LEAD = 1;
 // after: when camera 2 leaves the scorer; before: match s each angle shows ahead of the strike at least;
 // slow: angle B's page seconds, its speed, and the match s it shows after the crossing (faster than
 // half speed only when strike and crossing would not fit in its 1.5 s otherwise)
-const REPLAY = { after: CELEBRATION[1], len: 5.5, end: 1.6, before: 0.3, maxSpeed: 4, slow: { len: 3, rate: 0.5, after: 0.2 } };
+const REPLAY = { after: CELEBRATION[1], len: REPLAY_LEN, end: 1.6, before: 0.3, maxSpeed: 4, slow: { len: 3, rate: 0.5, after: 0.2 } };
 // the name over the player on the ball: the player of the next touch, once within reach m of a ball no
 // higher than high m for hold s, drawn above m metres over the feet. Off the ball events name no carrier.
 const CARRIER = { reach: 2.5, high: 1, hold: 0.2, above: 2.1, off: new Set(["interception", "foul", "tackle", "keeper_claim", "keeper_save"]) };
@@ -403,7 +403,7 @@ export class View3D {
     this._carrier(v);
   }
 
-  // The shirt and surname over the player on the ball, as a football game shows them: in open play
+  // The shirt and surname over the player on the ball: in open play
   // on the large 3D picture, once the same player has kept it a moment (a pass going by is nobody's).
   // The players an open proof cites get the same tag; the carrier's own tag goes when he is one of them.
   // None on a crowd or stadium cutaway (scene3d/cutaway.js), nor on camera 2's tight shots (the

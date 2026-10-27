@@ -1,7 +1,10 @@
 // The near rows of the crowd as low-poly anime spectators: the body of web/vendor/crowd/spectator.glb
 // (about 360 triangles, built by scripts/build_spectator.py) with, added here at load time, a big
-// spiky hair mass, a drawn face (tall eyes, a mouth) and a two-colour scarf held between the hands,
-// all skinned to the same skeleton; the head is drawn 1.3 times life size. One thin-instanced mesh,
+// spiky hair mass, a face plate and a two-colour scarf held between the hands, all skinned to the
+// same skeleton; the head is drawn 1.3 times life size. The face plate shows the footballers' own
+// anime face (FACE_URL, drawn from anime.glb by scripts/build_crowd_face.py): the same eyes with
+// highlights, brows, lashes and mouth, its iris tinted per spectator and its brows by his hair, and
+// the joy face while he cheers a goal (and on some fans all along). One thin-instanced mesh,
 // one draw call, toon shaded (toon.js), its poses baked at load time into a vertex animation
 // texture (Babylon's BakedVertexAnimationManager). Each spectator picks a pose loop and a phase of
 // its own; shirts and scarves come in the two kits (home fans in the majority) or neutral colours,
@@ -10,17 +13,23 @@
 // team's shirts anywhere, rise in a ripple, celebrate and sit back down within about 10 s.
 // Everything is a pure function of match time, so seeks, replays and video frames agree.
 import { ToonPlugin } from "./toon.js";
+import { EYE_COLOURS as EYES } from "../players3d.js";
 
 const B = window.BABYLON;
 
 export const SPECTATOR_URL = "vendor/crowd/spectator.glb";
+export const FACE_URL = "vendor/crowd/face.png";
+// SMILE: share of fans smiling all along (the iris colours are the footballers', EYES above)
+export const SMILE = 0.25;
 export const BAKE_FPS = 20;
 const HEIGHT = 1.75;   // metres, standing
 const PALETTE = 8;     // texels of the body's region palette (scripts/build_footballer.py)
 // region index (u * 8) -> what it is on a spectator: 0 skin, 1 shirt, 2 trousers, 3 shoes;
-// the parts added here: 4 hair, 5 face lines, 6 scarf, 7 scarf stripe
+// the parts added here: 4 hair, 5 dark lines (the body's own eye texels), 6 scarf, 7 scarf stripe
 const REGION = [0, 1, 2, 2, 3, 0, 0, 5];   // skin, shirt, shorts, socks, boots, forearms, hands, eyes
 export const HEAD_SCALE = 1.3;   // anime proportions: a bigger head (and hair) on the same body
+// the face plate, in head radii: its radius and how far its centre sits under the head's centre
+const PLATE = { r: 0.72, down: 0.18 };
 // hair colours: black and brown for two thirds, then dark blonde, blonde, platinum, grey and
 // light brown, any of them on any skin; no copper or auburn, which the owner found unrealistic. HAIR_SHARE: the share of each, in the order of HAIR.
 export const HAIR = ["#1d1a26", "#3d2619", "#6e3d22", "#a98a55",
@@ -150,7 +159,7 @@ function bake(skeleton, mesh, groups, nodes, list) {
 
 // Adds hair, face and scarf to the body, in its bind space (the space of the vertex data), skinned
 // rigidly to the head (hair, face) or blended from one hand to the other (scarf). Returns the
-// region of every vertex. rnd seeds the hair spikes.
+// region of every vertex and the face card UVs (-1 off the face plate). rnd seeds the hair spikes.
 function animeParts(mesh, skeleton, rnd) {
   const K = B.VertexBuffer;
   const pos = Array.from(mesh.getVerticesData(K.PositionKind));
@@ -216,24 +225,19 @@ function animeParts(mesh, skeleton, rnd) {
   for (const i of si) idx.push(base + i);
   sph.dispose();
 
-  // face: a round anime face plate over the body's narrow one, curved back at the sides, then two
-  // tall eyes and a mouth a hair's breadth in front of it
-  const plate = [], fu = -r * 0.18;
-  const pv = (x, y) => { plate.push([pos.length / 3, x]); return add(at(H.c, r * (1 - 0.3 * x * x), x * r * 0.72, fu + y * r * 0.72), head, head, 0, 0); };
-  const fc = pv(0, 0), ring = [];
-  for (let j = 0; j < 12; j++) ring.push(pv(Math.cos(j * Math.PI / 6), Math.sin(j * Math.PI / 6)));
-  for (let j = 0; j < 12; j++) idx.push(fc, ring[j], ring[(j + 1) % 12]);
-  const quad = (cs, cu, w, h, reg) => {
-    const fz = r * 1.04;
-    const a = add(at(H.c, fz, cs - w / 2, cu - h / 2), head, head, 0, reg);
-    const b = add(at(H.c, fz, cs + w / 2, cu - h / 2), head, head, 0, reg);
-    const c = add(at(H.c, fz, cs + w / 2, cu + h / 2), head, head, 0, reg);
-    const d = add(at(H.c, fz, cs - w / 2, cu + h / 2), head, head, 0, reg);
-    idx.push(a, b, c, a, c, d);
+  // face: a round anime face plate over the body's narrow one, curved back at the sides, two rings
+  // so the curve reads; the shader draws the face card on it (u to his left, v up)
+  const plate = [], fu = -r * PLATE.down, fuv = new Map();
+  const pv = (x, y) => {
+    const i = add(at(H.c, r * (1 - 0.3 * x * x), x * r * PLATE.r, fu + y * r * PLATE.r), head, head, 0, 0);
+    plate.push([i, x]); fuv.set(i, [0.5 + 0.5 * x, 0.5 + 0.5 * y]);
+    return i;
   };
-  quad(-r * 0.36, r * 0.05, r * 0.22, r * 0.4, 5);
-  quad(r * 0.36, r * 0.05, r * 0.22, r * 0.4, 5);
-  quad(0, -r * 0.55, r * 0.32, r * 0.08, 5);
+  const fc = pv(0, 0), rings = [0.55, 1].map((k) => Array.from({ length: 16 }, (_, j) => pv(k * Math.cos(j * Math.PI / 8), k * Math.sin(j * Math.PI / 8))));
+  for (let j = 0; j < 16; j++) {
+    const [a0, a1] = [rings[0][j], rings[0][(j + 1) % 16]], [b0, b1] = [rings[1][j], rings[1][(j + 1) % 16]];
+    idx.push(fc, a0, a1, a0, b0, b1, a0, b1, a1);
+  }
 
   // scarf: a strip from one hand to the other, in alternating colour blocks
   const N = 8, w = r * 0.9;
@@ -270,24 +274,33 @@ function animeParts(mesh, skeleton, rnd) {
   mesh.setVerticesData(K.MatricesIndicesKind, mi, false);
   mesh.setVerticesData(K.MatricesWeightsKind, mw, false);
   mesh.setIndices(idx);
-  return { region: Float32Array.from(region), info: { nv0, nv, tris: idx.length / 3, eyes: eyes.found, flipped: agree < 0, front, bones: [head, hl, hr], hands: L.found && R.found } };
+  const faceUV = new Float32Array(2 * nv).fill(-1);
+  for (const [i, [u, v]] of fuv) faceUV.set([u, v], 2 * i);
+  return { region: Float32Array.from(region), faceUV, info: { nv0, nv, tris: idx.length / 3, eyes: eyes.found, flipped: agree < 0, front, bones: [head, hl, hr], hands: L.found && R.found } };
 }
 
 // --- the crowd --------------------------------------------------------------------------------
 
-// Shader plugin: the colour of each body region from per-instance shirt and skin colours.
+// Shader plugin: the colour of each body region from per-instance shirt and skin colours, and the
+// face card on the face plate (crowdUV >= 0) with per-instance iris colour and expression
+// (crowdEye: rgb, a = 1 for the joy face).
 class CrowdPlugin extends B.MaterialPluginBase {
-  constructor(material) {
+  constructor(material, face) {
     super(material, "Crowd", 200, { CROWD: false });
+    this.face = face;
     this._enable(true);
   }
   prepareDefines(defines) { defines.CROWD = true; }
   getClassName() { return "CrowdPlugin"; }
-  getAttributes(attributes) { attributes.push("crowdRegion", "crowdShirt", "crowdSkin", "crowdHair"); }
+  isReadyForSubMesh() { return this.face.isReady(); }
+  getSamplers(samplers) { samplers.push("crowdFace"); }
+  bindForSubMesh(uniformBuffer) { uniformBuffer.setTexture("crowdFace", this.face); }
+  getAttributes(attributes) { attributes.push("crowdRegion", "crowdShirt", "crowdSkin", "crowdHair", "crowdUV", "crowdEye"); }
   getCustomCode(shaderType, shaderLanguage) {
     if ((shaderLanguage ?? 0) !== B.ShaderLanguage.GLSL) return null;
     if (shaderType === "vertex") return {
-      CUSTOM_VERTEX_DEFINITIONS: "#ifdef CROWD\nattribute float crowdRegion;\nattribute vec4 crowdShirt;\nattribute vec4 crowdSkin;\nattribute vec3 crowdHair;\nvarying vec3 vCrowd;\n#endif\n",
+      CUSTOM_VERTEX_DEFINITIONS: "#ifdef CROWD\nattribute float crowdRegion;\nattribute vec4 crowdShirt;\nattribute vec4 crowdSkin;\nattribute vec3 crowdHair;\n"
+        + "attribute vec2 crowdUV;\nattribute vec4 crowdEye;\nvarying vec3 vCrowd;\nvarying vec2 vCrowdUV;\nvarying vec3 vCrowdIris;\nvarying vec3 vCrowdBrow;\n#endif\n",
       // no scarf: its vertices fold into one point (a degenerate, invisible strip)
       CUSTOM_VERTEX_UPDATE_POSITION: "#ifdef CROWD\nif (crowdRegion > 5.5 && crowdShirt.a < 0.5) positionUpdated = vec3(0.0);\n#endif\n",
       CUSTOM_VERTEX_MAIN_END: `#ifdef CROWD
@@ -295,12 +308,25 @@ float rg = crowdRegion;
 vCrowd = rg < 0.5 ? crowdSkin.rgb : rg < 1.5 ? crowdShirt.rgb : rg < 2.5 ? crowdSkin.a * vec3(0.17, 0.22, 0.38)
   : rg < 3.5 ? vec3(0.08, 0.07, 0.1) : rg < 4.5 ? crowdHair.rgb : rg < 5.5 ? vec3(0.07, 0.05, 0.1)
   : rg < 6.5 ? crowdShirt.rgb : vec3(0.96, 0.95, 0.9);
+// the card: neutral face in the top half of the image, joy in the bottom; colour left, masks right
+vCrowdUV = crowdUV.x < 0.0 ? vec2(-1.0) : vec2(crowdUV.x * 0.5, crowdUV.y * 0.5 + (crowdEye.a > 0.5 ? 0.0 : 0.5));
+vCrowdIris = crowdEye.rgb * 1.3;
+vCrowdBrow = crowdHair * 0.7;
 #endif
 `,
     };
     return {
-      CUSTOM_FRAGMENT_DEFINITIONS: "#ifdef CROWD\nvarying vec3 vCrowd;\n#endif\n",
-      CUSTOM_FRAGMENT_UPDATE_DIFFUSE: "#ifdef CROWD\nbaseColor.rgb = vCrowd;\n#endif\n",
+      CUSTOM_FRAGMENT_DEFINITIONS: "#ifdef CROWD\nvarying vec3 vCrowd;\nvarying vec2 vCrowdUV;\nvarying vec3 vCrowdIris;\nvarying vec3 vCrowdBrow;\nuniform sampler2D crowdFace;\n#endif\n",
+      CUSTOM_FRAGMENT_UPDATE_DIFFUSE: `#ifdef CROWD
+baseColor.rgb = vCrowd;
+if (vCrowdUV.x >= 0.0) {
+  vec4 fc = texture2D(crowdFace, vCrowdUV);
+  vec2 fm = texture2D(crowdFace, vCrowdUV + vec2(0.5, 0.0)).rg;
+  vec3 ink = fc.rgb * mix(vec3(1.0), vCrowdIris, fm.r) * mix(vec3(1.0), vCrowdBrow, fm.g);
+  baseColor.rgb = mix(vCrowd, ink, fc.a);
+}
+#endif
+`,
     };
   }
 }
@@ -349,12 +375,15 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
   mesh.bakedVertexAnimationManager = manager;
 
   mesh.setVerticesData("crowdRegion", parts.region, false, 1);
+  mesh.setVerticesData("crowdUV", parts.faceUV, false, 2);
+  const faceTex = new B.Texture(FACE_URL, scene, false, true, B.Texture.TRILINEAR_SAMPLINGMODE);
+  faceTex.wrapU = faceTex.wrapV = B.Texture.CLAMP_ADDRESSMODE;
 
   const m = new B.StandardMaterial("crowd3d", scene);
   m.specularColor = new B.Color3(0, 0, 0);
   m.backFaceCulling = false;   // the scarf and the face are single sheets
   m.twoSidedLighting = true;
-  m.crowd = new CrowdPlugin(m);
+  m.crowd = new CrowdPlugin(m, faceTex);
   m.toon = new ToonPlugin(m);
   mesh.material = m;
   // the mesh keeps its loaded world matrix F; instance x F = F x D, so D places the seat
@@ -362,7 +391,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
 
   const n = seats.length;
   const mats = new Float32Array(16 * n), shirt = new Float32Array(4 * n), skin = new Float32Array(4 * n), hair = new Float32Array(3 * n);
-  const vatSet = new Float32Array(4 * n);
+  const vatSet = new Float32Array(4 * n), eye = new Float32Array(4 * n);
   const people = [];
   const cheers = ["armsUp", "armsUp", "jump", "clap"];   // CHEERS, arms up twice as often
   const D = new B.Matrix(), q = new B.Quaternion(), M = new B.Matrix();
@@ -377,6 +406,8 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
     shirt.set([...s.shirt, s.fan && rnd() < 0.55 ? 1 : 0], 4 * i);
     skin.set([...s.skin, 0.7 + 0.6 * rnd()], 4 * i);
     hair.set(s.hair, 3 * i);
+    const smile = rnd() < SMILE ? 1 : 0;
+    eye.set([...B.Color3.FromHexString(EYES[Math.floor(rnd() * EYES.length)]).asArray(), smile], 4 * i);
     const r = rnd();
     const base = r < 0.06 ? "sitClap" : r < 0.1 ? "stand" : "sit";
     const p = {
@@ -385,7 +416,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
       delay: REACT.delay[0] + (REACT.delay[1] - REACT.delay[0]) * rnd(),
       stay: REACT.stay[0] + (REACT.stay[1] - REACT.stay[0]) * rnd(),
       cheer: cheers[Math.floor(rnd() * cheers.length)],
-      pose: null,
+      pose: null, smile,
     };
     people.push(p);
   });
@@ -393,6 +424,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
   mesh.thinInstanceSetBuffer("crowdShirt", shirt, 4, true);
   mesh.thinInstanceSetBuffer("crowdSkin", skin, 4, true);
   mesh.thinInstanceSetBuffer("crowdHair", hair, 3, true);
+  mesh.thinInstanceSetBuffer("crowdEye", eye, 4, false);
   mesh.thinInstanceSetBuffer("bakedVertexAnimationSettingsInstanced", vatSet, 4, false);
   mesh.alwaysSelectAsActiveMesh = true;
   mesh.isPickable = false;
@@ -419,9 +451,14 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
       speed = 0;
     }
     vatSet[4 * i] = r[0]; vatSet[4 * i + 1] = r[1]; vatSet[4 * i + 2] = off; vatSet[4 * i + 3] = speed;
+    const e = Math.fround(pose ? 1 : p.smile);   // the joy face from the rise to the seat
+    if (eye[4 * i + 3] !== e) { eye[4 * i + 3] = e; eyeDirty = true; }
   };
+  let eyeDirty = false;   // only the expression changes, at the rise and the sit: upload crowdEye then
   people.forEach((_, i) => settings(i, null));
   mesh.thinInstanceBufferUpdated("bakedVertexAnimationSettingsInstanced");
+  mesh.thinInstanceBufferUpdated("crowdEye");
+  eyeDirty = false;
 
   let dirty = true;
   const crowd = {
@@ -437,6 +474,7 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
         changed = true;
       });
       if (changed || dirty) mesh.thinInstanceBufferUpdated("bakedVertexAnimationSettingsInstanced");
+      if (eyeDirty) { mesh.thinInstanceBufferUpdated("crowdEye"); eyeDirty = false; }
       dirty = changed;   // one more upload after the last change puts everyone back on their loop
     },
     // for the tests: the clip a spectator shows at ts

@@ -10,7 +10,7 @@ Turn it off with `sample3d.html?aware=0` to compare.
 
 ## The problem, measured on M001
 
-The product owner's complaint: defenders seem to watch another ball and nobody shows any emotion.
+The fault: defenders seem to watch another ball and nobody shows any emotion.
 `scripts/defence_reaction.py M001` measures whether the defending team in the export reacts to
 the ball. Every number is computed twice: on the real tracking, and on a control where the ball
 is taken from five minutes later. A team that reacts shows a clear gap between the two.
@@ -84,8 +84,6 @@ Defender orientation, jockeying, backpedal
   position. https://www.jssm.org/jssm-06-63.xml-Fulltext
 - F15 [M] Top backward running speed 5.1 m/s, 70% of forward.
   https://pages.uoregon.edu/btbates/backward/alan2.htm
-- F16 [D] FIFA 23: jockeying players turn at many angles; decelerating into a jockey takes more
-  steps. https://www.ea.com/ea-play/news/pitch-notes-fifa-23-gameplay-deep-dive
 
 Open body shape
 
@@ -126,7 +124,7 @@ Celebrations, dejection, near misses, keeper
 - F29 [C] Free kick: the keeper lines up the wall from the near post, then moves to the uncovered
   side. https://www.soccercoachweekly.net/drills-and-games/drills/soccer-coaching-tips-to-build-a-defensive-wall
 
-How games layer it
+How animation engines layer it
 
 - F30, F31 [D] Motion matching (Ubisoft): pick the clip frame that matches the pose and future path.
   https://gdcvault.com/play/1022985/Motion-Matching-and-The-Road ,
@@ -137,7 +135,7 @@ How games layer it
   https://dev.epicgames.com/documentation/en-us/unreal-engine/blend-masks-and-blend-profiles-in-unreal-engine
 
 Not found as numbers: the distance at which a defender turns to face the carrier, the angle at
-which FIFA or eFootball switch to a backpedal, and the duration of dejection, appeals and hands on
+which a defender switches to a backpedal, and the duration of dejection, appeals and hands on
 head.
 
 ## Rules in the code

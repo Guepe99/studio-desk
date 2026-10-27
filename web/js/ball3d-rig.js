@@ -10,7 +10,7 @@
 import { BallPlan, legPose, bodyPose } from "./ball3d.js";
 
 const B = window.BABYLON;
-const KINDS = ["shot", "long", "pass", "touch", "trap", "roll", "drag", "stepover", "feint"];
+const KINDS = ["shot", "long", "pass", "touch", "trap", "roll", "drag", "stepover", "feint", "shimmy"];
 // the sole moves rest on top of the ball: its centre lies under the front of the foot, not ahead of it
 const ON_TOP = new Set(["roll", "drag", "stepover"]);
 

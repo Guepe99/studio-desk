@@ -4,8 +4,8 @@
 // touchline and 18 m up, so the line of sight drops 27.9 degrees to that touchline and 14.8 degrees
 // to the centre spot (Free TV Australia OP-32, 2.2.2: 30 to 40 m back, 20 to 30 and 12 to 16
 // degrees, 60 m at most; UEFA E.2.1: 12 to 15 degrees to the centre spot). From that far away it
-// works on a long lens, which flattens depth the way TV pictures do; a near wide-angle camera is
-// what makes a match look like a video game. Like an operator it:
+// works on a long lens, which flattens depth the way TV pictures do; a near wide-angle camera
+// does not look like TV. Like an operator it:
 // - aims at the ball blended with the centroid of the players near it, plus a lead of where the
 //   ball is going (0.7 s of its smoothed velocity), so the frame opens up in the direction of play;
 // - follows that aim through a critically damped spring with a dead zone (pan and zoom have
@@ -238,7 +238,7 @@ export class Cameras {
     const aim = new B.Vector3(now[0], TIGHT.aim, now[1]);
     cam.setTarget(aim);
     const dist = B.Vector3.Distance(cam.position, aim);
-    // no phone zoom: already knees up; capped under 16 degrees across when the scorer runs at the camera
+    // no phone zoom: already head to feet; capped under 16 degrees across when the scorer runs at the camera
     cam.fov = Math.min(this._fovFor(cam, TIGHT.width, dist), 2 * Math.atan(Math.tan(7.9 * DEG) / this._aspect(cam)));
     this.focus = dist;
     this.scene.activeCamera = cam;
@@ -316,7 +316,7 @@ export class Cameras {
   // The operator's punch-in on a shot: from 1.6 s before it he zooms in towards the goal mouth
   // where the ball ends up, so the strike, the keeper and the net read large; on a goal PUNCH.width
   // across, held until the cut to camera 2; on any other shot SHOT_PUNCH, let go after the strike,
-  // the way a game camera leans in on a shot; a goal's too when there is no cut to camera 2 (above
+  // a short lean in on a shot; a goal's too when there is no cut to camera 2 (above
   // 4x). Returns the shown [x, z, width].
   _punch(ts, s, cuts = true) {
     const out = (q) => q.out || (cuts ? 0 : SHOT_PUNCH.out);

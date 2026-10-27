@@ -198,7 +198,7 @@ how often such a thing happens in real football, no more.
     node --test tests/web/forecast.test.mjs
     WEBGL=0 scripts/with-lock.sh chromium tests/web/run-smoke.sh forecast.mjs
 
-The calibration takes about 4 minutes on a shared 2-vCPU server (run it detached if the build lock is busy). It
+The calibration takes about 4 minutes on a 2-core machine (run it detached if the build lock is busy). It
 writes `studiodesk/forecast_params.json` and adds a run to `data/forecast.sqlite` (tables
 `forecast_runs`, `forecast_samples`, `forecast_scores`, `forecast_reliability`). The same seed gives the
 same numbers (`test_calibration_is_reproducible`).

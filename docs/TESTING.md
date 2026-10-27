@@ -2,7 +2,7 @@
 
 These steps take about five minutes on a computer with an up-to-date browser. You need no account and nothing to install. Until 11 Nov 2026 one replica of the site is always on, so pages load at once; after that it is scaled to zero and the first page after an idle spell can take about 30 s.
 
-Every visitor gets their own session, kept in a cookie. Your decisions never reach another judge, and each match starts with no decisions. A reload keeps the decisions you made.
+Every visitor gets their own session, kept in a cookie. Your decisions never reach another visitor, and each match starts with no decisions. A reload keeps the decisions you made.
 
 **3D or 2D.** On a computer with a graphics card the picture is 3D, with the 2D pitch as a small see-through minimap at the bottom; click the minimap to swap the two views. On a machine without a graphics card (a virtual machine or a remote desktop, where the browser draws in software) the page opens on the 2D pitch. Add `&view=split` to any link below to bring the 3D view back; it may run slowly there.
 

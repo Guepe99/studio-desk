@@ -1,4 +1,4 @@
-// The two broadcast moments at the ends of the replay (plan step p65): a 3-2-1 "Kick off" count when the
+// The two broadcast moments at the ends of the replay: a 3-2-1 "Kick off" count when the
 // viewer presses Play at the very start, and a "Full time" strap in the last seconds before the final whistle.
 //
 // The count holds the clock: Play starts it, the match clock runs from "Kick off" (COUNT_S real seconds
