@@ -2,8 +2,11 @@
 // audience and language each, driven by one master transport. Each window is index.html with its URL
 // parameters; this page only reads and drives window.studioDesk in each (app.js) and hides the page's own
 // controls with a style element of its own. Broadcast conventions: a name strip (UMD) under each picture,
-// a tally border on the window whose sound is live, and an audio meter on it.
+// a tally border on the window whose sound is live, and an audio meter on it. Beside the wall, the broadcast
+// page's own desk (desk.js) for the match: one decisions map, shared by the four windows' hidden desks.
+// The large window shows the 3D view, the small ones the 2D pitch (one 3D scene drawn at a time).
 import { WINDOWS, windowUrl, lagging, drift, umdLabel } from "./multiview-logic.js";
+import { Desk } from "./desk.js";
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -23,7 +26,7 @@ const PICTURE_ONLY = `
   #frame { border-radius: 0 !important; box-shadow: none !important; outline: none !important; }`;
 
 const wall = $("#mv-wall"), playBtn = $("#mv-play");
-let playing = false, live = -1, goalsBuilt = false;
+let playing = false, live = -1, goalsBuilt = false, desk = null;
 const meters = new WeakMap();   // AudioContext -> {an, buf}
 
 const wins = WINDOWS.map((w0, i) => {
@@ -83,7 +86,7 @@ function listen(i) {
   live = live === i ? -1 : i;   // the live window clicked again: all quiet
   wins.forEach((w, j) => {
     sound(w, j === live);
-    w.fig.classList.toggle("tally", j === live);
+    w.fig.classList.toggle("mv-tally", j === live);
     w.hit.setAttribute("aria-pressed", String(j === live));
   });
   fit();
@@ -101,8 +104,34 @@ $("#mv-single").addEventListener("click", (e) => {
   e.currentTarget.href = `index.html?match=${match}&t=${Math.floor(d?.state.ts ?? start)}${playing ? "&play=1" : ""}`;
 });
 document.addEventListener("keydown", (e) => {
-  if ((e.key === " " || e.key === "k") && !e.target.closest("button")) { e.preventDefault(); setPlaying(!playing); }
+  // in the desk, K moves between stories and Space types or presses
+  if ((e.key === " " || e.key === "k") && !e.target.closest("button, #desk")) { e.preventDefault(); setPlaying(!playing); }
+  if (e.key === "Escape" && !e.defaultPrevented && document.body.classList.contains("desk-open") && !e.target.closest?.("textarea, input")) desk?.closeDrawer();
 });
+// the drawer on narrow screens, as on the broadcast page (app.js)
+$("#desk-open").addEventListener("click", () => {
+  const open = !document.body.classList.contains("desk-open");
+  desk?.setDrawer(open);
+  if (open) $("#desk").querySelector('[role="tab"][aria-selected="true"]')?.focus();
+});
+matchMedia("(max-width: 1099px)").addEventListener("change", (e) => { if (!e.matches) desk?.setDrawer(false); });
+
+// The desk: built on the first window's match and clock (the others are kept on it), listing the generated
+// graphics of all four audiences. A decision lands in the one map the four windows' desks share, and each
+// window redraws its own cue sheet from it, as the broadcast page does after a decision (desk.js changed).
+function share(w) {
+  const d = sd(w)?.desk;
+  if (!d || !desk) return;
+  Object.assign(d, { decisions: desk.decisions, kill: desk.kill });
+  d.changed();
+}
+async function buildDesk(d) {
+  desk = new Desk($("#desk"), { match: d.match, matchId: match, state: d.state, delay: 0, audiences: wins.map((w) => w.audience),
+    seek: (ts) => { for (const w of wins) sd(w)?.seek(ts); }, onChange: () => { for (const w of wins) if (w.shared) share(w); } });
+  desk.render();
+  await desk.load();
+  await desk.connect();
+}
 
 // one button per goal, copied from the first window's own goal buttons (team code and minute on its colour);
 // a press clicks the same button in every window, so each lands where the broadcast page lands
@@ -131,6 +160,10 @@ function tick() {
   if (!ready.length) return;
   const ref = ready.includes(wins[live]) ? wins[live] : ready[0], r = sd(ref);
   if (!goalsBuilt) buildGoals(ref.frame.contentWindow);
+  if (!desk && sd(wins[0])?.match) buildDesk(sd(wins[0]));
+  // a window's desk exists from its match on; it takes the shared decisions once (later ones reach it through onChange)
+  for (const w of ready) if (!w.shared && sd(w).desk && desk) { w.shared = true; share(w); }
+  desk?.setLive(ready.flatMap((w) => [...sd(w).host.live.values()].map((i) => i.cue)));
   for (const w of ready) if (!w.named) { w.named = true; label(w); }   // a team by its name once its match is in
   // the broadcast page focuses its picture when it loads: the keyboard belongs to this page
   if (document.activeElement instanceof HTMLIFrameElement) document.activeElement.blur();
@@ -142,6 +175,9 @@ function tick() {
     if (!d?.match) return;
     if (d.state.playing !== playing) d.setPlaying(playing);
     if (d.voice && d.voice.on !== (j === live)) sound(w, j === live);   // a voice that loaded after the click
+    // the large window in 3D, the rest in 2D; a window whose 3D view failed stays on its 2D pitch
+    const view = j === live && wall.classList.contains("focus") ? "3d" : "2d", v3 = d.view3d;
+    if (v3 && v3.mode !== view && !v3.failed && !v3.lost) v3.set(view);
   });
   const c = r.match.clock(Math.min(r.state.ts, r.match.duration));
   $("#mv-clock").textContent = `${c.label}' ${c.period === 1 ? "1H" : "2H"}  ${fmt(r.state.ts)}`;
@@ -203,4 +239,4 @@ ONE_COL.addEventListener("change", fit);
 fit();
 requestAnimationFrame(tick);
 // for tests: the windows and the master state
-window.multiview = { wins, sd, listen, setPlaying, get live() { return live; }, get playing() { return playing; } };
+window.multiview = { wins, sd, listen, setPlaying, get desk() { return desk; }, get live() { return live; }, get playing() { return playing; } };

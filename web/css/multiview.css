@@ -1,7 +1,11 @@
 /* The producer's multiviewer (multiview.html), on the palette of broadcast.css: a dark gallery wall,
    a name strip (UMD) under each picture, and a tally border on the window whose sound is live. */
 /* one screen high with the wall two by two (multiview.js fits the pictures in what is left); a narrow screen scrolls */
-body.mv { background: var(--purple-900); color: var(--page); height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+body.mv { background: var(--purple-900); color: var(--page); height: 100vh; height: 100dvh; display: flex; }
+/* the wall and its head in a column, left of the docked desk (desk.css); not the broadcast page's #app */
+body.mv > #app { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; min-height: 0; }
+/* the desk keeps the broadcast page's text colour on its white panel, not the wall's */
+body.mv > #desk { color: var(--purple); }
 body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 .mv-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; padding: 12px 16px 10px; }
@@ -45,10 +49,10 @@ body.mv :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .mv-meter i { width: 100%; height: 100%; background: linear-gradient(to top, var(--green) 70%, var(--yellow) 88%, var(--error)); transform: scaleY(0); transform-origin: bottom; }
 .mv-live { visibility: hidden; padding: 3px 6px; border-radius: 4px; background: var(--green); color: var(--purple); font-size: 11px; letter-spacing: .08em; }
 
-/* tally: the window whose sound is live */
-.mv-win.tally .mv-pic { outline-color: var(--green); }
-.mv-win.tally .mv-umd { box-shadow: 0 0 0 4px var(--green); }
-.mv-win.tally .mv-meter, .mv-win.tally .mv-live { visibility: visible; }
+/* tally: the window whose sound is live (mv-tally: desk.css has its own .tally) */
+.mv-win.mv-tally .mv-pic { outline-color: var(--green); }
+.mv-win.mv-tally .mv-umd { box-shadow: 0 0 0 4px var(--green); }
+.mv-win.mv-tally .mv-meter, .mv-win.mv-tally .mv-live { visibility: visible; }
 
 @media (max-width: 899px), (orientation: portrait) {
   body.mv { height: auto; min-height: 100vh; min-height: 100dvh; }

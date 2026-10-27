@@ -599,11 +599,13 @@ export class Desk {
   // with a broadcast delay the desk runs that far ahead of the picture (delay.js): a story is listed once written at the live time
   visible(s, now = this.state.ts) { return s.ts <= now + (this.delay ?? 0) && this.firstOf(s) <= now + LOOKAHEAD_S; }
   isNext(s, now = this.state.ts) { return this.firstOf(s) > now; }
+  /** A generated graphic this desk lists: of the audience on screen, or of any window's (opts.audiences, multiview.js). */
+  ours(g) { return (this.audiences ?? [this.state.audience]).includes(g.audience); }
   /** The stories reached, and the generated graphics of the audience on screen: of those still waiting,
    *  only the soonest is listed, so at most one waits at a time (the others wait unlisted, or expire).
    *  A filler is never listed: it shows in On air now only, while it is on screen (airRows). */
   shown() {
-    const gens = this.gens.filter((g) => g.audience === this.state.audience && !g.filler && this.visible(g));
+    const gens = this.gens.filter((g) => this.ours(g) && !g.filler && this.visible(g));
     const wait = gens.filter((g) => this.status(g) === "needs_review").sort((a, b) => this.firstOf(a) - this.firstOf(b))[0];
     return [...this.stories.filter((s) => this.visible(s)), ...gens.filter((g) => g === wait || this.status(g) !== "needs_review")];
   }
@@ -1023,7 +1025,7 @@ export class Desk {
     this.liveCues = cues;
     this.live = new Set(cues.map((c) => c.story_id ?? this.genOf.get(slot(c))?.story_id).filter(Boolean));
     // a story, or a generated graphic of the audience on screen, also counts once it is missed (3)
-    const reach = [...this.stories, ...this.gens.filter((g) => g.audience === this.state.audience)]
+    const reach = [...this.stories, ...this.gens.filter((g) => this.ours(g))]
       .map((s) => (this.status(s) === "expired" ? 3 : this.firstOf(s) <= now ? 2 : this.visible(s, now) ? 1 : 0)).join("");
     const key = `${cues.map((c) => c.cue_id).sort().join(" ")}|${reach}`;
     const a = document.activeElement, typing = this.root.contains(a) && a.matches("input, textarea");

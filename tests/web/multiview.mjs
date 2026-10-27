@@ -6,12 +6,14 @@
 // keyboard focus stays on this page; Play keeps the four within 0.5 s and a window pushed 3 s away is
 // brought back; a goal button moves all four; a click on a window gives it the tally and its sound (the
 // booth's audio context running, crowd or lines playing) and silences the others; a second window takes it
-// over. Then the autoplay rule on a fresh page, read only through CDP until real clicks (Playwright's evaluate
+// over; the large window shows the 3D view at the same time with its sound, and back in the grid it is 2D again.
+// The desk beside the wall: a decision there (Take off on the first goal) reaches the four windows' cue sheets.
+// At 1280x720 the desk is docked beside the four windows, all on screen. Then the autoplay rule on a fresh page, read only through CDP until real clicks (Playwright's evaluate
 // counts as a user gesture): a control first, an audio context made in a window before any click must stay
 // suspended, or the browser does not apply the rule and the check says SKIP; then a click on a window and on
 // Play must start that window's sound and no other.
 // No console errors. Screenshots
-// at 1920x1080 and 390x844: out/shots/multiview-*.png.
+// at 1920x1080, 1280x720 and 390x844: out/shots/multiview-*.png.
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -58,12 +60,22 @@ expect(setup.every((s) => s.frameW === 960), "each picture fills its 960 px wind
 expect(setup[2].umd === "Ostwick FC fan · IT", `the name strip names the team: ${setup[2].umd}`);
 expect(await page.evaluate(() => !document.activeElement || document.activeElement.tagName !== "IFRAME"), "the keyboard focus stays on the multiviewer");
 expect((await page.locator("#mv-goals button").count()) === 4, "four goal buttons");
+await page.waitForFunction(() => window.multiview.desk?.ready && window.multiview.wins.every((w) => w.shared), null, { timeout: 30000 });
+const deskBox = await page.evaluate(() => { const r = document.querySelector("#desk").getBoundingClientRect(), wall = document.querySelector("#mv-wall").getBoundingClientRect();
+  return { visible: getComputedStyle(document.querySelector("#desk")).visibility === "visible", beside: r.left >= wall.right - 1, needs: !!document.querySelector("#desk .sec-needs"), w: r.width }; });
+expect(deskBox.visible && deskBox.beside && deskBox.needs, `the desk is docked beside the wall with Needs you (${JSON.stringify(deskBox)})`);
+expect(await page.evaluate(() => window.multiview.wins.every((w) => window.multiview.sd(w).desk.decisions === window.multiview.desk.decisions)), "the four windows share the desk's decisions");
 
 // play: the four stay together
 await page.click("#mv-play");
 await page.waitForTimeout(3000);
 // the sound: a click on window 3 gives it the tally and the audio, the others stay quiet
 await page.click(".mv-win:nth-child(3) .mv-hit");
+// the large window builds its 3D scene: in software WebGL the page stalls for a while (tens of seconds)
+const up3d = (i) => page.waitForFunction((i) => { const v = window.multiview.sd(window.multiview.wins[i]).view3d; return v.shown === "3d" || v.failed || v.lost; }, i, { timeout: 180000, polling: 1000 });
+const t3 = Date.now();
+await up3d(2);
+console.log(`     window 3's 3D view up in ${((Date.now() - t3) / 1000).toFixed(1)} s`);
 await page.waitForTimeout(3000);
 let ts = await times();
 console.log(`     after 6 s of play: ${ts.map((x) => x.toFixed(2)).join(" ")}`);
@@ -73,13 +85,14 @@ await page.screenshot({ path: path.join(shots, "multiview-1920.png") });
 
 // a window pushed away is brought back
 await page.evaluate(() => { const d = window.multiview.sd(window.multiview.wins[2]); d.seek(d.state.ts + 3); });
-await page.waitForTimeout(500);
+// window 3 is large and in 3D: in software WebGL the seek replans its scene, and a frame can take over 500 ms
+await page.waitForFunction(() => { const t = window.multiview.wins.map((w) => window.multiview.sd(w).state.ts); return Math.max(...t) - Math.min(...t) <= 0.5; }, null, { timeout: 5000, polling: 100 }).catch(() => {});
 ts = await times();
 expect(spread(ts) <= 0.5, `a window 3 s away is brought back (${spread(ts).toFixed(3)} s)`);
 
 const audio = () => page.evaluate(() => window.multiview.wins.map((w) => {
   const d = window.multiview.sd(w);
-  return { tally: w.fig.classList.contains("tally"), on: d.voice.on, ctx: d.booth?.ctx?.state ?? "none", ...(d.booth?.status ?? {}) };
+  return { tally: w.fig.classList.contains("mv-tally"), on: d.voice.on, ctx: d.booth?.ctx?.state ?? "none", ...(d.booth?.status ?? {}) };
 }));
 let a = await audio();
 console.log(JSON.stringify(a));
@@ -106,14 +119,25 @@ expect(spread(ts) <= 0.5, `still within 0.5 s with the reference on window 1 (${
 const box = () => page.$$eval(".mv-pic", (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, b: r.bottom }; }));
 let bx = await box();
 console.log(JSON.stringify(bx));
-expect(bx[0].w > 2 * bx[1].w && bx[1].w === bx[2].w && bx[2].w === bx[3].w, "window 1 large, the others small");
+expect(bx[0].w > 2 * bx[1].w && bx[1].w === bx[2].w && bx[2].w === bx[3].w && Math.abs(bx[0].y - bx[1].y) < 1, "window 1 large, the others small, tops aligned");
 expect(bx.slice(1).every((r) => r.x > bx[0].x + bx[0].w) && Math.max(...bx.map((r) => r.b)) <= 1080, "the small ones beside it, all on screen");
+// the large window in 3D, the small ones in 2D, at the same time and with its sound on
+const views = () => page.evaluate(() => window.multiview.wins.map((w) => window.multiview.sd(w).view3d.shown));
+const in3d = await up3d(0).then(() => true, () => false);
+let vs = await views();
+expect(in3d && vs.join() === "3d,2d,2d,2d", `the large window shows the 3D view, the others 2D (${vs.join()})`);
+ts = await times();
+a = await audio();
+expect(spread(ts) <= 0.5 && a[0].on, `in 3D it keeps its time and its sound (${spread(ts).toFixed(3)} s, voice ${a[0].on})`);
 await page.screenshot({ path: path.join(shots, "multiview-focus.png") });
 await page.click(".mv-win:nth-child(1) .mv-hit");
 await page.waitForTimeout(1000);
 bx = await box();
 expect(bx.every((r) => r.w === bx[0].w), "clicked again: all four the same size");
+vs = await views();
+expect(vs.every((v) => v === "2d"), `back in the grid, all four in 2D (${vs.join()})`);
 await page.click(".mv-win:nth-child(1) .mv-hit");   // back to window 1 live for the checks below
+await up3d(0);
 await page.waitForTimeout(1000);
 
 // a goal button moves all four
@@ -127,12 +151,41 @@ await page.click("#mv-play");
 await page.waitForTimeout(300);
 expect(await page.evaluate(() => window.multiview.wins.every((w) => !window.multiview.sd(w).state.playing)), "pause stops all four");
 
+// a decision on the desk reaches the four windows: the first goal's story taken off air at 600, in every window's sheet
+await page.evaluate(() => window.multiview.desk.seek(600));
+const goalCues = () => page.evaluate(() => window.multiview.wins.map((w) => window.multiview.sd(w).host.cues.filter((c) => c.story_id === "S-000002").length));
+const before = await goalCues();
+expect(before.every((n) => n > 0), `before: every window has the goal story's cues (${before.join()})`);
+await page.locator("#story-S-000002 [data-key=r]").click();
+await page.waitForTimeout(300);
+const after = await goalCues();
+const decided = await page.evaluate(() => window.multiview.wins.map((w) => window.multiview.sd(w).desk.decisions.get("S-000002")?.decision));
+expect(after.every((n) => n === 0) && decided.every((d) => d === "rejected"), `Take off on the desk: the goal story leaves all four windows (${after.join()}; ${decided.join()})`);
+expect(await page.evaluate(() => window.multiview.wins.every((w) => ![...window.multiview.sd(w).host.live.values()].some((i) => i.cue.story_id === "S-000002"))), "and none of the four shows it");
+
+// 1280x720: the desk docked beside the wall, the four windows on screen, nothing sideways
+await page.click(".mv-win:nth-child(1) .mv-hit");   // all four the same size
+await page.setViewportSize({ width: 1280, height: 720 });
+await page.waitForTimeout(800);
+const mid = await page.evaluate(() => { const d = document.querySelector("#desk").getBoundingClientRect(), pics = [...document.querySelectorAll(".mv-pic")].map((e) => e.getBoundingClientRect());
+  return { desk: [Math.round(d.left), Math.round(d.right), Math.round(d.bottom)], picsRight: Math.round(Math.max(...pics.map((r) => r.right))), picsBottom: Math.round(Math.max(...pics.map((r) => r.bottom))),
+    sideways: document.documentElement.scrollWidth > innerWidth };
+});
+expect(mid.desk[1] <= 1280 && mid.desk[2] <= 720 && mid.picsRight <= mid.desk[0] && mid.picsBottom <= 720 && !mid.sideways, `1280x720: desk docked, four windows beside it on screen (${JSON.stringify(mid)})`);
+await page.screenshot({ path: path.join(shots, "multiview-1280.png") });
+
 // a phone: one column, no sideways scroll
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(800);
 const phone = await page.evaluate(() => ({ cols: getComputedStyle(document.querySelector("#mv-wall")).gridTemplateColumns.split(" ").length,
   sideways: document.documentElement.scrollWidth > innerWidth }));
 expect(phone.cols === 1 && !phone.sideways, `phone: one column, no sideways scroll (${JSON.stringify(phone)})`);
+await page.click("#desk-open");
+await page.waitForTimeout(400);
+const drawer = await page.evaluate(() => { const r = document.querySelector("#desk").getBoundingClientRect(); return { open: getComputedStyle(document.querySelector("#desk")).visibility === "visible", left: r.left, right: r.right }; });
+expect(drawer.open && drawer.left >= 0 && drawer.right <= 390, `phone: the Desk button opens the desk as a sheet (${JSON.stringify(drawer)})`);
+await page.screenshot({ path: path.join(shots, "multiview-390-desk.png") });
+await page.keyboard.press("Escape");
 await page.screenshot({ path: path.join(shots, "multiview-390.png"), fullPage: true });
 
 // The autoplay rule, on a fresh page. Playwright's evaluate counts as a user gesture, so until the clicks this
