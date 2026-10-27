@@ -65,7 +65,7 @@ Italian and Spanish clips yet: the product owner should, as for English.
   that left the replay. When the AI pack for a match is regenerated, run the script again: only
   the changed texts are sent to Azure.
 - Key: `key1` of `studiodesk-speech`, read at run time from the Azure CLI (or `SPEECH_KEY`), never
-  written to disk. Entra ID tokens need a custom subdomain, which this F0 resource does not have.
+  written to disk. The script keeps the key, though the resource now has the custom subdomain that Entra ID tokens need.
 - One run per language (`--lang en|it|es`); a run keeps the manifest rows and clips of the other
   languages.
 

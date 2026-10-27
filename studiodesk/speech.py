@@ -33,6 +33,8 @@ WAIT_S = 10.0
 # F0 may still answer 429 "resource constraints" while Speech scales up; Microsoft's advice is to try again
 # (speech-services-quotas-and-limits): two more tries after these pauses
 BUSY_RETRY_S = (1.0, 2.0)
+# all the tries end within this, so the Speech slot is free before the page gives up at 30 s (ask-voice.js)
+BUSY_BUDGET_S = 25.0
 
 
 def available() -> bool:
@@ -57,13 +59,14 @@ def transcribe(audio: bytes, lang: str, token: str) -> str:
     """The text Azure Speech heard in `audio`, "" when it heard no words; raises on any other outcome.
     `token` is a Microsoft Entra token for https://cognitiveservices.azure.com, sent as the API asks:
     aad#<resource id>#<token>."""
+    end = time.monotonic() + BUSY_BUDGET_S
     for wait in BUSY_RETRY_S + (None,):
         r = httpx.post(f"{ENDPOINT}/speech/recognition/conversation/cognitiveservices/v1",
                        params={"language": LOCALES[lang], "format": "simple", "profanity": "masked"},
                        headers={"Authorization": f"Bearer aad#{RESOURCE_ID}#{token}", "Content-Type": CONTENT_TYPE,
                                 "Accept": "application/json"},
-                       content=audio, timeout=TIMEOUT_S)
-        if r.status_code != 429 or wait is None:
+                       content=audio, timeout=min(TIMEOUT_S, end - time.monotonic()))
+        if r.status_code != 429 or wait is None or end - time.monotonic() - wait < 5:  # no time left for a try
             break
         time.sleep(wait)
     r.raise_for_status()

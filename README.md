@@ -138,7 +138,7 @@ The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stor
 
 ## Measured numbers
 
-The test counts were measured on commit `7c5474b` on 26 Oct 2026, and the run with the model off on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md).
+The test counts were measured on commit `fc53775` on 27 Oct 2026, and the run with the model off on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md).
 
 **Tests.** 657 Python tests passed in 4 min 41 s and 272 browser-logic tests in 1 min 56 s; the commands are in [Run it locally](#run-it-locally).
 

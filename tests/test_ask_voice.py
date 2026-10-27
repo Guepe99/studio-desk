@@ -174,3 +174,9 @@ def test_transcribe_tries_again_when_speech_is_busy(monkeypatch):
     statuses[:] = [429, 429, 429]
     with pytest.raises(httpx.HTTPStatusError):  # busy three times: the route answers 502 as before
         speech.transcribe(b"audio", "en", "tok")
+    now = iter([0.0, 0.0, 21.0])  # the first 429 took 21 s: no try fits in the 25 s budget
+    monkeypatch.setattr(speech.time, "monotonic", lambda: next(now))
+    statuses[:], slept[:] = [429, 200], []
+    with pytest.raises(httpx.HTTPStatusError):
+        speech.transcribe(b"audio", "en", "tok")
+    assert slept == [] and statuses == [200]
