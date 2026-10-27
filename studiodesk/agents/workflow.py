@@ -2,9 +2,11 @@
 
     MatchClock --event--> Desk.ingest (facts through MCP) --Batch--> workflow:
 
-        story_finder -> analyst -> commentator_en ┐
-                                -> commentator_it ├-> verifier -> director -> stories + cues
-                                -> commentator_es ┘
+        story_finder -> director -> stories + cues on air (phrasebook lines)
+
+        analyst -> commentator_en ┐
+                -> commentator_it ├-> verifier -> analysis and proposals on the desk
+                -> commentator_es ┘
 
 A batch starts when the clock releases a goal, a sprint above 34 km/h, a big chance (a shot judged
 rules.SETTLE_S after it is hit) or the end of a 5-minute window. Agents read the match only through the MCP server (studiodesk/mcp_server.py), served in
