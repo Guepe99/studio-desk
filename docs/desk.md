@@ -206,7 +206,7 @@ only cue: every tally colour also says its state in words (WCAG 1.4.1).
 
 On M001 at 8' the desk had nothing on air and nothing waiting. Measured on the
 committed packs (English sheet, stretches of play with no cue of the audience on screen), before
-this change:
+the change described here:
 
 | Match | Analyst | Casual and kids | First story |
 |---|---|---|---|

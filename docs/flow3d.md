@@ -162,7 +162,7 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
 Measured by `tests/web/flow3d-measure.mjs` on the default clip of M001 (from 582.99 s, 12 s of
 the live part, 22 players, stepped at 60 Hz without drawing), then the live page for 15 s for
 the frame pacing. Software WebGL 1, low profile. Before is commit 881caa9 (with the motion clips
-of `docs/motion3d.md`), after is this change on top of it; same window, same script.
+of `docs/motion3d.md`), after is that commit with the changes in this section; same window, same script.
 
 | What | Before | After |
 |---|---|---|
@@ -216,7 +216,7 @@ sprint loop's stride and the ground speed disagree, and the faster distance-matc
 those few steps slide further.
 
 The same checks run in `tests/web/sample3d-shots.mjs` on the DEMO window it opens (from 88 s).
-Their limits sit between the code before and after this change there: acceleration p95 24.2 before, 12.9
+Their limits sit between the code before and after the changes above: acceleration p95 24.2 before, 12.9
 after (limit 16); jog slide median 0.111 before, 0.086 after (limit 0.1); facing snaps 35
 before, 0 after (limit 0); ball radius 0.17 before, 0.11 after; keeper reactions 0 of 1 before,
 1 of 1 after; hands to ball at the DEMO save 0.85 m with the keeper layer off, 0.22 m with it on
@@ -448,17 +448,17 @@ The jog's planted foot slides about 1 cm more per step at the median (and less a
 warped swing is a rotation towards the mean pose, which follows the clip's foot path only
 roughly. The per-step limit of `sample3d-shots.mjs` (0.1 m) still holds: 0.07 m there.
 
-Checks: `node --test tests/web/cadence.test.mjs tests/web/root.test.mjs` (on the round-1 code
+Checks: `node --test tests/web/cadence.test.mjs tests/web/root.test.mjs` (on the code before this section
 they fail: "3.66 m/s: 2.21 steps/s, want 2.8 to 2.96"; "T.rootAt is not a function").
-`CHECK=1 ... motion-flow-measure.mjs` now also fails on a jog under 2.6 steps/s: on the round-1
-code from 530 s "FAIL jogging at 3.663 m/s with 2.204 steps/s", on the new code PASS on M001 512
+`CHECK=1 ... motion-flow-measure.mjs` now also fails on a jog under 2.6 steps/s: on the code before
+this section, from 530 s "FAIL jogging at 3.663 m/s with 2.204 steps/s", on the new code PASS on M001 512
 and 530 (both bodies), M002 518, M003 455 and M004 583.
 Kick and touch checks after the change: `kick3d-shots.mjs` (default and anime), `feet3d.mjs`
 (DEMO and M001, both bodies), `feet3d-stills.mjs`, `sample3d-shots.mjs` (WebGL 1 and 2) and
 `view3d.mjs` on M001 to M004: all pass, positions within the view's tolerance on every match. The
 one exception is the frame-rate fallback check of `view3d.mjs` on M001, at 0.1 to 0.2 fps on a
-loaded machine: it failed on both runs of the new code and on the round-1 code too (which also
-failed two more checks), so it is the load and not this change.
+loaded machine: it failed on both runs of the new code and on the code before them too (which also
+failed two more checks), so it is the load and not the changes.
 
 Stills (camera following the player from the broadcast side): `out/motion-flow/r2-before-run.png`,
 `r2-after-run.png` (T02-11 from 530 s + 11.0 to 14.4 s, a jog and a turn),
