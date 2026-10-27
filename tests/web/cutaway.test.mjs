@@ -33,7 +33,13 @@ test(`${id}: cutaways only in dead time, never over a tight shot or a replay, ba
   // after each goal whose kick-off leaves room, once the replay is over
   const kickoffs = plan.filter((c) => !RESTARTS.has(m.events.find((e) => e.ts === c.restart).type_name));
   assert.equal(kickoffs.length, m.goals.length, "one cutaway before each kick-off after a goal");
-  for (const c of kickoffs) assert.ok(m.goals.some((g) => c.from >= g.ts + 11.5 - 1e-9 && g.ts < c.restart), `kick-off cutaway at ${c.from} before the replay ends`);
+  const reps = replays(m);
+  for (const c of kickoffs) {
+    // the goal this kick-off restarts after, and its replay (view3d.js), not any earlier goal's
+    const g = m.goals.filter((x) => x.ts < c.restart).at(-1), rep = reps.find((r) => r.from > g.ts && r.from < c.restart);
+    assert.ok(rep, `no replay for the goal at ${g.ts}`);
+    assert.ok(c.from >= rep.to - 1e-9, `kick-off cutaway at ${c.from} before the replay ends at ${rep.to}`);
+  }
   assert.ok(new Set(plan.map((c) => c.kind)).size >= 3, "at least three kinds of shot");
   const busy = [...tightStops(m).map(([a, b]) => [a, b]), ...replays(m).map((r) => [r.from, r.to])];
   for (const [k, c] of plan.entries()) {

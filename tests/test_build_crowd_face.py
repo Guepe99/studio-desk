@@ -27,6 +27,8 @@ def test_card_has_two_eyes_brows_and_a_joy_face(tmp_path):
     assert (cols < C / 2).sum() > 100 and (cols >= C / 2).sum() > 100
     assert rows.mean() < 0.55 * C
     assert (page[:C, C:, 1] > 0.5).sum() > 50          # brows, tinted by hair colour
+    # the mask squares are transparent: the face plate's edge filters across the seam into them
+    assert page[:, C:, 3].max() == 0
     # the closed mouth's teeth stay behind the skin: almost nothing drawn under the eyes in the neutral face
     assert neutral[int(0.55 * C):, :, 3].mean() < 0.02
     # joy: the mouth opens (more ink low on the face) and the irises close

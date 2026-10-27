@@ -36,11 +36,15 @@ const DEG = Math.PI / 180;
 export const GROUND = {
   Head: 0.13, neck_01: 0.1, spine_03: 0.11, spine_02: 0.11, spine_01: 0.1, pelvis: 0.1, clavicle_l: 0.09, clavicle_r: 0.09,
   upperarm_l: 0.05, upperarm_r: 0.05, lowerarm_l: 0.04, lowerarm_r: 0.04, hand_l: 0.03, hand_r: 0.03,
-  thigh_l: 0.07, thigh_r: 0.07, calf_l: 0.05, calf_r: 0.05, foot_l: 0.04, foot_r: 0.04, ball_l: 0.01, ball_r: 0.01,
+  thigh_l: 0.07, thigh_r: 0.07, calf_l: 0.05, calf_r: 0.05, foot_l: 0.04, foot_r: 0.04, ball_l: 0, ball_r: 0,
 };
 // How far to raise a body whose joints are at heights y ({ bone: metres above the grass }) so that
-// every one of them clears GROUND; 0 when none is under.
-export const clearance = (y) => Math.max(0, ...Object.keys(GROUND).filter((b) => b in y).map((b) => GROUND[b] - y[b]));
+// every one of them clears GROUND; 0 when none is under. A plain loop: the rig calls it every frame.
+export const clearance = (y) => {
+  let up = 0;
+  for (const b in GROUND) if (b in y) up = Math.max(up, GROUND[b] - y[b]);
+  return up;
+};
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (u) => { const t = clamp(u, 0, 1); return t * t * (3 - 2 * t); };

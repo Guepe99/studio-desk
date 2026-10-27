@@ -19,6 +19,9 @@ jobs:
       - run: pip install -c constraints.txt -e '.[dev,agents]'  # tests/test_agents.py imports the Agent Framework
       # the seed build lets tests/test_replays.py check the committed packs (it fails, not skips, under CI)
       - run: python -m studiodesk.sim build --matches 4 --seed 7 && python -m studiodesk.facts build --all
+      # tests/test_build_crowd_face.py decodes and encodes PNGs with ffmpeg, as scripts/build_crowd_face.py does
+      - name: ffmpeg (apt)
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg && ffmpeg -version | head -1
       - run: pytest -q
       # the web tests read the exported packs: the seed build plus the committed agent output, as in the README
       - run: for m in M001 M002 M003 M004; do python -m studiodesk.export "$m"; done && cp -r replays/. web/data/ && python scripts/make_demo_fixture.py

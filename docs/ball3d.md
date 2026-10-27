@@ -22,9 +22,11 @@ the tracking data, the 2D page, the export and the facts do not change.
   ahead of him and slows down.
 - **Moves with a still ball** (`SKILLS`, `_skills`): a receiver who keeps a still ball (under
   1 m/s) gets a sole roll, a drag-back, a step-over, a shoulder feint or a shimmy from 0.32 s after
-  his first touch to 0.45 s before his next kick. On M001 every reception kept 1.17 s or more
-  gets one, except two before a set piece. Under 1 s there is no room and none gets one. Details
-  and the full counts in `docs/flow3d.md`.
+  his first touch to the start of his next kick's backswing (0.5 s before a long ball or a shot,
+  and before a pass too, which is only known to be long once its flight is planned). On M001
+  every reception kept 1.22 s or more gets one, except two before a set piece. Under that there
+  is no room for the shortest move and none gets one. Details and the full counts in
+  `docs/flow3d.md`.
 - **Spin**: the ball rolls without slipping on the ground (axis across the run, rate v/R), and in
   the air keeps the spin of the kick (backspin when lofted).
 - **Foot on the ball**: the player is shifted (motion warping) by up to 3 m around each contact so

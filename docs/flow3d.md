@@ -330,11 +330,14 @@ motion look mechanical. Windows of 20 s from 0, 120, 280, 512, 530 (minute 8) an
   drag-back and a touch that returns it (0.26 m), a step-over, a shoulder feint and a shimmy (the
   feint at 0.6 of its timing, 0.4 s, which fits a short hold), 0.15 to 0.5 s apart, from 0.32 s
   after the first touch. Never before a free kick, corner, penalty, goal kick or throw-in, never
-  within 0.45 s of the kick, and only while he is within 1.5 m of the ball. The ball's offset eases
-  with smoothstep and always ends at 0, so the tracking position is unchanged at the kick.
-  On the whole of M001: 802 moves (290 shimmies, 202 feints, 122 rolls, 110 step-overs, 78 drags),
-  the ball plan's worst miss of the tracking 1.20 m (limit 1.5). Every reception the receiver keeps
-  for 1.17 s or more shows a move, except two before a set piece.
+  inside the kick's backswing (`LEG_WINDOW`: 0.5 s for a long ball or a shot; a pass gets 0.5 s
+  too, since it becomes a long ball only once its flight is planned), and only while he is within
+  1.5 m of the ball. The ball's offset eases with smoothstep and always ends at 0, so the tracking
+  position is unchanged at the kick.
+  On the whole of M001: 763 moves (279 shimmies, 181 feints, 120 rolls, 106 step-overs, 77 drags),
+  the ball plan's worst miss of the tracking 1.20 m (limit 1.5). 449 of the 533 receptions kept
+  1 s or more show a move: every one kept 1.22 s or more (0.32 + 0.4 + 0.5 s, the shortest move
+  between the first touch and the backswing), except two before a set piece.
 
 ### Numbers on M001 (high profile, WebGL 2)
 
@@ -686,10 +689,13 @@ On the M001 goal at 595 s the keeper dived with `GK_Dive_R` and lay half buried:
 drops about 0.8 m while the lying pose is only 0.2 to 0.3 m thick, so the right upper arm ended
 0.26 m under the pitch and the head and spine up to 0.10 m.
 
-- **Grounding.** While a reaction plays, after the arms are aimed, `KeeperRig._ground` reads the
-  height of every joint and raises the holder by the deepest shortfall against `GROUND` in
-  `keeper3d.js` (a rough body thickness per joint: 0.13 m at the head, 0.10 m at the spine and
-  pelvis, 0.03 to 0.07 m at hands and legs, 0.01 m at the toes). A standing keeper is never moved.
+- **Grounding.** While a real clip has the keeper down (its root more than 0.15 m under the
+  grass, the depth at which `body()` starts easing the others off him), after the arms are aimed,
+  `KeeperRig._ground` reads the height of every joint and raises the holder by the deepest
+  shortfall against `GROUND` in `keeper3d.js` (a rough body thickness per joint: 0.13 m at the
+  head, 0.10 m at the spine and pelvis, 0.03 to 0.07 m at hands and legs, 0 at the toes). Standing,
+  setting or getting up he is never moved. One pass updates the joints' world matrices, parents
+  first, with no allocation in the frame.
 - **Direction.** The dive already goes to the ball's side on every goal: the broadcast camera is
   at y = -34, the ball crosses 0.8 m inside the far post (y 36.85 of 37.66) and the keeper's hips
   go from y 35.3 to 36.76. He reads as diving wide because he stands 3.4 m off his line, which
@@ -703,4 +709,7 @@ drops about 0.8 m while the lying pose is only 0.2 to 0.3 m thick, so the right 
 
 Checks: `tests/web/keeperball3d.test.mjs`, "a beaten keeper dives towards the side the ball goes
 in" (12 goals on M001 to M004) and "a keeper lying after his dive is raised until no joint is in
-the pitch" (the joint heights measured before the fix at 595.97 s).
+the pitch" (the joint heights measured before the fix at 595.97 s), and "the rig lifts a keeper
+lying in the pitch onto it, and never one standing or getting up" (`_ground` on a Babylon node
+tree: no lift standing, getting up with a toe on the grass, with the root up, or on a procedural
+pose).

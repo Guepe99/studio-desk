@@ -44,6 +44,8 @@ def _image(g, tex):
     raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", "-", "-f", "rawvideo", "-pix_fmt", "rgba", "-"],
                          input=data, check=True, capture_output=True).stdout
     side = int(round((len(raw) / 4) ** 0.5))
+    if side * side * 4 != len(raw):
+        raise ValueError(f"texture {tex} is not square ({len(raw) // 4} pixels)")
     return np.frombuffer(raw, np.uint8).reshape(side, side, 4).astype(float) / 255
 
 
@@ -65,7 +67,6 @@ def rasterise(feat, atlas, pos, box, n, skin=None):
     colour (n, n, 4) with alpha 0/1 (alpha-tested at 0.5 like the material) and masks (n, n, 2).
     skin: (pos, tri) of the face skin, drawn first into the depth only: it hides the inner mouth and
     teeth of a closed mouth, as on the players."""
-    x0, y0, side = box
     col = np.zeros((n, n, 4)); mask = np.zeros((n, n, 2)); depth = np.full((n, n), -np.inf)
     if skin is not None:
         _draw(skin[0], skin[1], None, None, box, n, col, mask, depth)
@@ -150,7 +151,8 @@ def build(src=ANIME, out=OUT):
         m = down(mask, SS, a)
         page[row * CARD:(row + 1) * CARD, :CARD] = np.c_[rgb.reshape(-1, 3), cov.reshape(-1, 1)].reshape(CARD, CARD, 4)
         page[row * CARD:(row + 1) * CARD, CARD:, :2] = m
-        page[row * CARD:(row + 1) * CARD, CARD:, 3] = 1
+        # the masks' alpha stays 0: the plate's edge filters across the seam into this square, and an
+        # opaque one there would draw a dark rim on every face (Babylon uploads without premultiplying)
     Path(out).write_bytes(ba.encode(page, "png"))
     return page
 

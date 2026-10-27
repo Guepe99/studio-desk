@@ -64,12 +64,18 @@ const SKILLS = {
   feint: { p: 0.25, len: 0.65, legs: [["feint", 0.3]], ball: [] },
   shimmy: { p: 0.12, len: 0.4, legs: [["shimmy", 0.18]], ball: [] },
 };
-// seconds after the trap's contact the first move may start (the trap's window ends 0.32 s after
-// it) and before the kick its last one must end (a pass's backswing window is 0.42 s)
-const SKILL_FROM = 0.32, SKILL_TO = 0.45;
+// seconds after the trap's contact the first move may start (the trap's window ends 0.32 s after it)
+const SKILL_FROM = 0.32;
 // seconds before and after contact that a leg action lasts, and the facing ramps
 export const LEG_WINDOW = { shot: [0.5, 0.5], long: [0.5, 0.5], pass: [0.42, 0.4], touch: [0.28, 0.28], trap: [0.42, 0.32],
   roll: [0.3, 0.7], drag: [0.3, 0.45], stepover: [0.35, 0.45], feint: [0.3, 0.35], shimmy: [0.18, 0.21] };
+// seconds before an event's contact its kick's backswing starts, so the last skill move ends by then;
+// a pass is drawn as a long ball once its flight is known (after the skills are planned), so it takes
+// the longer of the two
+const kickLead = (type) => {
+  const k = KICKS[type];
+  return k === "pass" ? Math.max(LEG_WINDOW.pass[0], LEG_WINDOW.long[0]) : k ? LEG_WINDOW[k][0] : Math.max(...Object.values(KICKS).map((x) => LEG_WINDOW[x][0]));
+};
 const YAW_RAMP = { shot: [0.6, 0.35], long: [0.6, 0.35], pass: [0.55, 0.3], touch: [0.3, 0.25], trap: [0.45, 0.3],
   roll: [0.4, 0.4], drag: [0.4, 0.4], stepover: [0.4, 0.4], feint: [0.4, 0.4], shimmy: [0.3, 0.3] };
 
@@ -236,8 +242,9 @@ export class BallPlan {
     const rnd = mulberry(h);
     const names = Object.keys(SKILLS);
     // after the control (the trap's window ends 0.32 s after contact) and before the kick's backswing
+    const end = b - kickLead(next.type_name);
     for (let c = a + SKILL_FROM; ;) {
-      const fit = names.filter((n) => c + SKILLS[n].len <= b - SKILL_TO);
+      const fit = names.filter((n) => c + SKILLS[n].len <= end);
       if (!fit.length) break;
       let r = rnd() * fit.reduce((s, n) => s + SKILLS[n].p, 0), name = fit[0];
       for (const n of fit) { r -= SKILLS[n].p; if (r <= 0) { name = n; break; } }
@@ -662,8 +669,8 @@ const BODY_KEYS = {
   stepover: [[-0.35, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -10, 6, 4, -6, 30, 0, 25, 0], [0, -16, 10, 5, -10, 38, 5, 30, 0], [0.2, -6, 4, 6, -4, 32, 0, 24, 0], [0.45, 0, 0, 2, 0, 12, 0, 12, 0]],
   feint: [[-0.3, 0, 0, 2, 0, 12, 0, 12, 0], [-0.1, -8, 8, 6, -12, 35, 0, 25, 0], [0.05, -10, 10, 8, -14, 40, 0, 26, 0], [0.2, -4, 4, 5, -5, 25, 0, 18, 0], [0.35, 0, 0, 2, 0, 12, 0, 12, 0]],
 };
-// How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
 BODY_KEYS.shimmy = quick(BODY_KEYS.feint);
+// How much the arm poses replace the clips' arm swing: a dribble touch keeps the running arms.
 const ARM_W = { shot: 1, long: 1, pass: 1, touch: 0, trap: 0.35, roll: 0.5, drag: 0.5, stepover: 0.7, feint: 0.7, shimmy: 0.7 };
 const ELBOW = [30, 55];   // degrees of elbow bend in the arm poses: free arm, kicking-side arm
 

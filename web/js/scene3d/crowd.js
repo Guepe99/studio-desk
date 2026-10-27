@@ -13,13 +13,13 @@
 // team's shirts anywhere, rise in a ripple, celebrate and sit back down within about 10 s.
 // Everything is a pure function of match time, so seeks, replays and video frames agree.
 import { ToonPlugin } from "./toon.js";
+import { EYE_COLOURS as EYES } from "../players3d.js";
 
 const B = window.BABYLON;
 
 export const SPECTATOR_URL = "vendor/crowd/spectator.glb";
 export const FACE_URL = "vendor/crowd/face.png";
-// iris colours: the footballers' (players3d.js EYE_COLOURS); SMILE: share of fans smiling all along
-export const EYES = ["#3a6fd8", "#2f9a6a", "#8a5a2b", "#6b4bb8", "#c07a1e", "#3d4a5c"];
+// SMILE: share of fans smiling all along (the iris colours are the footballers', EYES above)
 export const SMILE = 0.25;
 export const BAKE_FPS = 20;
 const HEIGHT = 1.75;   // metres, standing
@@ -451,11 +451,14 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
       speed = 0;
     }
     vatSet[4 * i] = r[0]; vatSet[4 * i + 1] = r[1]; vatSet[4 * i + 2] = off; vatSet[4 * i + 3] = speed;
-    eye[4 * i + 3] = pose ? 1 : p.smile;   // the joy face from the rise to the seat
+    const e = Math.fround(pose ? 1 : p.smile);   // the joy face from the rise to the seat
+    if (eye[4 * i + 3] !== e) { eye[4 * i + 3] = e; eyeDirty = true; }
   };
+  let eyeDirty = false;   // only the expression changes, at the rise and the sit: upload crowdEye then
   people.forEach((_, i) => settings(i, null));
   mesh.thinInstanceBufferUpdated("bakedVertexAnimationSettingsInstanced");
   mesh.thinInstanceBufferUpdated("crowdEye");
+  eyeDirty = false;
 
   let dirty = true;
   const crowd = {
@@ -470,7 +473,8 @@ export async function buildCrowd3D(scene, seats, goals, rnd, { outline = false, 
         settings(i, pose);
         changed = true;
       });
-      if (changed || dirty) { mesh.thinInstanceBufferUpdated("bakedVertexAnimationSettingsInstanced"); mesh.thinInstanceBufferUpdated("crowdEye"); }
+      if (changed || dirty) mesh.thinInstanceBufferUpdated("bakedVertexAnimationSettingsInstanced");
+      if (eyeDirty) { mesh.thinInstanceBufferUpdated("crowdEye"); eyeDirty = false; }
       dirty = changed;   // one more upload after the last change puts everyone back on their loop
     },
     // for the tests: the clip a spectator shows at ts

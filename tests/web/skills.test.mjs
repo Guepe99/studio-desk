@@ -37,8 +37,29 @@ test("players keeping a still ball play with it, with every kind of move", { ski
     const next = ev.find((e) => e.ts > l.t);
     assert.ok(next && m.index[next.player_id] === l.i, `move at ${l.t.toFixed(2)} by ${m.meta.entities[l.i]}, next on the ball ${next?.player_id}`);
     assert.ok(!SET.has(next.type_name), `move at ${l.t.toFixed(2)} before a ${next.type_name}`);
-    assert.ok(next.ts - l.t >= 0.5 + LEG_WINDOW[l.kind][1] - 0.45, `move at ${l.t.toFixed(2)} runs into the kick at ${next.ts}`);
   }
+});
+
+test("every move ends before the next kick's backswing starts, on all four matches", () => {
+  const KICK = new Set(["pass", "long", "shot"]);
+  let n = 0;
+  for (const id of ["M001", "M002", "M003", "M004"]) {
+    const mm = load(id);
+    if (!mm) continue;
+    const p = new BallPlan(mm, [0, mm.duration], { ballR: 0.11 });
+    for (const [i, A] of p.actors) {
+      const legs = [...A.legs].sort((x, y) => x.t - y.t);
+      legs.forEach((l, k) => {
+        if (!SKILL.has(l.kind)) return;
+        const kick = legs.slice(k + 1).find((x) => KICK.has(x.kind));
+        if (!kick) return;
+        n++;
+        const gap = kick.t - LEG_WINDOW[kick.kind][0] - (l.t + LEG_WINDOW[l.kind][1]);
+        assert.ok(gap >= -1e-9, `${id}: ${l.kind} at ${l.t.toFixed(2)} by ${mm.meta.entities[i]} overlaps the ${kick.kind} at ${kick.t.toFixed(2)} by ${(-gap).toFixed(3)} s`);
+      });
+    }
+  }
+  assert.ok(n >= 1000, `only ${n} moves checked`);
 });
 
 test("the ball rolls under the foot and comes back, never jumps", { skip: !m }, () => {

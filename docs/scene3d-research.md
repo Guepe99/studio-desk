@@ -246,9 +246,11 @@ The ground and the crowd were two of the parts that made the first 3D match look
   dark tones read as too uniform; copper and auburn read as unrealistic.
 - Face: the players' anime face. `scripts/build_crowd_face.py` draws the face of
   `web/vendor/players/anime.glb` (eyes with highlights, lashes, brows, mouth, from its face atlas)
-  front-on into `web/vendor/crowd/face.png` (512 x 512, 22 KB): neutral and joy (the players'
-  "joy" morph target), each as colour plus a mask of iris and brows. A round face plate (two rings
-  of 16, curved back at the sides) over the body's narrow head samples it, one texture for the
+  front-on into `web/vendor/crowd/face.png` (512 x 512, 19 KB): neutral and joy (the players'
+  "joy" morph target), each as colour plus a mask of iris and brows. The mask squares are
+  transparent: the plate's edge filters across into them, and an opaque square drew a dark rim.
+  A round face plate (two rings of 16, curved back at the sides) over the body's narrow head
+  samples it, one texture for the
   whole crowd, so it stays one draw call. Per spectator: the skin and hair of the palettes, an
   iris colour from six (tinting the iris as the players' material does), brows in the hair colour,
   and a smile (the joy face) on a quarter of them and on everyone while cheering. A first version
