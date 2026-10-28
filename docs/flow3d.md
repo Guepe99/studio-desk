@@ -118,8 +118,8 @@ along the body, legs trailing, keyed on `CLIP_KEYS` with the root curve from `ke
   speed jumps again at the samples. So the path is a cubic Hermite curve with Catmull-Rom
   tangents on uniform time knots.
 - **Foot sliding.** Motion matching picks the clip frame whose foot positions and velocity match
-  the requested trajectory (Clavet, "Motion Matching and The Road to Next-Gen Animation", GDC 2016,
-  gdcvault.com/play/1022985; Holden et al., "Learned Motion Matching", 2020). Unreal's distance
+  the requested trajectory (Holden et al., "Learned Motion Matching",
+  SIGGRAPH 2020). Unreal's distance
   matching and stride warping keep the feet planted by playing the clip at
   ground speed / clip speed and stretching the stride (Unreal Engine docs, Distance Matching and
   Stride Warping: StrideScale = LocomotionSpeed / RootMotionSpeed). The scene already advanced the
@@ -275,9 +275,7 @@ as mechanical.
   both hands, from behind and over the head, facing the field. Taken: the raise and release
   already in `players.js`, and a carry at the chest in between.
 - **Blending.** Holden, "Dead Blending" (theorangeduck.com/page/dead-blending): a blend of about
-  0.2 s is normal and a pose should blend from where it is, not snap. Bollo, "Inertialization",
-  GDC 2018 (gdcvault.com/play/1025165): transitions decay the old pose's offset instead of
-  crossfading two live clips. Holden, "Spring-It-On" (theorangeduck.com/page/spring-roll-call):
+  0.2 s is normal and a pose should blend from where it is, not snap. Holden, "Spring-It-On" (theorangeduck.com/page/spring-roll-call):
   critically damped springs and half-lives. Taken: every new weight in this section eases in and
   out over 0.3 to 0.4 s with smoothstep (crouch, carry, raise, skills), and the carry stays under
   the raise as it fades in, so the arms never pass through the idle pose.

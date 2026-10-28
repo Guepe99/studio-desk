@@ -2,8 +2,8 @@
 //
 // Camera 1, the live wide shot: on the halfway line in the main stand, 34 m back from the near
 // touchline and 18 m up, so the line of sight drops 27.9 degrees to that touchline and 14.8 degrees
-// to the centre spot (Free TV Australia OP-32, 2.2.2: 30 to 40 m back, 20 to 30 and 12 to 16
-// degrees, 60 m at most; UEFA E.2.1: 12 to 15 degrees to the centre spot). From that far away it
+// to the centre spot (an Australian broadcast standard, OP-32 2.2.2: 30 to 40 m back, 20 to 30 and 12 to 16
+// degrees, 60 m at most; a European broadcast guideline: 12 to 15 degrees to the centre spot). From that far away it
 // works on a long lens, which flattens depth the way TV pictures do; a near wide-angle camera
 // does not look like TV. Like an operator it:
 // - aims at the ball blended with the centroid of the players near it, plus a lead of where the

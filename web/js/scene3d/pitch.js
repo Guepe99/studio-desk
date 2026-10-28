@@ -1,6 +1,6 @@
 // The pitch: one PBR ground whose albedo is computed per pixel by a material plugin, so nothing
 // depends on texture resolution at broadcast distance.
-// - 18 straight mowing stripes along the length (105 / 18 = 5.83 m, UEFA asks 5.50 to 6.10 m),
+// - 18 straight mowing stripes along the length (105 / 18 = 5.83 m, stadium guidelines ask 5.50 to 6.10 m),
 //   mown across the pitch in alternate directions (+Z, -Z). A stripe is lighter when its blades
 //   lean away from the viewer and darker when they lean towards him (docs/scene3d-research.md,
 //   section F): brightness = sign of the stripe x (horizontal view direction . mow direction) x an

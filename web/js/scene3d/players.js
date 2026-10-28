@@ -154,7 +154,7 @@ export function actionDriver(match, schedule) {
 // field). The taker picks the ball up once he reaches it and slows down (a crouch, THROW.crouch,
 // with the body drawn to the ball), carries it at his chest (THROW.carry held at carryT) while the
 // tracking walks him to the spot, then raises it over his head (THROW.clip, from lift to up) and
-// throws on the event time. A Premier League throw-in waits 15 to 18 s on average
+// throws on the event time. A top-flight throw-in waits 15 to 18 s on average
 // (docs/flow3d.md, section 5): the wait is the tracking's, the ball is in his hands for it. The
 // scene puts the ball between the hands (throwBall). Times: start, raise, end are seconds from
 // the throw; down, grab, rise from the pick-up.

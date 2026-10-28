@@ -49,7 +49,7 @@ the tracking data, the 2D page, the export and the facts do not change.
 | Touches and possession from tracking | possession within 0.5 m, lost beyond 1 m | https://arxiv.org/html/2506.22503v1 ; https://pmc.ncbi.nlm.nih.gov/articles/PMC10624867/ |
 | Receiving | body open to the ball, the touch absorbs the rebound | https://pmc.ncbi.nlm.nih.gov/articles/PMC7573254 ; https://www.tsukuba.ac.jp/en/research-news/20260806143000.html |
 | Contact matched to an event time | motion warping of the root | Unreal Engine docs: https://dev.epicgames.com/documentation/unreal-engine/motion-warping-in-unreal-engine |
-| Contact-aware clips and motion matching | clips chosen and blended so the foot meets the ball | https://gdcvault.com/play/1023280/Motion-Matching-and-The-Road ; https://arxiv.org/html/2504.21216v2 ; https://history.siggraph.org/?p=100135 |
+| Contact-aware clips and motion matching | clips chosen and blended so the foot meets the ball | https://arxiv.org/html/2504.21216v2 ; https://history.siggraph.org/?p=100135 |
 
 Note on the numbers we bent on purpose:
 

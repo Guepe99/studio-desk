@@ -40,7 +40,7 @@ render.
 
 The templates sit in `web/booth/lines.json`: per voice, per language, per kind of moment. Each kind has
 several variants, and a routine one (pass, interception, tackle, cross, take-on, foul, clearance) has 10 to
-12, as [AD] asks. The fill-in kinds (A6: possession, build-up, back pass, restart, pause, celebration,
+12. The fill-in kinds (A6: possession, build-up, back pass, restart, pause, celebration,
 kick-off wait, and the co's opinions on shape and tempo and after a goal) have 10 to 16 each, with no
 numbers. The same variant never plays twice in a row. The placeholders are `{player}`,
 `{receiver}`, `{keeper}`, `{team}`, `{team2}` (with an `|of` form for Italian and Spanish articles),
@@ -142,7 +142,7 @@ The rules, from the research below:
   roar follows a goal. The whistle sounds at fouls (cards included), kick-offs and period ends.
 - C1. The co says why, never what was just said [CT, MK]. Colour comes from trends in the facts (momentum
   8/10 or more, press 4.5/10 or more, a line held 40 m or more or 18 m or less from goal, a shot of 100 km/h
-  or more, a sprint of 32 km/h or more, a formation change), never from a single pass [AD].
+  or more, a sprint of 32 km/h or more, a formation change), never from a single pass.
 - C2. The co speaks in stoppages, never in the final third: within 15 s of a shot that ends play (always
   after a shot of 100 km/h or more, otherwise with probability 0.7), after a card, after the goal hold, in
   lulls with a fresh fact, and at half-time and full-time [LF, KL]. A generic stoppage line comes with
@@ -150,7 +150,7 @@ The rules, from the research below:
 - C3. The co keeps 20 to 30 % of the booth's speech. The planner steers to 23 to 27 % [KL].
 - C4. Handover: a 0.3 to 0.8 s pause, sometimes the co's first name or a question. The co hands back
   unmarked [KL].
-- C5. Co turns are one or two sentences [AD].
+- C5. Co turns are one or two sentences.
 
 On M001, with the estimated durations used while the clips render, the planner makes 335 lines in English
 (332 in Italian, 346 in Spanish). The co's share is 23.7 to 24.1 %, the median gap between lines is 4.4
@@ -234,8 +234,6 @@ in all).
 - [CT] Clive Tyldesley, "How many commentators does it take...?"
   https://ctyldesley.substack.com/p/how-many-commentators-does-it-take
 - [MT] Martin Tyler interview. https://grantwahl.substack.com/p/the-interview-martin-tyler
-- [AD] Ernest Adams, "The Designer's Notebook: How to Write Sports Commentary".
-  https://www.gamedeveloper.com/audio/the-designer-s-notebook-how-to-write-sports-commentary
 - [MK] Martin Kelner, Sporting Intelligence.
   https://sportingintelligence832.substack.com/p/hit-the-post-pardon-the-profanity-but-no-shit-sherlock-270601
 - [VG] Virgilio Sport on the RAI second voice (search summary only).

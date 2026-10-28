@@ -450,7 +450,7 @@ try {
     await page.waitForTimeout(100);
     const text = await page.$eval("#seek-range", (el) => el.getAttribute("aria-valuetext"));
     const want = minuteAt(t2), [h, a] = scoreAt(facts, t2), [home, away] = ["home", "away"].map((sd) => meta.teams.find((x) => x.side === sd).name);
-    if (!text || !text.includes(want.minute.replace("'", ""))) fail(`aria-valuetext "${text}" does not say minute ${want.minute}`);
+    if (!text || !text.includes(want.minute.replaceAll("'", ""))) fail(`aria-valuetext "${text}" does not say minute ${want.minute}`);
     if (!text?.endsWith(`${home} ${h}, ${away} ${a}`)) fail(`aria-valuetext "${text}" does not say the score ${home} ${h}, ${away} ${a}`);
   });
 

@@ -31,7 +31,7 @@ MODEL_PRICE_PER_M = {"input": 0.25, "cached_input": 0.025, "output": 2.00}
 AGENT_TIMEOUT_S = 45.0
 MAX_REWRITES = 2
 # One agents run (studiodesk/agents/workflow.py): past either ceiling every agent falls back to rules
-# and templates. A match costs about 0.10 USD and 150 to 250 calls.
+# and templates. A match costs about 0.10 USD and 120 to 240 calls.
 RUN_MAX_COST_USD = 0.50
 RUN_MAX_CALLS = 400
 MAX_PARALLEL_CALLS = 2   # model calls in flight at once; more trips the endpoint's rate limit (429)

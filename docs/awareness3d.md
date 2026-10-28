@@ -126,11 +126,8 @@ Celebrations, dejection, near misses, keeper
 
 How animation engines layer it
 
-- F30, F31 [D] Motion matching (Ubisoft): pick the clip frame that matches the pose and future path.
-  https://gdcvault.com/play/1022985/Motion-Matching-and-The-Road ,
-  https://www.ubisoft.com/en-us/studio/laforge/news/6xXL85Q3bF2vEj76xmnmIu/introducing-learned-motion-matching
-- F35 [D] Lyra: four strafe directions, orientation warping, upper/lower body split per bone.
-  https://dev.epicgames.com/documentation/unreal-engine/animation-in-lyra-sample-game-in-unreal-engine
+- F30, F31 [D] Motion matching (Holden et al., "Learned Motion Matching", SIGGRAPH 2020): pick the clip
+  frame that matches the pose and future path. https://theorangeduck.com/page/learned-motion-matching
 - F37 [D] Blend masks: per-bone 0-1 weights for an upper-body layer.
   https://dev.epicgames.com/documentation/en-us/unreal-engine/blend-masks-and-blend-profiles-in-unreal-engine
 
@@ -149,7 +146,7 @@ The numbers in `web/js/awareness.js` carry these rule numbers.
 | R3 | Reaction delay | the head follows the ball 180 ± 50 ms late, different per player | F2, F4 |
 | R4 | Scans away from the ball | per second: DF 0.44, MF 0.6, FW 0.3, GK 0; 0.35 s each; none while a pass travels to the player, none for a defender within 10 m of the ball | F6, F8, F9 |
 | R5 | Defenders face the ball | full weight within 15 m, fading to none at 25 m | F13 (distances J) |
-| R6 | Body turn and gait | chest spring tau 0.25 s; gait from the chest/run angle, forward under 60 deg, strafe 60-120, backpedal over 120, 10 deg hysteresis, kept at least 0.5 s | F35 (J) |
+| R6 | Body turn and gait | chest spring tau 0.25 s; gait from the chest/run angle, forward under 60 deg, strafe 60-120, backpedal over 120, 10 deg hysteresis, kept at least 0.5 s | (J) |
 | R7 | No fast backpedal | backwards faster than 4.5 m/s, or beaten by the carrier: turn and run | F15 |
 | R8 | Closing defender jockeys | within 3.5 m of the carrier and under 3.5 m/s: side-on, 35 deg off the carrier towards the nearer touchline | F11, F12 |
 | R9 | Open body | an attacker under 3 m/s within 30 m of the ball keeps it within 45 deg of the chest, chest turned towards the goal he attacks | F17-F19 |

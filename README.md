@@ -8,7 +8,7 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 
 **Try it:** https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/
 
-No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a five-minute walkthrough for judges. The pitch is in [docs/PITCH.md](docs/PITCH.md) and the video script in [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md).
+No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a walkthrough of about six minutes for judges. The pitch is in [docs/PITCH.md](docs/PITCH.md) and the video script in [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md).
 
 ## In pictures
 
@@ -223,7 +223,7 @@ Tests run offline and never call a paid service: `.venv/bin/pytest -q` and, afte
 
 ## Use it from your own agent
 
-The MCP server is the way in for another team's agents: the same read-only tools the Studio Desk agents use, held at a match minute so nothing later leaks. `examples/studio_assistant.py` is a small Microsoft Agent Framework agent that starts the server over stdio and answers a producer's question up to that minute, then prints the tools it called and the facts it cites. It uses the same model client and Entra ID sign-in as the agents (`AZURE_OPENAI_ENDPOINT`, Azure CLI). Add `--dry-run` to list the tools and call one with no model and no Azure.
+The MCP server is the way in for another department's agents: the same read-only tools the Studio Desk agents use, held at a match minute so nothing later leaks. `examples/studio_assistant.py` is a small Microsoft Agent Framework agent that starts the server over stdio and answers a producer's question up to that minute, then prints the tools it called and the facts it cites. It uses the same model client and Entra ID sign-in as the agents (`AZURE_OPENAI_ENDPOINT`, Azure CLI). Add `--dry-run` to list the tools and call one with no model and no Azure.
 
 ```
 .venv/bin/python examples/studio_assistant.py --match M001 --minute 30 "Who has created the most chances so far?"
