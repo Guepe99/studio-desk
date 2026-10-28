@@ -8,6 +8,8 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 
 **Try it:** https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/
 
+**Video (two minutes):** https://youtu.be/ebrgqlPLtdE
+
 No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a walkthrough of about six minutes for judges. The pitch is in [docs/PITCH.md](docs/PITCH.md) and the video script in [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md).
 
 ## In pictures
