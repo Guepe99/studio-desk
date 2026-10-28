@@ -71,26 +71,24 @@ test("the plans built in slices are the plans built at once, value by value", { 
 test("a window plan never holds the page for more than 20 ms at a time", { skip: !M.M001 && !process.env.CI && "no web/data/M001" }, async () => {
   const m = M.M001;
   run(planning(m, [0, 120]));   // the page plans its first window at load, before play: the code is warm
-  // each task the slices run, timed on this thread's CPU clock (the wall clock here also counts the
-  // other processes of a busy machine) and on the wall clock
-  const orig = globalThis.setTimeout, tasks = [];
-  globalThis.setTimeout = (fn, ms) => orig(() => {
-    const c = process.threadCpuUsage(), w = performance.now();
-    fn();
-    const d = process.threadCpuUsage(c);
-    tasks.push({ cpu: (d.user + d.system) / 1000, wall: performance.now() - w });
-  }, ms);
-  try {
-    for (const span of [[585, 705], [2400, 2520], [4000, 4120]]) {
-      tasks.length = 0;
-      await sliced(m, span);
-      const cpu = Math.max(...tasks.map((t) => t.cpu)), wall = Math.max(...tasks.map((t) => t.wall)), sum = tasks.reduce((a, t) => a + t.cpu, 0);
-      console.log(`M001 [${span}]: ${sum.toFixed(0)} ms of work in ${tasks.length} tasks, the longest ${cpu.toFixed(1)} ms of CPU (${wall.toFixed(1)} ms of wall clock)`);
-      // CPU time, so load does not move it; about 8 ms on the build machine, so a runner 2.5x slower still passes
-      assert.ok(cpu < 20, `M001 [${span}]: one task held the page for ${cpu.toFixed(1)} ms`);
+  // A task runs steps until SLICE_MS of wall clock have passed, so it holds the page for at most SLICE_MS plus
+  // one step: every step must stay under 20 - SLICE_MS ms. The plan is built five times, keeping each step's
+  // fastest on the wall clock: other processes stretch a step at random, never the same one five times. Not the
+  // thread's CPU clock: on the build VPS (KVM, no steal accounting) it moves in jumps of about 70 ms.
+  const timed = function* (steps, ms) {
+    for (let k = 0; ; k++) {
+      const w = performance.now(), r = steps.next();
+      ms[k] = Math.min(ms[k] ?? Infinity, performance.now() - w);
+      if (r.done) return r.value;
+      yield;
     }
-  } finally {
-    globalThis.setTimeout = orig;
+  };
+  for (const span of [[585, 705], [2400, 2520], [4000, 4120]]) {
+    const ms = [];
+    for (let n = 0; n < 5; n++) await new Promise((ok) => slices(timed(planning(m, span), ms), SLICE_MS, ok));
+    const k = ms.indexOf(Math.max(...ms));
+    console.log(`M001 [${span}]: ${ms.length} steps, the longest ${ms[k].toFixed(1)} ms (step ${k})`);
+    assert.ok(ms[k] < 20 - SLICE_MS, `M001 [${span}]: step ${k} held the page for ${ms[k].toFixed(1)} ms`);
   }
 });
 
