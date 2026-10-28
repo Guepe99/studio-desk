@@ -133,8 +133,9 @@ const SEGMENTS = [
   { end: true, len: 5.0 },
 ];
 
-const LEAD = 0.3;
-let at = LEAD;
+// the YouTube thumbnail is the first second, so the video opens on it; then a short lead
+const COVER = 1.0, LEAD = 0.3;
+let at = COVER + LEAD;
 const TIMED = SEGMENTS.map((g) => { const r = { ...g, start: at }; at += g.len; return r; });
 const TOTAL = s(at);
 
@@ -169,18 +170,10 @@ const Segment = ({ g }) => {
   );
 };
 
-// Sound under the voice: the site's own CC0 crowd (web/vendor/crowd-audio, THIRD_PARTY.md), low under the
-// desk, up under the 3D clips; a whistle to open, an ooh at the big chance, the roar at the goal.
+// No crowd sound under the voice: the only sound besides the narrator is the booth's own goal call.
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" };
-const BED = 0.16, BED_3D = 0.42;
-const bedVolume = (f) => {
-  const t = f / FPS;
-  let v = BED;
-  for (const g of TIMED) if (g.clip) v = Math.max(v, interpolate(t, [g.start - 0.5, g.start, g.start + g.len - 0.3, g.start + g.len + 0.7], [BED, BED_3D, BED_3D, BED], clamp));
-  return v * interpolate(t, [at - 2.5, at], [1, 0], clamp);
-};
 const GOAL = TIMED.find((g) => g.call);
-const SFX = [["whistle", 0.1, 2, 0.5], ["anticipation", 0.3, 6, 0.3], ["ooh", 4.9, 4, 0.55], ["roar", GOAL.start + 3.7, 8, 0.4], ["goal-call", GOAL.start + GOAL.call, 6.2, 0.6]];
+const SFX = [["goal-call", GOAL.start + GOAL.call, 6.2, 0.6]];
 const Sfx = ([name, st, len, vol]) => (
   <Sequence key={name} from={s(st)} durationInFrames={s(len)}>
     <Audio src={staticFile(`sfx/${name}${name.includes("-") ? ".wav" : ".mp3"}`)} volume={(f) => vol * interpolate(f, [0, 3, s(len) - s(1.2), s(len)], [0, 1, 1, 0], clamp)} />
@@ -190,13 +183,15 @@ const Sfx = ([name, st, len, vol]) => (
 const Video = () => (
   <AbsoluteFill style={{ background: PURPLE }}>
     <style>{fontFace}</style>
+    <Sequence durationInFrames={s(COVER)}>
+      <AbsoluteFill style={{ width: 1280, height: 720, transformOrigin: "0 0", transform: `scale(${W / 1280})` }}><Thumbnail /></AbsoluteFill>
+    </Sequence>
     {TIMED.map((g, i) => (
       <Sequence key={i} from={s(g.start)} durationInFrames={s(g.len)}>
         <Segment g={g} />
         {g.v && <Audio src={staticFile(`voice/v${String(g.v).padStart(2, "0")}.wav`)} />}
       </Sequence>
     ))}
-    <Audio src={staticFile("sfx/bed.mp3")} loop volume={bedVolume} />
     {SFX.map(Sfx)}
   </AbsoluteFill>
 );

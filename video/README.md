@@ -11,7 +11,7 @@ Edited with Remotion from the live site; the script is [docs/VIDEO-SCRIPT.md](..
 | `voice.py`, `voice-jobs.json` | the voice-over, one WAV per line, with Kokoro (`scripts/booth-kokoro-setup.sh`) |
 | `src/Root.jsx` | the cut (`studio-desk`) and the YouTube thumbnail (`thumbnail`) |
 
-The crowd sounds in `public/sfx/` are the site's own CC0 recordings from `web/vendor/crowd-audio` ([THIRD_PARTY.md](../THIRD_PARTY.md)); `goal-call.wav` is the booth's own goal call from the replay.
+The only sound besides the voice is `public/sfx/goal-call.wav`, the booth's own goal call from the replay; there is no crowd sound and no music.
 Playwright comes from `PLAYWRIGHT_FROM` (a folder with `node_modules/playwright`).
 
     npm ci
