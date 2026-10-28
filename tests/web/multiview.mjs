@@ -111,7 +111,9 @@ try {
   console.log(`     playing: ${ts.map((x) => x.toFixed(2)).join(" ")}`);
   expect(moved, "all four play: each window's clock 3 s past its start");
   expect(spread(ts) <= 0.5, `the four within 0.5 s while playing (${spread(ts).toFixed(3)} s)`);
-  await page.screenshot({ path: path.join(shots, "multiview-1920.png") });
+  // the clock keeps real time through the 3D build, so window 3 now draws the first goal (595.7): in software
+  // WebGL its frames come 10 to 20 s apart, past Playwright's 30 s default for a screenshot
+  await page.screenshot({ path: path.join(shots, "multiview-1920.png"), timeout: 120000 });
 
   // a window pushed away is brought back
   await page.evaluate(() => { const d = window.multiview.sd(window.multiview.wins[2]); d.seek(d.state.ts + 3); });
@@ -164,7 +166,7 @@ try {
   ts = await times();
   a = await audio();
   expect(spread(ts) <= 0.5 && a[0].on, `in 3D it keeps its time and its sound (${spread(ts).toFixed(3)} s, voice ${a[0].on})`);
-  await page.screenshot({ path: path.join(shots, "multiview-focus.png") });
+  await page.screenshot({ path: path.join(shots, "multiview-focus.png"), timeout: 120000 });   // 3D in software, as above
   await page.click(".mv-win:nth-child(1) .mv-hit");
   await page.waitForTimeout(1000);
   // a software-WebGL frame of the large window can hold the page's next frame for a few seconds
@@ -269,7 +271,8 @@ try {
 
   // 1280x720: the desk docked beside the wall, the four windows on screen, nothing sideways
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.waitForTimeout(800);
+  // the layout follows a ResizeObserver, which runs only in a rendering frame: in software WebGL those can be seconds apart
+  await page.waitForFunction(() => Math.max(...[...document.querySelectorAll(".mv-pic")].map((e) => e.getBoundingClientRect().bottom)) <= innerHeight, null, { timeout: 30000, polling: 250 }).catch(() => {});
   const mid = await page.evaluate(() => { const d = document.querySelector("#desk").getBoundingClientRect(), pics = [...document.querySelectorAll(".mv-pic")].map((e) => e.getBoundingClientRect());
     return { desk: [Math.round(d.left), Math.round(d.right), Math.round(d.bottom)], picsRight: Math.round(Math.max(...pics.map((r) => r.right))), picsBottom: Math.round(Math.max(...pics.map((r) => r.bottom))),
       sideways: document.documentElement.scrollWidth > innerWidth };
@@ -279,6 +282,7 @@ try {
 
   // a phone: one column, no sideways scroll
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => document.querySelector("#mv-wall").classList.contains("one-col"), null, { timeout: 30000, polling: 250 }).catch(() => {});   // as above
   await page.waitForTimeout(800);
   const phone = await page.evaluate(() => ({ cols: getComputedStyle(document.querySelector("#mv-wall")).gridTemplateColumns.split(" ").length,
     sideways: document.documentElement.scrollWidth > innerWidth }));
