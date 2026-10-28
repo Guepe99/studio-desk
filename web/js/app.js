@@ -583,11 +583,12 @@ function onAirStory() {
 }
 
 let lastFrame = null;
+// a hidden tab gets no frames: back in view the clock goes on from where it stopped
+document.addEventListener("visibilitychange", () => { lastFrame = null; });
 function tick(now) {
   requestAnimationFrame(tick); // first: a throw below costs one frame, not the replay
-  // a stall of the page (a 3D replan) keeps the clock in real time; a gap over 1 s is a hidden tab
-  const gap = lastFrame === null ? 0 : (now - lastFrame) / 1000;
-  let dt = gap > 1 ? 0.1 : gap;
+  // a stall of the page (a 3D replan, software WebGL frames of seconds) keeps the clock in real time, with the sound
+  let dt = lastFrame === null ? 0 : (now - lastFrame) / 1000;
   lastFrame = now;
   if (countdown.frame(now, state.ts, state.speed, match.duration)) { setPlaying(true); dt = 0; }   // the clock starts at 0 on "Kick off"
   if (state.playing) {
