@@ -1,0 +1,79 @@
+[
+ {
+  "say": "A producer has seconds to decide what goes on air, and one wrong number costs trust.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v01.mp3"
+ },
+ {
+  "say": "Studio Desk's agents, built on Microsoft Agent Framework and Foundry, find and explain the stories. Every number comes from code. Low-risk graphics air on their own; nothing risky airs without her.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v02.mp3"
+ },
+ {
+  "say": "They read the match through an MCP server that stops at the current minute. A big chance is a reading of the game, so it waits for her.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v03.mp3"
+ },
+ {
+  "say": "She types a number the facts don't support. The desk refuses it and logs it.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v04.mp3"
+ },
+ {
+  "say": "Behind the story, each number is a fact computed by code, with its source event.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v05.mp3"
+ },
+ {
+  "say": "One click swaps the code's line for the agents' own, and the audit log records both decisions.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v06.mp3"
+ },
+ {
+  "say": "One desk, four broadcasts at once: the same goal for an analyst, for kids, for an Ostwick fan in Italian and a casual fan in Spanish, all from the same facts.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v07.mp3"
+ },
+ {
+  "say": "Viewers can ask too: answers use only facts up to that minute, and Content Safety checks question and answer.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v08.mp3"
+ },
+ {
+  "say": "One switch takes every AI story off air; template graphics carry on. If an agent fails, fixed rules stand in. Traces show each step's cost.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v09.mp3"
+ },
+ {
+  "say": "Model calls cost six to ten cents a match. No model keys, everything in Bicep, tests on every push.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v10.mp3"
+ },
+ {
+  "say": "Agents also read the game: a change of shape waits for her, with its evidence. Next: Entra ID roles and a durable audit store.",
+  "voice": "am_michael",
+  "gain_db": 0,
+  "hype": 0,
+  "path": "public/voice/v11.mp3"
+ }
+]

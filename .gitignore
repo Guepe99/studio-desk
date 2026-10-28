@@ -12,3 +12,4 @@ out/
 web/data
 .claude/worktrees/
 .tts/
+video/public/
