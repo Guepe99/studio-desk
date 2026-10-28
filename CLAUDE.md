@@ -1,6 +1,6 @@
 # Studio Desk: rules for every Claude session and builder agent
 
-Hackathon entry for "Inside the Game" (Microsoft + Premier League), category Best Enterprise
+Hackathon entry for "Inside the Game", category Best Enterprise
 Solution.
 
 ## Before writing code

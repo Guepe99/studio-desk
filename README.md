@@ -10,6 +10,38 @@ Built for the Inside the Game hackathon, in the Best Enterprise Solution categor
 
 No account is needed, and [docs/TESTING.md](docs/TESTING.md) is a five-minute walkthrough for judges. The pitch is in [docs/PITCH.md](docs/PITCH.md) and the video script in [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md).
 
+## In pictures
+
+Screenshots of the live site, match M001.
+
+**The control desk next to the 3D match.** "Needs you" lists the stories waiting for the producer, and "On air now" the graphics on screen. Low-risk stories air on their own, and the producer can take any of them out.
+
+![The control desk next to the 3D match](docs/images/1-desk.jpg)
+
+**An invented number, refused.** The producer edited a story with a number that does not match the facts, and the desk refused the edit. An edit airs only if every number in it is one of the story's facts, its minute or the score at that moment.
+
+![An invented number, refused](docs/images/2-refused.jpg)
+
+**Details: the facts behind a graphic.** The facts and events behind a graphic, the verifier's verdict and the risk level. Code computed every number in it.
+
+![Details: the facts behind a graphic](docs/images/3-details.jpg)
+
+**One goal, four audiences.** The multiviewer plays the same goal for an analyst, kids, a fan of the other team in Italian and a casual fan in Spanish. All four graphics come from the same facts, under one Play button.
+
+![One goal, four audiences](docs/images/4-multiview.jpg)
+
+**The goal in 3D.** Drawn in the browser from the tracking data, with the on-air graphic. A goal is a low-risk story, so its graphic went on air by itself.
+
+![The goal in 3D](docs/images/5-goal.jpg)
+
+**Ask the studio.** The answer may use only facts up to the current replay time, and both the question and the answer pass Azure AI Content Safety.
+
+![Ask the studio](docs/images/6-ask.jpg)
+
+**Traces.** Every agent step with its model, tokens, time and cost. A full match costs $0.06 to $0.10 in model calls.
+
+![Traces](docs/images/7-traces.jpg)
+
 ## Who would use it
 
 A broadcaster, or a league's production team, that wants on-air graphics drawn from match data and wants a producer to approve the riskier ones before they air. Each extra language or audience is one more set of graphics from the same fact ledger. A match costs $0.06 to $0.10 in model calls.
@@ -21,7 +53,7 @@ A first pilot: run Studio Desk beside the broadcaster's existing graphics for on
 ## What to try
 
 1. Open a match and press Play. The page opens on M004, the match where the most graphics wait for the producer; the others are [M001](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001), [M002](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M002) and [M003](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M003). The seek bar gets a button for each goal once the replay has reached it, and **Next key moment** jumps to the next story the agents found. On a first visit a short welcome offers **Watch the first goal, with sound** or **Start from kick-off**.
-2. On a computer with a graphics card the picture is 3D, with the 2D pitch as a small, see-through live minimap at the bottom, as in a football video game. Click the minimap to swap the two, and click it again to swap them back. **Minimap** in the settings (the gear) turns it off. The 3D view runs in your browser and uses the same tracking data. A phone, or a computer that draws without a graphics card (a virtual machine or a remote desktop), starts on the 2D pitch; add `&view=split` to the link to bring the 3D view back.
+2. On a computer with a graphics card the picture is 3D, with the 2D pitch as a small, see-through live minimap at the bottom. Click the minimap to swap the two, and click it again to swap them back. **Minimap** in the settings (the gear) turns it off. The 3D view runs in your browser and uses the same tracking data. A phone, or a computer that draws without a graphics card (a virtual machine or a remote desktop), starts on the 2D pitch; add `&view=split` to the link to bring the 3D view back.
 3. Look at the **Desk** beside the picture (on a phone, press **Desk**). Each story lists the facts behind it, the verifier's verdict and a risk level. While the code's phrasebook line is on air, the risk follows the story's kind: a fact (a goal, a comeback, a sprint, a recap) is low, and a reading of the game (a big chance, a change of shape, who is on top) is medium. Use **Put on air**, **Edit** or **Reject** on a story, or open **Details** and press **Use proposal** to put the agents' own line on air; the confirmation that appears has an **Undo** button. Stories below the risk threshold go on air automatically and are marked auto-approved in the **Audit log** tab.
 4. Look at the **Agents at work** strip under the picture. It shows which agent is working and what it passed on. While a graphic is on air, it shows how that graphic was made.
 5. Switch the language to EN, IT or ES in the settings. The desk, the controls and the graphics change language. The numbers do not change, because code computes them from the fact ledger; the model never writes them.
@@ -47,9 +79,9 @@ The replay makes no model calls, so it has no daily quota. Each session allows 3
 |---|---|---|
 | Gate: theme and Microsoft technologies | A football broadcast desk built on Microsoft Agent Framework, a gpt-5-mini deployment in Microsoft Foundry, Azure Container Apps, Azure AI Content Safety, Azure Speech in Foundry Tools and Azure Monitor Application Insights, deployed with Bicep and the Azure CLI, tested and built with GitHub Actions | [Live site](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/), [pyproject.toml](pyproject.toml), [infra/main.bicep](infra/main.bicep), [.github/workflows/](.github/workflows/) |
 | Technological implementation: synthetic data | A seeded simulator writes 4 matches (5,493 events, 223,905 tracking frames at 10 fps) with 14 hidden storylines, calibrated against public event data and published physical studies. The same seed gives the same events and frames | [Synthetic data](#synthetic-data), [studiodesk/sim/](studiodesk/sim/), [docs/realism.md](docs/realism.md), [tests/test_sim.py](tests/test_sim.py) |
-| Technological implementation: software practice | 666 Python tests and 277 browser-logic tests pass offline; CI runs both on every push and builds the image only from a commit whose tests passed; pinned versions; a written data contract | [Measured numbers](#measured-numbers), [ci.yml](.github/workflows/ci.yml), [image.yml](.github/workflows/image.yml), [docs/CONTRACT.md](docs/CONTRACT.md) |
+| Technological implementation: software practice | 668 Python tests and 282 browser-logic tests pass offline; CI runs both on every push and builds the image only from a commit whose tests passed; pinned versions; a written data contract | [Measured numbers](#measured-numbers), [ci.yml](.github/workflows/ci.yml), [image.yml](.github/workflows/image.yml), [docs/CONTRACT.md](docs/CONTRACT.md) |
 | Agentic design and innovation | Two Agent Framework workflows. In the first, the story finder hands each story to the director, which puts it on air at once. In the second, the analyst fans out to three commentators, whose drafts fan back in to a verifier. Agents read the match only through an MCP server whose clock follows the match. If an agent fails, rules take its place | [workflow.py, the two workflows](studiodesk/agents/workflow.py#L883-L889), [mcp_server.py, the clock](studiodesk/mcp_server.py#L35-L56), [tests/test_mcp.py](tests/test_mcp.py#L36), [fallback test](tests/test_agents.py#L199-L231) |
-| Real-world impact | The producer sees each story with its facts, risk and verdict, and puts it on air, edits or rejects it. A match costs $0.062 to $0.103 in model calls; in one real-speed run, two goals reached the director 3.2 and 3.2 s after their shots; Microsoft Foundry's evaluators gave the on-air texts a mean groundedness of 4.75 out of 5 | [A goal on the desk](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1), [docs/MEASURES.md](docs/MEASURES.md) |
+| Real-world impact | The producer sees each story with its facts, risk and verdict, and puts it on air, edits or rejects it. A match costs $0.062 to $0.103 in model calls; in one real-speed run, two goals reached the director 3.2 and 3.2 s after their shots | [A goal on the desk](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&speed=1&play=1), [docs/MEASURES.md](docs/MEASURES.md) |
 | User experience and presentation | 3D and 2D broadcast views, OGraf graphics, three languages, five kinds of audience, voice, Ask the studio, links that open any moment | [What to try](#what-to-try), [the same goal for a fan of the other team](https://studiodesk.calmmoss-3f076252.swedencentral.azurecontainerapps.io/?match=M001&t=590&audience=team:T02&speed=1&play=1), [docs/TESTING.md](docs/TESTING.md), [docs/VIDEO-SCRIPT.md](docs/VIDEO-SCRIPT.md) |
 | Category: Best Enterprise Solution | Human approval above a risk threshold (0.35), so every reading of the game waits for the producer, an audit log of every decision and agent step, Content Safety on every story the agents write and on every question and answer, a per-session AI switch, per-visitor state, caps and a daily cost stop, a container that holds no keys for the model or Content Safety (managed identity), every Azure resource as Bicep, OpenTelemetry traces. What is missing is in [Limits](#limits) | [config.py](studiodesk/config.py#L11-L37), [tests/test_api.py](tests/test_api.py#L312-L367), [tests/test_safety.py](tests/test_safety.py), [studiodesk/telemetry.py](studiodesk/telemetry.py), [Deployment](#deployment) |
 
@@ -148,7 +180,7 @@ The four matches hold 14 storylines, and the agents found 11. `scripts/eval_stor
 
 The test counts were measured on commit `05ecd92` on 27 Oct 2026, and the run with the model off on commit `abd9990` on 25 Oct 2026. The four replays in `replays/` come from real runs on Azure, and their files hold the stories and every agent step. The other numbers come from those runs, computed by `scripts/measures.py` into [docs/MEASURES.md](docs/MEASURES.md). The runtime databases of those runs (traces and audit) are not in the repo, so from a clone the script reproduces only the numbers that need the replays and the match database: storylines found, numbers and names blocked, text on air and the run with the model off.
 
-**Tests.** 666 Python tests passed in 4 min 47 s and 277 browser-logic tests in 2 min; the commands are in [Run it locally](#run-it-locally).
+**Tests.** 668 Python tests and 282 browser-logic tests pass offline; the commands are in [Run it locally](#run-it-locally).
 
 **Delay from event to graphic.** In one real-speed run on Azure (M001, minutes 5 to 20, `python -m studiodesk.agents run M001 --speed 1 --from-ts 300 --to-ts 1200`), the two goals were cued 3.2 and 3.2 seconds after their shots, and the big chance 8.0 seconds after its shot, once the play had settled. These are upper bounds. In the four replays the director cued a round's graphics 2.3 seconds after the round began at the median (6.7 seconds at most), while a full round of agents (story finder, director, analyst, three commentators, verifier and rewrites) took 18.5 seconds at the median and 53.8 seconds at most, so the analysis and the proposals reach the desk after the graphic is already on air.
 
@@ -168,7 +200,7 @@ The Content Safety checks (one call per story, 83 in all) are not in these count
 
 **Fallback when the model is off.** `tests/test_agents.py` makes each agent fail in turn, then all of them, then every call time out, and checks that the stories still air in all three languages. On 25 Oct 2026 we also ran the whole of M001 offline with every model call failing, and with the match clock not waiting for real time. It took 44.9 s and produced 15 stories, each on air with its phrasebook line in English, Italian and Spanish, 70 trace steps marked as fallbacks, and 0 model calls. On the site, the **AI graphics** switch on the desk is stricter than that: it takes off air every story an AI agent picked, even when code wrote its words, and leaves only the template graphics that code builds from the facts.
 
-**Foundry evaluators.** The on-air texts were also scored by Microsoft Foundry's built-in evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals`: 249 items, every story of the four replays in English, Italian and Spanish. The judge read each text against the facts and events it cites. Mean scores out of 5: groundedness 4.75, relevance 4.26 (247 of 249 passed), coherence 4.31 and fluency 3.55 (all 249 passed on each of these three).
+**Foundry evaluators.** The on-air texts, which in the four replays are all the code's phrasebook lines, were also scored by Microsoft Foundry's built-in evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals`: 249 items, every story of the four replays in English, Italian and Spanish. The judge read each text against the facts and events it cites. Mean scores out of 5: groundedness 4.75, relevance 4.26 (247 of 249 passed), coherence 4.31 and fluency 3.55 (all 249 passed on each of these three). These scores rate the phrasebook text the code puts on air, not the agents' proposals.
 
 The two relevance failures are English lines the judge found too technical for a TV caption: a pressing spell given as "5.5/10" and a momentum swing given as three ratings out of 10. The run cost about $1.30 in judge tokens. To rerun it: `.venv/bin/python scripts/foundry_evals.py` (it calls Azure: set `FOUNDRY_PROJECT_ENDPOINT` to your Foundry project, on which you need the Foundry User role). The table and the details are in [docs/MEASURES.md](docs/MEASURES.md#foundry-evaluators).
 

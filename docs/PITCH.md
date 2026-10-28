@@ -11,13 +11,13 @@ The matches are synthetic. Our simulator, calibrated against public event data a
 The Microsoft technologies:
 
 - **Microsoft Agent Framework** runs the workflows: a story finder, a rule-based director, an analyst, three commentators and a verifier, with fan-out and fan-in edges, audit middleware and OpenTelemetry spans.
-- **Microsoft Foundry** hosts the gpt-5-mini deployment the agents use, and its built-in evaluators gave the on-air texts a mean groundedness of 4.75 out of 5.
+- **Microsoft Foundry** hosts the gpt-5-mini deployment the agents use; its built-in evaluators also scored the phrasebook lines the code puts on air (groundedness 4.75 out of 5).
 - **Azure Container Apps** hosts the site, and its managed identity reaches Microsoft Foundry without keys.
 - **Azure AI Content Safety** checks every story, and every question a visitor asks along with its answer.
 - **Azure Speech in Foundry Tools** voices the verified stories in three languages.
 - **Azure Monitor Application Insights** receives the agents' traces.
 - **Bicep and the Azure CLI** deploy the Container App and its monitoring.
-- **GitHub Actions** runs the 666 Python and 277 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
+- **GitHub Actions** runs the 668 Python and 282 browser-logic tests and builds the image; the **GitHub CLI** starts workflows and downloads their results.
 
 Also built on:
 

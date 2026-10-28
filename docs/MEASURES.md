@@ -100,7 +100,7 @@ was a median of 0.9 seconds of match time before its round (goals at most
 ## Foundry evaluators
 
 Computed by `scripts/foundry_evals.py` on 2026-10-27, not by `scripts/measures.py` (which keeps this section
-when it rewrites the page). The on-air text of each story was scored by four of Microsoft Foundry's built-in
+when it rewrites the page). The on-air text of each story, in these packs always the code's phrasebook line, was scored by four of Microsoft Foundry's built-in
 evaluators, with gpt-5-mini as the judge, through the Agent Framework's `FoundryEvals` on the Foundry project
 `studiodesk`: all 249 items, every story of the 4 replay packs (M001, M002, M003, M004) in English, Italian and Spanish, one eval run per language. Each item gives the judge a neutral request ("Write the
 on-screen line, in Italian, for this moment of the match for a TV audience", with the kind of moment), the
